@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Test waveform</title>
+    <style>
+  /*body {padding: 0; margin: 0;}*/
+    </style>
+  </head>
+  <body>
+    <div>
+      <label>
+        <input  id="same-scale" type="checkbox">
+        Same scale
+      </label>
+      | Align by :
+      <span id="alignment">
+        <label><input type="radio" name="alignment" value="O" checked> Origin</label>
+        <label><input type="radio" name="alignment" value="P"> P</label>
+        <label><input type="radio" name="alignment" value="S"> S</label>
+      </span>
+      | Sort by :
+      <span id="sort-by">
+        <label><input type="radio" name="sort-by" value="name" checked> Name</label>
+        <label><input type="radio" name="sort-by" value="start"> Start time</label>
+      </span>
+    </div>
+    <div class="container"></div>
+    <script src="../waveform.js"></script>
+    <script type="text/javascript">
+let sameScale = document.getElementById('same-scale'),
+    alignment = document.getElementById('alignment'),
+    sortBy = document.getElementById('sort-by');
+
+sameScale.addEventListener('click', ev => {
+  wf.opt.equalScale = sameScale.checked;
+  wf.draw();
+});
+alignment.addEventListener('click', ev => {
+  wf.setTimeAlignment(document.querySelector('[name="alignment"]:checked').value);
+  wf.draw();
+});
+sortBy.addEventListener('click', ev => {
+  let sortKey = document.querySelector('[name="sort-by"]:checked').value;
+  if (sortKey == 'name') {
+    wf.sortWaveformsBy(x => x.id)
+  } else if (sortKey == 'start') {
+    wf.sortWaveformsBy(x => x.start)
+  }
+});
+
+let now = new Date().getTime();
+let nbCharts = 15;
+let opt = {
+  container: '.container',
+  waveforms: [],
+  callback: {
+    waveformClick: wf => console.log(wf)
+  }
+}
+for (let i=0; i<nbCharts; i++) {
+  let maxValue = Math.random()*100 + 10;
+  let values = [];
+  for (let i=0; i<1000; values.push((Math.floor(Math.random()*maxValue)-maxValue/2)/10000000000), i++);
+  let start = now + Math.random()*100000;
+  opt.waveforms.push({
+    start: start,
+    step: 50,
+    values: values,
+    id: `XX.NOISE.0${i}.BHZ`,
+    ttt: {
+      O: now,
+      P: start+10000,
+      S: start+40000
+    }
+  })
+}
+wf = new Waveform(opt);
+    </script>
+  </body>
+</html>
