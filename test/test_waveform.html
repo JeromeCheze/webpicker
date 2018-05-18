@@ -6,11 +6,20 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Test waveform</title>
     <style>
-  /*body {padding: 0; margin: 0;}*/
+  body {padding: 0; margin: 0; background: rgb(216, 229, 232);}
     </style>
   </head>
   <body>
     <div>
+      <label>
+        Picker phase
+        <select name="phase">
+          <option value="" selected></option>
+          <option value="P">P</option>
+          <option value="S">S</option>
+        </select>
+      </label>
+      |
       <label>
         <input  id="same-scale" type="checkbox">
         Same scale
@@ -27,20 +36,29 @@
         <label><input type="radio" name="sort-by" value="start"> Start time</label>
       </span>
     </div>
+    <div class="picker"></div>
     <div class="container"></div>
     <script src="../waveform.js"></script>
     <script type="text/javascript">
 let sameScale = document.getElementById('same-scale'),
     alignment = document.getElementById('alignment'),
+    phaseSelector = document.querySelector('[name="phase"]'),
     sortBy = document.getElementById('sort-by');
 
+phaseSelector.addEventListener('change', ev => {
+  let phase = phaseSelector.value
+  picker.setPickerPhase(phase)
+})
 sameScale.addEventListener('click', ev => {
   wf.opt.equalScale = sameScale.checked;
   wf.draw();
 });
 alignment.addEventListener('click', ev => {
-  wf.setTimeAlignment(document.querySelector('[name="alignment"]:checked').value);
+  let alignment = document.querySelector('[name="alignment"]:checked').value
+  wf.setTimeAlignment(alignment)
   wf.draw();
+  picker.setTimeAlignment(alignment)
+  picker.draw();
 });
 sortBy.addEventListener('click', ev => {
   let sortKey = document.querySelector('[name="sort-by"]:checked').value;
@@ -53,13 +71,43 @@ sortBy.addEventListener('click', ev => {
 
 let now = new Date().getTime();
 let nbCharts = 15;
+let picker = null;
+let pickerOpt = {
+  mode: 'picker',
+  container: '.picker',
+  size: {height: 180},
+  waveforms: [],
+  equalScale: true,
+  callback: {
+    updatePick: () => {
+      wf.draw()
+    }
+  }
+}
 let opt = {
+  mode: 'list',
   container: '.container',
   waveforms: [],
   callback: {
-    waveformClick: wf => console.log(wf)
+    waveformClick: wf => {
+      let view = null
+      let phase = null
+      if (picker != null) {
+        view = picker.view
+        phase = picker.event.phase
+        picker.destroy()
+      }
+      pickerOpt.waveforms = [wf]
+      picker = new Waveform(pickerOpt)
+      if (view != null) {
+        picker.view = view
+        picker.draw()
+      }
+      picker.setPickerPhase(phase)
+    }
   }
 }
+
 for (let i=0; i<nbCharts; i++) {
   let maxValue = Math.random()*100 + 10;
   let values = [];
@@ -77,7 +125,8 @@ for (let i=0; i<nbCharts; i++) {
     }
   })
 }
-wf = new Waveform(opt);
+let wf = new Waveform(opt)
+wf.selectNext()
     </script>
   </body>
 </html>
