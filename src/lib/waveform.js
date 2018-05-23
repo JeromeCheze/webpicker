@@ -1,4 +1,4 @@
-export class Waveform {
+export default class Waveform {
 
   constructor (opt) {
     this.xGridScales = [

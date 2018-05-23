@@ -2,10 +2,18 @@ import Vue from 'vue'
 import ElementUI from 'element-ui'
 import 'element-ui/lib/theme-chalk/index.css'
 
+import EventList from './components/EventList.vue'
+import EventPage from './components/EventPage.vue'
+import EventPicker from './components/EventPicker.vue'
+
 import App from './App.vue'
 
 // install Element-UI
 Vue.use(ElementUI, { size: 'small' })
+
+Vue .component('event-list', EventList)
+Vue .component('event-page', EventPage)
+Vue .component('event-picker', EventPicker)
 
 new Vue({
   el: '#app',
@@ -13,13 +21,13 @@ new Vue({
   components: { App }
 })
 
-// prevent back page action which would result in loosing work done on meteor.
-history.pushState(null, null, location.href)
-window.onpopstate = function () {
-    history.go(1)
-}
-window.onbeforeunload = function(ev) {
-  let msg = 'Are you sure you want to leave ? All your work will be lost !'
-  ev.returnValue = msg
-  return msg
-}
+/* prevent back page action which would result in loosing work done on webpicker. */
+// history.pushState(null, null, location.href)
+// window.onpopstate = function () {
+//     history.go(1)
+// }
+// window.onbeforeunload = function(ev) {
+//   let msg = 'Are you sure you want to leave ? All your work will be lost !'
+//   ev.returnValue = msg
+//   return msg
+// }
