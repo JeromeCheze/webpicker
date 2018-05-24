@@ -2,6 +2,8 @@
   <el-table
     :data="tableData"
     :default-sort="{ prop: 'time', order: 'descending' }"
+    highlight-current-row
+    @current-change="handleCurrentChange"
     :height="500"
     style="width: 100%">
     <el-table-column width="150" prop="time" label="Time" sortable></el-table-column>
@@ -30,9 +32,6 @@
 <script>
 export default {
   props: ['eventList'],
-  mounted () {
-
-  },
   computed: {
     tableData () {
       return this.eventList.map(e => ({
@@ -50,6 +49,11 @@ export default {
         region: e.description.text,
         id: e.$publicID
       }))
+    }
+  },
+  methods: {
+    handleCurrentChange (row) {
+      this.$emit('select-event', row.id)
     }
   }
 }

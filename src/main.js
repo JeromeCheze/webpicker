@@ -11,9 +11,9 @@ import App from './App.vue'
 // install Element-UI
 Vue.use(ElementUI, { size: 'small' })
 
-Vue .component('event-list', EventList)
-Vue .component('event-page', EventPage)
-Vue .component('event-picker', EventPicker)
+Vue.component('event-list', EventList)
+Vue.component('event-page', EventPage)
+Vue.component('event-picker', EventPicker)
 
 new Vue({
   el: '#app',
