@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from flask import Flask, request, render_template, Response, abort
 from urllib2 import urlopen, Request, HTTPError
+from obspy.taup import TauPyModel
 from urllib import urlencode
 import json
 
@@ -13,6 +14,19 @@ FDSNWS_ROOT = 'http://encelade.unice.fr:8080/fdsnws'
 @app.route('/')
 def index():
     return render_template('app.html')
+
+@app.route('/ttt', methods=['POST'])
+def get_ttt():
+    phase_list = ['P', 'p', 'S', 's']
+    model = TauPyModel(model="iasp91")
+    data = request.get_json()
+    result = {}
+    for sta, distance in data['station'].iteritems():
+        arrivals = model.get_travel_times(data['depth'], distance, phase_list)
+        result[sta] = { 'distance': distance, 'ttt': {} }
+        for a in arrivals:
+            result[sta]['ttt'][a.name] = a.time
+    return Response(json.dumps(result), mimetype='application/json')
 
 @app.route('/fdsnws/', defaults={'service': '', 'path': ''})
 @app.route('/fdsnws/<service>/', defaults={'path': ''})

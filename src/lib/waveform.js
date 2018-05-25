@@ -11,7 +11,7 @@ export default class Waveform {
       500, 200, 100                                   // < 1 seconde
     ]
     this.waveforms = []
-    this.event = { handlers: [] }
+    this.event = { handlers: [], xOffset: 0 }
     this.loadOptions(opt)
     this.initStructure()
     this.bindEventHandlers()
@@ -33,6 +33,10 @@ export default class Waveform {
   setTimeAlignment (ref) {
     this.view.refTime = ref
     this.view.offset = ref == 'O' ? this.view.duration/2 : 0
+  }
+
+  getMouseX (ev) {
+    return ev.clientX - this.event.xOffset
   }
 
   time2index (wf, t) {
@@ -114,6 +118,7 @@ export default class Waveform {
       let pad = window.getComputedStyle(this.opt.container).padding
       this.opt.size.width = this.opt.container.clientWidth - 2 * parseInt(pad == '' ? 0 : pad)
     }
+    this.event.xOffset = this.opt.container.getBoundingClientRect().x
     let start, end;
     for (let wf of this.opt.waveforms) {
       let currStart = Math.min(wf.start, wf.ttt.O),
@@ -150,8 +155,9 @@ export default class Waveform {
         .wf-list .wf-container.selected {background: ${this.opt.color.selected};}
         .wf-canvas, .user-canvas {position: absolute; top: 0; left: 0; z-index: 0;}
         .user-canvas {z-index: 10;}
-        .wf-label-container {position: absolute; top: 0; left: 0; background: ${this.opt.color.labelBackground}; z-index: 10; width: 100px}
-        .wf-label {font-family: sans-serif; color: ${this.opt.color.labelText}; font-size: 10px; margin: 5px}`;
+        .wf-label-container {position: absolute; top: 0; left: 0; background: ${this.opt.color.labelBackground}; z-index: 10; width: 100px;}
+        .wf-label {font-family: sans-serif; color: ${this.opt.color.labelText}; font-size: 10px; margin: 5px;}
+        .wf-label .distance {font-size: .9em; margin: 10px;}`;
       document.head.appendChild(s);
     }
   }
@@ -197,6 +203,9 @@ export default class Waveform {
       userCanvas.className = 'user-canvas'
       wfLabelContainer.className = 'wf-label-container'
       wfLabel.innerHTML = `<strong>${wf.opt.id}</strong>`
+      if (wf.opt.distance != null) {
+        wfLabel.innerHTML += `<br><span class="distance">${wf.opt.distance.toFixed(2)}°</span>`
+      }
       wfCanvas.width = this.opt.size.width
       wfCanvas.height = this.opt.size.height
       userCanvas.width = this.opt.size.width
@@ -268,26 +277,28 @@ export default class Waveform {
   }
 
   selectPick (ev) {
-    this.event.clickPos = ev.clientX
+    this.event.clickPos = this.getMouseX(ev)
     this.draw()
   }
 
   createPick (ev) {
-    let ref = this.waveforms[0].opt.ttt[this.view.refTime]
-    let t = this.pos2time(ref, ev.clientX)
-    for (let wf of this.waveforms) {
-      wf.opt.picks.push({ phase: this.event.phase, mode: 'manual', time: t })
-    }
-    this.event.clickPos = null
-    this.draw()
-    if (this.opt.callback.updatePick != null) {
-      this.opt.callback.updatePick.call()
+    if (this.event.phase != null && this.event.phase != '') {
+      let ref = this.waveforms[0].opt.ttt[this.view.refTime]
+      let t = this.pos2time(ref, this.getMouseX(ev))
+      for (let wf of this.waveforms) {
+        wf.opt.picks.push({ phase: this.event.phase, mode: 'manual', time: t })
+      }
+      this.event.clickPos = null
+      this.draw()
+      if (this.opt.callback.updatePick != null) {
+        this.opt.callback.updatePick.call()
+      }
     }
   }
 
   updatePickLine (ev) {
     if (this.event.phase != null && this.event.phase != '') {
-      let pos = ev.clientX
+      let pos = this.getMouseX(ev)
       let ref = this.waveforms[0].opt.ttt[this.view.refTime]
       for (let wf of this.waveforms) {
         let ctx = wf.ctx2
@@ -350,12 +361,12 @@ export default class Waveform {
 
   mouseDownHandler (ev) {
     ev.preventDefault()
-    this.event.x = ev.clientX
+    this.event.x = this.getMouseX(ev)
     this.event.moved = false
   }
 
   mouseMoveHandler (ev) {
-    let pos = ev.clientX
+    let pos = this.getMouseX(ev)
     if (this.event.x != null) {
       let delta = this.event.x - pos
       if (Math.abs(delta) > 5) {

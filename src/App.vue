@@ -1,5 +1,5 @@
 <template>
-  <el-container>
+  <el-container style="height: 100vh;">
     <el-header>
       <el-menu :default-active="activeIndex" mode="horizontal" @select="(x, y) => activeIndex = x">
         <el-menu-item index="eventList">Event list</el-menu-item>
@@ -7,7 +7,7 @@
           <span v-if="currentEvent != null">{{ currentEvent.$publicID }}</span>
           <span v-else>No event</span>
         </el-menu-item>
-        <el-menu-item index="eventPicker" :disabled="currentEvent == null">Picker</el-menu-item>
+        <el-menu-item index="eventPicker" :disabled="currentOrigin == null">Picker</el-menu-item>
       </el-menu>
     </el-header>
     <el-main>
@@ -20,9 +20,10 @@
       <event-page
         :event="currentEvent"
         :inventory="inventory"
-        v-else-if="activeIndex == 'eventPage'"></event-page>
+        v-else-if="activeIndex == 'eventPage'"
+        @origin="o => currentOrigin = o"></event-page>
       <event-picker
-        :event="currentEvent"
+        :origin="currentOrigin"
         v-else-if="activeIndex == 'eventPicker'"></event-picker>
     </el-main>
   </el-container>
@@ -51,6 +52,7 @@ const conversionRules = {
   '/eventParameters/event/origin/quality/standardError': parseFloat,
   '/eventParameters/event/origin/quality/minimumDistance': parseFloat,
   '/eventParameters/event/origin/quality/azimuthalGap': parseFloat,
+  '/eventParameters/event/origin/quality/usedPhaseCount': parseInt,
   '/eventParameters/event/origin/arrival/timeResidual': parseFloat,
   '/eventParameters/event/origin/arrival/timeWeight': parseFloat,
   '/eventParameters/event/origin/arrival/distance': parseFloat,
@@ -68,7 +70,8 @@ export default {
       activeIndex: 'eventList',
       inventory: null,
       eventList: [],
-      currentEvent: null
+      currentEvent: null,
+      currentOrigin: null
     }
   },
   mounted () {

@@ -1,7 +1,7 @@
 function ajax(opt) {
   return new Promise((resolve, reject) => {
     opt = Object.assign({
-      method: 'GET', url: null, type: 'text', args: null, data: null
+      method: 'GET', url: null, type: 'text', args: null, data: null, dataMimeType: null
     }, opt)
     if (opt.url == null) {
       throw new Error('"url" option is not defined')
@@ -15,6 +15,9 @@ function ajax(opt) {
     xhr.responseType = opt.type
     xhr.onload = () => resolve(xhr.response)
     xhr.onerror = () => reject(xhr.statusText)
+    if (opt.method == 'POST' && opt.dataMimeType != null) {
+      xhr.setRequestHeader('Content-Type', opt.dataMimeType)
+    }
     xhr.send(opt.data)
   });
 }
