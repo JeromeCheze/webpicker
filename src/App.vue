@@ -11,20 +11,22 @@
       </el-menu>
     </el-header>
     <el-main>
-      <event-list
-        v-loading="loading"
-        :element-loading-text="loadingText"
-        :event-list="eventList"
-        @select-event="handleSelectEvent"
-        v-if="activeIndex == 'eventList'"></event-list>
-      <event-page
-        :event="currentEvent"
-        :inventory="inventory"
-        v-else-if="activeIndex == 'eventPage'"
-        @origin="o => currentOrigin = o"></event-page>
-      <event-picker
-        :origin="currentOrigin"
-        v-else-if="activeIndex == 'eventPicker'"></event-picker>
+      <keep-alive>
+        <event-list
+          v-loading="loading"
+          :element-loading-text="loadingText"
+          :event-list="eventList"
+          @select-event="handleSelectEvent"
+          v-if="activeIndex == 'eventList'"></event-list>
+        <event-page
+          :event="currentEvent"
+          :inventory="inventory"
+          @origin="o => currentOrigin = o"
+          v-else-if="activeIndex == 'eventPage'"></event-page>
+        <event-picker
+          :origin="currentOrigin"
+          v-else-if="activeIndex == 'eventPicker'"></event-picker>
+      </keep-alive>
     </el-main>
   </el-container>
 </template>

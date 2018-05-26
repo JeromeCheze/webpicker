@@ -53,6 +53,7 @@ export default {
         alignment: 'O',
         sortBy: 'distance'
       },
+      dirty: true,
       loading: true,
       loadingText: '',
       picks: {},
@@ -101,17 +102,23 @@ export default {
       } else if (val == 'distance') {
         this.list.sortWaveformsBy(x => x.distance)
       }
+    },
+    origin: function(val) {
+      this.dirty = true
     }
   },
-  mounted () {
-    this.getTTT()
-  },
-  beforeDestroy () {
-    if (this.picker != null) {
-      this.picker.destroy()
-    }
-    if (this.list != null) {
-      this.list.destroy()
+  activated () {
+    if (this.dirty) {
+      this.dirty = false
+      if (this.picker != null) {
+        this.picker.destroy()
+        this.picker = null
+      }
+      if (this.list != null) {
+        this.list.destroy()
+        this.list = null
+      }
+      this.getTTT()
     }
   },
   methods: {

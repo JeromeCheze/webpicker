@@ -1,5 +1,6 @@
 <template>
   <el-table
+    ref="eventListTable"
     :data="tableData"
     :default-sort="{ prop: 'time', order: 'descending' }"
     highlight-current-row
@@ -32,9 +33,24 @@
 <script>
 export default {
   props: ['eventList'],
-  computed: {
-    tableData () {
-      return this.eventList.map(e => ({
+  data () {
+    return {
+      tableData: []
+    }
+  },
+  watch: {
+    eventList: function(val) {
+      this.updateTableData()
+    }
+  },
+  methods: {
+    handleCurrentChange (row) {
+      if (row != null) {
+        this.$emit('select-event', row.id)
+      }
+    },
+    updateTableData () {
+      let data = this.eventList.map(e => ({
         time: e.po.time.pretty,
         mag: e.pm ? e.pm.mag.pretty : '--',
         magType: e.pm ? e.pm.type : '--',
@@ -49,11 +65,7 @@ export default {
         region: e.description.text,
         id: e.$publicID
       }))
-    }
-  },
-  methods: {
-    handleCurrentChange (row) {
-      this.$emit('select-event', row.id)
+      this.$set(this, 'tableData', data)
     }
   }
 }

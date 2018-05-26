@@ -34,9 +34,10 @@
         ref="arrivalTable"
         :data="arrivalTableData"
         :default-sort="{ prop: 'distance', order: 'ascending' }"
+        row-key="id"
         :height="500"
         style="width: 100%">
-        <el-table-column type="selection" min-width="55"></el-table-column>
+        <el-table-column type="selection" min-width="55" reserve-selection></el-table-column>
         <el-table-column min-width="70" prop="status" label="Status"></el-table-column>
         <el-table-column min-width="90" prop="phase" label="Phase"></el-table-column>
         <el-table-column min-width="70" prop="network" label="Net"></el-table-column>
@@ -66,6 +67,7 @@ export default {
   },
   data () {
     return {
+      dirty: true,
       map: null,
       markers: [],
       displayedOrigin: this.event.po,
@@ -75,15 +77,30 @@ export default {
         travelTime: null,
         Azimuth: null
       },
+      arrivalTableData: [],
       activeChartTab: 'timeResidual'
     }
   },
-  mounted () {
-    this.setOrigin(this.event.po)
+  watch: {
+    event: function(val) {
+      this.dirty = true
+    }
   },
-  computed: {
-    arrivalTableData () {
-      return this.displayedOrigin.arrival.map(a => ({
+  activated () {
+    if (this.dirty) {
+      this.dirty = false
+      this.setOrigin(this.event.po)
+    }
+  },
+  methods: {
+    floatFormatter (row, col) {
+      return row[col.property].toFixed(2)
+    },
+    timeFormatter (row, col) {
+      return row[col.property].toISOString().split('T')[1].substr(0, 12)
+    },
+    updateArrivalTableData () {
+      let data = this.displayedOrigin.arrival.map(a => ({
         id: a.id,
         used: a.used,
         status: a.pick.evaluationMode == 'automatic' ? 'A' : 'M',
@@ -96,24 +113,18 @@ export default {
         azimuth: a.azimuth,
         time: a.time
       }))
-    }
-  },
-  methods: {
-    floatFormatter (row, col) {
-      return row[col.property].toFixed(2)
-    },
-    timeFormatter (row, col) {
-      return row[col.property].toISOString().split('T')[1].substr(0, 12)
+      this.$set(this, 'arrivalTableData', data)
     },
     setOrigin (o) {
       this.$emit('origin', o)
       this.displayedOrigin = o
-      for (let row of this.arrivalTableData) {
-        this.$refs.arrivalTable.toggleRowSelection(row, row.used)
-      }
+      this.updateArrivalTableData()
       this.eventMap()
       this.initChartsData()
       this.initChartTimeResidual()
+      for (let row of this.arrivalTableData) {
+        this.$refs.arrivalTable.toggleRowSelection(row, row.used)
+      }
     },
     initMap () {
       let map = L.map(this.$el.querySelector('.map-canvas'), {attributionControl: false})

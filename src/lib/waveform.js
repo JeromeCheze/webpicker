@@ -241,8 +241,10 @@ export default class Waveform {
   handleKeyDown (ev) {
     if (this.opt.mode == 'list') {
       if (ev.key == 'ArrowDown') {
+        ev.preventDefault()
         this.selectNext()
       } else if (ev.key == 'ArrowUp') {
+        ev.preventDefault()
         this.selectPrev()
       }
     } else if (this.opt.mode == 'picker') {
@@ -302,13 +304,18 @@ export default class Waveform {
       let ref = this.waveforms[0].opt.ttt[this.view.refTime]
       for (let wf of this.waveforms) {
         let ctx = wf.ctx2
-        ctx.clearRect(0, 0, wf.ctx2.canvas.width, wf.ctx2.canvas.height)
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
         ctx.save()
         ctx.textBaseline = 'top'
         ctx.fillStyle = 'black'
         ctx.fillRect(pos, 0, 1, this.opt.size.height)
         ctx.fillText(this.event.phase, pos+4, 3)
         ctx.restore()
+      }
+    } else {
+      for (let wf of this.waveforms) {
+        let ctx = wf.ctx2
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
       }
     }
   }
