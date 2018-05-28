@@ -9,7 +9,9 @@ import json
 app = Flask(__name__)
 app.debug = True
 
-FDSNWS_ROOT = 'http://encelade.unice.fr:8080/fdsnws'
+FDSNWS_EVENT = 'http://encelade.unice.fr:8080/fdsnws/event'
+FDSNWS_STATION = 'http://encelade.unice.fr:8080/fdsnws/station'
+FDSNWS_DATASELECT = 'http://encelade.unice.fr:8000/fdsnws/dataselect'
 
 @app.route('/')
 def index():
@@ -36,7 +38,14 @@ def fdsnws(service, path):
         path = '/%s' % path
 
     if service:
-        req = '%s/%s%s' % (FDSNWS_ROOT, service, path)
+        host = ''
+        if service == 'event':
+            host = FDSNWS_EVENT
+        elif service == 'station':
+            host = FDSNWS_STATION
+        elif service == 'dataselect':
+            host = FDSNWS_DATASELECT
+        req = '%s%s' % (host, path)
         try:
             if request.method == 'GET':
                 result = urlopen('%s?%s' % (req, urlencode(request.args.to_dict(flat=True))))

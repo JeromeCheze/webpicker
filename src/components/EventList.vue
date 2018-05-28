@@ -3,9 +3,9 @@
     ref="eventListTable"
     :data="tableData"
     :default-sort="{ prop: 'time', order: 'descending' }"
-    highlight-current-row
-    @current-change="handleCurrentChange"
-    :height="500"
+    :row-class-name="tableRowClassName"
+    @row-click="handleRowClick"
+    :height="height"
     style="width: 100%">
     <el-table-column width="150" prop="time" label="Time" sortable></el-table-column>
     <el-table-column width="60" prop="mag" label="M" sortable>
@@ -35,8 +35,13 @@ export default {
   props: ['eventList'],
   data () {
     return {
-      tableData: []
+      tableData: [],
+      selectEvent: null,
+      height: 500
     }
+  },
+  activated () {
+    this.height = document.body.clientHeight - this.$el.offsetTop - 20
   },
   watch: {
     eventList: function(val) {
@@ -44,8 +49,12 @@ export default {
     }
   },
   methods: {
-    handleCurrentChange (row) {
+    tableRowClassName ({ row, rowIndex }) {
+      return row.id == this.selectEvent ? 'selected-event-row' : ''
+    },
+    handleRowClick (row) {
       if (row != null) {
+        this.selectEvent = row.id
         this.$emit('select-event', row.id)
       }
     },
@@ -72,5 +81,7 @@ export default {
 </script>
 
 <style>
-
+.selected-event-row {
+  background-color: #e7f9ff !important;
+}
 </style>

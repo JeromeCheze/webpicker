@@ -13,6 +13,7 @@
       </el-col>
       <el-col :span="6">
         <el-checkbox v-model="tools.sameScale" size="mini">Same scale</el-checkbox>
+        <el-checkbox v-model="tools.filter" size="mini">Filter HP 1 Hz</el-checkbox>
       </el-col>
       <el-col :span="6">
         <el-radio-group v-model="tools.alignment" size="mini">
@@ -37,9 +38,10 @@
 import Waveform from '../lib/waveform.js'
 import utils from '../utils/utils.js'
 import mseed from '../lib/mseed.js'
+import Fili from 'fili'
 
 export default {
-  props: ['origin'],
+  props: ['origin', 'inventory'],
   data () {
     return {
       tools: {
@@ -50,6 +52,7 @@ export default {
         ],
         phase: '',
         sameScale: false,
+        filter: false,
         alignment: 'O',
         sortBy: 'distance'
       },
@@ -90,6 +93,13 @@ export default {
       this.list.opt.equalScale = val
       this.list.draw()
     },
+    'tools.filter': function(val) {
+      if (val) {
+        this.applyFilter()
+      } else {
+        this.resetFilter()
+      }
+    },
     'tools.alignment': function(val) {
       this.list.setTimeAlignment(val)
       this.list.draw();
@@ -110,6 +120,7 @@ export default {
   activated () {
     if (this.dirty) {
       this.dirty = false
+      this.tools.filter = false
       if (this.picker != null) {
         this.picker.destroy()
         this.picker = null
@@ -122,6 +133,33 @@ export default {
     }
   },
   methods: {
+    applyFilter () {
+      let iirCalculator = new Fili.CalcCascades();
+      for (let wf of this.list.waveforms) {
+        let iirFilterCoeffs = iirCalculator.highpass({
+          order: 4,
+          characteristic: 'butterworth',
+          Fs: 1000. / wf.opt.step,
+          Fc: 1,
+          gain: 0,
+          preGain: false
+        })
+        let iirFilter = new Fili.IirFilter(iirFilterCoeffs)
+        wf.opt.filtered = iirFilter.simulate(wf.opt.values)
+      }
+      this.list.setFilterState(true)
+      this.picker.setFilterState(true)
+    },
+
+    resetFilter () {
+      if (this.list != null) {
+        this.list.setFilterState(false)
+      }
+      if (this.picker != null) {
+        this.picker.setFilterState(false)
+      }
+    },
+
     getTTT () {
       this.loading = true
       this.loadingText = 'Loading theoretical travel time...'
@@ -158,10 +196,10 @@ export default {
           times.push(ttt)
         }
       }
-      return new Date(Math.max.apply(null, times) + 10000).toISOString()
+      return new Date(Math.max.apply(null, times) + 10000).toISOString().substr(0, 19)
     },
     downloadWaveform () {
-      let start = new Date(this.origin.time.value.getTime() - 20000).toISOString()
+      let start = new Date(this.origin.time.value.getTime() - 20000).toISOString().substr(0, 19)
       let end = this.getEnd()
       let query = []
       for (let a of this.origin.arrival) {
@@ -181,23 +219,36 @@ export default {
         method: 'POST',
         url: 'fdsnws/dataselect/1/query',
         dataMimeType: 'text/plain',
-        data: query.join('\n'),
+        data: query.join('\r\n'),
         type: 'arraybuffer'
       }).then(arr => this.plotWaveforms(arr))
     },
     handleWaveformClick (wf) {
       let view = Object.assign({}, this.defaultView)
+      let filterState = false
       let phase = null
       if (this.picker != null) {
         view = this.picker.view
         phase = this.picker.event.phase
+        filterState = this.picker.event.useFiltered
         this.picker.destroy()
       }
       this.pickerOpt.waveforms = [wf]
       this.picker = new Waveform(this.pickerOpt)
       Object.assign(this.picker.view, view)
-      this.picker.draw()
+      this.picker.setFilterState(filterState)
+      // this.picker.draw()
       this.picker.setPickerPhase(phase)
+    },
+    getChannelScale (seedid) {
+      let [net, sta, loc, cha] = seedid.split('.')
+      if (this.inventory[net] != null &&
+          this.inventory[net][sta] != null &&
+          this.inventory[net][sta][loc] != null &&
+          this.inventory[net][sta][loc][cha] != null) {
+        return this.inventory[net][sta][loc][cha].scale
+      }
+      return 1
     },
     plotWaveforms (arr) {
       this.loading = false
@@ -210,6 +261,7 @@ export default {
           start: tr.timeseries[0].starttime,
           step: 1000 / tr.sample_rate,
           values: tr.getData(),
+          scale: this.getChannelScale(tr.id),
           id: tr.id,
           distance: this.ttt[tr.id].distance,
           ttt: Object.assign({ O: this.origin.time.value.getTime() }, this.ttt[tr.id].ttt),

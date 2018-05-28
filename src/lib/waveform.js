@@ -11,7 +11,7 @@ export default class Waveform {
       500, 200, 100                                   // < 1 seconde
     ]
     this.waveforms = []
-    this.event = { handlers: [], xOffset: 0 }
+    this.event = { handlers: [], xOffset: 0, useFiltered: false }
     this.loadOptions(opt)
     this.initStructure()
     this.bindEventHandlers()
@@ -70,6 +70,7 @@ export default class Waveform {
           start: <js_timestamp>,
           step: <number>,
           values: [],
+          filtered: [],
           id: 'XX.NOISE.00.HHZ',
           distance: <number>,
           ttt: {P: <js_timestamp>}, // ttt = "theoretical travel time"
@@ -238,6 +239,11 @@ export default class Waveform {
     )
   }
 
+  setFilterState (state) {
+    this.event.useFiltered = state
+    this.draw()
+  }
+
   handleKeyDown (ev) {
     if (this.opt.mode == 'list') {
       if (ev.key == 'ArrowDown') {
@@ -353,17 +359,34 @@ export default class Waveform {
   wheelHandler (ev) {
     if (ev.shiftKey) {
       ev.preventDefault()
-      if (ev.ctrlKey) {
+      let delta = ev.deltaX != 0 ? ev.delatX : ev.deltaY
+      if (ev.ctrlKey || ev.metaKey ) {
         ev.preventDefault()
-        let c = Math.sign(ev.deltaY) > 0 ? 1.2 : 0.8
-        this.view.gain *= c
-        this.draw()
+        Math.sign(delta) > 0 ? this.yZoomOut() : this.yZoomIn()
       } else {
-        let sign = Math.sign(ev.deltaY == 0 ? ev.deltaX : ev.deltaY)
-        this.view.duration += sign * this.view.duration * 0.2
-        this.draw()
+        Math.sign(delta) > 0 ? this.xZoomIn() : this.xZoomOut()
       }
     }
+  }
+
+  xZoomIn () {
+    this.view.duration *= 1.2
+    this.draw()
+  }
+
+  xZoomOut () {
+    this.view.duration *= .8
+    this.draw()
+  }
+
+  yZoomIn () {
+    this.view.gain *= 1.2
+    this.draw()
+  }
+
+  yZoomOut () {
+    this.view.gain *= .8
+    this.draw()
   }
 
   mouseDownHandler (ev) {
@@ -463,13 +486,22 @@ export default class Waveform {
     return wf.opt.ttt[this.view.refTime] + this.view.offset + this.view.duration/2
   }
 
+  getValues (wf) {
+    return (
+      this.event.useFiltered == false ?
+      wf.opt.values :
+      wf.opt.filtered != null ? wf.opt.filtered : []
+    )
+  }
+
   getStatsAndGroupData () {
     let maxAmp;
     for (let wf of this.waveforms) {
+      let values = this.getValues(wf)
       let sppx = this.view.duration / (this.opt.size.width * wf.opt.step),
           useGrouping = true,
           i = Math.max(0, this.time2index(wf, this.getStartTime(wf))),
-          iend = Math.min(wf.opt.values.length-1, this.time2index(wf, this.getEndTime(wf)));
+          iend = Math.min(values.length-1, this.time2index(wf, this.getEndTime(wf)));
       wf.stats = {min: null, max: null, sum: 0, count: 0, avg: null};
       wf.groupedValues = [];
       //console.log(i, iend, sppx);
@@ -478,7 +510,7 @@ export default class Waveform {
         useGrouping = false;
       }
       while (i <= iend) {
-        let currentGroup = wf.opt.values.slice(i, i+sppx),
+        let currentGroup = values.slice(i, i+sppx),
             currStats = {sum: 0, count: 0};
         for (let j=0, l=currentGroup.length; j<l; j++) {
           let v = currentGroup[j];
@@ -498,6 +530,7 @@ export default class Waveform {
       }
       wf.stats.avg = wf.stats.count > 0 ? wf.stats.sum / wf.stats.count : null;
       if (!useGrouping) wf.groupedValues = null;
+      // MARKER
       let amp = wf.stats.max - wf.stats.min;
       if (maxAmp == null || amp > maxAmp) maxAmp = amp;
       this.view.maxAmp = maxAmp;
@@ -536,16 +569,17 @@ export default class Waveform {
     ctx.save();
     ctx.strokeStyle = this.opt.color.line;
     ctx.beginPath();
+    let values = this.getValues(wf)
     if (wf.groupedValues == null) {
       let istart = Math.max(0, this.time2index(wf, this.getStartTime(wf))),
-          iend = Math.min(wf.opt.values.length-1, this.time2index(wf, this.getEndTime(wf)));
+          iend = Math.min(values.length-1, this.time2index(wf, this.getEndTime(wf)));
       //console.log(iend);
       let i = istart;
       for (; i<iend; i++) {
-        let y = wf.opt.values[i];
+        let y = values[i];
         if (y != null) {
           let pos = this.value2pos(wf, y);
-          if (i == istart || wf.opt.values[i-1] == null) {
+          if (i == istart || values[i-1] == null) {
             ctx.moveTo(x, pos)
           } else {
             ctx.lineTo(x, pos)
@@ -628,28 +662,32 @@ export default class Waveform {
     ctx.restore();
   }
 
-  drawVLines (wf) {
-    let ctx = wf.ctx;
+  drawTTT (wf) {
+    let ctx = wf.ctx
     if (wf.opt.ttt == null) return;
-    ctx.save();
-    ctx.fillStyle = this.opt.color.theoretical;
+    ctx.save()
+    ctx.fillStyle = this.opt.color.theoretical
     for (let [p, t] of Object.entries(wf.opt.ttt)) {
-      let pos = this.time2pos(wf.opt.ttt[this.view.refTime], t);
+      let pos = this.time2pos(wf.opt.ttt[this.view.refTime], t)
       if (p == 'O') {
-        ctx.save();
-        ctx.fillStyle = 'red';
-        ctx.fillRect(pos, 0, 1, this.opt.size.height);
-        ctx.restore();
+        ctx.save()
+        ctx.fillStyle = 'red'
+        ctx.fillRect(pos, 0, 1, this.opt.size.height)
+        ctx.restore()
       } else {
-        ctx.fillRect(pos, 0, 1, this.opt.size.height);
-        ctx.fillText(p, pos+3, this.opt.size.height-3);
+        ctx.fillRect(pos, 0, 1, this.opt.size.height)
+        ctx.fillText(p, pos+3, this.opt.size.height-3)
       }
     }
+    ctx.restore()
+  }
+
+  drawPicks (wf) {
+    let ctx = wf.ctx
+    ctx.save()
     this.event.selectedPick = []
-    // ctx.save()
     ctx.textBaseline = 'top'
     ctx.setLineDash([4, 1])
-    // ctx.lineWidth = .5
     ctx.strokeStyle = 'gray'
     for (let p of wf.opt.picks) {
       let pos = this.time2pos(wf.opt.ttt[this.view.refTime], p.time)
@@ -666,22 +704,23 @@ export default class Waveform {
       ctx.fillRect(pos-1, 0, 2, this.opt.size.height)
       ctx.fillText(p.phase, pos+4, 3)
     }
-    ctx.restore();
+    ctx.restore()
   }
 
   draw () {
-    this.clearAll();
-    this.getStatsAndGroupData();
-    this.computeDrawOption();
+    this.clearAll()
+    this.getStatsAndGroupData()
+    this.computeDrawOption()
     for (let wf of this.waveforms) {
-      this.drawXGrid(wf);
+      this.drawXGrid(wf)
+      this.drawTTT(wf)
       if (wf.stats.count > 1) {
-        this.drawAVGLine(wf);
-        this.drawLine(wf);
+        this.drawAVGLine(wf)
+        this.drawLine(wf)
       }
-      this.drawVLines(wf);
+      this.drawPicks(wf)
     }
-    this.drawXAxis();
+    this.drawXAxis()
   }
 
 }

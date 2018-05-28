@@ -25,6 +25,7 @@
           v-else-if="activeIndex == 'eventPage'"></event-page>
         <event-picker
           :origin="currentOrigin"
+          :inventory="inventory"
           v-else-if="activeIndex == 'eventPicker'"></event-picker>
       </keep-alive>
     </el-main>

@@ -127,7 +127,7 @@ export default {
       }
     },
     initMap () {
-      let map = L.map(this.$el.querySelector('.map-canvas'), {attributionControl: false})
+      let map = L.map(this.$el.querySelector('.map-canvas'), {trackResize: false, attributionControl: false})
       let worldtopomap = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
         attribution: '&copy; Esri, HERE, DeLorme, TomTom, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, <br>Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), swisstopo, MapmyIndia, © OpenStreetMap contributors, and the GIS User Community'
       })
@@ -136,8 +136,12 @@ export default {
       this.map = map
     },
     getStationCoordinates (wfid) {
-      let sta = this.inventory[wfid.$networkCode][wfid.$stationCode]
-      return [sta.lat, sta.lon]
+      if (this.inventory[wfid.$networkCode] != null &&
+          this.inventory[wfid.$networkCode][wfid.$stationCode] != null) {
+        let sta = this.inventory[wfid.$networkCode][wfid.$stationCode]
+        return [sta.lat, sta.lon]
+      }
+      return null
     },
     initChartsData () {
       this.chart.timeResidual = { p: [], s: [] }
@@ -156,6 +160,8 @@ export default {
     eventMap () {
       if (this.map == null) {
         this.initMap()
+      } else {
+        this.map.invalidateSize()
       }
       for (let m of this.markers) {
         m.remove()
@@ -169,6 +175,10 @@ export default {
       for (let a of this.displayedOrigin.arrival) {
         let wfid = a.pick.waveformID
         let pos = this.getStationCoordinates(wfid)
+        if (pos == null) {
+          console.warn(`No coordinates found for channel ${a.pick.seedid}`)
+          continue
+        }
         bounds.push(pos)
         if (a.used) {
           this.markers.push(L.polyline([this.displayedOrigin.latlng, pos], {
