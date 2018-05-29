@@ -74,10 +74,16 @@ export default {
       inventory: null,
       eventList: [],
       currentEvent: null,
-      currentOrigin: null
+      currentOrigin: null,
+      queryOpt: {
+        start: null,
+        end: null
+      }
     }
   },
   mounted () {
+    this.queryOpt.end = new Date()
+    this.queryOpt.start = new Date(this.queryOpt.end.getTime() - 86400000 * 7)
     this.loadInventoryThenEventList()
     // this.loadEventList()
   },
@@ -88,6 +94,8 @@ export default {
         method: 'GET',
         url: 'fdsnws/station/1/query',
         args: {
+          starttime: this.queryOpt.start.toISOString().substr(0, 19),
+          endtime: this.queryOpt.end.toISOString().substr(0, 19),
           level: 'channel',
           format: 'text'
         },
@@ -99,14 +107,12 @@ export default {
     },
     loadEventList () {
       this.loadingText = 'Loading events...'
-      let end = new Date()
-      let start = new Date(end.getTime() - 86400000 * 7)
       utils.ajax({
         method: 'GET',
         url: 'fdsnws/event/1/query',
         args: {
-          starttime: start.toISOString().substr(0, 19),
-          endtime: end.toISOString().substr(0, 19),
+          starttime: this.queryOpt.start.toISOString().substr(0, 19),
+          endtime: this.queryOpt.end.toISOString().substr(0, 19),
           format: 'xml'
         },
         type: 'document'

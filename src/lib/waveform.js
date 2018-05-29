@@ -11,52 +11,23 @@ export default class Waveform {
       500, 200, 100                                   // < 1 seconde
     ]
     this.waveforms = []
-    this.event = { handlers: [], xOffset: 0, useFiltered: false }
+    this.event = {
+      handlers: [],
+      xOffset: 0,
+      moved: false,
+      clickPos: null,
+      useFiltered: false,
+      selectedWf: null,
+      selectedWindow: [],
+      electedPicks: [],
+      hoverWf: null,
+      phase: null,
+      x: null
+    }
     this.loadOptions(opt)
     this.initStructure()
     this.bindEventHandlers()
     this.draw()
-  }
-
-  recursiveCopy (obj1, obj2) {
-    for (const [k, v] of Object.entries(obj2)) {
-      if (v instanceof Function) {
-        obj1[k] = v
-      } else if (v instanceof Object && !(v instanceof Array)) {
-        this.recursiveCopy(obj1[k], v)
-      } else {
-        obj1[k] = v
-      }
-    }
-  }
-
-  setTimeAlignment (ref) {
-    this.view.refTime = ref
-    this.view.offset = ref == 'O' ? this.view.duration/2 : 0
-  }
-
-  getMouseX (ev) {
-    return ev.clientX - this.event.xOffset
-  }
-
-  time2index (wf, t) {
-    return Math.floor((t - wf.opt.start) / wf.opt.step)
-  }
-
-  time2pos (ref, t) {
-    return Math.floor(this.opt.size.width/2 + (t-ref-this.view.offset)/this.view.xRatio)
-  }
-
-  pos2time (ref, p) {
-    return this.view.xRatio * (p - this.opt.size.width/2) + ref + this.view.offset
-  }
-
-  value2pos (wf, v) {
-    return Math.floor(this.opt.size.height / 2
-                      - (v - wf.stats.avg)
-                        * wf.drawOpt.yRatio
-                        * this.view.gain
-                        * wf.drawOpt.scaleGain)
   }
 
   loadOptions (opt) {
@@ -71,10 +42,11 @@ export default class Waveform {
           step: <number>,
           values: [],
           filtered: [],
+          scale: <channel_global_sensitivity>,
           id: 'XX.NOISE.00.HHZ',
           distance: <number>,
           ttt: {P: <js_timestamp>}, // ttt = "theoretical travel time"
-          picks: [{phase: 'P', mode: 'manual', time: <js_timestamp>}]
+          picks: [{phase: 'P', mode: 'manual', time: <js_timestamp>, polarity: null || 'positive' || 'negative'}]
         }
       ]*/
       /* optional */
@@ -91,6 +63,7 @@ export default class Waveform {
         backgroundEven: '#e5eef1',
         grid: 'rgba(180,180,180,.3)',
         selected: '#c9e8f9',
+        selectedWindow: 'rgba(0, 0, 0, 0.1)',
         border: 'black',
         text: 'black',
         // label
@@ -129,6 +102,7 @@ export default class Waveform {
       if (wf.picks == null) {
         wf.picks = []
       }
+      wf.scale = wf.scale == null ? 1. : wf.scale * 1.
       this.waveforms.push({ opt: wf })
     }
     this.view = {
@@ -148,7 +122,6 @@ export default class Waveform {
         .trace-container {
           overflow-x: hidden;
           overflow-y: auto;
-          max-height: ${this.opt.size.wrapperMaxHeight}px;
           border-top: 1px solid ${this.opt.color.border};
         }
         .wf-container {position: relative; background: ${this.opt.color.background};}
@@ -183,6 +156,7 @@ export default class Waveform {
     mainElement.appendChild(traceContainer)
     mainElement.appendChild(xAxis)
     traceContainer.classList.add('trace-container')
+    traceContainer.style.maxHeight = `${this.opt.size.wrapperMaxHeight}px`
     traceContainer.classList.add(this.opt.mode == 'picker' ? 'wf-picker' : 'wf-list')
     //Object.assign(traceContainer.style, {overflowX: 'hidden', overflowY: 'auto', maxHeight: '400px'});
     for (let wf of this.waveforms) {
@@ -234,127 +208,93 @@ export default class Waveform {
       {type: 'mousemove', el: mainElement, callback: ev => this.mouseMoveHandler(ev)},
       {type: 'mouseup', el: mainElement, callback: ev => this.mouseUpHandler(ev)}
     ])
-    this.event.handlers.push(
-      {type: 'keydown', el: document.body, callback: ev => this.handleKeyDown(ev)}
+    // this.event.handlers.push(
+    //   {type: 'keydown', el: document.body, callback: ev => this.handleKeyDown(ev)}
+    // )
+  }
+
+  /**
+   * UTILITIES
+   */
+  recursiveCopy (obj1, obj2) {
+    for (const [k, v] of Object.entries(obj2)) {
+      if (v instanceof Function) {
+        obj1[k] = v
+      } else if (v instanceof Object && !(v instanceof Array)) {
+        this.recursiveCopy(obj1[k], v)
+      } else {
+        obj1[k] = v
+      }
+    }
+  }
+
+  setTimeAlignment (ref) {
+    this.view.refTime = ref
+    this.view.offset = ref == 'O' ? this.view.duration/2 : 0
+  }
+
+  getMouseX (ev) {
+    return ev.clientX - this.event.xOffset
+  }
+
+  time2index (wf, t) {
+    return Math.floor((t - wf.opt.start) / wf.opt.step)
+  }
+
+  time2pos (ref, t) {
+    return Math.floor(this.opt.size.width/2 + (t-ref-this.view.offset)/this.view.xRatio)
+  }
+
+  pos2time (ref, p) {
+    return this.view.xRatio * (p - this.opt.size.width/2) + ref + this.view.offset
+  }
+
+  value2pos (wf, v) {
+    return Math.floor(this.opt.size.height / 2
+                      - (v - wf.stats.avg)
+                        * wf.drawOpt.yRatio
+                        * this.view.gain
+                        * wf.drawOpt.scaleGain)
+  }
+
+  getXGridStepIndex () {
+    let i, tickInterval = this.view.duration / (this.opt.size.width / 40); // each ticks must be separated by 40px minimum
+    for (i=0; tickInterval < this.xGridScales[i]; i++);
+    return i-1;
+  }
+
+  getValues (wf) {
+    return (
+      this.event.useFiltered == false ?
+      wf.opt.values :
+      wf.opt.filtered != null ? wf.opt.filtered : []
     )
   }
 
-  setFilterState (state) {
-    this.event.useFiltered = state
-    this.draw()
-  }
-
-  handleKeyDown (ev) {
-    if (this.opt.mode == 'list') {
-      if (ev.key == 'ArrowDown') {
-        ev.preventDefault()
-        this.selectNext()
-      } else if (ev.key == 'ArrowUp') {
-        ev.preventDefault()
-        this.selectPrev()
-      }
-    } else if (this.opt.mode == 'picker') {
-      if (ev.key == 'Delete') {
-        this.deleteSelectedPicks()
-      }
-    }
-  }
-
-  deleteSelectedPicks () {
-    let change = false
-    for (let p of this.event.selectedPick) {
-      for (let wf of this.waveforms) {
-        let i = wf.opt.picks.indexOf(p)
-        if (i >= 0) {
-          change = true
-          wf.opt.picks.splice(i, 1)
-        }
-      }
-    }
-    if (change) {
-      this.draw()
-      if (this.opt.callback.updatePick != null) {
-        this.opt.callback.updatePick.call()
-      }
-    }
-  }
-
-  handleWaveformMouseenter (ev) {
-    let wf = this.waveforms.find(x => x.el == ev.target)
-    this.event.hoverWf = wf
-  }
-
-  selectPick (ev) {
-    this.event.clickPos = this.getMouseX(ev)
-    this.draw()
-  }
-
-  createPick (ev) {
-    if (this.event.phase != null && this.event.phase != '') {
-      let ref = this.waveforms[0].opt.ttt[this.view.refTime]
-      let t = this.pos2time(ref, this.getMouseX(ev))
-      for (let wf of this.waveforms) {
-        wf.opt.picks.push({ phase: this.event.phase, mode: 'manual', time: t })
-      }
-      this.event.clickPos = null
-      this.draw()
-      if (this.opt.callback.updatePick != null) {
-        this.opt.callback.updatePick.call()
-      }
-    }
-  }
-
-  updatePickLine (ev) {
-    if (this.event.phase != null && this.event.phase != '') {
-      let pos = this.getMouseX(ev)
-      let ref = this.waveforms[0].opt.ttt[this.view.refTime]
-      for (let wf of this.waveforms) {
-        let ctx = wf.ctx2
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
-        ctx.save()
-        ctx.textBaseline = 'top'
-        ctx.fillStyle = 'black'
-        ctx.fillRect(pos, 0, 1, this.opt.size.height)
-        ctx.fillText(this.event.phase, pos+4, 3)
-        ctx.restore()
-      }
-    } else {
-      for (let wf of this.waveforms) {
-        let ctx = wf.ctx2
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
-      }
-    }
-  }
-
-  setPickerPhase (phase) {
-    if (this.opt.mode != 'picker') return
-    this.event.phase = phase
-  }
-
-  sortWaveformsBy (keyAccesor) {
-    let traceContainer = this.mainElement.children[0];
-    this.waveforms.sort((a, b) => {
-      a = keyAccesor(a.opt);
-      b = keyAccesor(b.opt);
-      return a == b ? 0 : a < b ? -1 : 1
-    });
-    for (let wf of this.waveforms) {
-      traceContainer.appendChild(wf.el)
-    }
-  }
-
-  destroy () {
-    for (let e of this.event.handlers) {
-      e.el.removeEventListener(e.type, e.callback)
-    }
-    this.mainElement.parentNode.removeChild(this.mainElement)
-  }
-
+  /**
+   * EVENT HANDLERS
+   */
   bindEventHandlers () {
     for (let e of this.event.handlers) {
       e.el.addEventListener(e.type, e.callback)
     }
   }
+
+  // handleKeyDown (ev) {
+  //   if (this.opt.mode == 'list') {
+  //     if (ev.key == 'ArrowDown') {
+  //       ev.preventDefault()
+  //       this.selectNext()
+  //     } else if (ev.key == 'ArrowUp') {
+  //       ev.preventDefault()
+  //       this.selectPrev()
+  //     }
+  //   } else if (this.opt.mode == 'picker') {
+  //     if (ev.key == 'Delete') {
+  //       this.deleteSelectedPicks()
+  //     }
+  //   }
+  // }
 
   wheelHandler (ev) {
     if (ev.shiftKey) {
@@ -367,26 +307,6 @@ export default class Waveform {
         Math.sign(delta) > 0 ? this.xZoomIn() : this.xZoomOut()
       }
     }
-  }
-
-  xZoomIn () {
-    this.view.duration *= 1.2
-    this.draw()
-  }
-
-  xZoomOut () {
-    this.view.duration *= .8
-    this.draw()
-  }
-
-  yZoomIn () {
-    this.view.gain *= 1.2
-    this.draw()
-  }
-
-  yZoomOut () {
-    this.view.gain *= .8
-    this.draw()
   }
 
   mouseDownHandler (ev) {
@@ -422,9 +342,159 @@ export default class Waveform {
     this.event.moved = false
   }
 
+  handleWaveformMouseenter (ev) {
+    let wf = this.waveforms.find(x => x.el == ev.target)
+    this.event.hoverWf = wf
+  }
+
+  /**
+   * ACTIONS
+   */
+  destroy () {
+    for (let e of this.event.handlers) {
+      e.el.removeEventListener(e.type, e.callback)
+    }
+    this.mainElement.parentNode.removeChild(this.mainElement)
+  }
+
+  getStartTime (wf) {
+    return wf.opt.ttt[this.view.refTime] + this.view.offset - this.view.duration/2
+  }
+
+  getEndTime (wf) {
+    return wf.opt.ttt[this.view.refTime] + this.view.offset + this.view.duration/2
+  }
+
+  setFilterState (state) {
+    this.event.useFiltered = state
+    this.draw()
+  }
+
+  deleteSelectedPicks () {
+    let change = false
+    for (let p of this.event.selectedPick) {
+      for (let wf of this.waveforms) {
+        let i = wf.opt.picks.indexOf(p)
+        if (i >= 0) {
+          change = true
+          wf.opt.picks.splice(i, 1)
+        }
+      }
+    }
+    if (change) {
+      this.draw()
+      if (this.opt.callback.updatePick != null) {
+        this.opt.callback.updatePick.call()
+      }
+    }
+  }
+
+  selectPick (ev) {
+    this.event.clickPos = this.getMouseX(ev)
+    this.draw()
+  }
+
+  setPolarity (polarity) {
+    for (let p of this.event.selectedPick) {
+      p.polarity = polarity
+    }
+    this.draw()
+    if (this.opt.callback.updatePick != null) {
+      this.opt.callback.updatePick.call()
+    }
+  }
+
+  createPick (ev) {
+    if (this.event.phase != null && this.event.phase != '') {
+      let ref = this.waveforms[0].opt.ttt[this.view.refTime]
+      let t = this.pos2time(ref, this.getMouseX(ev))
+      this.event.hoverWf.opt.picks.push({ phase: this.event.phase, mode: 'manual', time: t, polarity: null })
+      // this.event.clickPos = null
+      this.draw()
+      if (this.opt.callback.updatePick != null) {
+        this.opt.callback.updatePick.call()
+      }
+    }
+  }
+
+  updatePickLine (ev) {
+    if (this.event.phase != null && this.event.phase != '') {
+      let pos = this.getMouseX(ev)
+      let ref = this.waveforms[0].opt.ttt[this.view.refTime]
+      for (let [i, wf] of this.waveforms.entries()) {
+        let ctx = wf.ctx2
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+        ctx.save()
+        ctx.textBaseline = 'top'
+        ctx.fillStyle = 'black'
+        ctx.fillRect(pos, 0, 1, this.opt.size.height)
+        if (i == 0) {
+          ctx.fillText(this.event.phase, pos+4, 3)
+        }
+        ctx.restore()
+      }
+    } else {
+      for (let wf of this.waveforms) {
+        let ctx = wf.ctx2
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+      }
+    }
+  }
+
+  setPickerPhase (phase) {
+    if (this.opt.mode != 'picker') return
+    this.event.phase = phase
+  }
+
+  sortWaveformsBy (keyAccesor) {
+    let traceContainer = this.mainElement.children[0];
+    this.waveforms.sort((a, b) => {
+      a = keyAccesor(a.opt);
+      b = keyAccesor(b.opt);
+      return a == b ? 0 : a < b ? -1 : 1
+    });
+    for (let wf of this.waveforms) {
+      traceContainer.appendChild(wf.el)
+    }
+  }
+
+  xZoomIn () {
+    this.view.duration *= 1.2
+    this.draw()
+  }
+
+  xZoomOut () {
+    this.view.duration *= .8
+    this.draw()
+  }
+
+  yZoomIn () {
+    this.view.gain *= 1.2
+    this.draw()
+  }
+
+  yZoomOut () {
+    this.view.gain *= .8
+    this.draw()
+  }
+
+  setSelectedWaveformWindow (t1, t2) {
+    let wf = this.event.selectedWf
+    let p1 = this.time2pos(wf.opt.ttt[this.view.refTime], t1)
+    let p2 = this.time2pos(wf.opt.ttt[this.view.refTime], t2)
+    let ctx = wf.ctx2
+    ctx.save()
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+    ctx.fillStyle = this.opt.color.selectedWindow
+    ctx.fillRect(p1, ctx.canvas.height/2, p2-p1, ctx.canvas.height/2)
+    ctx.restore()
+  }
+
   selectWaveform (wf) {
     if (this.event.selectedWf != null) {
       this.event.selectedWf.el.classList.remove('selected')
+      let ctx = this.event.selectedWf.ctx2
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas. height)
     }
     this.event.selectedWf = wf
     this.event.selectedWf.el.classList.add('selected')
@@ -458,90 +528,60 @@ export default class Waveform {
     }
   }
 
-  getXGridStepIndex () {
-    let i, tickInterval = this.view.duration / (this.opt.size.width / 40); // each ticks must be separated by 40px minimum
-    for (i=0; tickInterval < this.xGridScales[i]; i++);
-    return i-1;
-  }
-
-  drawXGrid (wf) {
-    let tickStep = this.xGridScales[this.getXGridStepIndex()];
-    let start = this.getStartTime(wf);
-    let tick = start - (start % tickStep) + tickStep,
-        ctx  = wf.ctx;
-    ctx.save();
-    ctx.fillStyle = this.opt.color.grid;
-    while (tick-start < this.view.duration) {
-      ctx.fillRect(this.time2pos(wf.opt.ttt[this.view.refTime], tick), 0, 1, this.opt.size.height);
-      tick += tickStep
-    }
-    ctx.restore();
-  }
-
-  getStartTime (wf) {
-    return wf.opt.ttt[this.view.refTime] + this.view.offset - this.view.duration/2
-  }
-
-  getEndTime (wf) {
-    return wf.opt.ttt[this.view.refTime] + this.view.offset + this.view.duration/2
-  }
-
-  getValues (wf) {
-    return (
-      this.event.useFiltered == false ?
-      wf.opt.values :
-      wf.opt.filtered != null ? wf.opt.filtered : []
-    )
-  }
-
+  /**
+   * DATA COMPUTATION FUNCTIONS
+   */
   getStatsAndGroupData () {
-    let maxAmp;
+    let maxAmp
     for (let wf of this.waveforms) {
       let values = this.getValues(wf)
       let sppx = this.view.duration / (this.opt.size.width * wf.opt.step),
           useGrouping = true,
           i = Math.max(0, this.time2index(wf, this.getStartTime(wf))),
-          iend = Math.min(values.length-1, this.time2index(wf, this.getEndTime(wf)));
-      wf.stats = {min: null, max: null, sum: 0, count: 0, avg: null};
-      wf.groupedValues = [];
+          iend = Math.min(values.length-1, this.time2index(wf, this.getEndTime(wf)))
+      wf.stats = {min: null, max: null, sum: 0, count: 0, avg: null}
+      wf.groupedValues = []
       //console.log(i, iend, sppx);
       if (sppx < 3) {
-        sppx = (iend - i) + 1;
-        useGrouping = false;
+        sppx = (iend - i) + 1
+        useGrouping = false
       }
       while (i <= iend) {
         let currentGroup = values.slice(i, i+sppx),
-            currStats = {sum: 0, count: 0};
+            currStats = {sum: 0, count: 0}
         for (let j=0, l=currentGroup.length; j<l; j++) {
-          let v = currentGroup[j];
-          if (v == null) continue;
-          if (currStats.min == null || v < currStats.min) currStats.min = v;
-          if (currStats.max == null || v > currStats.max) currStats.max = v;
+          let v = currentGroup[j]
+          if (v == null) continue
+          if (currStats.min == null || v < currStats.min) currStats.min = v
+          if (currStats.max == null || v > currStats.max) currStats.max = v
           currStats.sum += v; currStats.count++
         }
-        if (currStats.min == null) wf.groupedValues.push(null);
+        if (currStats.min == null) wf.groupedValues.push(null)
         else {
-          wf.groupedValues.push([currStats.min, currStats.max]);
-          if (wf.stats.min == null || currStats.min < wf.stats.min) wf.stats.min = currStats.min;
-          if (wf.stats.max == null || currStats.max > wf.stats.max) wf.stats.max = currStats.max;
-          wf.stats.sum += currStats.sum; wf.stats.count += currStats.count;
+          wf.groupedValues.push([currStats.min, currStats.max])
+          if (wf.stats.min == null || currStats.min < wf.stats.min) wf.stats.min = currStats.min
+          if (wf.stats.max == null || currStats.max > wf.stats.max) wf.stats.max = currStats.max
+          wf.stats.sum += currStats.sum; wf.stats.count += currStats.count
         }
         i += sppx
       }
-      wf.stats.avg = wf.stats.count > 0 ? wf.stats.sum / wf.stats.count : null;
-      if (!useGrouping) wf.groupedValues = null;
+      wf.stats.avg = wf.stats.count > 0 ? wf.stats.sum / wf.stats.count : null
+      if (!useGrouping) wf.groupedValues = null
       // MARKER
-      let amp = wf.stats.max - wf.stats.min;
-      if (maxAmp == null || amp > maxAmp) maxAmp = amp;
-      this.view.maxAmp = maxAmp;
+      let amp = (wf.stats.max - wf.stats.min) / wf.opt.scale
+      if (maxAmp == null || amp > maxAmp) {
+        maxAmp = amp
+      }
+      this.view.maxAmp = maxAmp
     }
   }
 
   computeDrawOption () {
     this.view.xRatio = this.view.duration / this.opt.size.width; // s/px
     for (let wf of this.waveforms) {
+      let amp = (wf.stats.max - wf.stats.min) / wf.opt.scale
       wf.drawOpt = {
-        scaleGain: this.opt.equalScale ? (wf.stats.max - wf.stats.min) / this.view.maxAmp : 1,
+        scaleGain: this.opt.equalScale ? amp / this.view.maxAmp : 1,
         step: wf.opt.step / this.view.xRatio,
         x0: 0
       };
@@ -561,6 +601,23 @@ export default class Waveform {
         yRatio: this.opt.size.height / (max - min)
       });
     }
+  }
+
+  /**
+   * DRAW FUNCTIONS
+   */
+  drawXGrid (wf) {
+    let tickStep = this.xGridScales[this.getXGridStepIndex()];
+    let start = this.getStartTime(wf);
+    let tick = start - (start % tickStep) + tickStep,
+        ctx  = wf.ctx;
+    ctx.save();
+    ctx.fillStyle = this.opt.color.grid;
+    while (tick-start < this.view.duration) {
+      ctx.fillRect(this.time2pos(wf.opt.ttt[this.view.refTime], tick), 0, 1, this.opt.size.height);
+      tick += tickStep
+    }
+    ctx.restore();
   }
 
   drawLine (wf) {
@@ -676,7 +733,11 @@ export default class Waveform {
         ctx.restore()
       } else {
         ctx.fillRect(pos, 0, 1, this.opt.size.height)
-        ctx.fillText(p, pos+3, this.opt.size.height-3)
+        if (this.opt.mode == 'picker' &&
+            this.waveforms.indexOf(wf) == this.waveforms.length-1 ||
+            this.opt.mode == 'list') {
+          ctx.fillText(p, pos+3, this.opt.size.height-3)
+        }
       }
     }
     ctx.restore()
@@ -685,13 +746,15 @@ export default class Waveform {
   drawPicks (wf) {
     let ctx = wf.ctx
     ctx.save()
-    this.event.selectedPick = []
+    // this.event.selectedPick = []
     ctx.textBaseline = 'top'
     ctx.setLineDash([4, 1])
     ctx.strokeStyle = 'gray'
     for (let p of wf.opt.picks) {
       let pos = this.time2pos(wf.opt.ttt[this.view.refTime], p.time)
-      if (this.event.clickPos != null && Math.abs(this.event.clickPos - pos) < 5) {
+      if (this.event.clickPos != null &&
+          wf == this.event.hoverWf &&
+          Math.abs(this.event.clickPos - pos) < 5) {
         this.event.selectedPick.push(p)
         ctx.beginPath()
         ctx.moveTo(pos-4.5, 0)
@@ -702,7 +765,23 @@ export default class Waveform {
       }
       ctx.fillStyle = this.opt.color[p.mode]
       ctx.fillRect(pos-1, 0, 2, this.opt.size.height)
-      ctx.fillText(p.phase, pos+4, 3)
+      if (p.polarity != null) {
+        ctx.beginPath()
+        if (p.polarity == 'positive') {
+          ctx.moveTo(pos-4.5, 10)
+          ctx.lineTo(pos+4.5, 10)
+          ctx.lineTo(pos, 0)
+          ctx.closePath()
+        } else if (p.polarity == 'negative') {
+          let h = this.opt.size.height
+          ctx.moveTo(pos-4.5, h-10)
+          ctx.lineTo(pos+4.5, h-10)
+          ctx.lineTo(pos, h)
+          ctx.closePath()
+        }
+        ctx.fill()
+      }
+      ctx.fillText(p.phase, pos+6, 3)
     }
     ctx.restore()
   }
@@ -711,6 +790,7 @@ export default class Waveform {
     this.clearAll()
     this.getStatsAndGroupData()
     this.computeDrawOption()
+    this.event.selectedPick = []
     for (let wf of this.waveforms) {
       this.drawXGrid(wf)
       this.drawTTT(wf)
@@ -721,6 +801,10 @@ export default class Waveform {
       this.drawPicks(wf)
     }
     this.drawXAxis()
+    if (this.opt.mode == 'picker' && this.opt.callback.draw != null) {
+      let wf = this.waveforms[0]
+      this.opt.callback.draw.call(null, this.getStartTime(wf), this.getEndTime(wf))
+    }
   }
 
 }

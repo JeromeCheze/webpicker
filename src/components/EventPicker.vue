@@ -29,7 +29,7 @@
         </el-radio-group>
       </el-col>
     </el-row>
-    <div class="picker"></div>
+    <div class="picker" style="height: 410px;"></div>
     <div class="waveform-list"></div>
   </div>
 </template>
@@ -44,6 +44,7 @@ export default {
   props: ['origin', 'inventory'],
   data () {
     return {
+      keyDownBinded: false,
       tools: {
         phaseOptions: [
           { value: '', label: 'No picking' },
@@ -80,9 +81,11 @@ export default {
         waveforms: [],
         equalScale: true,
         callback: {
-          updatePick: () => this.list.draw()
+          updatePick: () => this.list.draw(),
+          draw: (t1, t2) => this.list.setSelectedWaveformWindow(t1, t2)
         }
-      }
+      },
+      horizontalWaveformCache: {}
     }
   },
   watch: {
@@ -92,10 +95,16 @@ export default {
     'tools.sameScale': function(val) {
       this.list.opt.equalScale = val
       this.list.draw()
+      // for (let wf of this.list.waveforms) {
+      //   let amp = (wf.stats.max - wf.stats.min) / wf.opt.scale
+      //   console.log(wf.opt.id, amp.toExponential(3), wf.drawOpt.scaleGain);
+      // }
     },
     'tools.filter': function(val) {
       if (val) {
         this.applyFilter()
+        this.list.setFilterState(true)
+        this.picker.setFilterState(true)
       } else {
         this.resetFilter()
       }
@@ -120,6 +129,8 @@ export default {
   activated () {
     if (this.dirty) {
       this.dirty = false
+      // this.tools.alignment = 'O'
+      this.horizontalWaveformCache = {}
       this.tools.filter = false
       if (this.picker != null) {
         this.picker.destroy()
@@ -131,24 +142,74 @@ export default {
       }
       this.getTTT()
     }
+    if (!this.keyDownBinded) {
+      this.keyDownBinded = true
+      document.body.addEventListener('keydown', ev => this.handleKeyDown(ev))
+    }
+  },
+  deactivated () {
+    // let waveforms = this.list.waveforms.map(x => x.opt).concat(Object.values(this.horizontalWaveformCache))
+    // let arrivals = []
+    // for (let wf of this.list.waveforms) {
+    //   for (let p of wf.opt.picks)
+    //     arr
+    //   }
+    // }
   },
   methods: {
-    applyFilter () {
+    handleKeyDown (ev) {
+      let k = []
+      if (ev.metaKey) k.push('Meta')
+      if (ev.ctrlKey) k.push('Ctrl')
+      if (ev.altKey) k.push('Alt')
+      if (ev.shiftKey) k.push('Shift')
+      k.push(ev.key)
+      k = k.join('-')
+      // console.log(k);
+      if (k == 'ArrowDown') {
+        ev.preventDefault()
+        this.list.selectNext()
+      } else if (k == 'ArrowUp') {
+        ev.preventDefault()
+        this.list.selectPrev()
+      } else if (k == 'Shift-ArrowUp') {
+        ev.preventDefault()
+        this.picker.setPolarity('positive')
+      } else if (k == 'Shift-ArrowDown') {
+        ev.preventDefault()
+        this.picker.setPolarity('negative')
+      } else if (k == 'Escape') {
+        ev.preventDefault()
+        this.picker.setPolarity(null)
+      } else if (k == 'p') {
+        ev.preventDefault()
+        this.tools.phase = 'P'
+      } else if (k == 's') {
+        ev.preventDefault()
+        this.tools.phase = 'S'
+      } else if (k == 'Delete') {
+        ev.preventDefault()
+        this.picker.deleteSelectedPicks()
+      }
+    },
+
+    applyFilter (wfList) {
+      if (!this.tools.filter) {
+        return
+      }
       let iirCalculator = new Fili.CalcCascades();
-      for (let wf of this.list.waveforms) {
+      if (wfList == null) {
+        wfList = this.list.waveforms.concat(this.picker.waveforms)
+      }
+      for (let wf of wfList) {
         let iirFilterCoeffs = iirCalculator.highpass({
-          order: 4,
           characteristic: 'butterworth',
-          Fs: 1000. / wf.opt.step,
-          Fc: 1,
-          gain: 0,
-          preGain: false
+          order: 4, Fs: 1000. / wf.opt.step, Fc: 1,
+          gain: 0, preGain: false
         })
         let iirFilter = new Fili.IirFilter(iirFilterCoeffs)
         wf.opt.filtered = iirFilter.simulate(wf.opt.values)
       }
-      this.list.setFilterState(true)
-      this.picker.setFilterState(true)
     },
 
     resetFilter () {
@@ -168,8 +229,8 @@ export default {
         station: {}
       }
       for (let a of this.origin.arrival) {
-        let seedid = a.pick.seedid.replace('--', '')
-        data.station[seedid] = a.distance
+        let tttId = a.pick.seedid.split('.').slice(0, 2).join('.')
+        data.station[tttId] = a.distance
       }
       utils.ajax({
         method: 'POST',
@@ -185,9 +246,10 @@ export default {
             sta.ttt[k] = t0 + ttt * 1000
           }
         }
-        this.downloadWaveform()
+        this.processArrival()
       })
     },
+
     getEnd () {
       let t0 = this.origin.time.value.getTime()
       let times = this.origin.arrival.map(a => a.pick.time.value.getTime())
@@ -198,10 +260,9 @@ export default {
       }
       return new Date(Math.max.apply(null, times) + 10000).toISOString().substr(0, 19)
     },
-    downloadWaveform () {
-      let start = new Date(this.origin.time.value.getTime() - 20000).toISOString().substr(0, 19)
-      let end = this.getEnd()
-      let query = []
+
+    processArrival () {
+      let wfidList = []
       for (let a of this.origin.arrival) {
         let seedid = a.pick.seedid.replace('--', '')
         if (this.picks[seedid] == null) {
@@ -212,7 +273,20 @@ export default {
           mode: a.pick.evaluationMode,
           time: a.pick.time.value.getTime()
         })
-        query.push(`${a.pick.seedid.replace(/\./g, ' ')} ${start} ${end}`)
+        if (seedid.slice(-1)[0] == 'Z') {
+          wfidList.push(a.pick.seedid)
+        }
+      }
+      this.downloadWaveforms(wfidList, arr => this.plotWaveforms(arr))
+    },
+
+    downloadWaveforms (wfidList, callback) {
+      this.loading = true
+      let start = new Date(this.origin.time.value.getTime() - 20000).toISOString().substr(0, 19)
+      let end = this.getEnd()
+      let query = []
+      for (let wfid of wfidList) {
+        query.push(`${wfid.replace(/\./g, ' ')} ${start} ${end}`)
       }
       this.loadingText = `Loading waveforms... (${query.length} channels)`
       utils.ajax({
@@ -221,8 +295,22 @@ export default {
         dataMimeType: 'text/plain',
         data: query.join('\r\n'),
         type: 'arraybuffer'
-      }).then(arr => this.plotWaveforms(arr))
+      }).then(callback)
     },
+
+    getHorizontalIds (verticalId) {
+      let baseId = verticalId.slice(0, -1)
+      let ids = [ `${baseId}N`, `${baseId}E` ]
+      let result = []
+      for (let id of ids) {
+        let cha = this.getChannel(id)
+        if (cha != null) {
+          result.push(id.replace('..', '.--.'))
+        }
+      }
+      return result
+    },
+
     handleWaveformClick (wf) {
       let view = Object.assign({}, this.defaultView)
       let filterState = false
@@ -234,22 +322,75 @@ export default {
         this.picker.destroy()
       }
       this.pickerOpt.waveforms = [wf]
-      this.picker = new Waveform(this.pickerOpt)
-      Object.assign(this.picker.view, view)
-      this.picker.setFilterState(filterState)
-      // this.picker.draw()
-      this.picker.setPickerPhase(phase)
+      let horizontalIds = this.getHorizontalIds(wf.id)
+      // console.log(horizontalIds);
+      let toDownload = []
+      for (let id of horizontalIds) {
+        let cached = this.horizontalWaveformCache[id]
+        if (cached != null) {
+          this.pickerOpt.waveforms.push(cached)
+        } else {
+          toDownload.push(id)
+        }
+      }
+      if (toDownload.length > 0) {
+        this.downloadWaveforms(toDownload, arr => {
+          this.loading = false
+          let dv = new DataView(arr)
+          let st = new mseed.Stream(dv)
+          for (let id of toDownload) {
+            let tr = st.getTrace(id.replace('--', ''))
+            if (tr != null) {
+              let wf = this.getWaveformObject(tr)
+              this.horizontalWaveformCache[tr.id.replace('..', '.--.')] = wf
+              this.pickerOpt.waveforms.push(wf)
+            }
+          }
+          this.picker = new Waveform(this.pickerOpt)
+          Object.assign(this.picker.view, view, {gain: 1})
+          this.applyFilter(this.picker.waveforms)
+          this.picker.setFilterState(filterState)
+          this.picker.setPickerPhase(phase)
+        })
+      } else {
+        this.picker = new Waveform(this.pickerOpt)
+        Object.assign(this.picker.view, view, {gain: 1})
+        this.applyFilter(this.picker.waveforms)
+        this.picker.setFilterState(filterState)
+        this.picker.setPickerPhase(phase)
+      }
     },
-    getChannelScale (seedid) {
+
+    getChannel (seedid) {
       let [net, sta, loc, cha] = seedid.split('.')
       if (this.inventory[net] != null &&
           this.inventory[net][sta] != null &&
           this.inventory[net][sta][loc] != null &&
           this.inventory[net][sta][loc][cha] != null) {
-        return this.inventory[net][sta][loc][cha].scale
+        return this.inventory[net][sta][loc][cha]
       }
-      return 1
+      return null
     },
+
+    getChannelScale (seedid) {
+      let cha = this.getChannel(seedid)
+      return cha != null ? cha.scale : 1
+    },
+
+    getWaveformObject (tr) {
+      let tttId = tr.id.split('.').slice(0, 2).join('.')
+      return {
+        start: tr.timeseries[0].starttime,
+        step: 1000 / tr.sample_rate,
+        values: tr.getData(),
+        scale: this.getChannelScale(tr.id),
+        id: tr.id,
+        distance: this.ttt[tttId].distance,
+        ttt: Object.assign({ O: this.origin.time.value.getTime() }, this.ttt[tttId].ttt),
+        picks: this.picks[tr.id]
+      }
+    },
+
     plotWaveforms (arr) {
       this.loading = false
       let dv = new DataView(arr)
@@ -257,16 +398,7 @@ export default {
       window.st = st
       this.listOpt.waveforms = []
       for (let tr of st.trace) {
-        this.listOpt.waveforms.push({
-          start: tr.timeseries[0].starttime,
-          step: 1000 / tr.sample_rate,
-          values: tr.getData(),
-          scale: this.getChannelScale(tr.id),
-          id: tr.id,
-          distance: this.ttt[tr.id].distance,
-          ttt: Object.assign({ O: this.origin.time.value.getTime() }, this.ttt[tr.id].ttt),
-          picks: this.picks[tr.id]
-        })
+        this.listOpt.waveforms.push(this.getWaveformObject(tr))
       }
       this.list = new Waveform(this.listOpt)
       this.list.view.duration = this.defaultView.duration
