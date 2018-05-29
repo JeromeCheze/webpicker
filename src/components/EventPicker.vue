@@ -85,7 +85,23 @@ export default {
           draw: (t1, t2) => this.list.setSelectedWaveformWindow(t1, t2)
         }
       },
-      horizontalWaveformCache: {}
+      horizontalWaveformCache: {},
+      shortcut: {
+        'ArrowDown' () { this.list.selectNext() },
+        'ArrowUp' () { this.list.selectPrev() },
+        'shift+ArrowUp' () { this.picker.setPolarity('positive') },
+        'shift+ArrowDown' () { this.picker.setPolarity('negative') },
+        'Escape' () { this.picker.setPolarity(null) },
+        'p' () { this.tools.phase = 'P' },
+        's' () { this.tools.phase = 'S' },
+        'Delete' () { this.picker.deleteSelectedPicks() },
+        'Backspace' () { this.picker.deleteSelectedPicks() },
+        'alt+o' () { this.tools.alignment = 'O' },
+        'alt+p' () { this.tools.alignment = 'P' },
+        'alt+s' () { this.tools.alignment = 'S' },
+        'f' () { this.tools.filter = !this.tools.filter },
+        '=' () { this.tools.sameScale = !this.tools.sameScale }
+      }
     }
   },
   watch: {
@@ -148,6 +164,7 @@ export default {
     }
   },
   deactivated () {
+    // TODO: export arrivals
     // let waveforms = this.list.waveforms.map(x => x.opt).concat(Object.values(this.horizontalWaveformCache))
     // let arrivals = []
     // for (let wf of this.list.waveforms) {
@@ -159,37 +176,22 @@ export default {
   methods: {
     handleKeyDown (ev) {
       let k = []
-      if (ev.metaKey) k.push('Meta')
-      if (ev.ctrlKey) k.push('Ctrl')
-      if (ev.altKey) k.push('Alt')
-      if (ev.shiftKey) k.push('Shift')
-      k.push(ev.key)
-      k = k.join('-')
-      // console.log(k);
-      if (k == 'ArrowDown') {
+      let keyCode = ev.keyCode || ev.which || ev.charCode
+      if (ev.metaKey) k.push('meta')
+      if (ev.ctrlKey) k.push('ctrl')
+      if (ev.altKey) k.push('alt')
+      if (ev.shiftKey) k.push('shift')
+      if (keyCode >= 48 && keyCode <= 126) {
+        k.push(String.fromCharCode(keyCode).toLowerCase())
+      } else {
+        k.push(ev.key)
+      }
+      k = k.join('+')
+      // console.log(k, ev);
+      let bindedAction = this.shortcut[k]
+      if (bindedAction != null) {
         ev.preventDefault()
-        this.list.selectNext()
-      } else if (k == 'ArrowUp') {
-        ev.preventDefault()
-        this.list.selectPrev()
-      } else if (k == 'Shift-ArrowUp') {
-        ev.preventDefault()
-        this.picker.setPolarity('positive')
-      } else if (k == 'Shift-ArrowDown') {
-        ev.preventDefault()
-        this.picker.setPolarity('negative')
-      } else if (k == 'Escape') {
-        ev.preventDefault()
-        this.picker.setPolarity(null)
-      } else if (k == 'p') {
-        ev.preventDefault()
-        this.tools.phase = 'P'
-      } else if (k == 's') {
-        ev.preventDefault()
-        this.tools.phase = 'S'
-      } else if (k == 'Delete') {
-        ev.preventDefault()
-        this.picker.deleteSelectedPicks()
+        bindedAction.call(this)
       }
     },
 

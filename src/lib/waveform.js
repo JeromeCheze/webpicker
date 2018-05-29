@@ -17,6 +17,7 @@ export default class Waveform {
       moved: false,
       clickPos: null,
       useFiltered: false,
+      wheelDelta: null,
       selectedWf: null,
       selectedWindow: [],
       electedPicks: [],
@@ -299,9 +300,21 @@ export default class Waveform {
   wheelHandler (ev) {
     if (ev.shiftKey) {
       ev.preventDefault()
-      let delta = ev.deltaX != 0 ? ev.delatX : ev.deltaY
+      let delta = (
+        Math.abs(ev.deltaY) > 5 ? ev.deltaY :
+        Math.abs(ev.deltaX) > 5 ? ev.deltaX :
+        0
+      )
+      if (this.event.wheelDelta == null) {
+        this.event.wheelDelta = 0
+      }
+      this.event.wheelDelta += delta
+      if (Math.abs(this.event.wheelDelta) < 10) {
+        return
+      }
+      delta = this.event.wheelDelta
+      this.event.wheelDelta = 0
       if (ev.ctrlKey || ev.metaKey ) {
-        ev.preventDefault()
         Math.sign(delta) > 0 ? this.yZoomOut() : this.yZoomIn()
       } else {
         Math.sign(delta) > 0 ? this.xZoomIn() : this.xZoomOut()
@@ -491,6 +504,7 @@ export default class Waveform {
   }
 
   selectWaveform (wf) {
+    if (this.opt.mode != 'list') return
     if (this.event.selectedWf != null) {
       this.event.selectedWf.el.classList.remove('selected')
       let ctx = this.event.selectedWf.ctx2
