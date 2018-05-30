@@ -20,12 +20,14 @@
           v-if="activeIndex == 'eventList'"></event-list>
         <event-page
           :event="currentEvent"
-          :inventory="inventory"
-          @origin="o => currentOrigin = o"
-          v-else-if="activeIndex == 'eventPage'"></event-page>
-        <event-picker
           :origin="currentOrigin"
           :inventory="inventory"
+          v-else-if="activeIndex == 'eventPage'"></event-page>
+        <event-picker
+          :event="currentEvent"
+          :origin="currentOrigin"
+          :inventory="inventory"
+          @picker-arrival="handlePickerArrival"
           v-else-if="activeIndex == 'eventPicker'"></event-picker>
       </keep-alive>
     </el-main>
@@ -56,11 +58,13 @@ const conversionRules = {
   '/eventParameters/event/origin/quality/minimumDistance': parseFloat,
   '/eventParameters/event/origin/quality/azimuthalGap': parseFloat,
   '/eventParameters/event/origin/quality/usedPhaseCount': parseInt,
+  '/eventParameters/event/origin/arrival/pickID': x => x.split('/').slice(-1)[0],
   '/eventParameters/event/origin/arrival/timeResidual': parseFloat,
   '/eventParameters/event/origin/arrival/timeWeight': parseFloat,
   '/eventParameters/event/origin/arrival/distance': parseFloat,
   '/eventParameters/event/origin/arrival/azimuth': parseFloat,
   '/eventParameters/event/magnitude/mag/value': parseFloat,
+  '/eventParameters/event/pick/$publicID': x => x.split('/').slice(-1)[0],
   '/eventParameters/event/pick/time/value': x => new Date(Date.parse(x))
 }
 
@@ -129,6 +133,18 @@ export default {
         this.loading = false
       })
     },
+    handlePickerArrival (arrivals) {
+      let clone = Object.assign({}, this.currentOrigin)
+      let id = [
+        'Origin',
+        new Date().toISOString().replace(/[\-:]/g, '').replace('T', '.').substr(0, 18)
+      ].join('-')
+      clone.$publicID = id
+      clone.arrival = arrivals
+      this.currentEvent.origin.push(clone)
+      this.currentOrigin = clone
+      this.activeIndex = 'eventPage'
+    },
     handleSelectEvent (eventId) {
       let oldEvent = this.eventList.find(x => x.$publicID == eventId)
       let index = this.eventList.indexOf(oldEvent)
@@ -152,6 +168,7 @@ export default {
         utils.processEventData(e)
         this.eventList.splice(index, 1, e)
         this.currentEvent = e
+        this.currentOrigin = e.po
         this.activeIndex = 'eventPage'
       })
     },

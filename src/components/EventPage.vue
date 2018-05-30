@@ -10,14 +10,14 @@
       <el-col :span="6">
         <table class="event-description">
           <tbody>
-            <tr><th>Time</th><td colspan="2">{{ displayedOrigin.time.pretty }}</td></tr>
-            <tr><th>Depth</th><td>{{ displayedOrigin.depth.pretty }}</td><td>{{ displayedOrigin.depth.prettyUncertainty }}</td></tr>
-            <tr><th>Lat</th><td>{{ displayedOrigin.latitude.pretty }}</td><td>{{ displayedOrigin.latitude.prettyUncertainty }}</td></tr>
-            <tr><th>Lon</th><td>{{ displayedOrigin.longitude.pretty }}</td><td>{{ displayedOrigin.longitude.prettyUncertainty }}</td></tr>
-            <tr><th>Phases</th><td colspan="2">{{ displayedOrigin.quality.usedPhaseCount }} / {{ displayedOrigin.quality.associatedPhaseCount }}</td></tr>
-            <tr><th>RMS Res</th><td colspan="2">{{ displayedOrigin.quality.standardError.toFixed(2) }}</td></tr>
-            <tr><th>Az. Gap</th><td colspan="2">{{ displayedOrigin.quality.azimuthalGap.toFixed(0) }} °</td></tr>
-            <tr><th>Min. Dist</th><td colspan="2">{{ displayedOrigin.quality.minimumDistance.toFixed(2) }} °</td></tr>
+            <tr><th>Time</th><td colspan="2">{{ origin.time.pretty }}</td></tr>
+            <tr><th>Depth</th><td>{{ origin.depth.pretty }}</td><td>{{ origin.depth.prettyUncertainty }}</td></tr>
+            <tr><th>Lat</th><td>{{ origin.latitude.pretty }}</td><td>{{ origin.latitude.prettyUncertainty }}</td></tr>
+            <tr><th>Lon</th><td>{{ origin.longitude.pretty }}</td><td>{{ origin.longitude.prettyUncertainty }}</td></tr>
+            <tr><th>Phases</th><td colspan="2">{{ origin.quality.usedPhaseCount }} / {{ origin.quality.associatedPhaseCount }}</td></tr>
+            <tr><th>RMS Res</th><td colspan="2">{{ origin.quality.standardError.toFixed(2) }}</td></tr>
+            <tr><th>Az. Gap</th><td colspan="2">{{ origin.quality.azimuthalGap.toFixed(0) }} °</td></tr>
+            <tr><th>Min. Dist</th><td colspan="2">{{ origin.quality.minimumDistance.toFixed(2) }} °</td></tr>
           </tbody>
         </table>
       </el-col>
@@ -36,9 +36,14 @@
         :default-sort="{ prop: 'distance', order: 'ascending' }"
         row-key="id"
         :height="500"
+        @selection-change="handleSelectionChange"
         style="width: 100%">
         <el-table-column type="selection" min-width="55" reserve-selection></el-table-column>
-        <el-table-column min-width="70" prop="status" label="Status"></el-table-column>
+        <el-table-column min-width="70" prop="mode" label="Status">
+          <template slot-scope="scope">
+            <el-tag :type="scope.row.modeColor">{{ scope.row.mode }}</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column min-width="90" prop="phase" label="Phase"></el-table-column>
         <el-table-column min-width="70" prop="network" label="Net"></el-table-column>
         <el-table-column min-width="100" prop="station" label="Sta"></el-table-column>
@@ -60,17 +65,33 @@ import L from 'leaflet'
 
 addMore(Highcharts)
 
+let handleChartSelection = function(ev) {
+  let [x, y] = [ev.xAxis[0], ev.yAxis[0]]
+  let selectedPickIDs = []
+  for (let s of this.series) {
+    for (let p of s.points) {
+      if (p.x >= x.min && p.x <= x.max && p.y >= y.min && p.y <= y.max) {
+        selectedPickIDs.push(p.id)
+      }
+    }
+  }
+  Highcharts.fireEvent(this, 'selectedpoints', selectedPickIDs)
+  return false
+}
+
 export default {
   props: {
     event: { required: true },
+    origin: { required: true },
     inventory: { required: true }
   },
+
   data () {
     return {
       dirty: true,
+      updating: false,
       map: null,
       markers: [],
-      displayedOrigin: this.event.po,
       displayedMagnitude: this.event.pm,
       chart: {
         timeResidual: null,
@@ -81,29 +102,49 @@ export default {
       activeChartTab: 'timeResidual'
     }
   },
+
   watch: {
     event: function(val) {
       this.dirty = true
+    },
+    origin: function(val) {
+      this.dirty = true
     }
   },
+
   activated () {
     if (this.dirty) {
       this.dirty = false
-      this.setOrigin(this.event.po)
+      this.updateAll()
     }
   },
+
   methods: {
     floatFormatter (row, col) {
       return row[col.property].toFixed(2)
     },
+
     timeFormatter (row, col) {
       return row[col.property].toISOString().split('T')[1].substr(0, 12)
     },
+
+    setSelectedArrival (selectedPickIDs) {
+      for (let a of this.origin.arrival) {
+        a.timeWeight = selectedPickIDs.indexOf(a.pickID) >= 0 ? 1 : 0
+      }
+      this.updateAll()
+    },
+
+    handleSelectionChange (selectedRows) {
+      if (this.updating) return
+      this.setSelectedArrival(selectedRows.map(x => x.id))
+    },
+
     updateArrivalTableData () {
-      let data = this.displayedOrigin.arrival.map(a => ({
-        id: a.id,
-        used: a.used,
-        status: a.pick.evaluationMode == 'automatic' ? 'A' : 'M',
+      let data = this.origin.arrival.map(a => ({
+        id: a.pickID,
+        mode: a.pick.evaluationMode == 'automatic' ? 'A' : 'M',
+        modeColor: a.pick.evaluationMode == 'manual' ? 'success' : 'danger',
         phase: a.phase,
         network: a.pick.waveformID.$networkCode,
         station: a.pick.waveformID.$stationCode,
@@ -111,21 +152,25 @@ export default {
         residual: a.timeResidual,
         distance: a.distance,
         azimuth: a.azimuth,
-        time: a.time
+        time: a.time,
+        weight: a.timeWeight
       }))
       this.$set(this, 'arrivalTableData', data)
     },
-    setOrigin (o) {
-      this.$emit('origin', o)
-      this.displayedOrigin = o
+
+    updateAll () {
+      this.updating = true
       this.updateArrivalTableData()
       this.eventMap()
       this.initChartsData()
       this.initChartTimeResidual()
+      this.$refs.arrivalTable.clearSelection()
       for (let row of this.arrivalTableData) {
-        this.$refs.arrivalTable.toggleRowSelection(row, row.used)
+        this.$refs.arrivalTable.toggleRowSelection(row, row.weight == 1)
       }
+      this.updating = false
     },
+
     initMap () {
       let map = L.map(this.$el.querySelector('.map-canvas'), {trackResize: false, attributionControl: false})
       let worldtopomap = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
@@ -135,6 +180,7 @@ export default {
       L.control.scale({ imperial: false }).addTo(map)
       this.map = map
     },
+
     getStationCoordinates (wfid) {
       if (this.inventory[wfid.$networkCode] != null &&
           this.inventory[wfid.$networkCode][wfid.$stationCode] != null) {
@@ -143,20 +189,7 @@ export default {
       }
       return null
     },
-    initChartsData () {
-      this.chart.timeResidual = { p: [], s: [] }
-      this.chart.travelTime = { p: [], s: [] }
-      for (let a of this.displayedOrigin.arrival) {
-        let serie = (a.phase == 'P' ? 'p' : 's')
-        let color = (a.timeWeight < .5 ? 'gray' : a.pick.evaluationMode == 'automatic' ? 'red' : 'green')
-        this.chart.timeResidual[serie].push({
-          x: a.distance, y: a.timeResidual, name: a.pick.seedid, color: color
-        })
-        this.chart.travelTime[serie].push({
-          x: a.distance, y: a.time.getTime()/1000., name: a.pick.seedid, color: color
-        })
-      }
-    },
+
     eventMap () {
       if (this.map == null) {
         this.initMap()
@@ -167,12 +200,12 @@ export default {
         m.remove()
       }
       this.markers = []
-      this.displayedOrigin.latlng = L.latLng([
-        this.displayedOrigin.latitude.value,
-        this.displayedOrigin.longitude.value
+      this.origin.latlng = L.latLng([
+        this.origin.latitude.value,
+        this.origin.longitude.value
       ])
-      let bounds = [this.displayedOrigin.latlng]
-      for (let a of this.displayedOrigin.arrival) {
+      let bounds = [this.origin.latlng]
+      for (let a of this.origin.arrival) {
         let wfid = a.pick.waveformID
         let pos = this.getStationCoordinates(wfid)
         if (pos == null) {
@@ -180,8 +213,8 @@ export default {
           continue
         }
         bounds.push(pos)
-        if (a.used) {
-          this.markers.push(L.polyline([this.displayedOrigin.latlng, pos], {
+        if (a.timeWeight == 1) {
+          this.markers.push(L.polyline([this.origin.latlng, pos], {
             color: 'gray',
             weight: 1
           }).addTo(this.map))
@@ -189,11 +222,11 @@ export default {
         this.markers.push(L.circleMarker(pos, {
           radius: 2,
           weight: 1,
-          color: a.used ? 'black' : 'gray',
+          color: a.timeWeight == 1 ? 'black' : 'gray',
           fillOpacity: 1
         }).bindPopup(a.pick.seedid).addTo(this.map))
       }
-      this.markers.push(L.circleMarker(this.displayedOrigin.latlng, {
+      this.markers.push(L.circleMarker(this.origin.latlng, {
         radius: 8,
         weight: 1,
         color: 'red',
@@ -201,33 +234,77 @@ export default {
       }).addTo(this.map))
       this.map.fitBounds(bounds)
     },
+
+    initChartsData () {
+      this.chart.timeResidual = { p: [], s: [] }
+      this.chart.travelTime = { p: [], s: [] }
+      for (let a of this.origin.arrival) {
+        let serie = (a.phase == 'P' ? 'p' : 's')
+        let color = (
+          a.timeWeight < .5 ? 'gray' :
+          a.pick.evaluationMode == 'automatic' ? 'red' :
+          'green'
+        )
+        this.chart.timeResidual[serie].push({
+          x: a.distance, y: a.timeResidual, name: a.pick.seedid, color: color, id: a.pickID
+        })
+        this.chart.travelTime[serie].push({
+          x: a.distance, y: a.time.getTime()/1000., name: a.pick.seedid, color: color, id: a.pickID
+        })
+      }
+    },
+
     initChartTimeResidual () {
+      let extreme = 1 + Math.floor(
+        Math.abs(
+          Math.max.apply(null,
+            this.chart.timeResidual.p.concat(this.chart.timeResidual.s).map(x => x.y)
+          )
+        )
+      )
       let container = this.$el.querySelector('.chart-time-residual')
       Highcharts.chart({
-        chart: { renderTo: container, type: 'scatter' },
+        chart: { renderTo: container, type: 'scatter', zoomType: 'xy', events: {
+          selection: handleChartSelection,
+          selectedpoints: selectedPickIDs => this.setSelectedArrival(selectedPickIDs)
+        } },
         title: { text: 'Time residual/Distance' },
         xAxis: { title: { text: 'Distance [°]' } },
-        yAxis: { title: { text: 'Time residual [s]' } },
+        yAxis: { title: { text: 'Time residual [s]' }, min: -1 * extreme, max: extreme },
+        tooltip: { formatter: function() {
+          return `<b>${this.point.name}</b><br>Distance: ${this.x.toFixed(2)} km<br>Residual: ${this.y.toFixed(2)} s`
+        } },
+        plotOptions: { series: { animation: false } },
         series: [
           { name: 'P', data: this.chart.timeResidual.p },
           { name: 'S', data: this.chart.timeResidual.s }
         ]
       })
     },
+
     initChartTravelTime () {
       let container = this.$el.querySelector('.chart-travel-time')
       Highcharts.chart({
-        chart: { renderTo: container, type: 'scatter' },
+        chart: { renderTo: container, type: 'scatter', zoomType: 'xy', events: {
+          selection: handleChartSelection,
+          selectedpoints: selectedPickIDs => this.setSelectedArrival(selectedPickIDs)
+        } },
         title: { text: 'Travel time/Distance' },
         xAxis: { title: { text: 'Distance [°]' } },
         yAxis: { title: { text: 'Travel time [s]' } },
+        tooltip: { formatter: function() {
+          return `<b>${this.point.name}</b><br>Distance: ${this.x.toFixed(2)} km<br>Time: ${this.y.toFixed(2)} s`
+        } },
+        plotOptions: { series: { animation: false } },
         series: [
           { name: 'P', data: this.chart.travelTime.p },
           { name: 'S', data: this.chart.travelTime.s }
         ]
       })
     },
+
     initChartAzimuth () {},
+
     handleChartChange (tab, ev) {
       if (tab.name == 'timeResidual') {
         this.initChartTimeResidual()

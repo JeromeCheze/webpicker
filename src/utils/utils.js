@@ -97,8 +97,6 @@ function processEventData(e) {
     }
     for (let o of e.origin) {
       for (let a of o.arrival) {
-        a.id = a.pickID.split('/').slice(-1)[0]
-        a.used = a.timeWeight > .5
         a.pick = pickMap[a.pickID]
         a.time = new Date(a.pick.time.value - o.time.value)
       }
@@ -132,16 +130,17 @@ function parseInventory(raw_inv) {
         result[c.network][c.station][c.location] = {}
       }
       if (result[c.network][c.station][c.location][c.channel] == null) {
-        result[c.network][c.station][c.location][c.channel] = {
-          azimuth: parseFloat(c.azimuth),
-          dip: parseFloat(c.dip),
-          scale: parseFloat(c.scale),
-          depth: parseFloat(c.depth),
-          starttime: new Date(Date.parse(c.starttime)),
-          endtime: new Date(Date.parse(c.endtime)),
-          units: c.scaleUnits
-        }
+        result[c.network][c.station][c.location][c.channel] = []
       }
+      result[c.network][c.station][c.location][c.channel].push({
+        azimuth: parseFloat(c.azimuth),
+        dip: parseFloat(c.dip),
+        scale: parseFloat(c.scale),
+        depth: parseFloat(c.depth),
+        starttime: new Date(Date.parse(c.starttime)),
+        endtime: c.endtime == '' ? new Date() : new Date(Date.parse(c.endtime)),
+        units: c.scaleUnits
+      })
     }
   }
   return result

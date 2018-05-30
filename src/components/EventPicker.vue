@@ -41,10 +41,10 @@ import mseed from '../lib/mseed.js'
 import Fili from 'fili'
 
 export default {
-  props: ['origin', 'inventory'],
+  props: ['event', 'origin', 'inventory'],
   data () {
     return {
-      keyDownBinded: false,
+      // toolbar variables
       tools: {
         phaseOptions: [
           { value: '', label: 'No picking' },
@@ -57,13 +57,24 @@ export default {
         alignment: 'O',
         sortBy: 'distance'
       },
+
+      // state variables
       dirty: true,
       loading: true,
       loadingText: '',
+      keyDownBinded: false,
+
+      // cache variables
       picks: {},
-      picker: null,
-      list: null,
       ttt: null,
+      horizontalWaveformCache: {},
+      stationInfoMap: {},
+
+      // instances
+      list: null,
+      picker: null,
+
+      // constructor options
       defaultView: { duration: 30000, offset: 10000 },
       listOpt: {
         mode: 'list',
@@ -85,7 +96,8 @@ export default {
           draw: (t1, t2) => this.list.setSelectedWaveformWindow(t1, t2)
         }
       },
-      horizontalWaveformCache: {},
+
+      // keybinding mapping
       shortcut: {
         'ArrowDown' () { this.list.selectNext() },
         'ArrowUp' () { this.list.selectPrev() },
@@ -138,7 +150,7 @@ export default {
         this.list.sortWaveformsBy(x => x.distance)
       }
     },
-    origin: function(val) {
+    event: function(val) {
       this.dirty = true
     }
   },
@@ -146,7 +158,11 @@ export default {
     if (this.dirty) {
       this.dirty = false
       // this.tools.alignment = 'O'
+      this.stationInfoMap = {}
+      this.picks = {}
+      this.ttt = null
       this.horizontalWaveformCache = {}
+
       this.tools.filter = false
       if (this.picker != null) {
         this.picker.destroy()
@@ -164,14 +180,38 @@ export default {
     }
   },
   deactivated () {
-    // TODO: export arrivals
-    // let waveforms = this.list.waveforms.map(x => x.opt).concat(Object.values(this.horizontalWaveformCache))
-    // let arrivals = []
-    // for (let wf of this.list.waveforms) {
-    //   for (let p of wf.opt.picks)
-    //     arr
-    //   }
-    // }
+    let waveforms = this.list.waveforms.map(x => x.opt).concat(Object.values(this.horizontalWaveformCache))
+    let arrivals = []
+    for (let wf of waveforms) {
+      let staKey = wf.id.split('.').slice(0, 2).join('.')
+      let [net, sta, loc, cha] = wf.id.replace('..', '.--.').split('.')
+      for (let p of wf.picks) {
+        let pTime = new Date(p.time)
+        arrivals.push({
+          azimuth: this.stationInfoMap[staKey].azimuth,
+          distance: this.stationInfoMap[staKey].distance,
+          phase: p.phase,
+          pickID: p.id,
+          time: new Date(pTime - this.origin.time.value),
+          timeResidual: (p.time - wf.ttt[p.phase]) / 1000,
+          timeWeight: 1,
+          pick: {
+            $publicID: p.id,
+            evaluationMode: p.mode,
+            phaseHint: p.phase,
+            seedid: wf.id,
+            time: { value: pTime },
+            waveformID: {
+              $networkCode: net,
+              $stationCode: sta,
+              $locationCode: loc,
+              $channelCode: cha
+            }
+          }
+        })
+      }
+    }
+    this.$emit('picker-arrival', arrivals)
   },
   methods: {
     handleKeyDown (ev) {
@@ -204,9 +244,17 @@ export default {
         wfList = this.list.waveforms.concat(this.picker.waveforms)
       }
       for (let wf of wfList) {
+        // let iirFilterCoeffs = iirCalculator.highpass({
+        //   characteristic: 'butterworth',
+        //   order: 4, Fs: 1000. / wf.opt.step, Fc: 1,
+        //   gain: 0, preGain: false
+        // })
+        let [fc1, fc2] = [5, 20]
         let iirFilterCoeffs = iirCalculator.highpass({
           characteristic: 'butterworth',
-          order: 4, Fs: 1000. / wf.opt.step, Fc: 1,
+          order: 4, Fs: 1000. / wf.opt.step,
+          Fc: (fc2-fc1)/2 + fc1,
+          BW: fc2-fc1,
           gain: 0, preGain: false
         })
         let iirFilter = new Fili.IirFilter(iirFilterCoeffs)
@@ -267,12 +315,16 @@ export default {
       let wfidList = []
       for (let a of this.origin.arrival) {
         let seedid = a.pick.seedid.replace('--', '')
+        let staKey = seedid.split('.').slice(0, 2).join('.')
+        this.stationInfoMap[staKey] = { azimuth: a.azimuth, distance: a.distance }
         if (this.picks[seedid] == null) {
           this.picks[seedid] = []
         }
         this.picks[seedid].push({
+          id: a.pickID,
           phase: a.phase,
           mode: a.pick.evaluationMode,
+          polarity: a.pick.polarity,
           time: a.pick.time.value.getTime()
         })
         if (seedid.slice(-1)[0] == 'Z') {
@@ -369,7 +421,8 @@ export default {
           this.inventory[net][sta] != null &&
           this.inventory[net][sta][loc] != null &&
           this.inventory[net][sta][loc][cha] != null) {
-        return this.inventory[net][sta][loc][cha]
+        let t0 = this.origin.time.value
+        return this.inventory[net][sta][loc][cha].find(c => c.starttime <= t0 && c.endtime >= t0)
       }
       return null
     },
@@ -387,7 +440,8 @@ export default {
         values: tr.getData(),
         scale: this.getChannelScale(tr.id),
         id: tr.id,
-        distance: this.ttt[tttId].distance,
+        distance: this.stationInfoMap[tttId].distance,
+        azimuth: this.stationInfoMap[tttId].azimuth,
         ttt: Object.assign({ O: this.origin.time.value.getTime() }, this.ttt[tttId].ttt),
         picks: this.picks[tr.id]
       }
