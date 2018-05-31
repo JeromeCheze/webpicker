@@ -92,7 +92,7 @@ export default {
         waveforms: [],
         equalScale: true,
         callback: {
-          updatePick: () => this.list.draw(),
+          updatePick: (ev) => this.handleUpdatePick(ev),
           draw: (t1, t2) => this.list.setSelectedWaveformWindow(t1, t2)
         }
       },
@@ -180,12 +180,11 @@ export default {
     }
   },
   deactivated () {
-    let waveforms = this.list.waveforms.map(x => x.opt).concat(Object.values(this.horizontalWaveformCache))
     let arrivals = []
-    for (let wf of waveforms) {
-      let staKey = wf.id.split('.').slice(0, 2).join('.')
-      let [net, sta, loc, cha] = wf.id.replace('..', '.--.').split('.')
-      for (let p of wf.picks) {
+    for (let [wfid, picks] of Object.entries(this.picks)) {
+      let staKey = wfid.split('.').slice(0, 2).join('.')
+      let [net, sta, loc, cha] = wfid.replace('..', '.--.').split('.')
+      for (let p of picks) {
         let pTime = new Date(p.time)
         arrivals.push({
           azimuth: this.stationInfoMap[staKey].azimuth,
@@ -193,14 +192,16 @@ export default {
           phase: p.phase,
           pickID: p.id,
           time: new Date(pTime - this.origin.time.value),
-          timeResidual: (p.time - wf.ttt[p.phase]) / 1000,
-          timeWeight: 1,
+          timeResidual: (p.time - this.ttt[staKey].ttt[p.phase]) / 1000,
+          timeWeight: p.weight,
           pick: {
             $publicID: p.id,
             evaluationMode: p.mode,
             phaseHint: p.phase,
-            seedid: wf.id,
+            polarity: p.polarity,
+            seedid: wfid,
             time: { value: pTime },
+            timeWeight: p.weight,
             waveformID: {
               $networkCode: net,
               $stationCode: sta,
@@ -325,11 +326,16 @@ export default {
           phase: a.phase,
           mode: a.pick.evaluationMode,
           polarity: a.pick.polarity,
-          time: a.pick.time.value.getTime()
+          time: a.pick.time.value.getTime(),
+          weight: a.timeWeight
         })
-        if (seedid.slice(-1)[0] == 'Z') {
-          wfidList.push(a.pick.seedid)
+        let zComponent = `${a.pick.seedid.slice(0, -1)}Z`
+        if (wfidList.indexOf(zComponent) < 0) {
+          wfidList.push(zComponent)
         }
+        // if (seedid.slice(-1)[0] == 'Z') {
+        //   wfidList.push(a.pick.seedid)
+        // }
       }
       this.downloadWaveforms(wfidList, arr => this.plotWaveforms(arr))
     },
@@ -363,6 +369,31 @@ export default {
         }
       }
       return result
+    },
+
+    handleUpdatePick (ev) {
+      if (this.picks[ev.wfid] == null) {
+        this.picks[ev.wfid] = []
+      }
+      let dest = this.picks[ev.wfid]
+      if (ev.action == 'add') {
+        for (let p of ev.picks) {
+          dest.push(p)
+        }
+      } else if (ev.action == 'update') {
+        for (let p of ev.picks) {
+          let oldPick = dest.find(x => x.id == p.id)
+          let i = dest.indexOf(oldPick)
+          dest.splice(i, 1, p)
+        }
+      } else if (ev.action == 'delete') {
+        for (let p of ev.picks) {
+          let oldPick = dest.find(x => x.id == p.id)
+          let i = dest.indexOf(oldPick)
+          dest.splice(i, 1)
+        }
+      }
+      this.list.draw()
     },
 
     handleWaveformClick (wf) {

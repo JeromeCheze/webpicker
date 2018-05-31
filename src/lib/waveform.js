@@ -47,7 +47,7 @@ export default class Waveform {
           id: 'XX.NOISE.00.HHZ',
           distance: <number>,
           ttt: {P: <js_timestamp>}, // ttt = "theoretical travel time"
-          picks: [{phase: 'P', mode: 'manual', time: <js_timestamp>, polarity: null || 'positive' || 'negative'}]
+          picks: [{phase: 'P', weight: <int>, mode: 'manual', time: <js_timestamp>, polarity: null || 'positive' || 'negative'}]
         }
       ]*/
       /* optional */
@@ -386,19 +386,21 @@ export default class Waveform {
   deleteSelectedPicks () {
     let change = false
     for (let p of this.event.selectedPick) {
-      for (let wf of this.waveforms) {
-        let i = wf.opt.picks.indexOf(p)
-        if (i >= 0) {
-          change = true
-          wf.opt.picks.splice(i, 1)
-        }
+      let i = this.event.hoverWf.opt.picks.indexOf(p)
+      if (i >= 0) {
+        change = true
+        this.event.hoverWf.opt.picks.splice(i, 1)
       }
     }
     if (change) {
-      this.draw()
       if (this.opt.callback.updatePick != null) {
-        this.opt.callback.updatePick.call()
+        this.opt.callback.updatePick.call(null, {
+          action: 'delete',
+          wfid: this.event.hoverWf.opt.id,
+          picks: this.event.selectedPick
+        })
       }
+      this.draw()
     }
   }
 
@@ -413,7 +415,11 @@ export default class Waveform {
     }
     this.draw()
     if (this.opt.callback.updatePick != null) {
-      this.opt.callback.updatePick.call()
+      this.opt.callback.updatePick.call(null, {
+        action: 'update',
+        wfid: this.event.hoverWf.opt.id,
+        picks: this.event.selectedPick
+      })
     }
   }
 
@@ -427,13 +433,16 @@ export default class Waveform {
         this.event.hoverWf.opt.id,
         this.event.phase
       ].join('-')
-      this.event.hoverWf.opt.picks.push({
-        phase: this.event.phase, mode: 'manual', time: t, polarity: null, id: id
-      })
+      let newPick = { phase: this.event.phase, mode: 'manual', time: t, polarity: null, id: id, weight: 1 }
+      this.event.hoverWf.opt.picks.push(newPick)
       // this.event.clickPos = null
       this.draw()
       if (this.opt.callback.updatePick != null) {
-        this.opt.callback.updatePick.call()
+        this.opt.callback.updatePick.call(null, {
+          action: 'add',
+          wfid: this.event.hoverWf.opt.id,
+          picks: [newPick]
+        })
       }
     }
   }
@@ -786,7 +795,7 @@ export default class Waveform {
         ctx.stroke()
       }
       ctx.fillStyle = this.opt.color[p.mode]
-      ctx.fillRect(pos-1, 0, 2, this.opt.size.height)
+      ctx.fillRect(pos-.5, 0, 1, this.opt.size.height)
       if (p.polarity != null) {
         ctx.beginPath()
         if (p.polarity == 'positive') {

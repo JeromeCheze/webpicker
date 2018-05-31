@@ -48,6 +48,7 @@
         <el-table-column min-width="70" prop="network" label="Net"></el-table-column>
         <el-table-column min-width="100" prop="station" label="Sta"></el-table-column>
         <el-table-column min-width="120" prop="loccha" label="Loc/Cha"></el-table-column>
+        <el-table-column min-width="100" prop="polarity" label="Polarity"></el-table-column>
         <el-table-column min-width="70" prop="residual" label="Res" :formatter="floatFormatter" sortable></el-table-column>
         <el-table-column min-width="90" prop="distance" label="Dist" :formatter="floatFormatter" sortable></el-table-column>
         <el-table-column min-width="90" prop="azimuth" label="Az" :formatter="floatFormatter" sortable></el-table-column>
@@ -149,6 +150,7 @@ export default {
         network: a.pick.waveformID.$networkCode,
         station: a.pick.waveformID.$stationCode,
         loccha: `${a.pick.waveformID.$locationCode}.${a.pick.waveformID.$channelCode}`,
+        polarity: a.pick.polarity != null ? a.pick.polarity : '',
         residual: a.timeResidual,
         distance: a.distance,
         azimuth: a.azimuth,
