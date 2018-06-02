@@ -20,7 +20,7 @@ def get_first_arrival_P(arrivals, distance):
             return a
         if a.name.upper()[0] != 'P':
             continue
-        if distance < 120 and a.name in ['Pn', 'Pb', 'Pg', 'Pdiff']:
+        if distance < 120 and a.name in ['Pn', 'Pg', 'Pdiff']:
             return a
     return None
 
@@ -30,7 +30,7 @@ def index():
 
 @app.route('/ttt', methods=['POST'])
 def get_ttt():
-    phase_list = ['P', 'p', 'Pn', 'Pb', 'Pg', 'Pdiff', 'S', 's']
+    phase_list = ['P', 'p', 'Pn', 'Pg', 'Pdiff', 'S', 's']
     model = TauPyModel(model="iasp91")
     data = request.get_json()
     result = {}

@@ -20,7 +20,7 @@ export default class Waveform {
       wheelDelta: null,
       selectedWf: null,
       selectedWindow: [],
-      electedPicks: [],
+      selectedPicks: [],
       hoverWf: null,
       phase: null,
       x: null
@@ -80,6 +80,12 @@ export default class Waveform {
       callback: {
         waveformClick: null
       },
+      view: {
+        refTime: 'O',
+        duration: null,
+        offset: null,
+        gain: 1
+      },
       equalScale: false
     }
     // merge default options with given options
@@ -106,12 +112,13 @@ export default class Waveform {
       wf.scale = wf.scale == null ? 1. : wf.scale * 1.
       this.waveforms.push({ opt: wf })
     }
-    this.view = {
-      refTime: 'O',
-      duration: end-start,
-      gain: 1
+    this.view = Object.assign({}, this.opt.view)
+    if (this.view.duration == null) {
+      this.view.duration = end - start
     }
-    this.view.offset = this.view.duration/2
+    if (this.view.offset == null) {
+      this.view.offset = this.view.duration / 2
+    }
   }
 
   initStyle () {
@@ -385,7 +392,7 @@ export default class Waveform {
 
   deleteSelectedPicks () {
     let change = false
-    for (let p of this.event.selectedPick) {
+    for (let p of this.event.selectedPicks) {
       let i = this.event.hoverWf.opt.picks.indexOf(p)
       if (i >= 0) {
         change = true
@@ -397,7 +404,7 @@ export default class Waveform {
         this.opt.callback.updatePick.call(null, {
           action: 'delete',
           wfid: this.event.hoverWf.opt.id,
-          picks: this.event.selectedPick
+          picks: this.event.selectedPicks
         })
       }
       this.draw()
@@ -410,7 +417,7 @@ export default class Waveform {
   }
 
   setPolarity (polarity) {
-    for (let p of this.event.selectedPick) {
+    for (let p of this.event.selectedPicks) {
       p.polarity = polarity
     }
     this.draw()
@@ -418,7 +425,7 @@ export default class Waveform {
       this.opt.callback.updatePick.call(null, {
         action: 'update',
         wfid: this.event.hoverWf.opt.id,
-        picks: this.event.selectedPick
+        picks: this.event.selectedPicks
       })
     }
   }
@@ -777,7 +784,7 @@ export default class Waveform {
   drawPicks (wf) {
     let ctx = wf.ctx
     ctx.save()
-    // this.event.selectedPick = []
+    // this.event.selectedPicks = []
     ctx.textBaseline = 'top'
     ctx.setLineDash([4, 1])
     ctx.strokeStyle = 'gray'
@@ -786,7 +793,7 @@ export default class Waveform {
       if (this.event.clickPos != null &&
           wf == this.event.hoverWf &&
           Math.abs(this.event.clickPos - pos) < 5) {
-        this.event.selectedPick.push(p)
+        this.event.selectedPicks.push(p)
         ctx.beginPath()
         ctx.moveTo(pos-4.5, 0)
         ctx.lineTo(pos-4.5, this.opt.size.height)
@@ -821,7 +828,7 @@ export default class Waveform {
     this.clearAll()
     this.getStatsAndGroupData()
     this.computeDrawOption()
-    this.event.selectedPick = []
+    this.event.selectedPicks = []
     for (let wf of this.waveforms) {
       this.drawXGrid(wf)
       this.drawTTT(wf)

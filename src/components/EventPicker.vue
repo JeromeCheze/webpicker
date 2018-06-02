@@ -1,5 +1,6 @@
 <template>
   <div v-loading="loading" :element-loading-text="loadingText">
+    <el-row>{{ horizontalDownloadStatus }}</el-row>
     <el-row class="toolbar" type="flex" align="middle">
       <el-col :span="6">
         <el-select v-model="tools.phase" size="mini">
@@ -63,6 +64,7 @@ export default {
       loading: true,
       loadingText: '',
       keyDownBinded: false,
+      horizontalDownloadStatus: '',
 
       // cache variables
       picks: {},
@@ -81,6 +83,7 @@ export default {
         container: '.waveform-list',
         size: { height: 40 },
         waveforms: [],
+        view: {},
         callback: {
           waveformClick: wf => this.handleWaveformClick(wf)
         }
@@ -91,6 +94,7 @@ export default {
         size: { height: 120 },
         waveforms: [],
         equalScale: true,
+        view: {},
         callback: {
           updatePick: (ev) => this.handleUpdatePick(ev),
           draw: (t1, t2) => this.list.setSelectedWaveformWindow(t1, t2)
@@ -118,18 +122,18 @@ export default {
   },
   watch: {
     'tools.phase': function(val) {
-      this.picker.setPickerPhase(val)
+      if (this.picker != null) {
+        this.picker.setPickerPhase(val)
+      }
     },
     'tools.sameScale': function(val) {
-      this.list.opt.equalScale = val
-      this.list.draw()
-      // for (let wf of this.list.waveforms) {
-      //   let amp = (wf.stats.max - wf.stats.min) / wf.opt.scale
-      //   console.log(wf.opt.id, amp.toExponential(3), wf.drawOpt.scaleGain);
-      // }
+      if (this.list != null) {
+        this.list.opt.equalScale = val
+        this.list.draw()
+      }
     },
     'tools.filter': function(val) {
-      if (val) {
+      if (val && this.picker != null && this.list != null) {
         this.applyFilter()
         this.list.setFilterState(true)
         this.picker.setFilterState(true)
@@ -138,16 +142,20 @@ export default {
       }
     },
     'tools.alignment': function(val) {
-      this.list.setTimeAlignment(val)
-      this.list.draw();
-      this.picker.setTimeAlignment(val)
-      this.picker.draw();
+      if (this.picker != null && this.list != null) {
+        this.list.setTimeAlignment(val)
+        this.list.draw()
+        this.picker.setTimeAlignment(val)
+        this.picker.draw()
+      }
     },
     'tools.sortBy': function(val) {
-      if (val == 'name') {
-        this.list.sortWaveformsBy(x => x.id)
-      } else if (val == 'distance') {
-        this.list.sortWaveformsBy(x => x.distance)
+      if (this.list != null) {
+        if (val == 'name') {
+          this.list.sortWaveformsBy(x => x.id)
+        } else if (val == 'distance') {
+          this.list.sortWaveformsBy(x => x.distance)
+        }
       }
     },
     event: function(val) {
@@ -157,22 +165,32 @@ export default {
   activated () {
     if (this.dirty) {
       this.dirty = false
-      // this.tools.alignment = 'O'
-      this.stationInfoMap = {}
-      this.picks = {}
-      this.ttt = null
-      this.horizontalWaveformCache = {}
-
-      this.tools.filter = false
-      if (this.picker != null) {
-        this.picker.destroy()
-        this.picker = null
-      }
-      if (this.list != null) {
-        this.list.destroy()
-        this.list = null
-      }
-      this.getTTT()
+      this.reset()
+      this.getTTT(() => {
+        let [mainWfidList, horizontalWfidList] = this.processArrival()
+        this.loading = true
+        this.loadingText = `Loading waveforms... (${mainWfidList.length} channels)`
+        this.downloadWaveforms(
+          mainWfidList,
+          st => this.plotWaveforms(st),
+          () => {
+            this.$notify({
+              message: 'Waveform list loading complete.',
+              type: 'info'
+            })
+          }
+        )
+        this.downloadWaveforms(
+          horizontalWfidList,
+          st => this.handleHorizontalWaveforms(st),
+          () => {
+            this.$notify({
+              message: 'All waveforms loading complete.',
+              type: 'info'
+            })
+          }
+        )
+      })
     }
     if (!this.keyDownBinded) {
       this.keyDownBinded = true
@@ -236,6 +254,28 @@ export default {
       }
     },
 
+    reset () {
+      this.listOpt.waveforms = []
+      if (this.picker != null) {
+        this.picker.destroy()
+        this.picker = null
+      }
+      if (this.list != null) {
+        this.list.destroy()
+        this.list = null
+      }
+      this.tools.phase = '',
+      this.tools.sameScale = false,
+      this.tools.filter = false,
+      this.tools.alignment = 'O',
+      this.tools.sortBy = 'distance'
+
+      this.horizontalWaveformCache = {}
+      this.stationInfoMap = {}
+      this.picks = {}
+      this.ttt = null
+    },
+
     applyFilter (wfList) {
       if (!this.tools.filter) {
         return
@@ -272,7 +312,7 @@ export default {
       }
     },
 
-    getTTT () {
+    getTTT (callback) {
       this.loading = true
       this.loadingText = 'Loading theoretical travel time...'
       let data = {
@@ -297,7 +337,9 @@ export default {
             sta.ttt[k] = t0 + ttt * 1000
           }
         }
-        this.processArrival()
+        if (callback != null) {
+          callback.call()
+        }
       })
     },
 
@@ -313,8 +355,14 @@ export default {
     },
 
     processArrival () {
-      let wfidList = []
-      for (let a of this.origin.arrival) {
+      let mainWfidList = []
+      let horizontalWfidList = []
+      this.origin.arrival.sort((a, b) => {
+        a = a.distance
+        b = b.distance
+        return a == b ? 0 : a < b ? -1 : 1
+      })
+      for (let [i, a] of this.origin.arrival.entries()) {
         let seedid = a.pick.seedid.replace('--', '')
         let staKey = seedid.split('.').slice(0, 2).join('.')
         this.stationInfoMap[staKey] = { azimuth: a.azimuth, distance: a.distance }
@@ -330,36 +378,68 @@ export default {
           weight: a.timeWeight
         })
         let zComponent = `${a.pick.seedid.slice(0, -1)}Z`
-        if (wfidList.indexOf(zComponent) < 0) {
-          wfidList.push(zComponent)
+        if (mainWfidList.indexOf(zComponent) < 0) {
+          mainWfidList.push(zComponent)
         }
-        // if (seedid.slice(-1)[0] == 'Z') {
-        //   wfidList.push(a.pick.seedid)
-        // }
+        for (let wfid of this.getHorizontalIds(zComponent)) {
+          if (i < 3) {
+            if (mainWfidList.indexOf(wfid) < 0) {
+              mainWfidList.push(wfid)
+            }
+          } else {
+            if (horizontalWfidList.indexOf(wfid) < 0) {
+              horizontalWfidList.push(wfid)
+            }
+          }
+        }
       }
-      this.downloadWaveforms(wfidList, arr => this.plotWaveforms(arr))
+      return [mainWfidList, horizontalWfidList]
     },
 
-    downloadWaveforms (wfidList, callback) {
-      this.loading = true
+    handleHorizontalWaveforms (st) {
+      for (let tr of st.trace) {
+        let wf = this.getWaveformObject(tr)
+        this.horizontalWaveformCache[tr.id.replace('..', '.--.')] = wf
+      }
+    },
+
+    downloadWaveforms (wfidList, callback, complete) {
       let start = new Date(this.origin.time.value.getTime() - 20000).toISOString().substr(0, 19)
       let end = this.getEnd()
-      let query = []
-      for (let wfid of wfidList) {
-        query.push(`${wfid.replace(/\./g, ' ')} ${start} ${end}`)
+      let chunks = []
+      for (let i = 0; i < wfidList.length; i += 10) {
+        chunks.push(wfidList.slice(i, i + 10))
       }
-      this.loadingText = `Loading waveforms... (${query.length} channels)`
-      utils.ajax({
-        method: 'POST',
-        url: 'fdsnws/dataselect/1/query',
-        dataMimeType: 'text/plain',
-        data: query.join('\r\n'),
-        type: 'arraybuffer'
-      }).then(callback)
+      for (let [i, chunk] of chunks.entries()) {
+        let query = chunk.map(wfid => `${wfid.replace(/\./g, ' ')} ${start} ${end}`)
+        utils.ajax({
+          method: 'POST',
+          url: 'fdsnws/dataselect/1/query',
+          dataMimeType: 'text/plain',
+          data: query.join('\r\n'),
+          type: 'arraybuffer'
+        }).then(arr => {
+          let dv = new DataView(arr)
+          let st = new mseed.Stream(dv)
+          for (let tr of st.trace) {
+            let wfid = tr.id.replace('..', '.--.')
+            wfidList.splice(wfidList.indexOf(wfid))
+          }
+          if (callback != null) {
+            callback.call(null, st)
+          }
+          if (i >= chunks.length - 1) {
+            console.log('Not retrieved waveforms', wfidList);
+            if (complete != null) {
+              complete.call()
+            }
+          }
+        })
+      }
     },
 
     getHorizontalIds (verticalId) {
-      let baseId = verticalId.slice(0, -1)
+      let baseId = verticalId.replace('.--.', '..').slice(0, -1)
       let ids = [ `${baseId}N`, `${baseId}E` ]
       let result = []
       for (let id of ids) {
@@ -401,49 +481,24 @@ export default {
       let filterState = false
       let phase = null
       if (this.picker != null) {
-        view = this.picker.view
+        Object.assign(view, this.picker.view, {gain: 1})
         phase = this.picker.event.phase
         filterState = this.picker.event.useFiltered
         this.picker.destroy()
       }
+      this.pickerOpt.view = view
       this.pickerOpt.waveforms = [wf]
       let horizontalIds = this.getHorizontalIds(wf.id)
-      // console.log(horizontalIds);
-      let toDownload = []
       for (let id of horizontalIds) {
         let cached = this.horizontalWaveformCache[id]
         if (cached != null) {
           this.pickerOpt.waveforms.push(cached)
-        } else {
-          toDownload.push(id)
         }
       }
-      if (toDownload.length > 0) {
-        this.downloadWaveforms(toDownload, arr => {
-          this.loading = false
-          let dv = new DataView(arr)
-          let st = new mseed.Stream(dv)
-          for (let id of toDownload) {
-            let tr = st.getTrace(id.replace('--', ''))
-            if (tr != null) {
-              let wf = this.getWaveformObject(tr)
-              this.horizontalWaveformCache[tr.id.replace('..', '.--.')] = wf
-              this.pickerOpt.waveforms.push(wf)
-            }
-          }
-          this.picker = new Waveform(this.pickerOpt)
-          Object.assign(this.picker.view, view, {gain: 1})
-          this.applyFilter(this.picker.waveforms)
-          this.picker.setFilterState(filterState)
-          this.picker.setPickerPhase(phase)
-        })
-      } else {
-        this.picker = new Waveform(this.pickerOpt)
-        Object.assign(this.picker.view, view, {gain: 1})
-        this.applyFilter(this.picker.waveforms)
-        this.picker.setFilterState(filterState)
-        this.picker.setPickerPhase(phase)
-      }
+      this.picker = new Waveform(this.pickerOpt)
+      this.applyFilter(this.picker.waveforms)
+      this.picker.setFilterState(filterState)
+      this.picker.setPickerPhase(phase)
     },
 
     getChannel (seedid) {
@@ -478,21 +533,43 @@ export default {
       }
     },
 
-    plotWaveforms (arr) {
+    plotWaveforms (st) {
       this.loading = false
-      let dv = new DataView(arr)
-      let st = new mseed.Stream(dv)
-      window.st = st
-      this.listOpt.waveforms = []
-      for (let tr of st.trace) {
-        this.listOpt.waveforms.push(this.getWaveformObject(tr))
+      let waveforms = []
+      let selectedWfId = null
+      Object.assign(this.listOpt.view, {refTime: this.tools.alignment}, this.defaultView)
+      if (this.list != null) {
+        waveforms = this.listOpt.waveforms
+        if (this.list.event.selectedWf != null) {
+          selectedWfId = this.list.event.selectedWf.opt.id
+        }
+        Object.assign(this.listOpt.view, this.list.view)
+        this.list.destroy()
       }
+      for (let tr of st.trace) {
+        if (tr.id.slice(-1) != 'Z') {
+          let wf = this.getWaveformObject(tr)
+          this.horizontalWaveformCache[tr.id.replace('..', '.--.')] = wf
+        } else {
+          waveforms.push(this.getWaveformObject(tr))
+        }
+      }
+      let sortKey = this.tools.sortBy == 'name' ? 'id' : 'distance'
+      waveforms.sort((a, b) => {
+        a = a[sortKey]
+        b = b[sortKey]
+        return a == b ? 0 : a < b ? -1 : 1
+      })
+      this.listOpt.waveforms = waveforms
+      this.listOpt.equalScale = this.tools.sameScale
       this.list = new Waveform(this.listOpt)
-      this.list.view.duration = this.defaultView.duration
-      this.list.view.offset = this.defaultView.offset
-      this.list.draw()
-      this.list.sortWaveformsBy(x => x.distance)
-      this.list.selectNext()
+      if (selectedWfId == null) {
+        this.list.selectNext()
+      } else {
+        let wf = this.list.waveforms.find(wf => wf.opt.id == selectedWfId)
+        this.list.selectWaveform(wf)
+      }
+      this.tools.filter = this.tools.filter
     }
   }
 }
