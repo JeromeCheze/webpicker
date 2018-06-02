@@ -143,7 +143,6 @@ export default {
       clone.arrival = arrivals
       this.currentEvent.origin.push(clone)
       this.currentOrigin = clone
-      this.activeIndex = 'eventPage'
     },
     handleSelectEvent (eventId) {
       let oldEvent = this.eventList.find(x => x.$publicID == eventId)

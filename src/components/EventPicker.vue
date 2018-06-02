@@ -191,6 +191,8 @@ export default {
           }
         )
       })
+    } else {
+      this.updatePicksWeight()
     }
     if (!this.keyDownBinded) {
       this.keyDownBinded = true
@@ -219,7 +221,6 @@ export default {
             polarity: p.polarity,
             seedid: wfid,
             time: { value: pTime },
-            timeWeight: p.weight,
             waveformID: {
               $networkCode: net,
               $stationCode: sta,
@@ -251,6 +252,14 @@ export default {
       if (bindedAction != null) {
         ev.preventDefault()
         bindedAction.call(this)
+      }
+    },
+
+    updatePicksWeight () {
+      for (let a of this.origin.arrival) {
+        let wfid = a.pick.seedid.replace('.--.', '..')
+        let p = this.picks[wfid].find(x => x.id == a.pick.$publicID)
+        p.weight = a.timeWeight
       }
     },
 
@@ -410,7 +419,8 @@ export default {
       for (let i = 0; i < wfidList.length; i += 10) {
         chunks.push(wfidList.slice(i, i + 10))
       }
-      for (let [i, chunk] of chunks.entries()) {
+      function downloader(i, chunks) {
+        let chunk = chunks[i++]
         let query = chunk.map(wfid => `${wfid.replace(/\./g, ' ')} ${start} ${end}`)
         utils.ajax({
           method: 'POST',
@@ -428,7 +438,9 @@ export default {
           if (callback != null) {
             callback.call(null, st)
           }
-          if (i >= chunks.length - 1) {
+          if (i < chunks.length) {
+            downloader(i, chunks)
+          } else {
             console.log('Not retrieved waveforms', wfidList);
             if (complete != null) {
               complete.call()
@@ -436,6 +448,7 @@ export default {
           }
         })
       }
+      downloader(0, chunks)
     },
 
     getHorizontalIds (verticalId) {
@@ -458,7 +471,9 @@ export default {
       let dest = this.picks[ev.wfid]
       if (ev.action == 'add') {
         for (let p of ev.picks) {
-          dest.push(p)
+          if (dest.indexOf(p) < 0) {
+            dest.push(p)
+          }
         }
       } else if (ev.action == 'update') {
         for (let p of ev.picks) {
@@ -481,6 +496,9 @@ export default {
       let filterState = false
       let phase = null
       if (this.picker != null) {
+        if (this.picker.waveforms[0].opt.id == wf.id) {
+          return
+        }
         Object.assign(view, this.picker.view, {gain: 1})
         phase = this.picker.event.phase
         filterState = this.picker.event.useFiltered
