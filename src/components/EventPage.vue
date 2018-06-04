@@ -5,7 +5,7 @@
     </el-row>
     <el-row>
       <el-col :span="8">
-        <div class="map-canvas"></div>
+        <div class="map-canvas" style="height: 400px;"></div>
       </el-col>
       <el-col :span="6">
         <table class="event-description">
@@ -321,7 +321,6 @@ export default {
 </script>
 
 <style>
-.map-canvas {height: 400px;}
 .event-description {margin: 20px; font-size: .9em;}
 .event-description th, .event-description td {padding: 3px;}
 .event-description th {text-align: right; padding-right: 10px;}

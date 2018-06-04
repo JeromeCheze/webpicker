@@ -33,6 +33,7 @@
 <script>
 export default {
   props: ['eventList'],
+
   data () {
     return {
       tableData: [],
@@ -40,24 +41,29 @@ export default {
       height: 500
     }
   },
+
   activated () {
     this.height = document.body.clientHeight - this.$el.offsetTop - 20
   },
+  
   watch: {
     eventList: function(val) {
       this.updateTableData()
     }
   },
+
   methods: {
     tableRowClassName ({ row, rowIndex }) {
       return row.id == this.selectEvent ? 'selected-event-row' : ''
     },
+
     handleRowClick (row) {
       if (row != null) {
         this.selectEvent = row.id
         this.$emit('select-event', row.id)
       }
     },
+
     updateTableData () {
       let data = this.eventList.map(e => ({
         time: e.po.time.pretty,

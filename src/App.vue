@@ -2,6 +2,7 @@
   <el-container style="height: 100vh;">
     <el-header>
       <el-menu :default-active="activeIndex" mode="horizontal" @select="(x, y) => activeIndex = x">
+        <el-menu-item index="eventForm">Form</el-menu-item>
         <el-menu-item index="eventList">Event list</el-menu-item>
         <el-menu-item index="eventPage" :disabled="currentEvent == null">
           <span v-if="currentEvent != null">{{ currentEvent.$publicID }}</span>
@@ -10,14 +11,15 @@
         <el-menu-item index="eventPicker" :disabled="currentOrigin == null">Picker</el-menu-item>
       </el-menu>
     </el-header>
-    <el-main>
+    <el-main v-loading="loading" :element-loading-text="loadingText">
       <keep-alive>
+        <event-form
+          @submit-event-form="handleSubmitEventForm"
+          v-if="activeIndex == 'eventForm'"></event-form>
         <event-list
-          v-loading="loading"
-          :element-loading-text="loadingText"
           :event-list="eventList"
           @select-event="handleSelectEvent"
-          v-if="activeIndex == 'eventList'"></event-list>
+          v-else-if="activeIndex == 'eventList'"></event-list>
         <event-page
           :event="currentEvent"
           :origin="currentOrigin"
@@ -74,7 +76,7 @@ export default {
     return {
       loading: true,
       loadingText: '',
-      activeIndex: 'eventList',
+      activeIndex: 'eventForm',
       inventory: null,
       eventList: [],
       currentEvent: null,
@@ -88,11 +90,12 @@ export default {
   mounted () {
     this.queryOpt.end = new Date()
     this.queryOpt.start = new Date(this.queryOpt.end.getTime() - 86400000 * 7)
-    this.loadInventoryThenEventList()
-    // this.loadEventList()
+    this.loadInventory(() => {
+      // this.loadEventList()
+    })
   },
   methods: {
-    loadInventoryThenEventList () {
+    loadInventory (callback) {
       this.loadingText = 'Loading inventory...'
       utils.ajax({
         method: 'GET',
@@ -106,19 +109,21 @@ export default {
         type: 'text'
       }).then(raw_inv => {
         this.inventory = utils.parseInventory(raw_inv)
-        this.loadEventList()
+        this.loading = false
+        if (callback != null) {
+          callback.call()
+        }
       })
     },
-    loadEventList () {
+
+    loadEventList (args) {
+      this.activeIndex = 'eventList'
+      this.loading = true
       this.loadingText = 'Loading events...'
       utils.ajax({
         method: 'GET',
         url: 'fdsnws/event/1/query',
-        args: {
-          starttime: this.queryOpt.start.toISOString().substr(0, 19),
-          endtime: this.queryOpt.end.toISOString().substr(0, 19),
-          format: 'xml'
-        },
+        args: args,
         type: 'document'
       }).then(qml => {
         let events = utils.xmlNodeToJson(
@@ -133,6 +138,17 @@ export default {
         this.loading = false
       })
     },
+
+    handleSubmitEventForm (form) {
+      let args = { format: 'xml' }
+      for (let [k, v] of Object.entries(form)) {
+        if (v != null) {
+          args[k] = v
+        }
+      }
+      this.loadEventList(args)
+    },
+
     handlePickerArrival (arrivals) {
       let clone = Object.assign({}, this.currentOrigin)
       let id = [
@@ -144,6 +160,7 @@ export default {
       this.currentEvent.origin.push(clone)
       this.currentOrigin = clone
     },
+
     handleSelectEvent (eventId) {
       let oldEvent = this.eventList.find(x => x.$publicID == eventId)
       let index = this.eventList.indexOf(oldEvent)
