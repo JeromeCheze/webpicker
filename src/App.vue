@@ -39,37 +39,6 @@
 <script>
 import utils from './utils/utils.js'
 
-const conversionRules = {
-  // keep list for all these nodes :
-  '/eventParameters/event': true,
-  '/eventParameters/event/origin': true,
-  '/eventParameters/event/origin/arrival': true,
-  '/eventParameters/event/magnitude': true,
-  '/eventParameters/event/pick': true,
-  // conversion function :
-  '/eventParameters/event/$publicID': x => x.split('/').slice(-1)[0],
-  '/eventParameters/event/origin/latitude/value': parseFloat,
-  '/eventParameters/event/origin/latitude/uncertainty': parseFloat,
-  '/eventParameters/event/origin/longitude/value': parseFloat,
-  '/eventParameters/event/origin/longitude/uncertainty': parseFloat,
-  '/eventParameters/event/origin/depth/value': parseFloat,
-  '/eventParameters/event/origin/depth/uncertainty': parseFloat,
-  '/eventParameters/event/origin/time/value': x => new Date(Date.parse(x)),
-  '/eventParameters/event/origin/time/uncertainty': parseFloat,
-  '/eventParameters/event/origin/quality/standardError': parseFloat,
-  '/eventParameters/event/origin/quality/minimumDistance': parseFloat,
-  '/eventParameters/event/origin/quality/azimuthalGap': parseFloat,
-  '/eventParameters/event/origin/quality/usedPhaseCount': parseInt,
-  '/eventParameters/event/origin/arrival/pickID': x => x.split('/').slice(-1)[0],
-  '/eventParameters/event/origin/arrival/timeResidual': parseFloat,
-  '/eventParameters/event/origin/arrival/timeWeight': parseFloat,
-  '/eventParameters/event/origin/arrival/distance': parseFloat,
-  '/eventParameters/event/origin/arrival/azimuth': parseFloat,
-  '/eventParameters/event/magnitude/mag/value': parseFloat,
-  '/eventParameters/event/pick/$publicID': x => x.split('/').slice(-1)[0],
-  '/eventParameters/event/pick/time/value': x => new Date(Date.parse(x))
-}
-
 export default {
   name: 'app',
   data () {
@@ -129,7 +98,7 @@ export default {
         let events = utils.xmlNodeToJson(
           qml.getElementsByTagName('eventParameters')[0],
           '',
-          conversionRules
+          utils.CONVERSION_RULES
         ).event
         for (let e of events) {
           utils.processEventData(e)
@@ -150,15 +119,16 @@ export default {
     },
 
     handlePickerArrival (arrivals) {
-      let clone = Object.assign({}, this.currentOrigin)
+      let fakeOrigin = Object.assign({}, this.currentOrigin)
       let id = [
         'Origin',
         new Date().toISOString().replace(/[\-:]/g, '').replace('T', '.').substr(0, 18)
       ].join('-')
-      clone.$publicID = id
-      clone.arrival = arrivals
-      this.currentEvent.origin.push(clone)
-      this.currentOrigin = clone
+      fakeOrigin.uncommitted = true
+      fakeOrigin.$publicID = id
+      fakeOrigin.arrival = arrivals
+      this.currentEvent.fakeOrigin = fakeOrigin
+      this.currentOrigin = fakeOrigin
     },
 
     handleSelectEvent (eventId) {
@@ -179,12 +149,13 @@ export default {
         let e = utils.xmlNodeToJson(
           qml.getElementsByTagName('eventParameters')[0],
           '',
-          conversionRules
+          utils.CONVERSION_RULES
         ).event[0]
         utils.processEventData(e)
         this.eventList.splice(index, 1, e)
+        e.fakeOrigin = oldEvent.fakeOrigin
         this.currentEvent = e
-        this.currentOrigin = e.po
+        this.currentOrigin = e.fakeOrigin != null ? e.fakeOrigin : e.po
         this.activeIndex = 'eventPage'
       })
     },
@@ -197,5 +168,14 @@ body {
   margin: 0;
   padding: 0;
   font-family: "Helvetica Neue",Helvetica,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","微软雅黑",Arial,sans-serif;
+}
+.toolbar {
+  padding: 10px;
+  background: #f3f3f3;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+.toolbar .el-form-item {
+  margin-bottom: 0;
 }
 </style>

@@ -10,7 +10,7 @@ import EventPicker from './components/EventPicker.vue'
 import App from './App.vue'
 
 // install Element-UI
-Vue.use(ElementUI, { size: 'small' })
+Vue.use(ElementUI, { size: 'mini' })
 
 Vue.component('event-form', EventForm)
 Vue.component('event-list', EventList)

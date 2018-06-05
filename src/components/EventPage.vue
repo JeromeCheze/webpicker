@@ -1,7 +1,20 @@
 <template>
-  <div>
+  <div v-loading="loading">
+    <el-row class="toolbar" type="flex" align="middle">
+      <el-form :inline="true">
+        <el-form-item>
+          <el-button icon="el-icon-location" @click="handleLocateClick">Locate</el-button>
+        </el-form-item>
+      </el-form>
+    </el-row>
     <el-row>
-      <h4>{{ this.event.description.text }}</h4>
+      <h4>
+        <el-tag type="warning" v-if="origin.uncommitted">
+          <i class="el-icon-warning"></i>
+          Not committed
+        </el-tag>
+        {{ this.event.description.text }}
+      </h4>
     </el-row>
     <el-row>
       <el-col :span="8">
@@ -22,7 +35,7 @@
         </table>
       </el-col>
       <el-col :span="10">
-        <el-tabs v-model="activeChartTab" type="card" @tab-click="handleChartChange">
+        <el-tabs v-model="activeChartTab" @tab-click="handleChartChange">
           <el-tab-pane name="timeResidual" label="Time residual"><div class="chart-time-residual"></div></el-tab-pane>
           <el-tab-pane name="travelTime" label="Travel time"><div class="chart-travel-time"></div></el-tab-pane>
           <el-tab-pane name="azimuth" label="Azimuth"><div class="chart-azimuth"></div></el-tab-pane>
@@ -61,6 +74,7 @@
 <script>
 import Highcharts from 'highcharts'
 import addMore from 'highcharts/highcharts-more'
+import utils from './../utils/utils.js'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 
@@ -90,6 +104,7 @@ export default {
   data () {
     return {
       dirty: true,
+      loading: false,
       updating: false,
       map: null,
       markers: [],
@@ -315,6 +330,27 @@ export default {
       } else if (tab.name == 'azimuth') {
         this.initChartAzimuth()
       }
+    },
+
+    handleLocateClick () {
+      this.loading = true
+      let jquake = utils.toJquake(this.event.$publicID, this.origin)
+      utils.ajax({
+        method: 'POST',
+        url: 'locate',
+        type: 'document',
+        dataMimeType: 'application/json',
+        data: JSON.stringify(jquake),
+      }).then(qml => {
+        this.loading = false
+        let e = utils.xmlNodeToJson(
+          qml.getElementsByTagName('eventParameters')[0],
+          '',
+          utils.CONVERSION_RULES
+        ).event[0]
+        utils.processEventData(e)
+        console.log(e);
+      })
     }
   }
 }

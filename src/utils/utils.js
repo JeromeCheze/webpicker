@@ -1,4 +1,39 @@
-function ajax(opt) {
+const CONVERSION_RULES = {
+  // keep list for all these nodes :
+  '/eventParameters/event': true,
+  '/eventParameters/event/origin': true,
+  '/eventParameters/event/origin/arrival': true,
+  '/eventParameters/event/magnitude': true,
+  '/eventParameters/event/pick': true,
+  // conversion function :
+  '/eventParameters/event/$publicID': x => x.split('/').slice(-1)[0],
+  '/eventParameters/event/origin/latitude/value': parseFloat,
+  '/eventParameters/event/origin/latitude/uncertainty': parseFloat,
+  '/eventParameters/event/origin/longitude/value': parseFloat,
+  '/eventParameters/event/origin/longitude/uncertainty': parseFloat,
+  '/eventParameters/event/origin/depth/value': parseFloat,
+  '/eventParameters/event/origin/depth/uncertainty': parseFloat,
+  '/eventParameters/event/origin/time/value': x => new Date(Date.parse(x)),
+  '/eventParameters/event/origin/time/uncertainty': parseFloat,
+  '/eventParameters/event/origin/quality/standardError': parseFloat,
+  '/eventParameters/event/origin/quality/minimumDistance': parseFloat,
+  '/eventParameters/event/origin/quality/azimuthalGap': parseFloat,
+  '/eventParameters/event/origin/quality/usedPhaseCount': parseInt,
+  '/eventParameters/event/origin/arrival/pickID': x => x.split('/').slice(-1)[0],
+  '/eventParameters/event/origin/arrival/timeResidual': parseFloat,
+  '/eventParameters/event/origin/arrival/timeWeight': parseFloat,
+  '/eventParameters/event/origin/arrival/distance': parseFloat,
+  '/eventParameters/event/origin/arrival/azimuth': parseFloat,
+  '/eventParameters/event/magnitude/mag/value': parseFloat,
+  '/eventParameters/event/pick/$publicID': x => x.split('/').slice(-1)[0],
+  '/eventParameters/event/pick/time/value': x => new Date(Date.parse(x))
+}
+
+
+function ajax(opt, xhr) {
+  if (xhr == null) {
+    xhr = new XMLHttpRequest()
+  }
   return new Promise((resolve, reject) => {
     opt = Object.assign({
       method: 'GET', url: null, type: 'text', args: null, data: null, dataMimeType: null
@@ -10,11 +45,14 @@ function ajax(opt) {
       opt.args == null ? '' :
       '?' + Object.entries(opt.args).map(x => `${x[0]}=${x[1]}`).join('&')
     )
-    const xhr = new XMLHttpRequest()
     xhr.open(opt.method, opt.url+opt.args)
     xhr.responseType = opt.type
-    xhr.onload = () => resolve(xhr.response)
     xhr.onerror = () => reject(xhr.statusText)
+    xhr.onload = () => {
+      if (xhr.status != 0) {
+        resolve(xhr.response)
+      }
+    }
     if (opt.method == 'POST' && opt.dataMimeType != null) {
       xhr.setRequestHeader('Content-Type', opt.dataMimeType)
     }
@@ -35,6 +73,7 @@ function xmlNodeToJson(x, path, rules) {
   if (x.children.length == 0) {
     // console.log(path);
     let conv = rules[path]
+    console.log(path, conv);
     let value = conv ? conv(x.textContent) : x.textContent
     return Object.keys(obj).length > 0 ? Object.assign(obj, { value }) : value
   } else {
@@ -146,10 +185,57 @@ function parseInventory(raw_inv) {
   return result
 }
 
+function toJquake(eventId, o) {
+  let picks = [],
+      arrivals = []
+  for (let a of o.arrival) {
+    let p = {
+      public_id: `smi:oca/${a.pick.$publicID}`,
+      time: { value: a.pick.time.value },
+      phase_hint: a.pick.phaseHint,
+      waveform_id: {
+        network_code: a.pick.waveformID.$networkCode,
+        station_code: a.pick.waveformID.$stationCode,
+        channel_code: a.pick.waveformID.$channelCode
+      }
+    }
+    if (a.pick.polarity != null) {
+      p.polarity = a.pick.polarity
+    }
+    if (a.pick.waveformID.$locationCode != '--') {
+      p.waveform_id.location_code = a.pick.waveformID.$locationCode
+    }
+    picks.push(p)
+    arrivals.push({
+      public_id: `smi:oca/Arrival-${a.pickID}`,
+      pick_id: p.public_id,
+      phase: a.phase,
+      azimuth: a.azimuth,
+      distance: a.distance,
+      time_residual: a.timeResidual,
+      time_weight: a.timeWeight
+    })
+  }
+  return [{
+    public_id: `smi:oca/${eventId}`,
+    origin: [{
+      public_id: o.$publicID,
+      time: { value: o.time.value, uncertainty: o.time.uncertainty },
+      latitude: { value: o.latitude.value, uncertainty: o.latitude.uncertainty },
+      longitude: { value: o.longitude.value, uncertainty: o.longitude.uncertainty },
+      depth: { value: o.depth.value, uncertainty: o.depth.uncertainty },
+      arrival: arrivals
+    }],
+    pick: picks
+  }]
+}
+
 export default {
+  CONVERSION_RULES,
   ajax,
   dict,
   processEventData,
   xmlNodeToJson,
-  parseInventory
+  parseInventory,
+  toJquake
 }

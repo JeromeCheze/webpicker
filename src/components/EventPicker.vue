@@ -2,33 +2,44 @@
   <div v-loading="loading" :element-loading-text="loadingText">
     <el-row>{{ horizontalDownloadStatus }}</el-row>
     <el-row class="toolbar" type="flex" align="middle">
-      <el-col :span="6">
-        <el-select v-model="tools.phase" size="mini">
-          <el-option
+      <el-form :inline="true">
+        <el-form-item label="Picker phase">
+          <el-select v-model="tools.phase">
+            <el-option
             v-for="item in tools.phaseOptions"
             :key="item.value"
             :label="item.label"
             :value="item.value"
-          ></el-option>
-        </el-select>
-      </el-col>
-      <el-col :span="6">
-        <el-checkbox v-model="tools.sameScale" size="mini">Same scale</el-checkbox>
-        <el-checkbox v-model="tools.filter" size="mini">Filter HP 1 Hz</el-checkbox>
-      </el-col>
-      <el-col :span="6">
-        <el-radio-group v-model="tools.alignment" size="mini">
-          <el-radio-button label="O"></el-radio-button>
-          <el-radio-button label="P"></el-radio-button>
-          <el-radio-button label="S"></el-radio-button>
-        </el-radio-group>
-      </el-col>
-      <el-col :span="6">
-        <el-radio-group v-model="tools.sortBy" size="mini">
-          <el-radio-button label="distance"></el-radio-button>
-          <el-radio-button label="name"></el-radio-button>
-        </el-radio-group>
-      </el-col>
+            ></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-checkbox v-model="tools.sameScale">Same scale</el-checkbox>
+        </el-form-item>
+        <el-form-item label="Filter">
+          <el-select v-model="tools.filter" clearable>
+            <el-option
+            v-for="filter in tools.filterList"
+            :key="filter.name"
+            :label="filter.name"
+            :value="filter.name"
+            ></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="Alignment">
+          <el-radio-group v-model="tools.alignment">
+            <el-radio-button label="O"></el-radio-button>
+            <el-radio-button label="P"></el-radio-button>
+            <el-radio-button label="S"></el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="Sort">
+          <el-radio-group v-model="tools.sortBy">
+            <el-radio-button label="distance"></el-radio-button>
+            <el-radio-button label="name"></el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
     </el-row>
     <div class="picker" style="height: 410px;"></div>
     <div class="waveform-list"></div>
@@ -54,9 +65,23 @@ export default {
         ],
         phase: '',
         sameScale: false,
-        filter: false,
+        filter: '',
+        lastFilter: null,
         alignment: 'O',
-        sortBy: 'distance'
+        sortBy: 'distance',
+        filterList: [
+          { name: 'HP 1', type: 'highpass', args: { Fc: 1, gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
+          { name: 'BP 0.5-8', type: 'bandpass', fc: [.5, 8], args: { gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
+          { name: 'BP 1-8', type: 'bandpass', fc: [1, 8], args: { gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
+          { name: 'BP 1-10', type: 'bandpass', fc: [1, 10], args: { gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
+          { name: 'BP 1-50', type: 'bandpass', fc: [1, 50], args: { gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
+          { name: 'BP 2-10', type: 'bandpass', fc: [2, 10], args: { gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
+          { name: 'BP 4-20', type: 'bandpass', fc: [4, 20], args: { gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
+          { name: 'BP 2-20', type: 'bandpass', fc: [2, 20], args: { gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
+          { name: 'LP 4', type: 'lowpass', args: { Fc: 4, gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
+          { name: 'LP 10', type: 'lowpass', args: { Fc: 10, gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
+          { name: 'LP 25', type: 'lowpass', args: { Fc: 25, gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } }
+        ]
       },
 
       // state variables
@@ -65,6 +90,7 @@ export default {
       loadingText: '',
       keyDownBinded: false,
       horizontalDownloadStatus: '',
+      xhr: [],
 
       // cache variables
       picks: {},
@@ -115,7 +141,7 @@ export default {
         'alt+o' () { this.tools.alignment = 'O' },
         'alt+p' () { this.tools.alignment = 'P' },
         'alt+s' () { this.tools.alignment = 'S' },
-        'f' () { this.tools.filter = !this.tools.filter },
+        'f' () { this.tools.filter = this.tools.filter == '' ? this.tools.lastFilter : '' },
         '=' () { this.tools.sameScale = !this.tools.sameScale }
       }
     }
@@ -135,8 +161,8 @@ export default {
     'tools.filter': function(val) {
       if (val && this.picker != null && this.list != null) {
         this.applyFilter()
-        this.list.setFilterState(true)
-        this.picker.setFilterState(true)
+        // this.list.setFilterState(true)
+        // this.picker.setFilterState(true)
       } else {
         this.resetFilter()
       }
@@ -169,26 +195,16 @@ export default {
       this.getTTT(() => {
         let [mainWfidList, horizontalWfidList] = this.processArrival()
         this.loading = true
-        this.loadingText = `Loading waveforms... (${mainWfidList.length} channels)`
+        this.loadingText = `Loading waveforms... (${mainWfidList.length + horizontalWfidList.length} channels)`
         this.downloadWaveforms(
           mainWfidList,
           st => this.plotWaveforms(st),
-          () => {
-            this.$notify({
-              message: 'Waveform list loading complete.',
-              type: 'info'
-            })
-          }
+          () => { this.$notify.info({ message: 'Waveform list is loaded.' }) }
         )
         this.downloadWaveforms(
           horizontalWfidList,
           st => this.handleHorizontalWaveforms(st),
-          () => {
-            this.$notify({
-              message: 'All waveforms loading complete.',
-              type: 'info'
-            })
-          }
+          () => { this.$notify.info({ message: 'All waveforms loading is complete.' }) }
         )
       })
     } else {
@@ -200,6 +216,16 @@ export default {
     }
   },
   deactivated () {
+    if (this.xhr.length > 0) {
+      this.dirty = true
+      for (let xhr of this.xhr) {
+        xhr.abort()
+      }
+    }
+    if (this.picks == null && this.ttt == null) {
+      this.dirty = true
+      return
+    }
     let arrivals = []
     for (let [wfid, picks] of Object.entries(this.picks)) {
       let staKey = wfid.split('.').slice(0, 2).join('.')
@@ -273,15 +299,16 @@ export default {
         this.list.destroy()
         this.list = null
       }
+      this.tools.lastFilter = this.tools.filterList[0].name
       this.tools.phase = '',
       this.tools.sameScale = false,
-      this.tools.filter = false,
+      this.tools.filter = '',
       this.tools.alignment = 'O',
       this.tools.sortBy = 'distance'
 
       this.horizontalWaveformCache = {}
       this.stationInfoMap = {}
-      this.picks = {}
+      this.picks = null
       this.ttt = null
     },
 
@@ -289,27 +316,25 @@ export default {
       if (!this.tools.filter) {
         return
       }
-      let iirCalculator = new Fili.CalcCascades();
+      this.tools.lastFilter = this.tools.filter
+      let f = this.tools.filterList.find(x => x.name == this.tools.filter)
+      // let f = this.tools.filter
       if (wfList == null) {
-        wfList = this.list.waveforms.concat(this.picker.waveforms)
+        wfList = this.picker.waveforms
+        // wfList = this.list.waveforms.concat(this.picker.waveforms)
       }
+      let iirCalculator = new Fili.CalcCascades();
       for (let wf of wfList) {
-        // let iirFilterCoeffs = iirCalculator.highpass({
-        //   characteristic: 'butterworth',
-        //   order: 4, Fs: 1000. / wf.opt.step, Fc: 1,
-        //   gain: 0, preGain: false
-        // })
-        let [fc1, fc2] = [5, 20]
-        let iirFilterCoeffs = iirCalculator.highpass({
-          characteristic: 'butterworth',
-          order: 4, Fs: 1000. / wf.opt.step,
-          Fc: (fc2-fc1)/2 + fc1,
-          BW: fc2-fc1,
-          gain: 0, preGain: false
-        })
+        let filterOpt = Object.assign({ Fs: 1000. / wf.opt.step }, f.args)
+        if (f.type == 'bandpass') {
+          filterOpt.Fc = Math.sqrt(f.fc[1] * f.fc[0])
+          filterOpt.BW = Math.log2(f.fc[1] / f.fc[0])
+        }
+        let iirFilterCoeffs = iirCalculator[f.type](filterOpt)
         let iirFilter = new Fili.IirFilter(iirFilterCoeffs)
         wf.opt.filtered = iirFilter.simulate(wf.opt.values)
       }
+      this.picker.setFilterState(true)
     },
 
     resetFilter () {
@@ -332,13 +357,16 @@ export default {
         let tttId = a.pick.seedid.split('.').slice(0, 2).join('.')
         data.station[tttId] = a.distance
       }
+      const xhr = new XMLHttpRequest()
+      this.xhr.push(xhr)
       utils.ajax({
         method: 'POST',
         url: 'ttt',
         dataMimeType: 'application/json',
         data: JSON.stringify(data),
         type: 'json'
-      }).then(ttt => {
+      }, xhr).then(ttt => {
+        this.xhr.splice(this.xhr.indexOf(xhr), 1)
         this.ttt = ttt
         let t0 = this.origin.time.value.getTime()
         for (let sta of Object.values(this.ttt)) {
@@ -371,6 +399,7 @@ export default {
         b = b.distance
         return a == b ? 0 : a < b ? -1 : 1
       })
+      this.picks = {}
       for (let [i, a] of this.origin.arrival.entries()) {
         let seedid = a.pick.seedid.replace('--', '')
         let staKey = seedid.split('.').slice(0, 2).join('.')
@@ -419,21 +448,24 @@ export default {
       for (let i = 0; i < wfidList.length; i += 10) {
         chunks.push(wfidList.slice(i, i + 10))
       }
-      function downloader(i, chunks) {
+      let downloader = (i, chunks) => {
         let chunk = chunks[i++]
         let query = chunk.map(wfid => `${wfid.replace(/\./g, ' ')} ${start} ${end}`)
+        const xhr = new XMLHttpRequest()
+        this.xhr.push(xhr)
         utils.ajax({
           method: 'POST',
           url: 'fdsnws/dataselect/1/query',
           dataMimeType: 'text/plain',
           data: query.join('\r\n'),
           type: 'arraybuffer'
-        }).then(arr => {
+        }, xhr).then(arr => {
+          this.xhr.splice(this.xhr.indexOf(xhr), 1)
           let dv = new DataView(arr)
           let st = new mseed.Stream(dv)
           for (let tr of st.trace) {
             let wfid = tr.id.replace('..', '.--.')
-            wfidList.splice(wfidList.indexOf(wfid))
+            wfidList.splice(wfidList.indexOf(wfid), 1)
           }
           if (callback != null) {
             callback.call(null, st)
@@ -441,7 +473,14 @@ export default {
           if (i < chunks.length) {
             downloader(i, chunks)
           } else {
-            console.log('Not retrieved waveforms', wfidList);
+            if (wfidList.length > 0) {
+              let content = wfidList.map(x => `<li>${x}</li>`).join('')
+              this.$notify.error({
+                duration: 0,
+                dangerouslyUseHTMLString: true,
+                message: `These channels couldn't be retrieved:<ul>${content}</ul>`
+              })
+            }
             if (complete != null) {
               complete.call()
             }
@@ -594,10 +633,4 @@ export default {
 </script>
 
 <style>
-.toolbar {
-  padding: 10px;
-  background: #f3f3f3;
-  border-radius: 4px;
-  margin-bottom: 10px;
-}
 </style>
