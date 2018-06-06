@@ -218,6 +218,7 @@ function toJquake(eventId, o) {
   }
   return [{
     public_id: `smi:oca/${eventId}`,
+    preferred_origin_id: o.$publicID,
     origin: [{
       public_id: o.$publicID,
       time: { value: o.time.value, uncertainty: o.time.uncertainty },

@@ -6,7 +6,7 @@ from urllib2 import urlopen, Request, HTTPError
 from obspy.taup import TauPyModel
 from StringIO import StringIO
 from urllib import urlencode
-import lxml.etree as ET
+from lxml import etree
 import subprocess
 import tempfile
 import obspy
@@ -23,26 +23,56 @@ FDSNWS_DATASELECT = 'http://encelade.unice.fr:8000/fdsnws/dataselect'
 SC3ML_INVENTORY_FILENAME = '/home/cheze/encelade_inventory.sc3ml'
 SEISCOMP_PROGRAM = '/home/cheze/seiscomp3/bin/seiscomp'
 XSL_SC3ML0_10_TO_QML1_2 = '/home/cheze/seiscomp3/share/xml/0.10/sc3ml_0.10__quakeml_1.2.xsl'
+XSL_QML1_2_TO_SC3ML0_9 = '/home/cheze/seiscomp3/share/xml/0.9/quakeml_1.2__sc3ml_0.9.xsl'
 
-def relocate_with_screloc(catalog):
+def apply_xslt(document, xslt_path):
+    xslt = etree.parse(xslt_path)
+    transform = etree.XSLT(xslt)
+    return transform(document)
+
+def update_sc3ml_origin_reference(root):
+    origin = root[0].find('{http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/0.10}origin')
+    origin_id = origin.attrib['publicID']
+    e = root[0].find('{http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/0.10}event')
+    po = e.find('{http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/0.10}preferredOriginID')
+    oref = e.find('{http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/0.10}originReference')
+    po.text = origin_id
+    oref.text = origin_id
+
+def relocate_with_screloc(qml_string):
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
-    catalog.write(sc3ml, format='SC3ML')
+    # _, qml = tempfile.mkstemp(suffix=".qml")
+    # catalog.write(sc3ml, format='SC3ML')
+    # qml_root = etree.fromstring(qml_string.encode('utf-8'))
+    # qml_dom = etree.ElementTree(qml_root)
+    # qml_dom.write(qml)
+    # print(qml)
+    # with open(qml, 'w') as f:
+    #     f.write(etree.tostring(qml_dom))
+    # sc3ml_dom = apply_xslt(qml_dom, XSL_QML1_2_TO_SC3ML0_9)
+    # sc3ml_dom.write(sc3ml)
+    catalog = obspy.read_events(StringIO(qml_string))
+    catalog.write(sc3ml, format="SC3ML")
     screloc = subprocess.Popen([
         SEISCOMP_PROGRAM, 'exec', 'screloc',
         '--inventory-db', SC3ML_INVENTORY_FILENAME,
         '--locator', 'LOCSAT',
         '--profile', 'iasp91',
+        '--author=toto',
+        '--agencyID=toto',
         '--ep',  sc3ml,
         '--replace'
-    ], stdout=subprocess.PIPE)
-    result, _ = screloc.communicate()
+    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result, error_message = screloc.communicate()
     print(sc3ml)
     # os.remove(sc3ml)
-    dom = ET.fromstring(result)
-    xslt = ET.parse(XSL_SC3ML0_10_TO_QML1_2)
-    transform = ET.XSLT(xslt)
-    newdom = transform(dom)
-    return ET.tostring(newdom)
+    dom = etree.fromstring(result)
+    update_sc3ml_origin_reference(dom)
+    newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML0_10_TO_QML1_2)
+    return {
+        'message': error_message,
+        'quakeml': etree.tostring(newdom)
+    }
 
 def get_first_arrival_P(arrivals, distance):
     result = None
@@ -83,10 +113,9 @@ def get_ttt():
 def locate():
     jquake = request.get_json()
     generator = QuakeMLGenerator()
-    qml = StringIO(generator.generate(jquake))
-    catalog = obspy.read_events(qml)
-    result = relocate_with_screloc(catalog)
-    return Response(result, mimetype='application/xml')
+    qml = generator.generate(jquake)
+    result = relocate_with_screloc(qml)
+    return Response(json.dumps(result), mimetype='application/json')
 
 @app.route('/fdsnws/', defaults={'service': '', 'path': ''})
 @app.route('/fdsnws/<service>/', defaults={'path': ''})

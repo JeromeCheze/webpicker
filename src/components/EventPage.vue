@@ -338,18 +338,25 @@ export default {
       utils.ajax({
         method: 'POST',
         url: 'locate',
-        type: 'document',
+        type: 'json',
         dataMimeType: 'application/json',
         data: JSON.stringify(jquake),
-      }).then(qml => {
+      }).then(data => {
         this.loading = false
-        let e = utils.xmlNodeToJson(
-          qml.getElementsByTagName('eventParameters')[0],
-          '',
-          utils.CONVERSION_RULES
-        ).event[0]
-        utils.processEventData(e)
-        console.log(e);
+        if (data.message != '') {
+          this.$notify.error({ message: data.message })
+        } else {
+          let parser = new DOMParser()
+          let qml = parser.parseFromString(data.quakeml, 'application/xml')
+          console.log(qml);
+          let e = utils.xmlNodeToJson(
+            qml.getElementsByTagName('eventParameters')[0],
+            '',
+            utils.CONVERSION_RULES
+          ).event[0]
+          utils.processEventData(e)
+          console.log(e);
+        }
       })
     }
   }
