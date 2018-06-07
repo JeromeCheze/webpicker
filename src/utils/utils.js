@@ -73,7 +73,7 @@ function xmlNodeToJson(x, path, rules) {
   if (x.children.length == 0) {
     // console.log(path);
     let conv = rules[path]
-    console.log(path, conv);
+    // console.log(path, conv);
     let value = conv ? conv(x.textContent) : x.textContent
     return Object.keys(obj).length > 0 ? Object.assign(obj, { value }) : value
   } else {
@@ -189,6 +189,9 @@ function toJquake(eventId, o) {
   let picks = [],
       arrivals = []
   for (let a of o.arrival) {
+    // if (a.timeWeight == 0) {
+    //   continue
+    // }
     let p = {
       public_id: `smi:oca/${a.pick.$publicID}`,
       time: { value: a.pick.time.value },

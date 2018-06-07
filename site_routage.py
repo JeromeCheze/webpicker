@@ -31,41 +31,49 @@ def apply_xslt(document, xslt_path):
     return transform(document)
 
 def update_sc3ml_origin_reference(root):
-    origin = root[0].find('{http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/0.10}origin')
+    namespace = root.nsmap.values()[0]
+    origin = root[0].find('{%s}origin' % namespace)
     origin_id = origin.attrib['publicID']
-    e = root[0].find('{http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/0.10}event')
-    po = e.find('{http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/0.10}preferredOriginID')
-    oref = e.find('{http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/0.10}originReference')
+    e = root[0].find('{%s}event' % namespace)
+    po = e.find('{%s}preferredOriginID' % namespace)
+    oref = e.find('{%s}originReference' % namespace)
     po.text = origin_id
     oref.text = origin_id
 
 def relocate_with_screloc(qml_string):
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
-    # _, qml = tempfile.mkstemp(suffix=".qml")
-    # catalog.write(sc3ml, format='SC3ML')
-    # qml_root = etree.fromstring(qml_string.encode('utf-8'))
-    # qml_dom = etree.ElementTree(qml_root)
-    # qml_dom.write(qml)
-    # print(qml)
-    # with open(qml, 'w') as f:
-    #     f.write(etree.tostring(qml_dom))
-    # sc3ml_dom = apply_xslt(qml_dom, XSL_QML1_2_TO_SC3ML0_9)
-    # sc3ml_dom.write(sc3ml)
+    _, result_sc3ml = tempfile.mkstemp(suffix="-result.sc3ml")
     catalog = obspy.read_events(StringIO(qml_string))
-    catalog.write(sc3ml, format="SC3ML")
+    fake_sc3ml = StringIO()
+    catalog.write(fake_sc3ml, format="SC3ML")
+    fake_sc3ml.seek(0)
+    dom = etree.parse(fake_sc3ml)
+    root = dom.getroot()
+    namespace = root.nsmap.values()[0]
+    o = root[0].find('{%s}origin' % namespace)
+    for a in o.findall('{%s}arrival' % namespace):
+        w = a.find('{%s}weight' % namespace)
+        tu = etree.Element('timeUsed')
+        tu.text = 'false' if float(w.text) == 0 else 'true'
+        a.append(tu)
+    dom.write(sc3ml)
     screloc = subprocess.Popen([
         SEISCOMP_PROGRAM, 'exec', 'screloc',
         '--inventory-db', SC3ML_INVENTORY_FILENAME,
         '--locator', 'LOCSAT',
         '--profile', 'iasp91',
-        '--author=toto',
-        '--agencyID=toto',
+        '--author', 'webpicker',
+        '--agencyID', 'oca',
+        '--use-weight', '1',
         '--ep',  sc3ml,
         '--replace'
     ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     result, error_message = screloc.communicate()
     print(sc3ml)
     # os.remove(sc3ml)
+    print(result_sc3ml)
+    with open(result_sc3ml, 'w') as f:
+        f.write(result)
     dom = etree.fromstring(result)
     update_sc3ml_origin_reference(dom)
     newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML0_10_TO_QML1_2)

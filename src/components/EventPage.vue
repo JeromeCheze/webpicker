@@ -356,6 +356,30 @@ export default {
           ).event[0]
           utils.processEventData(e)
           console.log(e);
+          let o = e.origin[0]
+          Object.assign(this.origin, {
+            time: o.time,
+            latitude: o.latitude,
+            longitude: o.longitude,
+            evaluationMode: 'manual',
+            depth: o.depth,
+            originUncertainty: o.originUncertainty,
+            creationInfo: o.creationInfo
+          })
+          Object.assign(this.origin.quality, {
+            associatedPhaseCount: this.origin.arrival.length,
+            usedPhaseCount: o.arrival.length,
+            standardError: o.quality.standardError,
+          })
+          for (let newA of o.arrival) {
+            let a = this.origin.arrival.find(x => x.pickID == newA.pickID)
+            Object.assign(a, {
+              azimuth: newA.azimuth,
+              distance: newA.distance,
+              timeResidual: newA.timeResidual
+            })
+          }
+          this.updateAll()
         }
       })
     }
