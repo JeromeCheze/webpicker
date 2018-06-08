@@ -3,6 +3,7 @@
 from flask import Flask, request, render_template, Response, abort
 from oca.pyquakeml.generator import QuakeMLGenerator
 from urllib2 import urlopen, Request, HTTPError
+from obspy.clients.fdsn import Client
 from obspy.taup import TauPyModel
 from StringIO import StringIO
 from urllib import urlencode
@@ -20,10 +21,13 @@ FDSNWS_EVENT = 'http://encelade.unice.fr:8080/fdsnws/event'
 FDSNWS_STATION = 'http://encelade.unice.fr:8080/fdsnws/station'
 FDSNWS_DATASELECT = 'http://encelade.unice.fr:8000/fdsnws/dataselect'
 # used for screloc :
-SC3ML_INVENTORY_FILENAME = '/home/cheze/encelade_inventory.sc3ml'
+SC3ML_INVENTORY_FILENAME = '/home/cheze/encelade_inventory.xml'
 SEISCOMP_PROGRAM = '/home/cheze/seiscomp3/bin/seiscomp'
 XSL_SC3ML0_10_TO_QML1_2 = '/home/cheze/seiscomp3/share/xml/0.10/sc3ml_0.10__quakeml_1.2.xsl'
 XSL_QML1_2_TO_SC3ML0_9 = '/home/cheze/seiscomp3/share/xml/0.9/quakeml_1.2__sc3ml_0.9.xsl'
+# used for scamp and scmag :
+FDSNWS_BASE_URL = 'http://encelade.unice.fr:8080'
+SC3ML_CONFIG_FILENAME = '/home/cheze/encelade_config.xml'
 
 def apply_xslt(document, xslt_path):
     xslt = etree.parse(xslt_path)
@@ -40,10 +44,7 @@ def update_sc3ml_origin_reference(root):
     po.text = origin_id
     oref.text = origin_id
 
-def relocate_with_screloc(qml_string):
-    _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
-    _, result_sc3ml = tempfile.mkstemp(suffix="-result.sc3ml")
-    catalog = obspy.read_events(StringIO(qml_string))
+def set_used_arrival_and_save_sc3ml(catalog, sc3ml):
     fake_sc3ml = StringIO()
     catalog.write(fake_sc3ml, format="SC3ML")
     fake_sc3ml.seek(0)
@@ -57,6 +58,64 @@ def relocate_with_screloc(qml_string):
         tu.text = 'false' if float(w.text) == 0 else 'true'
         a.append(tu)
     dom.write(sc3ml)
+
+def compute_magnitudes_with_scamp_and_scmag(qml_string):
+    # 1) save sc3ml
+    _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
+    catalog = obspy.read_events(StringIO(qml_string))
+    set_used_arrival_and_save_sc3ml(catalog, sc3ml)
+    # 2) download data
+    _, data = tempfile.mkstemp(suffix='.mseed')
+    req = []
+    picks = {}
+    for p in catalog.events[0].picks:
+        picks[p.resource_id.id] = p
+    for a in catalog.events[0].origins[0].arrivals:
+        if a.time_weight == 1:
+            p = picks[a.pick_id.id]
+            net, sta, loc, cha = p.waveform_id.get_seed_string().split('.')
+            if loc == '':
+                loc = '--'
+            t1 = (p.time - 95).isoformat()
+            t2 = (p.time + 107).isoformat()
+            req.append(' '.join([net, sta, loc, cha, t1, t2]))
+    cl = Client(base_url=FDSNWS_BASE_URL)
+    st = cl.get_waveforms_bulk('\r\n'.join(req))
+    st.write(data, format='MSEED', reclen=512)
+    # 3) compute amplitudes with scamp
+    _, scamp_result = tempfile.mkstemp(suffix='.sc3ml')
+    scamp = subprocess.Popen([
+        SEISCOMP_PROGRAM, 'exec', 'scamp',
+        '--inventory-db', SC3ML_INVENTORY_FILENAME,
+        '--config-db', SC3ML_CONFIG_FILENAME,
+        '-I', data,
+        '--ep', sc3ml
+    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result, error_message = scamp.communicate()
+    # if error_message:
+    #     return { 'message': error_message, 'quakeml': None }
+    os.remove(sc3ml)
+    with open(scamp_result, 'w') as f:
+        f.write(result)
+    # 4) compute magnitudes with scmag
+    scmag = subprocess.Popen([
+        SEISCOMP_PROGRAM, 'exec', 'scmag',
+        '--inventory-db', SC3ML_INVENTORY_FILENAME,
+        '--config-db', SC3ML_CONFIG_FILENAME,
+        '--ep', scamp_result
+    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result, error_message = scmag.communicate()
+    print(result)
+    dom = etree.fromstring(result)
+    update_sc3ml_origin_reference(dom)
+    newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML0_10_TO_QML1_2)
+    return { 'message': error_message, 'quakeml': etree.tostring(newdom) }
+
+def relocate_with_screloc(qml_string):
+    _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
+    _, result_sc3ml = tempfile.mkstemp(suffix="-result.sc3ml")
+    catalog = obspy.read_events(StringIO(qml_string))
+    set_used_arrival_and_save_sc3ml(catalog, sc3ml)
     screloc = subprocess.Popen([
         SEISCOMP_PROGRAM, 'exec', 'screloc',
         '--inventory-db', SC3ML_INVENTORY_FILENAME,
@@ -117,8 +176,16 @@ def get_ttt():
         #     result[sta]['ttt'][a.name] = a.time
     return Response(json.dumps(result), mimetype='application/json')
 
-@app.route('/locate', methods=['POST'])
-def locate():
+@app.route('/compute_magnitudes', methods=['POST'])
+def compute_magnitudes():
+    jquake = request.get_json()
+    generator = QuakeMLGenerator()
+    qml = generator.generate(jquake)
+    result = compute_magnitudes_with_scamp_and_scmag(qml)
+    return Response(json.dumps(result), mimetype='application/json')
+
+@app.route('/relocate', methods=['POST'])
+def relocate():
     jquake = request.get_json()
     generator = QuakeMLGenerator()
     qml = generator.generate(jquake)

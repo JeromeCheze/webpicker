@@ -3,7 +3,10 @@
     <el-row class="toolbar" type="flex" align="middle">
       <el-form :inline="true">
         <el-form-item>
-          <el-button icon="el-icon-location" @click="handleLocateClick">Locate</el-button>
+          <el-button icon="el-icon-location" @click="handleRelocateClick">Relocate</el-button>
+        </el-form-item>
+        <el-form-item>
+          <el-button @click="handleComputeMagnitudeClick">Compute magnitudes</el-button>
         </el-form-item>
       </el-form>
     </el-row>
@@ -17,24 +20,27 @@
       </h4>
     </el-row>
     <el-row>
+      <table class="event-description">
+        <thead>
+          <th>Time</th><th>Latitude</th><th>Longitude</th><th>Depth</th><th>Phases</th><th>RMS</th><th>Az. Gap</th><th>Min Dist</th>
+        </thead>
+        <tbody>
+          <td>{{ origin.time.pretty }}</td>
+          <td>{{ origin.latitude.pretty }} {{ origin.latitude.prettyUncertainty }}</td>
+          <td>{{ origin.longitude.pretty }} {{ origin.longitude.prettyUncertainty }}</td>
+          <td>{{ origin.depth.pretty }} {{ origin.depth.prettyUncertainty }}</td>
+          <td>{{ origin.quality.usedPhaseCount }} / {{ origin.quality.associatedPhaseCount }}</td>
+          <td>{{ origin.quality.standardError.toFixed(2) }} s</td>
+          <td>{{ origin.quality.azimuthalGap.toFixed(0) }} °</td>
+          <td>{{ origin.quality.minimumDistance.toFixed(2) }} °</td>
+        </tbody>
+      </table>
+    </el-row>
+    <el-row>
       <el-col :span="8">
         <div class="map-canvas" style="height: 400px;"></div>
       </el-col>
-      <el-col :span="6">
-        <table class="event-description">
-          <tbody>
-            <tr><th>Time</th><td colspan="2">{{ origin.time.pretty }}</td></tr>
-            <tr><th>Depth</th><td>{{ origin.depth.pretty }}</td><td>{{ origin.depth.prettyUncertainty }}</td></tr>
-            <tr><th>Lat</th><td>{{ origin.latitude.pretty }}</td><td>{{ origin.latitude.prettyUncertainty }}</td></tr>
-            <tr><th>Lon</th><td>{{ origin.longitude.pretty }}</td><td>{{ origin.longitude.prettyUncertainty }}</td></tr>
-            <tr><th>Phases</th><td colspan="2">{{ origin.quality.usedPhaseCount }} / {{ origin.quality.associatedPhaseCount }}</td></tr>
-            <tr><th>RMS Res</th><td colspan="2">{{ origin.quality.standardError.toFixed(2) }}</td></tr>
-            <tr><th>Az. Gap</th><td colspan="2">{{ origin.quality.azimuthalGap.toFixed(0) }} °</td></tr>
-            <tr><th>Min. Dist</th><td colspan="2">{{ origin.quality.minimumDistance.toFixed(2) }} °</td></tr>
-          </tbody>
-        </table>
-      </el-col>
-      <el-col :span="10">
+      <el-col :span="16" class="charts-container">
         <el-tabs v-model="activeChartTab" @tab-click="handleChartChange">
           <el-tab-pane name="timeResidual" label="Time residual"><div class="chart-time-residual"></div></el-tab-pane>
           <el-tab-pane name="travelTime" label="Travel time"><div class="chart-travel-time"></div></el-tab-pane>
@@ -273,10 +279,8 @@ export default {
 
     initChartTimeResidual () {
       let extreme = 1 + Math.floor(
-        Math.abs(
-          Math.max.apply(null,
-            this.chart.timeResidual.p.concat(this.chart.timeResidual.s).map(x => x.y)
-          )
+        Math.max.apply(null,
+          this.chart.timeResidual.p.concat(this.chart.timeResidual.s).map(x => Math.abs(x.y))
         )
       )
       let container = this.$el.querySelector('.chart-time-residual')
@@ -332,12 +336,35 @@ export default {
       }
     },
 
-    handleLocateClick () {
+    handleComputeMagnitudeClick () {
       this.loading = true
       let jquake = utils.toJquake(this.event.$publicID, this.origin)
       utils.ajax({
         method: 'POST',
-        url: 'locate',
+        url: 'compute_magnitudes',
+        type: 'json',
+        dataMimeType: 'application/json',
+        data: JSON.stringify(jquake),
+      }).then(data => {
+        this.loading = false
+        this.$notify({
+          type: data.quakeml == null ? 'error' : 'info',
+          message: data.message
+        })
+        if (data.quakeml != null) {
+          let parser = new DOMParser()
+          let qml = parser.parseFromString(data.quakeml, 'application/xml')
+          console.log(qml);
+        }
+      })
+    },
+
+    handleRelocateClick () {
+      this.loading = true
+      let jquake = utils.toJquake(this.event.$publicID, this.origin)
+      utils.ajax({
+        method: 'POST',
+        url: 'relocate',
         type: 'json',
         dataMimeType: 'application/json',
         data: JSON.stringify(jquake),
@@ -348,14 +375,12 @@ export default {
         } else {
           let parser = new DOMParser()
           let qml = parser.parseFromString(data.quakeml, 'application/xml')
-          console.log(qml);
           let e = utils.xmlNodeToJson(
             qml.getElementsByTagName('eventParameters')[0],
             '',
             utils.CONVERSION_RULES
           ).event[0]
           utils.processEventData(e)
-          console.log(e);
           let o = e.origin[0]
           Object.assign(this.origin, {
             time: o.time,
@@ -368,7 +393,7 @@ export default {
           })
           Object.assign(this.origin.quality, {
             associatedPhaseCount: this.origin.arrival.length,
-            usedPhaseCount: o.arrival.length,
+            usedPhaseCount: o.arrival.filter(a => a.timeWeight == 1).length,
             standardError: o.quality.standardError,
           })
           for (let newA of o.arrival) {
@@ -388,7 +413,12 @@ export default {
 </script>
 
 <style>
-.event-description {margin: 20px; font-size: .9em;}
+/*.event-description {margin: 20px; font-size: .9em;}
 .event-description th, .event-description td {padding: 3px;}
-.event-description th {text-align: right; padding-right: 10px;}
+.event-description th {text-align: right; padding-right: 10px;}*/
+.event-description {width: 100%; font-size: .8em; margin-bottom: 20px;}
+.event-description th, td {padding: 10px; text-align: center;}
+.event-description th {font-weight: bold; background: #efefef;}
+
+.charts-container {padding-left: 20px;}
 </style>

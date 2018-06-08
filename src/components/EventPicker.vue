@@ -208,7 +208,7 @@ export default {
         )
       })
     } else {
-      this.updatePicksWeight()
+      this.updatePicksWeightAndResidual()
     }
     if (!this.keyDownBinded) {
       this.keyDownBinded = true
@@ -238,7 +238,7 @@ export default {
           phase: p.phase,
           pickID: p.id,
           time: new Date(pTime - this.origin.time.value),
-          timeResidual: (p.time - this.ttt[staKey].ttt[p.phase]) / 1000,
+          timeResidual: p.residual,
           timeWeight: p.weight,
           pick: {
             $publicID: p.id,
@@ -281,11 +281,12 @@ export default {
       }
     },
 
-    updatePicksWeight () {
+    updatePicksWeightAndResidual () {
       for (let a of this.origin.arrival) {
         let wfid = a.pick.seedid.replace('.--.', '..')
         let p = this.picks[wfid].find(x => x.id == a.pick.$publicID)
         p.weight = a.timeWeight
+        p.residual = a.timeResidual
       }
     },
 
@@ -413,6 +414,7 @@ export default {
           mode: a.pick.evaluationMode,
           polarity: a.pick.polarity,
           time: a.pick.time.value.getTime(),
+          residual: a.timeResidual,
           weight: a.timeWeight
         })
         let zComponent = `${a.pick.seedid.slice(0, -1)}Z`

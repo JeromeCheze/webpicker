@@ -47,7 +47,14 @@ export default class Waveform {
           id: 'XX.NOISE.00.HHZ',
           distance: <number>,
           ttt: {P: <js_timestamp>}, // ttt = "theoretical travel time"
-          picks: [{phase: 'P', weight: <int>, mode: 'manual', time: <js_timestamp>, polarity: null || 'positive' || 'negative'}]
+          picks: [{
+            phase: 'P',
+            weight: <int>,
+            mode: 'manual',
+            time: <js_timestamp>,
+            residual: <seconds>,
+            polarity: null || 'positive' || 'negative'
+          }]
         }
       ]*/
       /* optional */
@@ -440,7 +447,26 @@ export default class Waveform {
         this.event.hoverWf.opt.id,
         this.event.phase
       ].join('-')
-      let newPick = { phase: this.event.phase, mode: 'manual', time: t, polarity: null, id: id, weight: 1 }
+      let newPick = {
+        phase: this.event.phase,
+        mode: 'manual',
+        time: t,
+        polarity: null,
+        id: id,
+        weight: 1,
+        residual: (t - this.waveforms[0].opt.ttt[this.event.phase]) / 1000
+      }
+      // remove all picks of same phase as newPick in all waveforms (keep only one pick per phase)
+      for (let wf of this.waveforms) {
+        for (let p of wf.opt.picks.filter(x => x.phase == newPick.phase)) {
+          this.opt.callback.updatePick.call(null, {
+            action: 'delete',
+            wfid: wf.opt.id,
+            picks: [p]
+          })
+          wf.opt.picks.splice(wf.opt.picks.indexOf(p), 1)
+        }
+      }
       this.event.hoverWf.opt.picks.push(newPick)
       // this.event.clickPos = null
       this.draw()
