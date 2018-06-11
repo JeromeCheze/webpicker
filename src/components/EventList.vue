@@ -13,7 +13,7 @@
         <strong>{{ scope.row.mag }}</strong>
       </template>
     </el-table-column>
-    <el-table-column width="40" prop="magType" label="MT"></el-table-column>
+    <el-table-column width="50" prop="magType" label="MT"></el-table-column>
     <el-table-column width="70" prop="phase" label="Ph." align="right" sortable></el-table-column>
     <el-table-column width="80" prop="lat" label="Lat" align="right" sortable></el-table-column>
     <el-table-column width="80" prop="lon" label="Lon" align="right" sortable></el-table-column>
@@ -45,7 +45,7 @@ export default {
   activated () {
     this.height = document.body.clientHeight - this.$el.offsetTop - 20
   },
-  
+
   watch: {
     eventList: function(val) {
       this.updateTableData()
@@ -69,16 +69,16 @@ export default {
         time: e.po.time.pretty,
         mag: e.pm ? e.pm.mag.pretty : '--',
         magType: e.pm ? e.pm.type : '--',
-        phase: e.po.quality.usedPhaseCount,
+        phase: e.po.quality.used_phase_count,
         lat: e.po.latitude.pretty,
         lon: e.po.longitude.pretty,
         depth: e.po.depth.pretty,
         eventType: e.type ? e.type : '',
-        mode: e.po.evaluationMode == 'manual' ? 'M' : 'A',
-        modeColor: e.po.evaluationMode == 'manual' ? 'success' : 'danger',
-        author: e.po.creationInfo.author,
+        mode: e.po.evaluation_mode == 'manual' ? 'M' : 'A',
+        modeColor: e.po.evaluation_mode == 'manual' ? 'success' : 'danger',
+        author: e.po.creation_info.author,
         region: e.description.text,
-        id: e.$publicID
+        id: e.id
       }))
       this.$set(this, 'tableData', data)
     }

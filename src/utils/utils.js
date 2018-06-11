@@ -6,7 +6,7 @@ const CONVERSION_RULES = {
   '/eventParameters/event/magnitude': true,
   '/eventParameters/event/pick': true,
   // conversion function :
-  '/eventParameters/event/$publicID': x => x.split('/').slice(-1)[0],
+  // '/eventParameters/event/publicID': x => x.split('/').slice(-1)[0],
   '/eventParameters/event/origin/latitude/value': parseFloat,
   '/eventParameters/event/origin/latitude/uncertainty': parseFloat,
   '/eventParameters/event/origin/longitude/value': parseFloat,
@@ -19,13 +19,14 @@ const CONVERSION_RULES = {
   '/eventParameters/event/origin/quality/minimumDistance': parseFloat,
   '/eventParameters/event/origin/quality/azimuthalGap': parseFloat,
   '/eventParameters/event/origin/quality/usedPhaseCount': parseInt,
-  '/eventParameters/event/origin/arrival/pickID': x => x.split('/').slice(-1)[0],
+  // '/eventParameters/event/origin/arrival/pickID': x => x.split('/').slice(-1)[0],
   '/eventParameters/event/origin/arrival/timeResidual': parseFloat,
   '/eventParameters/event/origin/arrival/timeWeight': parseFloat,
   '/eventParameters/event/origin/arrival/distance': parseFloat,
   '/eventParameters/event/origin/arrival/azimuth': parseFloat,
   '/eventParameters/event/magnitude/mag/value': parseFloat,
-  '/eventParameters/event/pick/$publicID': x => x.split('/').slice(-1)[0],
+  '/eventParameters/event/magnitude/mag/uncertainty': parseFloat,
+  // '/eventParameters/event/pick/publicID': x => x.split('/').slice(-1)[0],
   '/eventParameters/event/pick/time/value': x => new Date(Date.parse(x))
 }
 
@@ -60,15 +61,18 @@ function ajax(opt, xhr) {
   });
 }
 
+function toUndercase(x) {
+  return x.replace(/([A-Z]+)/g, '_$1').toLowerCase()
+}
+
 function xmlNodeToJson(x, path, rules) {
   path = `${path}/${x.tagName}`
   let obj = {}
   for (let a of x.attributes) {
-    let key = `$${a.name}`
+    let key = a.name
     let currentPath = `${path}/${key}`
-    // console.log(currentPath);
     let conv = rules[currentPath]
-    obj[key] = conv ? conv(a.value) : a.value
+    obj[toUndercase(key)] = conv ? conv(a.value) : a.value
   }
   if (x.children.length == 0) {
     // console.log(path);
@@ -78,18 +82,16 @@ function xmlNodeToJson(x, path, rules) {
     return Object.keys(obj).length > 0 ? Object.assign(obj, { value }) : value
   } else {
     for (let c of x.children) {
-      if (obj[c.tagName] == null) {
-        obj[c.tagName] = []
-      }
-      obj[c.tagName].push(xmlNodeToJson(c, path, rules))
-    }
-    for (let [k, v] of Object.entries(obj)) {
-      let currentPath = `${path}/${k}`
-      // console.log(currentPath);
-      if (rules[currentPath] != true &&
-          v instanceof Array &&
-          v.length == 1) {
-        obj[k] = v[0]
+      let currentPath = `${path}/${c.tagName}`
+      let key = toUndercase(c.tagName)
+      let value = xmlNodeToJson(c, path, rules)
+      if (rules[currentPath] == true) {// it's a list
+        if (obj[key] == null) {
+          obj[key] = []
+        }
+        obj[key].push(value)
+      } else {
+        obj[key] = value
       }
     }
   }
@@ -105,6 +107,7 @@ function dict(k_list, v_list) {
 }
 
 function processEventData(e) {
+  e.id = e.public_id.split('/').slice(-1)[0]
   for (let o of e.origin) {
     o.time.pretty = o.time.value.toISOString().replace('T', ' ').substr(0, 19)
     let [lat, lon] = [o.latitude.value, o.longitude.value]
@@ -118,25 +121,27 @@ function processEventData(e) {
   if (e.magnitude != null) {
     for (let m of e.magnitude) {
       m.mag.pretty = m.mag.value.toFixed(2)
+      m.prettyMethod = m.method_id.split('/').slice(-1)[0]
     }
   }
-  e.po = e.origin.find(x => x.$publicID == e.preferredOriginID)
-  if (e.preferredMagnitudeID) {
-    e.pm = e.magnitude.find(x => x.$publicID == e.preferredMagnitudeID)
+  e.po = e.origin.find(x => x.public_id == e.preferred_origin_id)
+  if (e.preferred_magnitude_id) {
+    e.pm = e.magnitude.find(x => x.public_id == e.preferred_magnitude_id)
   }
   if (e.pick != null && e.po.arrival != null) {
     let pickMap = {}
     for (let p of e.pick) {
-      let wfid = p.waveformID
-      if (wfid.$locationCode == null) {
-        wfid.$locationCode = '--'
+      p.id = p.public_id.split('/').slice(-1)[0]
+      let wfid = p.waveform_id
+      if (wfid.location_code == null) {
+        wfid.location_code = '--'
       }
-      p.seedid = [wfid.$networkCode, wfid.$stationCode, wfid.$locationCode, wfid.$channelCode].join('.')
-      pickMap[p.$publicID] = p
+      p.seedid = [wfid.network_code, wfid.station_code, wfid.location_code, wfid.channel_code].join('.')
+      pickMap[p.public_id] = p
     }
     for (let o of e.origin) {
       for (let a of o.arrival) {
-        a.pick = pickMap[a.pickID]
+        a.pick = pickMap[a.pick_id]
         a.time = new Date(a.pick.time.value - o.time.value)
       }
     }
@@ -185,53 +190,68 @@ function parseInventory(raw_inv) {
   return result
 }
 
-function toJquake(eventId, o) {
-  let picks = [],
-      arrivals = []
-  for (let a of o.arrival) {
-    // if (a.timeWeight == 0) {
-    //   continue
-    // }
-    let p = {
-      public_id: `smi:oca/${a.pick.$publicID}`,
-      time: { value: a.pick.time.value },
-      phase_hint: a.pick.phaseHint,
-      waveform_id: {
-        network_code: a.pick.waveformID.$networkCode,
-        station_code: a.pick.waveformID.$stationCode,
-        channel_code: a.pick.waveformID.$channelCode
-      }
-    }
-    if (a.pick.polarity != null) {
-      p.polarity = a.pick.polarity
-    }
-    if (a.pick.waveformID.$locationCode != '--') {
-      p.waveform_id.location_code = a.pick.waveformID.$locationCode
-    }
-    picks.push(p)
-    arrivals.push({
-      public_id: `smi:oca/Arrival-${a.pickID}`,
-      pick_id: p.public_id,
-      phase: a.phase,
-      azimuth: a.azimuth,
-      distance: a.distance,
-      time_residual: a.timeResidual,
-      time_weight: a.timeWeight
-    })
-  }
-  return [{
+function toJquake(eventId, originList, po, magList, pm) {
+  let e = {
     public_id: `smi:oca/${eventId}`,
-    preferred_origin_id: o.$publicID,
-    origin: [{
-      public_id: o.$publicID,
+    preferred_origin_id: po.public_id,
+    magnitude: [],
+    origin: [],
+    pick: []
+  }
+  for (let o of originList) {
+    let arrivals = []
+    for (let a of o.arrival) {
+      let p = {
+        public_id: a.pick.public_id,
+        time: { value: a.pick.time.value },
+        phase_hint: a.pick.phase_hint,
+        waveform_id: {
+          network_code: a.pick.waveform_id.network_code,
+          station_code: a.pick.waveform_id.station_code,
+          channel_code: a.pick.waveform_id.channel_code
+        }
+      }
+      if (a.pick.polarity != null) {
+        p.polarity = a.pick.polarity
+      }
+      if (a.pick.waveform_id.location_code != '--') {
+        p.waveform_id.location_code = a.pick.waveform_id.location_code
+      }
+      e.pick.push(p)
+      arrivals.push({
+        public_id: `smi:oca/N.A`,
+        pick_id: p.public_id,
+        phase: a.phase,
+        azimuth: a.azimuth,
+        distance: a.distance,
+        time_residual: a.time_residual,
+        time_weight: a.time_weight
+      })
+    }
+    e.origin.push({
+      public_id: o.public_id,
       time: { value: o.time.value, uncertainty: o.time.uncertainty },
       latitude: { value: o.latitude.value, uncertainty: o.latitude.uncertainty },
       longitude: { value: o.longitude.value, uncertainty: o.longitude.uncertainty },
       depth: { value: o.depth.value, uncertainty: o.depth.uncertainty },
       arrival: arrivals
-    }],
-    pick: picks
-  }]
+    })
+  }
+  if (magList != null) {
+    for (let m of magList) {
+      e.magnitude.push({
+        public_id: m.public_id,
+        mag: { value: m.mag.value },
+        method_id: m.method_id,
+        station_count: m.station_count,
+        type: m.type
+      })
+    }
+  }
+  if (pm != null) {
+    e.preferred_magnitude_id = pm.public_id
+  }
+  return [e]
 }
 
 export default {

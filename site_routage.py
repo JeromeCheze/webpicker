@@ -64,6 +64,7 @@ def compute_magnitudes_with_scamp_and_scmag(qml_string):
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
     catalog = obspy.read_events(StringIO(qml_string))
     set_used_arrival_and_save_sc3ml(catalog, sc3ml)
+
     # 2) download data
     _, data = tempfile.mkstemp(suffix='.mseed')
     req = []
@@ -82,6 +83,7 @@ def compute_magnitudes_with_scamp_and_scmag(qml_string):
     cl = Client(base_url=FDSNWS_BASE_URL)
     st = cl.get_waveforms_bulk('\r\n'.join(req))
     st.write(data, format='MSEED', reclen=512)
+
     # 3) compute amplitudes with scamp
     _, scamp_result = tempfile.mkstemp(suffix='.sc3ml')
     scamp = subprocess.Popen([
@@ -92,11 +94,11 @@ def compute_magnitudes_with_scamp_and_scmag(qml_string):
         '--ep', sc3ml
     ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     result, error_message = scamp.communicate()
-    # if error_message:
-    #     return { 'message': error_message, 'quakeml': None }
-    os.remove(sc3ml)
     with open(scamp_result, 'w') as f:
         f.write(result)
+    os.remove(sc3ml)
+    os.remove(data)
+
     # 4) compute magnitudes with scmag
     scmag = subprocess.Popen([
         SEISCOMP_PROGRAM, 'exec', 'scmag',
@@ -104,11 +106,13 @@ def compute_magnitudes_with_scamp_and_scmag(qml_string):
         '--config-db', SC3ML_CONFIG_FILENAME,
         '--ep', scamp_result
     ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    result, error_message = scmag.communicate()
-    print(result)
+    result, error_message2 = scmag.communicate()
+    error_message += error_message2
     dom = etree.fromstring(result)
     update_sc3ml_origin_reference(dom)
     newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML0_10_TO_QML1_2)
+    os.remove(scamp_result)
+
     return { 'message': error_message, 'quakeml': etree.tostring(newdom) }
 
 def relocate_with_screloc(qml_string):
@@ -128,14 +132,13 @@ def relocate_with_screloc(qml_string):
         '--replace'
     ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     result, error_message = screloc.communicate()
-    print(sc3ml)
-    # os.remove(sc3ml)
-    print(result_sc3ml)
     with open(result_sc3ml, 'w') as f:
         f.write(result)
     dom = etree.fromstring(result)
     update_sc3ml_origin_reference(dom)
     newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML0_10_TO_QML1_2)
+    os.remove(sc3ml)
+    os.remove(result_sc3ml)
     return {
         'message': error_message,
         'quakeml': etree.tostring(newdom)

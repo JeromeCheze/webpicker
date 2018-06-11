@@ -5,7 +5,7 @@
         <el-menu-item index="eventForm">Form</el-menu-item>
         <el-menu-item index="eventList">Event list</el-menu-item>
         <el-menu-item index="eventPage" :disabled="currentEvent == null">
-          <span v-if="currentEvent != null">{{ currentEvent.$publicID }}</span>
+          <span v-if="currentEvent != null">{{ currentEvent.id }}</span>
           <span v-else>No event</span>
         </el-menu-item>
         <el-menu-item index="eventPicker" :disabled="currentOrigin == null">Picker</el-menu-item>
@@ -119,20 +119,20 @@ export default {
     },
 
     handlePickerArrival (arrivals) {
-      let fakeOrigin = Object.assign({}, this.currentOrigin)
+      let temporaryOrigin = Object.assign({}, this.currentOrigin)
       let id = [
         'Origin',
         new Date().toISOString().replace(/[\-:]/g, '').replace('T', '.').substr(0, 18)
       ].join('-')
-      fakeOrigin.uncommitted = true
-      fakeOrigin.$publicID = id
-      fakeOrigin.arrival = arrivals
-      this.currentEvent.fakeOrigin = fakeOrigin
-      this.currentOrigin = fakeOrigin
+      temporaryOrigin.uncommitted = true
+      temporaryOrigin.public_id = id
+      temporaryOrigin.arrival = arrivals
+      this.currentEvent.temporaryOrigin = temporaryOrigin
+      this.currentOrigin = temporaryOrigin
     },
 
     handleSelectEvent (eventId) {
-      let oldEvent = this.eventList.find(x => x.$publicID == eventId)
+      let oldEvent = this.eventList.find(x => x.id == eventId)
       let index = this.eventList.indexOf(oldEvent)
       utils.ajax({
         method: 'GET',
@@ -153,9 +153,9 @@ export default {
         ).event[0]
         utils.processEventData(e)
         this.eventList.splice(index, 1, e)
-        e.fakeOrigin = oldEvent.fakeOrigin
+        e.temporaryOrigin = oldEvent.temporaryOrigin
         this.currentEvent = e
-        this.currentOrigin = e.fakeOrigin != null ? e.fakeOrigin : e.po
+        this.currentOrigin = e.temporaryOrigin != null ? e.temporaryOrigin : e.po
         this.activeIndex = 'eventPage'
       })
     },

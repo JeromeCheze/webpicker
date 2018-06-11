@@ -87,6 +87,7 @@ export default {
       // state variables
       dirty: true,
       loading: true,
+      picksDirty: false,
       loadingText: '',
       keyDownBinded: false,
       horizontalDownloadStatus: '',
@@ -226,6 +227,9 @@ export default {
       this.dirty = true
       return
     }
+    if (this.picksDirty == false) {
+      return
+    }
     let arrivals = []
     for (let [wfid, picks] of Object.entries(this.picks)) {
       let staKey = wfid.split('.').slice(0, 2).join('.')
@@ -236,22 +240,23 @@ export default {
           azimuth: this.stationInfoMap[staKey].azimuth,
           distance: this.stationInfoMap[staKey].distance,
           phase: p.phase,
-          pickID: p.id,
+          pick_id: p.id,
           time: new Date(pTime - this.origin.time.value),
-          timeResidual: p.residual,
-          timeWeight: p.weight,
+          time_residual: p.residual,
+          time_weight: p.weight,
           pick: {
-            $publicID: p.id,
-            evaluationMode: p.mode,
-            phaseHint: p.phase,
+            id: p.id,
+            public_id: p.id,
+            evaluation_mode: p.mode,
+            phase_hint: p.phase,
             polarity: p.polarity,
             seedid: wfid,
             time: { value: pTime },
-            waveformID: {
-              $networkCode: net,
-              $stationCode: sta,
-              $locationCode: loc,
-              $channelCode: cha
+            waveform_id: {
+              network_code: net,
+              station_code: sta,
+              location_code: loc,
+              channel_code: cha
             }
           }
         })
@@ -284,9 +289,9 @@ export default {
     updatePicksWeightAndResidual () {
       for (let a of this.origin.arrival) {
         let wfid = a.pick.seedid.replace('.--.', '..')
-        let p = this.picks[wfid].find(x => x.id == a.pick.$publicID)
-        p.weight = a.timeWeight
-        p.residual = a.timeResidual
+        let p = this.picks[wfid].find(x => x.id == a.pick.public_id)
+        p.weight = a.time_weight
+        p.residual = a.time_residual
       }
     },
 
@@ -409,13 +414,13 @@ export default {
           this.picks[seedid] = []
         }
         this.picks[seedid].push({
-          id: a.pickID,
+          id: a.pick_id,
           phase: a.phase,
-          mode: a.pick.evaluationMode,
+          mode: a.pick.evaluation_mode,
           polarity: a.pick.polarity,
           time: a.pick.time.value.getTime(),
-          residual: a.timeResidual,
-          weight: a.timeWeight
+          residual: a.time_residual,
+          weight: a.time_weight
         })
         let zComponent = `${a.pick.seedid.slice(0, -1)}Z`
         if (mainWfidList.indexOf(zComponent) < 0) {
@@ -506,6 +511,7 @@ export default {
     },
 
     handleUpdatePick (ev) {
+      this.picksDirty = true
       if (this.picks[ev.wfid] == null) {
         this.picks[ev.wfid] = []
       }
