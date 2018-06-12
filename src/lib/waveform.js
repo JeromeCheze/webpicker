@@ -452,7 +452,7 @@ export default class Waveform {
         mode: 'manual',
         time: t,
         polarity: null,
-        id: `smi:oca/${id}`,
+        id: id,
         weight: 1,
         residual: (t - this.waveforms[0].opt.ttt[this.event.phase]) / 1000
       }

@@ -66,19 +66,19 @@ export default {
 
     updateTableData () {
       let data = this.eventList.map(e => ({
-        time: e.po.time.pretty,
-        mag: e.pm ? e.pm.mag.pretty : '--',
-        magType: e.pm ? e.pm.type : '--',
-        phase: e.po.quality.used_phase_count,
-        lat: e.po.latitude.pretty,
-        lon: e.po.longitude.pretty,
-        depth: e.po.depth.pretty,
+        time: e._po.time._pretty,
+        mag: e._pm ? e._pm.mag._pretty : '--',
+        magType: e._pm ? e._pm.type : '--',
+        phase: e._po.quality.used_phase_count,
+        lat: e._po.latitude._pretty,
+        lon: e._po.longitude._pretty,
+        depth: e._po.depth._pretty,
         eventType: e.type ? e.type : '',
-        mode: e.po.evaluation_mode == 'manual' ? 'M' : 'A',
-        modeColor: e.po.evaluation_mode == 'manual' ? 'success' : 'danger',
-        author: e.po.creation_info.author,
-        region: e.description.text,
-        id: e.id
+        mode: e._po.evaluation_mode == 'manual' ? 'M' : 'A',
+        modeColor: e._po.evaluation_mode == 'manual' ? 'success' : 'danger',
+        author: e._po.creation_info.author,
+        region: e.description[0].text,
+        id: e._id
       }))
       this.$set(this, 'tableData', data)
     }

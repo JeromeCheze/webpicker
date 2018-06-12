@@ -44,7 +44,7 @@
               </el-form-item>
             </el-form>
             <el-button
-              :type="origin.uncommited ? 'warning': null" slot="reference"
+              :type="origin._not_committed ? 'warning': null" slot="reference"
               @click="commitPopover = true">Commit</el-button>
           </el-popover>
         </el-form-item>
@@ -59,19 +59,22 @@
         {{ this.event.description.text }}
       </h3>
     </el-row>
-    <el-row v-if="magnitude != null">
+    <el-row>
       <strong>Magnitude</strong>
-      <table class="event-description">
+      <table class="event-description" v-if="magnitude != null">
         <thead>
           <th>Value</th><th>Magnitude type</th><th>Station count</th><th>Method</th>
         </thead>
         <tbody>
-          <td>{{ magnitude.mag.pretty }}</td>
+          <td>{{ magnitude.mag._pretty }}</td>
           <td>{{ magnitude.type }}</td>
           <td>{{ magnitude.station_count }}</td>
-          <td>{{ magnitude.prettyMethod }}</td>
+          <td>{{ magnitude._pretty_method }}</td>
         </tbody>
       </table>
+      <div v-else>
+        <el-alert type="danger" title="No magnitude selected"></el-alert>
+      </div>
     </el-row>
     <el-row>
       <strong>Origin</strong>
@@ -80,10 +83,10 @@
           <th>Time</th><th>Latitude</th><th>Longitude</th><th>Depth</th><th>Phases</th><th>RMS</th><th>Az. Gap</th><th>Min Dist</th>
         </thead>
         <tbody>
-          <td>{{ origin.time.pretty }}</td>
-          <td>{{ origin.latitude.pretty }} {{ origin.latitude.prettyUncertainty }}</td>
-          <td>{{ origin.longitude.pretty }} {{ origin.longitude.prettyUncertainty }}</td>
-          <td>{{ origin.depth.pretty }} {{ origin.depth.prettyUncertainty }}</td>
+          <td>{{ origin.time._pretty }}</td>
+          <td>{{ origin.latitude._pretty }} {{ origin.latitude._pretty_uncertainty }}</td>
+          <td>{{ origin.longitude._pretty }} {{ origin.longitude._pretty_uncertainty }}</td>
+          <td>{{ origin.depth._pretty }} {{ origin.depth._pretty_uncertainty }}</td>
           <td>{{ origin.quality.used_phase_count }} / {{ origin.quality.associated_phase_count }}</td>
           <td>{{ origin.quality.standard_error.toFixed(2) }} s</td>
           <td>{{ origin.quality.azimuthal_gap.toFixed(0) }} °</td>
@@ -254,7 +257,7 @@ export default {
   activated () {
     if (this.dirty) {
       this.dirty = false
-      this.magnitude = this.event.temporaryMagnitudes ? this.event.temporaryMagnitudes[0] : this.event.pm
+      this.magnitude = this.event._magnitudes ? this.event._magnitudes[0] : this.event._pm
       this.updateAll()
     }
   },
@@ -270,7 +273,7 @@ export default {
 
     setSelectedArrival (selectedPickIDs) {
       for (let a of this.origin.arrival) {
-        a.time_weight = selectedPickIDs.indexOf(a.pick.id) >= 0 ? 1 : 0
+        a.time_weight = selectedPickIDs.indexOf(a._pick._id) >= 0 ? 1 : 0
       }
       this.updateAll()
     },
@@ -282,18 +285,18 @@ export default {
 
     updateArrivalTableData () {
       let data = this.origin.arrival.map(a => ({
-        id: a.pick.id,
-        mode: a.pick.evaluation_mode == 'automatic' ? 'A' : 'M',
-        modeColor: a.pick.evaluation_mode == 'manual' ? 'success' : 'danger',
+        id: a._pick._id,
+        mode: a._pick.evaluation_mode == 'automatic' ? 'A' : 'M',
+        modeColor: a._pick.evaluation_mode == 'manual' ? 'success' : 'danger',
         phase: a.phase,
-        network: a.pick.waveform_id.network_code,
-        station: a.pick.waveform_id.station_code,
-        loccha: `${a.pick.waveform_id.location_code}.${a.pick.waveform_id.channel_code}`,
-        polarity: a.pick.polarity != null ? a.pick.polarity : '',
+        network: a._pick.waveform_id.network_code,
+        station: a._pick.waveform_id.station_code,
+        loccha: a._pick._fdsnid.split('.').slice(-2).join('.'),
+        polarity: a._pick.polarity != null ? a._pick.polarity : '',
         residual: a.time_residual,
         distance: a.distance,
         azimuth: a.azimuth,
-        time: a.time,
+        time: a._traveltime,
         weight: a.time_weight
       }))
       this.$set(this, 'arrivalTableData', data)
@@ -322,10 +325,11 @@ export default {
       this.map = map
     },
 
-    getStationCoordinates (wfid) {
-      if (this.inventory[wfid.network_code] != null &&
-          this.inventory[wfid.network_code][wfid.station_code] != null) {
-        let sta = this.inventory[wfid.network_code][wfid.station_code]
+    getStationCoordinates (seedid) {
+      let [n, s, l, c] = seedid.split('.')
+      if (this.inventory[n] != null &&
+          this.inventory[n][s] != null) {
+        let sta = this.inventory[n][s]
         return [sta.lat, sta.lon]
       }
       return null
@@ -341,21 +345,20 @@ export default {
         m.remove()
       }
       this.markers = []
-      this.origin.latlng = L.latLng([
+      let originPos = L.latLng([
         this.origin.latitude.value,
         this.origin.longitude.value
       ])
-      let bounds = [this.origin.latlng]
+      let bounds = [originPos]
       for (let a of this.origin.arrival) {
-        let wfid = a.pick.waveform_id
-        let pos = this.getStationCoordinates(wfid)
+        let pos = this.getStationCoordinates(a._pick._seedid)
         if (pos == null) {
-          console.warn(`No coordinates found for channel ${a.pick.seedid}`)
+          console.warn(`No coordinates found for channel ${a._pick._seedid}`)
           continue
         }
         bounds.push(pos)
         if (a.time_weight == 1) {
-          this.markers.push(L.polyline([this.origin.latlng, pos], {
+          this.markers.push(L.polyline([originPos, pos], {
             color: 'gray',
             weight: 1
           }).addTo(this.map))
@@ -365,9 +368,9 @@ export default {
           weight: 1,
           color: a.time_weight == 1 ? 'black' : 'gray',
           fillOpacity: 1
-        }).bindPopup(a.pick.seedid).addTo(this.map))
+        }).bindPopup(a._pick._seedid).addTo(this.map))
       }
-      this.markers.push(L.circleMarker(this.origin.latlng, {
+      this.markers.push(L.circleMarker(originPos, {
         radius: 8,
         weight: 1,
         color: 'red',
@@ -383,14 +386,14 @@ export default {
         let serie = (a.phase == 'P' ? 'p' : 's')
         let color = (
           a.time_weight < .5 ? 'gray' :
-          a.pick.evaluation_mode == 'automatic' ? 'red' :
+          a._pick.evaluation_mode == 'automatic' ? 'red' :
           'green'
         )
         this.chart.timeResidual[serie].push({
-          x: a.distance, y: a.time_residual, name: a.pick.seedid, color: color, id: a.pick.id
+          x: a.distance, y: a.time_residual, name: a._pick._seedid, color: color, id: a._pick._id
         })
         this.chart.travelTime[serie].push({
-          x: a.distance, y: a.time.getTime()/1000., name: a.pick.seedid, color: color, id: a.pick.id
+          x: a.distance, y: a._traveltime.getTime()/1000., name: a._pick._seedid, color: color, id: a._pick._id
         })
       }
     },
@@ -455,18 +458,47 @@ export default {
     },
 
     handleCommitClick () {
-
+      let additionalMagnitudes = this.event._magnitudes != null ? this.event._magnitudes : []
+      let e = utils.composeEvent({
+        base: this.event,
+        origins: this.event.origin.concat([this.origin]),
+        po: this.origin,
+        magnitudes: this.event.magnitude.concat(additionalMagnitudes),
+        pm: this.magnitude
+      })
+      e.type = this.commitForm.eventType
+      if (this.commitForm.eventTypeCertainty != null) {
+        e.typeCertainty = this.commitForm.eventTypeCertainty
+      }
+      if (this.commitForm.originEvaluationStatus != null) {
+        let po = e.origin.find(x => x.public_id == e.preferred_origin_id)
+        po.evaluation_status = this.commitForm.originEvaluationStatus
+      }
+      console.log(e);
+      utils.ajax({
+        method: 'POST',
+        url: 'commit',
+        type: 'json',
+        dataMimeType: 'application/json',
+        data: JSON.stringify([e]),
+      }).then(data => {
+        console.log(data);
+      })
     },
 
     handleComputeMagnitudeClick () {
       this.loading = true
-      let jquake = utils.toJquake(this.event.public_id, [this.origin], this.origin)
+      let e = utils.composeEvent({
+        base: this.event,
+        origins: [this.origin],
+        po: this.origin
+      })
       utils.ajax({
         method: 'POST',
         url: 'compute_magnitudes',
         type: 'json',
         dataMimeType: 'application/json',
-        data: JSON.stringify(jquake),
+        data: JSON.stringify([e]),
       }).then(data => {
         this.loading = false
         this.$notify({
@@ -482,7 +514,7 @@ export default {
             utils.CONVERSION_RULES
           ).event[0]
           utils.processEventData(e)
-          this.event.temporaryMagnitudes = e.magnitude
+          this.event._magnitudes = e.magnitude
           this.magnitude = e.magnitude[0]
           this.magnitudeBtnType = null
         }
@@ -491,13 +523,18 @@ export default {
 
     handleRelocateClick () {
       this.loading = true
-      let jquake = utils.toJquake(this.event.public_id, [this.origin], this.origin)
+      let e = utils.composeEvent({
+        base: this.event,
+        origins: [this.origin],
+        po: this.origin
+      })
+      console.log(e);
       utils.ajax({
         method: 'POST',
         url: 'relocate',
         type: 'json',
         dataMimeType: 'application/json',
-        data: JSON.stringify(jquake),
+        data: JSON.stringify([e]),
       }).then(data => {
         this.loading = false
         if (data.message != '') {

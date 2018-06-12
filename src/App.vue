@@ -5,7 +5,7 @@
         <el-menu-item index="eventForm">Form</el-menu-item>
         <el-menu-item index="eventList">Event list</el-menu-item>
         <el-menu-item index="eventPage" :disabled="currentEvent == null">
-          <span v-if="currentEvent != null">{{ currentEvent.id }}</span>
+          <span v-if="currentEvent != null">{{ currentEvent._id }}</span>
           <span v-else>No event</span>
         </el-menu-item>
         <el-menu-item index="eventPicker" :disabled="currentOrigin == null">Picker</el-menu-item>
@@ -119,20 +119,20 @@ export default {
     },
 
     handlePickerArrival (arrivals) {
-      let temporaryOrigin = Object.assign({}, this.currentOrigin)
+      let origin = Object.assign({}, this.currentOrigin)
       let id = [
         'Origin',
         new Date().toISOString().replace(/[\-:]/g, '').replace('T', '.').substr(0, 18)
       ].join('-')
-      temporaryOrigin.uncommitted = true
-      temporaryOrigin.public_id = id
-      temporaryOrigin.arrival = arrivals
-      this.currentEvent.temporaryOrigin = temporaryOrigin
-      this.currentOrigin = temporaryOrigin
+      origin._not_committed = true
+      origin.public_id = `smi:oca/${id}`
+      origin.arrival = arrivals
+      this.currentEvent._origin = origin
+      this.currentOrigin = origin
     },
 
     handleSelectEvent (eventId) {
-      let oldEvent = this.eventList.find(x => x.id == eventId)
+      let oldEvent = this.eventList.find(x => x._id == eventId)
       let index = this.eventList.indexOf(oldEvent)
       utils.ajax({
         method: 'GET',
@@ -153,9 +153,9 @@ export default {
         ).event[0]
         utils.processEventData(e)
         this.eventList.splice(index, 1, e)
-        e.temporaryOrigin = oldEvent.temporaryOrigin
+        e._origin = oldEvent._origin
         this.currentEvent = e
-        this.currentOrigin = e.temporaryOrigin != null ? e.temporaryOrigin : e.po
+        this.currentOrigin = e._origin != null ? e._origin : e._po
         this.activeIndex = 'eventPage'
       })
     },

@@ -190,6 +190,7 @@ export default {
     }
   },
   activated () {
+    this.picksDirty = false
     if (this.dirty) {
       this.dirty = false
       this.reset()
@@ -231,27 +232,32 @@ export default {
       return
     }
     let arrivals = []
-    for (let [wfid, picks] of Object.entries(this.picks)) {
-      let staKey = wfid.split('.').slice(0, 2).join('.')
-      let [net, sta, loc, cha] = wfid.replace('..', '.--.').split('.')
+    for (let [seedid, picks] of Object.entries(this.picks)) {
+      let staKey = seedid.split('.').slice(0, 2).join('.')
+      let [net, sta, loc, cha] = seedid.split('.')
+      if (loc == '') {
+        loc = null
+      }
       for (let p of picks) {
         let pTime = new Date(p.time)
+        p.id = p.id.indexOf('smi:') < 0 ? `smi:oca/${p.id}` : p.id // add 'smi:oca/' if missing
         arrivals.push({
           azimuth: this.stationInfoMap[staKey].azimuth,
           distance: this.stationInfoMap[staKey].distance,
           phase: p.phase,
           pick_id: p.id,
-          time: new Date(pTime - this.origin.time.value),
           time_residual: p.residual,
           time_weight: p.weight,
-          pick: {
-            id: p.id,
+          _traveltime: new Date(pTime - this.origin.time._value),
+          _pick: {
+            _id: p.id.split('/').slice(-1)[0], // keep only short ID
             public_id: p.id,
             evaluation_mode: p.mode,
             phase_hint: p.phase,
             polarity: p.polarity,
-            seedid: wfid,
-            time: { value: pTime },
+            _seedid: seedid,
+            _fdsnid: seedid.replace('..', '.--.'),
+            time: { value: pTime.toISOString(), _value: pTime },
             waveform_id: {
               network_code: net,
               station_code: sta,
@@ -288,8 +294,7 @@ export default {
 
     updatePicksWeightAndResidual () {
       for (let a of this.origin.arrival) {
-        let wfid = a.pick.seedid.replace('.--.', '..')
-        let p = this.picks[wfid].find(x => x.id == a.pick.public_id)
+        let p = this.picks[a._pick._seedid].find(x => x.id == a.pick_id)
         p.weight = a.time_weight
         p.residual = a.time_residual
       }
@@ -360,8 +365,8 @@ export default {
         station: {}
       }
       for (let a of this.origin.arrival) {
-        let tttId = a.pick.seedid.split('.').slice(0, 2).join('.')
-        data.station[tttId] = a.distance
+        let netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
+        data.station[netsta] = a.distance
       }
       const xhr = new XMLHttpRequest()
       this.xhr.push(xhr)
@@ -374,7 +379,7 @@ export default {
       }, xhr).then(ttt => {
         this.xhr.splice(this.xhr.indexOf(xhr), 1)
         this.ttt = ttt
-        let t0 = this.origin.time.value.getTime()
+        let t0 = this.origin.time._value.getTime()
         for (let sta of Object.values(this.ttt)) {
           for (let [k, ttt] of Object.entries(sta.ttt)) {
             sta.ttt[k] = t0 + ttt * 1000
@@ -387,8 +392,8 @@ export default {
     },
 
     getEnd () {
-      let t0 = this.origin.time.value.getTime()
-      let times = this.origin.arrival.map(a => a.pick.time.value.getTime())
+      let t0 = this.origin.time._value.getTime()
+      let times = this.origin.arrival.map(a => a._pick.time._value.getTime())
       for (let sta of Object.values(this.ttt)) {
         for (let ttt of Object.values(sta.ttt)) {
           times.push(ttt)
@@ -407,33 +412,34 @@ export default {
       })
       this.picks = {}
       for (let [i, a] of this.origin.arrival.entries()) {
-        let seedid = a.pick.seedid.replace('--', '')
-        let staKey = seedid.split('.').slice(0, 2).join('.')
-        this.stationInfoMap[staKey] = { azimuth: a.azimuth, distance: a.distance }
+        let seedid = a._pick._seedid
+        let netsta = seedid.split('.').slice(0, 2).join('.')
+        this.stationInfoMap[netsta] = { azimuth: a.azimuth, distance: a.distance }
         if (this.picks[seedid] == null) {
           this.picks[seedid] = []
         }
         this.picks[seedid].push({
           id: a.pick_id,
           phase: a.phase,
-          mode: a.pick.evaluation_mode,
-          polarity: a.pick.polarity,
-          time: a.pick.time.value.getTime(),
+          mode: a._pick.evaluation_mode,
+          polarity: a._pick.polarity,
+          time: a._pick.time._value.getTime(),
           residual: a.time_residual,
           weight: a.time_weight
         })
-        let zComponent = `${a.pick.seedid.slice(0, -1)}Z`
+        let zComponent = `${a._pick._seedid.slice(0, -1)}Z`
         if (mainWfidList.indexOf(zComponent) < 0) {
           mainWfidList.push(zComponent)
         }
-        for (let wfid of this.getHorizontalIds(zComponent)) {
+        for (let fdsnid of this.getHorizontalIds(zComponent)) {
           if (i < 3) {
-            if (mainWfidList.indexOf(wfid) < 0) {
-              mainWfidList.push(wfid)
+            // download horizontal components in main download for the 3 first arrivals
+            if (mainWfidList.indexOf(fdsnid) < 0) {
+              mainWfidList.push(fdsnid)
             }
           } else {
-            if (horizontalWfidList.indexOf(wfid) < 0) {
-              horizontalWfidList.push(wfid)
+            if (horizontalWfidList.indexOf(fdsnid) < 0) {
+              horizontalWfidList.push(fdsnid)
             }
           }
         }
@@ -449,7 +455,7 @@ export default {
     },
 
     downloadWaveforms (wfidList, callback, complete) {
-      let start = new Date(this.origin.time.value.getTime() - 20000).toISOString().substr(0, 19)
+      let start = new Date(this.origin.time._value.getTime() - 20000).toISOString().substr(0, 19)
       let end = this.getEnd()
       let chunks = []
       for (let i = 0; i < wfidList.length; i += 10) {
@@ -471,8 +477,8 @@ export default {
           let dv = new DataView(arr)
           let st = new mseed.Stream(dv)
           for (let tr of st.trace) {
-            let wfid = tr.id.replace('..', '.--.')
-            wfidList.splice(wfidList.indexOf(wfid), 1)
+            let fdsnid = tr.id.replace('..', '.--.')
+            wfidList.splice(wfidList.indexOf(fdsnid), 1)
           }
           if (callback != null) {
             callback.call(null, st)
@@ -511,6 +517,7 @@ export default {
     },
 
     handleUpdatePick (ev) {
+      console.log(ev);
       this.picksDirty = true
       if (this.picks[ev.wfid] == null) {
         this.picks[ev.wfid] = []
@@ -554,8 +561,8 @@ export default {
       this.pickerOpt.view = view
       this.pickerOpt.waveforms = [wf]
       let horizontalIds = this.getHorizontalIds(wf.id)
-      for (let id of horizontalIds) {
-        let cached = this.horizontalWaveformCache[id]
+      for (let fdsnid of horizontalIds) {
+        let cached = this.horizontalWaveformCache[fdsnid]
         if (cached != null) {
           this.pickerOpt.waveforms.push(cached)
         }
@@ -567,13 +574,13 @@ export default {
     },
 
     getChannel (seedid) {
-      let [net, sta, loc, cha] = seedid.split('.')
-      if (this.inventory[net] != null &&
-          this.inventory[net][sta] != null &&
-          this.inventory[net][sta][loc] != null &&
-          this.inventory[net][sta][loc][cha] != null) {
-        let t0 = this.origin.time.value
-        return this.inventory[net][sta][loc][cha].find(c => c.starttime <= t0 && c.endtime >= t0)
+      let [n, s, l, c] = seedid.split('.')
+      if (this.inventory[n] != null &&
+          this.inventory[n][s] != null &&
+          this.inventory[n][s][l] != null &&
+          this.inventory[n][s][l][c] != null) {
+        let t0 = this.origin.time._value
+        return this.inventory[n][s][l][c].find(c => c.starttime <= t0 && c.endtime >= t0)
       }
       return null
     },
@@ -584,16 +591,16 @@ export default {
     },
 
     getWaveformObject (tr) {
-      let tttId = tr.id.split('.').slice(0, 2).join('.')
+      let netsta = tr.id.split('.').slice(0, 2).join('.')
       return {
         start: tr.timeseries[0].starttime,
         step: 1000 / tr.sample_rate,
         values: tr.getData(),
         scale: this.getChannelScale(tr.id),
         id: tr.id,
-        distance: this.stationInfoMap[tttId].distance,
-        azimuth: this.stationInfoMap[tttId].azimuth,
-        ttt: Object.assign({ O: this.origin.time.value.getTime() }, this.ttt[tttId].ttt),
+        distance: this.stationInfoMap[netsta].distance,
+        azimuth: this.stationInfoMap[netsta].azimuth,
+        ttt: Object.assign({ O: this.origin.time._value.getTime() }, this.ttt[netsta].ttt),
         picks: this.picks[tr.id]
       }
     },

@@ -5,29 +5,31 @@ const CONVERSION_RULES = {
   '/eventParameters/event/origin/arrival': true,
   '/eventParameters/event/magnitude': true,
   '/eventParameters/event/pick': true,
+  '/eventParameters/event/description': true,
   // conversion function :
-  // '/eventParameters/event/publicID': x => x.split('/').slice(-1)[0],
   '/eventParameters/event/origin/latitude/value': parseFloat,
   '/eventParameters/event/origin/latitude/uncertainty': parseFloat,
   '/eventParameters/event/origin/longitude/value': parseFloat,
   '/eventParameters/event/origin/longitude/uncertainty': parseFloat,
   '/eventParameters/event/origin/depth/value': parseFloat,
   '/eventParameters/event/origin/depth/uncertainty': parseFloat,
-  '/eventParameters/event/origin/time/value': x => new Date(Date.parse(x)),
   '/eventParameters/event/origin/time/uncertainty': parseFloat,
   '/eventParameters/event/origin/quality/standardError': parseFloat,
-  '/eventParameters/event/origin/quality/minimumDistance': parseFloat,
   '/eventParameters/event/origin/quality/azimuthalGap': parseFloat,
+  '/eventParameters/event/origin/quality/associatedPhaseCount': parseInt,
+  '/eventParameters/event/origin/quality/associatedStationCount': parseInt,
   '/eventParameters/event/origin/quality/usedPhaseCount': parseInt,
-  // '/eventParameters/event/origin/arrival/pickID': x => x.split('/').slice(-1)[0],
+  '/eventParameters/event/origin/quality/usedStationCount': parseInt,
+  '/eventParameters/event/origin/quality/minimumDistance': parseFloat,
+  '/eventParameters/event/origin/quality/maximumDistance': parseFloat,
+  '/eventParameters/event/origin/quality/medianDistance': parseFloat,
   '/eventParameters/event/origin/arrival/timeResidual': parseFloat,
   '/eventParameters/event/origin/arrival/timeWeight': parseFloat,
   '/eventParameters/event/origin/arrival/distance': parseFloat,
   '/eventParameters/event/origin/arrival/azimuth': parseFloat,
   '/eventParameters/event/magnitude/mag/value': parseFloat,
   '/eventParameters/event/magnitude/mag/uncertainty': parseFloat,
-  // '/eventParameters/event/pick/publicID': x => x.split('/').slice(-1)[0],
-  '/eventParameters/event/pick/time/value': x => new Date(Date.parse(x))
+  '/eventParameters/event/magnitude/stationCount': parseInt
 }
 
 
@@ -61,7 +63,7 @@ function ajax(opt, xhr) {
   });
 }
 
-function toUndercase(x) {
+function toSnakeCase(x) {
   return x.replace(/([A-Z]+)/g, '_$1').toLowerCase()
 }
 
@@ -72,7 +74,7 @@ function xmlNodeToJson(x, path, rules) {
     let key = a.name
     let currentPath = `${path}/${key}`
     let conv = rules[currentPath]
-    obj[toUndercase(key)] = conv ? conv(a.value) : a.value
+    obj[toSnakeCase(key)] = conv ? conv(a.value) : a.value
   }
   if (x.children.length == 0) {
     // console.log(path);
@@ -83,7 +85,7 @@ function xmlNodeToJson(x, path, rules) {
   } else {
     for (let c of x.children) {
       let currentPath = `${path}/${c.tagName}`
-      let key = toUndercase(c.tagName)
+      let key = toSnakeCase(c.tagName)
       let value = xmlNodeToJson(c, path, rules)
       if (rules[currentPath] == true) {// it's a list
         if (obj[key] == null) {
@@ -107,42 +109,46 @@ function dict(k_list, v_list) {
 }
 
 function processEventData(e) {
-  e.id = e.public_id.split('/').slice(-1)[0]
+  e._id = e.public_id.split('/').slice(-1)[0]
   for (let o of e.origin) {
-    o.time.pretty = o.time.value.toISOString().replace('T', ' ').substr(0, 19)
+    o.time._value = new Date(Date.parse(o.time.value))
+    o.time._pretty = o.time._value.toISOString().replace('T', ' ').substr(0, 19)
     let [lat, lon] = [o.latitude.value, o.longitude.value]
-    o.latitude.pretty = lat > 0 ? `${lat.toFixed(2)}° N` : `${(-1*lat).toFixed(2)}° S`
-    o.latitude.prettyUncertainty = `+/- ${(o.latitude.uncertainty).toFixed(1)} km`
-    o.longitude.pretty = lon > 0 ? `${lon.toFixed(2)}° E` : `${(-1*lon).toFixed(2)}° W`
-    o.longitude.prettyUncertainty = `+/- ${(o.longitude.uncertainty).toFixed(1)} km`
-    o.depth.pretty = `${(o.depth.value/1000).toFixed(0)} km`
-    o.depth.prettyUncertainty = `+/- ${(o.depth.uncertainty/1000).toFixed(1)} km`
+    o.latitude._pretty = lat > 0 ? `${lat.toFixed(2)}° N` : `${(-1*lat).toFixed(2)}° S`
+    o.latitude._pretty_uncertainty = `+/- ${(o.latitude.uncertainty).toFixed(1)} km`
+    o.longitude._pretty = lon > 0 ? `${lon.toFixed(2)}° E` : `${(-1*lon).toFixed(2)}° W`
+    o.longitude._pretty_uncertainty = `+/- ${(o.longitude.uncertainty).toFixed(1)} km`
+    o.depth._pretty = `${(o.depth.value/1000).toFixed(0)} km`
+    o.depth._pretty_uncertainty = `+/- ${(o.depth.uncertainty/1000).toFixed(1)} km`
   }
   if (e.magnitude != null) {
     for (let m of e.magnitude) {
-      m.mag.pretty = m.mag.value.toFixed(2)
-      m.prettyMethod = m.method_id.split('/').slice(-1)[0]
+      m.mag._pretty = m.mag.value.toFixed(2)
+      m._pretty_method = m.method_id != null ? m.method_id.split('/').slice(-1)[0] : ''
     }
+  } else {
+    e.magnitude = []
   }
-  e.po = e.origin.find(x => x.public_id == e.preferred_origin_id)
+  e._po = e.origin.find(x => x.public_id == e.preferred_origin_id)
   if (e.preferred_magnitude_id) {
-    e.pm = e.magnitude.find(x => x.public_id == e.preferred_magnitude_id)
+    e._pm = e.magnitude.find(x => x.public_id == e.preferred_magnitude_id)
   }
-  if (e.pick != null && e.po.arrival != null) {
+  if (e.pick != null && e._po.arrival != null) {
     let pickMap = {}
     for (let p of e.pick) {
-      p.id = p.public_id.split('/').slice(-1)[0]
+      p.time._value = new Date(Date.parse(p.time.value))
+      p._id = p.public_id.split('/').slice(-1)[0]
       let wfid = p.waveform_id
-      if (wfid.location_code == null) {
-        wfid.location_code = '--'
-      }
-      p.seedid = [wfid.network_code, wfid.station_code, wfid.location_code, wfid.channel_code].join('.')
+      delete p.waveform_id.value
+      let loc = wfid.location_code == null ? '' : wfid.location_code
+      p._seedid = [wfid.network_code, wfid.station_code, loc, wfid.channel_code].join('.')
+      p._fdsnid = p._seedid.replace('..', '.--.')
       pickMap[p.public_id] = p
     }
     for (let o of e.origin) {
       for (let a of o.arrival) {
-        a.pick = pickMap[a.pick_id]
-        a.time = new Date(a.pick.time.value - o.time.value)
+        a._pick = pickMap[a.pick_id]
+        a._traveltime = new Date(a._pick.time._value - o.time._value)
       }
     }
   }
@@ -190,68 +196,54 @@ function parseInventory(raw_inv) {
   return result
 }
 
-function toJquake(eventId, originList, po, magList, pm) {
-  let e = {
-    public_id: `smi:oca/${eventId}`,
-    preferred_origin_id: po.public_id,
-    magnitude: [],
-    origin: [],
-    pick: []
+function cloneAndClean(o) {
+  let result
+  if (o instanceof Array) {
+    result = []
+    for (let v of o) {
+      result.push(cloneAndClean(v))
+    }
+  } else if (o instanceof Object) {
+    result = {}
+    for (let [k, v] of Object.entries(o)) {
+      if (k.indexOf('_') == 0) {
+        continue
+      }
+      result[k] = cloneAndClean(v)
+    }
+  } else {
+    result = o
   }
-  for (let o of originList) {
-    let arrivals = []
+  return result
+}
+
+function composeEvent(o) {
+  let opt = Object.assign({ base: {}, origins: [], po: null, magnitudes: [], pm: null }, o)
+  let result = cloneAndClean(opt.base)
+  result.pick = []
+  let originList = []
+  for (let o of opt.origins) {
+    if (originList.find(x => x.public_id == o.public_id) != null) {
+      continue
+    }
     for (let a of o.arrival) {
-      let p = {
-        public_id: a.pick.public_id,
-        time: { value: a.pick.time.value },
-        phase_hint: a.pick.phase_hint,
-        waveform_id: {
-          network_code: a.pick.waveform_id.network_code,
-          station_code: a.pick.waveform_id.station_code,
-          channel_code: a.pick.waveform_id.channel_code
-        }
-      }
-      if (a.pick.polarity != null) {
-        p.polarity = a.pick.polarity
-      }
-      if (a.pick.waveform_id.location_code != '--') {
-        p.waveform_id.location_code = a.pick.waveform_id.location_code
-      }
-      e.pick.push(p)
-      arrivals.push({
-        public_id: `smi:oca/N.A`,
-        pick_id: p.public_id,
-        phase: a.phase,
-        azimuth: a.azimuth,
-        distance: a.distance,
-        time_residual: a.time_residual,
-        time_weight: a.time_weight
-      })
+      result.pick.push(cloneAndClean(a._pick))
     }
-    e.origin.push({
-      public_id: o.public_id,
-      time: { value: o.time.value, uncertainty: o.time.uncertainty },
-      latitude: { value: o.latitude.value, uncertainty: o.latitude.uncertainty },
-      longitude: { value: o.longitude.value, uncertainty: o.longitude.uncertainty },
-      depth: { value: o.depth.value, uncertainty: o.depth.uncertainty },
-      arrival: arrivals
-    })
+    originList.push(cloneAndClean(o))
   }
-  if (magList != null) {
-    for (let m of magList) {
-      e.magnitude.push({
-        public_id: m.public_id,
-        mag: { value: m.mag.value },
-        method_id: m.method_id,
-        station_count: m.station_count,
-        type: m.type
-      })
-    }
+  result.origin = originList
+  result.magnitude = cloneAndClean(opt.magnitudes)
+  if (opt.po != null) {
+    result.preferred_origin_id = opt.po.public_id
+  } else {
+    delete result.preferred_origin_id
   }
-  if (pm != null) {
-    e.preferred_magnitude_id = pm.public_id
+  if (opt.pm != null) {
+    result.preferred_magnitude_id = opt.pm.public_id
+  } else {
+    delete result.preferred_magnitude_id
   }
-  return [e]
+  return result
 }
 
 export default {
@@ -261,5 +253,6 @@ export default {
   processEventData,
   xmlNodeToJson,
   parseInventory,
-  toJquake
+  cloneAndClean,
+  composeEvent
 }

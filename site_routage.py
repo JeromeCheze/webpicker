@@ -17,7 +17,8 @@ import os
 app = Flask(__name__)
 app.debug = True
 
-FDSNWS_EVENT = 'http://encelade.unice.fr:8080/fdsnws/event'
+# FDSNWS_EVENT = 'http://encelade.unice.fr:8080/fdsnws/event'
+FDSNWS_EVENT = 'http://localhost:8080/fdsnws/event'
 FDSNWS_STATION = 'http://encelade.unice.fr:8080/fdsnws/station'
 FDSNWS_DATASELECT = 'http://encelade.unice.fr:8000/fdsnws/dataselect'
 # used for screloc :
@@ -28,6 +29,8 @@ XSL_QML1_2_TO_SC3ML0_9 = '/home/cheze/seiscomp3/share/xml/0.9/quakeml_1.2__sc3ml
 # used for scamp and scmag :
 FDSNWS_BASE_URL = 'http://encelade.unice.fr:8080'
 SC3ML_CONFIG_FILENAME = '/home/cheze/encelade_config.xml'
+# used for scdispatch :
+SC3_MESSAGING_HOST = 'localhost:4803'
 
 def apply_xslt(document, xslt_path):
     xslt = etree.parse(xslt_path)
@@ -57,6 +60,7 @@ def set_used_arrival_and_save_sc3ml(catalog, sc3ml):
         tu = etree.Element('timeUsed')
         tu.text = 'false' if float(w.text) == 0 else 'true'
         a.append(tu)
+    # TODO: remove 'smi:org.gfz-potsdam.de/geofon/' in all IDs before write sc3ml
     dom.write(sc3ml)
 
 def compute_magnitudes_with_scamp_and_scmag(qml_string):
@@ -117,7 +121,6 @@ def compute_magnitudes_with_scamp_and_scmag(qml_string):
 
 def relocate_with_screloc(qml_string):
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
-    _, result_sc3ml = tempfile.mkstemp(suffix="-result.sc3ml")
     catalog = obspy.read_events(StringIO(qml_string))
     set_used_arrival_and_save_sc3ml(catalog, sc3ml)
     screloc = subprocess.Popen([
@@ -132,17 +135,28 @@ def relocate_with_screloc(qml_string):
         '--replace'
     ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     result, error_message = screloc.communicate()
-    with open(result_sc3ml, 'w') as f:
-        f.write(result)
     dom = etree.fromstring(result)
     update_sc3ml_origin_reference(dom)
     newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML0_10_TO_QML1_2)
     os.remove(sc3ml)
-    os.remove(result_sc3ml)
     return {
         'message': error_message,
         'quakeml': etree.tostring(newdom)
     }
+
+def commit_with_scdispatch(qml_string):
+    _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
+    print(sc3ml)
+    catalog = obspy.read_events(StringIO(qml_string))
+    set_used_arrival_and_save_sc3ml(catalog, sc3ml)
+    # scdispatch = subprocess.Popen([
+    #     SEISCOMP_PROGRAM, 'exec', 'scdispatch',
+    #     '-H', SC3_MESSAGING_HOST,
+    #     '-i', sc3ml
+    # ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # result, error_message = scdispatch.communicate()
+    # os.remove(sc3ml)
+    return 'true'
 
 def get_first_arrival_P(arrivals, distance):
     result = None
@@ -193,6 +207,14 @@ def relocate():
     generator = QuakeMLGenerator()
     qml = generator.generate(jquake)
     result = relocate_with_screloc(qml)
+    return Response(json.dumps(result), mimetype='application/json')
+
+@app.route('/commit', methods=['POST'])
+def commit():
+    jquake = request.get_json()
+    generator = QuakeMLGenerator()
+    qml = generator.generate(jquake)
+    result = commit_with_scdispatch(qml)
     return Response(json.dumps(result), mimetype='application/json')
 
 @app.route('/fdsnws/', defaults={'service': '', 'path': ''})
