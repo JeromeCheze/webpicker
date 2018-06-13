@@ -246,6 +246,7 @@ export default {
           distance: this.stationInfoMap[staKey].distance,
           phase: p.phase,
           pick_id: p.id,
+          _pick_id: p.id.split('/').slice(-1)[0],
           time_residual: p.residual,
           time_weight: p.weight,
           _traveltime: new Date(pTime - this.origin.time._value),
@@ -517,7 +518,6 @@ export default {
     },
 
     handleUpdatePick (ev) {
-      console.log(ev);
       this.picksDirty = true
       if (this.picks[ev.wfid] == null) {
         this.picks[ev.wfid] = []

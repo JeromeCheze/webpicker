@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+{%- macro real_quantity(real) %}
+  <value>{{ real.value }}</value>
+  {%- if real.uncertainty %}
+  <uncertainty>{{ real.value }}</uncertainty>
+  {%- endif %}
+{%- endmacro %}
+
+{%- macro creation_info(info) %}
+  <creationInfo>
+  {%- if info.agency_id %}
+    <agencyID>{{ info.agency_id }}</agencyID>
+  {%- endif %}
+  {%- if info.agency_uri %}
+    <agencyURI>{{ info.agency_uri }}</agencyURI>
+  {%- endif %}
+  {%- if info.author %}
+    <author>{{ info.author }}</author>
+  {%- endif %}
+  {%- if info.author_uri %}
+    <authorURI>{{ info.author_uri }}</authorURI>
+  {%- endif %}
+  {%- if info.creation_time %}
+    <creationTime>{{ info.creation_time }}</creationTime>
+  {%- endif %}
+  {%- if info.modification_time %}
+    <modificationTime>{{ info.modification_time }}</modificationTime>
+  {%- endif %}
+  {%- if info.version %}
+    <version>{{ info.version }}</version>
+  {%- endif %}
+  </creationInfo>
+{%- endmacro %}
+
+<seiscomp xmlns="http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/0.9" version="0.9">
+  <EventParameters>
+{%- for event in jquake %}
+  {%- for pick in event.pick %}
+    <pick publicID="{{ pick.public_id.split('/')[-1] }}">
+      <time>
+        <value>{{ pick.time.value }}</value>
+      </time>
+      <waveformID
+        networkCode="{{ pick.waveform_id.network_code }}"
+        stationCode="{{ pick.waveform_id.station_code }}"
+      {%- if pick.waveform_id.location_code %}
+        locationCode="{{ pick.waveform_id.location_code }}"
+      {%- endif %}
+        channelCode="{{ pick.waveform_id.channel_code }}"/>
+    {%- if pick.filter_id %}
+      <filterID>{{ pick.filter_id.split('/')[-1] }}</filterID>
+    {%- endif %}
+    {%- if pick.method_id %}
+      <methodID>{{ pick.method_id.split('/')[-1] }}</methodID>
+    {%- endif %}
+      <phaseHint>{{ pick.phase_hint }}</phaseHint>
+      <evaluationMode>{{ pick.evaluation_mode }}</evaluationMode>
+    {%- if pick.evaluation_status %}
+      <evaluationStatus>{{ pick.evaluation_status }}</evaluationStatus>
+    {%- endif %}
+    {%- if pick.creation_info %}
+      {{ creation_info(pick.creation_info) }}
+    {%- endif %}
+    </pick>
+  {%- endfor %}
+
+  {%- for origin in event.origin %}
+    <origin publicID="{{ origin.public_id.split('/')[-1] }}">
+      <time>
+        <value>{{ origin.time.value }}</value>
+        <uncertainty>{{ origin.time.uncertainty }}</uncertainty>
+      </time>
+      <latitude>
+        {{ real_quantity(origin.latitude) }}
+      </latitude>
+      <longitude>
+        {{ real_quantity(origin.longitude) }}
+      </longitude>
+      <depth>
+        <value>{{ origin.depth.value / 1000 }}</value>
+        <uncertainty>{{ origin.depth.uncertainty / 1000 }}</uncertainty>
+      </depth>
+    {%- if origin.method_id %}
+      <methodID>{{ origin.method_id.split('/')[-1] }}</methodID>
+    {%- endif %}
+    {%- if origin.earth_model_id %}
+      <earthModelID>{{ origin.earth_model_id.split('/')[-1] }}</earthModelID>
+    {%- endif %}
+    {%- if origin.quality %}
+      <quality>
+      {%- if origin.quality.associated_phase_count %}
+        <associatedPhaseCount>{{ origin.quality.associated_phase_count }}</associatedPhaseCount>
+      {%- endif %}
+      {%- if origin.quality.used_phase_count %}
+        <usedPhaseCount>{{ origin.quality.used_phase_count }}</usedPhaseCount>
+      {%- endif %}
+      {%- if origin.quality.associated_station_count %}
+        <associatedStationCount>{{ origin.quality.associated_station_count }}</associatedStationCount>
+      {%- endif %}
+      {%- if origin.quality.used_station_count %}
+        <usedStationCount>{{ origin.quality.used_station_count }}</usedStationCount>
+      {%- endif %}
+      {%- if origin.quality.standard_error %}
+        <standardError>{{ origin.quality.standard_error }}</standardError>
+      {%- endif %}
+      {%- if origin.quality.azimuthal_gap %}
+        <azimuthalGap>{{ origin.quality.azimuthal_gap }}</azimuthalGap>
+      {%- endif %}
+      {%- if origin.quality.maximum_distance %}
+        <maximumDistance>{{ origin.quality.maximum_distance }}</maximumDistance>
+      {%- endif %}
+      {%- if origin.quality.minimum_distance %}
+        <minimumDistance>{{ origin.quality.minimum_distance }}</minimumDistance>
+      {%- endif %}
+      {%- if origin.quality.median_distance %}
+        <medianDistance>{{ origin.quality.median_distance }}</medianDistance>
+      {%- endif %}
+      </quality>
+    {%- endif %}
+      <evaluationMode>{{ origin.evaluation_mode }}</evaluationMode>
+    {%- if origin.evaluation_status %}
+      <evaluationStatus>{{ origin.evaluation_status }}</evaluationStatus>
+    {%- endif %}
+    {%- if origin.creation_info %}
+      {{ creation_info(origin.creation_info) }}
+    {%- endif %}
+
+  {%- if origin.arrival %}
+    {%- for arrival in origin.arrival %}
+      <arrival>
+        <pickID>{{ arrival.pick_id.split('/')[-1] }}</pickID>
+        <phase>{{ arrival.phase }}</phase>
+        <azimuth>{{ arrival.azimuth }}</azimuth>
+        <distance>{{ arrival.distance }}</distance>
+        <timeResidual>{{ arrival.time_residual }}</timeResidual>
+        <timeUsed>{% if arrival.time_weight == 0 %}false{% else %}true{% endif %}</timeUsed>
+        <weight>{{ arrival.time_weight }}</weight>
+      {% if arrival.creation_info %}
+        {{ creation_info(arrival.creation_info) }}
+      {% endif %}
+      </arrival>
+    {%- endfor %}
+  {%- endif %}
+
+{%- if event.magnitude %}
+  {%- for magnitude in event.magnitude %}
+    {%- if magnitude.origin_id.split('/')[-1] == origin.public_id.split('/')[-1] %}
+      <magnitude publicID="{{ magnitude.public_id.split('/')[-1] }}">
+        <magnitude>
+          {{ real_quantity(magnitude.mag) }}
+        </magnitude>
+        <type>{{ magnitude.type }}</type>
+      {%- if magnitude.origin_id %}
+        <originID>{{ magnitude.origin_id.split('/')[-1] }}</originID>
+      {%- endif %}
+      {%- if magnitude.method_id %}
+        <methodID>{{ magnitude.method_id.split('/')[-1] }}</methodID>
+      {%- endif %}
+      {%- if magnitude.station_count %}
+        <stationCount>{{ magnitude.station_count }}</stationCount>
+      {%- endif %}
+      {%- if magnitude.creation_info %}
+        {{ creation_info(magnitude.creation_info) }}
+      {%- endif %}
+      </magnitude>
+    {%- endif %}
+  {%- endfor %}
+{%- endif %}
+
+    </origin>
+
+  {%- endfor %}
+
+    <event publicID="{{ event.public_id.split('/')[-1] }}">
+    {%- if event.preferred_origin_id %}
+      <preferredOriginID>{{ event.preferred_origin_id.split('/')[-1] }}</preferredOriginID>
+    {%- endif %}
+    {%- if event.preferred_magnitude_id %}
+      <preferredMagnitudeID>{{ event.preferred_magnitude_id.split('/')[-1] }}</preferredMagnitudeID>
+    {%- endif %}
+    {%- if event.type %}
+      <type>{{ event.type }}</type>
+    {%- endif %}
+    {%- if event.type_certainty %}
+      <typeCertainty>{{ event.type_certainty }}</typeCertainty>
+    {%- endif %}
+    {%- if event.creation_info %}
+      {{ creation_info(event.creation_info) }}
+    {%- endif %}
+  {%- if event.description %}
+    {%- for description in event.description %}
+      <description>
+      {%- for key, value in description.iteritems() %}
+        <{{ key }}>{{ value }}</{{ key }}>
+      {%- endfor %}
+      </description>
+    {%- endfor %}
+  {%- endif %}
+    {%- if event.comment %}
+      <comment>{{ event.comment }}</comment>
+    {%- endif %}
+    {%- for origin in event.origin %}
+      <originReference>{{ origin.public_id.split('/')[-1] }}</originReference>
+    {%- endfor %}
+    </event>
+{%- endfor %}
+
+  </EventParameters>
+</seiscomp>

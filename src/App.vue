@@ -154,8 +154,8 @@ export default {
         utils.processEventData(e)
         this.eventList.splice(index, 1, e)
         e._origin = oldEvent._origin
-        this.currentEvent = e
         this.currentOrigin = e._origin != null ? e._origin : e._po
+        this.currentEvent = e
         this.activeIndex = 'eventPage'
       })
     },

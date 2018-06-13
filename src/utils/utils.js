@@ -143,11 +143,15 @@ function processEventData(e) {
       let loc = wfid.location_code == null ? '' : wfid.location_code
       p._seedid = [wfid.network_code, wfid.station_code, loc, wfid.channel_code].join('.')
       p._fdsnid = p._seedid.replace('..', '.--.')
-      pickMap[p.public_id] = p
+      pickMap[p._id] = p
     }
     for (let o of e.origin) {
       for (let a of o.arrival) {
-        a._pick = pickMap[a.pick_id]
+        if (a.public_id) {
+          delete a.public_id
+        }
+        a._pick_id = a.pick_id.split('/').slice(-1)[0]
+        a._pick = pickMap[a._pick_id]
         a._traveltime = new Date(a._pick.time._value - o.time._value)
       }
     }

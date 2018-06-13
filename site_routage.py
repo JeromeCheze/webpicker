@@ -24,6 +24,7 @@ FDSNWS_DATASELECT = 'http://encelade.unice.fr:8000/fdsnws/dataselect'
 # used for screloc :
 SC3ML_INVENTORY_FILENAME = '/home/cheze/encelade_inventory.xml'
 SEISCOMP_PROGRAM = '/home/cheze/seiscomp3/bin/seiscomp'
+# XSL_SC3ML0_9_TO_QML1_2 = '/home/cheze/seiscomp3/share/xml/0.9/sc3ml_0.9__quakeml_1.2.xsl'
 XSL_SC3ML0_10_TO_QML1_2 = '/home/cheze/seiscomp3/share/xml/0.10/sc3ml_0.10__quakeml_1.2.xsl'
 XSL_QML1_2_TO_SC3ML0_9 = '/home/cheze/seiscomp3/share/xml/0.9/quakeml_1.2__sc3ml_0.9.xsl'
 # used for scamp and scmag :
@@ -47,27 +48,40 @@ def update_sc3ml_origin_reference(root):
     po.text = origin_id
     oref.text = origin_id
 
-def set_used_arrival_and_save_sc3ml(catalog, sc3ml):
-    fake_sc3ml = StringIO()
-    catalog.write(fake_sc3ml, format="SC3ML")
-    fake_sc3ml.seek(0)
-    dom = etree.parse(fake_sc3ml)
-    root = dom.getroot()
+def fix_scmag_magnitude_public_id(root):
     namespace = root.nsmap.values()[0]
-    o = root[0].find('{%s}origin' % namespace)
-    for a in o.findall('{%s}arrival' % namespace):
-        w = a.find('{%s}weight' % namespace)
-        tu = etree.Element('timeUsed')
-        tu.text = 'false' if float(w.text) == 0 else 'true'
-        a.append(tu)
-    # TODO: remove 'smi:org.gfz-potsdam.de/geofon/' in all IDs before write sc3ml
-    dom.write(sc3ml)
+    origin = root[0].find('{%s}origin' % namespace)
+    mags = origin.findall('{%s}magnitude' % namespace)
+    for mag in mags:
+        mag.attrib['publicID'] = mag.attrib['publicID'].replace('/', '.')
 
-def compute_magnitudes_with_scamp_and_scmag(qml_string):
+def write_sc3ml(jquake, filename):
+    with open(filename, 'w') as f:
+        f.write(render_template('sc3ml.xml', jquake=jquake))
+
+# def set_used_arrival_and_save_sc3ml(catalog, sc3ml):
+#     fake_sc3ml = StringIO()
+#     catalog.write(fake_sc3ml, format="SC3ML")
+#     fake_sc3ml.seek(0)
+#     dom = etree.parse(fake_sc3ml)
+#     root = dom.getroot()
+#     namespace = root.nsmap.values()[0]
+#     o = root[0].find('{%s}origin' % namespace)
+#     for a in o.findall('{%s}arrival' % namespace):
+#         w = a.find('{%s}weight' % namespace)
+#         tu = etree.Element('timeUsed')
+#         tu.text = 'false' if float(w.text) == 0 else 'true'
+#         a.append(tu)
+#     fake_sc3ml.truncate(0)
+#     dom.write(fake_sc3ml)
+#     with open(sc3ml, 'w') as f:
+#         f.write(fake_sc3ml.getvalue().replace('smi:org.gfz-potsdam.de/geofon/', ''))
+
+def compute_magnitudes_with_scamp_and_scmag(jquake):
     # 1) save sc3ml
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
-    catalog = obspy.read_events(StringIO(qml_string))
-    set_used_arrival_and_save_sc3ml(catalog, sc3ml)
+    write_sc3ml(jquake, sc3ml)
+    catalog = obspy.read_events(sc3ml)
 
     # 2) download data
     _, data = tempfile.mkstemp(suffix='.mseed')
@@ -100,6 +114,11 @@ def compute_magnitudes_with_scamp_and_scmag(qml_string):
     result, error_message = scamp.communicate()
     with open(scamp_result, 'w') as f:
         f.write(result)
+
+    # print(sc3ml)
+    # print(data)
+    # print(scamp_result)
+
     os.remove(sc3ml)
     os.remove(data)
 
@@ -114,15 +133,20 @@ def compute_magnitudes_with_scamp_and_scmag(qml_string):
     error_message += error_message2
     dom = etree.fromstring(result)
     update_sc3ml_origin_reference(dom)
+    fix_scmag_magnitude_public_id(dom)
     newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML0_10_TO_QML1_2)
-    os.remove(scamp_result)
 
+    # _, scmag_result = tempfile.mkstemp(suffix='.sc3ml')
+    # print(scmag_result)
+    # with open(scmag_result, 'w') as f:
+    #     f.write(result)
+
+    os.remove(scamp_result)
     return { 'message': error_message, 'quakeml': etree.tostring(newdom) }
 
-def relocate_with_screloc(qml_string):
+def relocate_with_screloc(jquake):
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
-    catalog = obspy.read_events(StringIO(qml_string))
-    set_used_arrival_and_save_sc3ml(catalog, sc3ml)
+    write_sc3ml(jquake, sc3ml)
     screloc = subprocess.Popen([
         SEISCOMP_PROGRAM, 'exec', 'screloc',
         '--inventory-db', SC3ML_INVENTORY_FILENAME,
@@ -144,19 +168,23 @@ def relocate_with_screloc(qml_string):
         'quakeml': etree.tostring(newdom)
     }
 
-def commit_with_scdispatch(qml_string):
+def commit_with_scdispatch(jquake):
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
     print(sc3ml)
-    catalog = obspy.read_events(StringIO(qml_string))
-    set_used_arrival_and_save_sc3ml(catalog, sc3ml)
-    # scdispatch = subprocess.Popen([
-    #     SEISCOMP_PROGRAM, 'exec', 'scdispatch',
-    #     '-H', SC3_MESSAGING_HOST,
-    #     '-i', sc3ml
-    # ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    # result, error_message = scdispatch.communicate()
+    write_sc3ml(jquake, sc3ml)
+    scdispatch = subprocess.Popen([
+        SEISCOMP_PROGRAM, 'exec', 'scdispatch',
+        '-H', SC3_MESSAGING_HOST,
+        '-i', sc3ml,
+        '--debug'
+    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result, error_message = scdispatch.communicate()
     # os.remove(sc3ml)
-    return 'true'
+    return {
+        'message': error_message,
+        'return_code': scdispatch.returncode
+    }
+    # return 'true'
 
 def get_first_arrival_P(arrivals, distance):
     result = None
@@ -196,25 +224,19 @@ def get_ttt():
 @app.route('/compute_magnitudes', methods=['POST'])
 def compute_magnitudes():
     jquake = request.get_json()
-    generator = QuakeMLGenerator()
-    qml = generator.generate(jquake)
-    result = compute_magnitudes_with_scamp_and_scmag(qml)
+    result = compute_magnitudes_with_scamp_and_scmag(jquake)
     return Response(json.dumps(result), mimetype='application/json')
 
 @app.route('/relocate', methods=['POST'])
 def relocate():
     jquake = request.get_json()
-    generator = QuakeMLGenerator()
-    qml = generator.generate(jquake)
-    result = relocate_with_screloc(qml)
+    result = relocate_with_screloc(jquake)
     return Response(json.dumps(result), mimetype='application/json')
 
 @app.route('/commit', methods=['POST'])
 def commit():
     jquake = request.get_json()
-    generator = QuakeMLGenerator()
-    qml = generator.generate(jquake)
-    result = commit_with_scdispatch(qml)
+    result = commit_with_scdispatch(jquake)
     return Response(json.dumps(result), mimetype='application/json')
 
 @app.route('/fdsnws/', defaults={'service': '', 'path': ''})

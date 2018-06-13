@@ -249,12 +249,17 @@ export default {
     },
     origin: function(val) {
       this.dirty = true
-      this.relocateBtnType = 'warning'
-      this.magnitudeBtnType = 'warning'
     }
   },
 
   activated () {
+    if (this.event._origin != null) {
+      this.relocateBtnType = 'warning'
+      this.magnitudeBtnType = 'warning'
+    } else {
+      this.relocateBtnType = null
+      this.magnitudeBtnType = null
+    }
     if (this.dirty) {
       this.dirty = false
       this.magnitude = this.event._magnitudes ? this.event._magnitudes[0] : this.event._pm
@@ -514,6 +519,7 @@ export default {
             utils.CONVERSION_RULES
           ).event[0]
           utils.processEventData(e)
+          console.log(e);
           this.event._magnitudes = e.magnitude
           this.magnitude = e.magnitude[0]
           this.magnitudeBtnType = null
@@ -528,7 +534,6 @@ export default {
         origins: [this.origin],
         po: this.origin
       })
-      console.log(e);
       utils.ajax({
         method: 'POST',
         url: 'relocate',
@@ -542,12 +547,14 @@ export default {
         } else {
           let parser = new DOMParser()
           let qml = parser.parseFromString(data.quakeml, 'application/xml')
+          console.log(qml);
           let e = utils.xmlNodeToJson(
             qml.getElementsByTagName('eventParameters')[0],
             '',
             utils.CONVERSION_RULES
           ).event[0]
           utils.processEventData(e)
+          console.log(e);
           let o = e.origin[0]
           Object.assign(this.origin, {
             time: o.time,
@@ -564,7 +571,7 @@ export default {
             standard_error: o.quality.standard_error,
           })
           for (let newA of o.arrival) {
-            let a = this.origin.arrival.find(x => x.pick_id == newA.pick_id)
+            let a = this.origin.arrival.find(x => x._pick_id == newA._pick_id)
             Object.assign(a, {
               azimuth: newA.azimuth,
               distance: newA.distance,
