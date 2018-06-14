@@ -1,12 +1,12 @@
 <template>
-  <div v-loading="loading">
+  <div>
     <el-row class="toolbar" type="flex" align="middle">
       <el-form :inline="true">
         <el-form-item>
-          <el-button :type="relocateBtnType" icon="el-icon-location" @click="handleRelocateClick">Relocate</el-button>
+          <el-button :type="origin.is_dirty ? 'warning': null" icon="el-icon-location" @click="handleRelocateClick">Relocate</el-button>
         </el-form-item>
         <el-form-item>
-          <el-button :type="magnitudeBtnType" @click="handleComputeMagnitudeClick">Compute magnitude</el-button>
+          <el-button :type="event.preferred_magnitude_id == null ? 'warning': null" @click="handleComputeMagnitudeClick">Compute magnitude</el-button>
         </el-form-item>
         <el-form-item>
           <el-popover placement="bottom" width="300" v-model="commitPopover">
@@ -44,7 +44,7 @@
               </el-form-item>
             </el-form>
             <el-button
-              :type="origin._not_committed ? 'warning': null" slot="reference"
+              :type="origin._not_committed == true ? 'warning': null" slot="reference"
               @click="commitPopover = true">Commit</el-button>
           </el-popover>
         </el-form-item>
@@ -61,19 +61,19 @@
     </el-row>
     <el-row>
       <strong>Magnitude</strong>
-      <table class="event-description" v-if="magnitude != null">
+      <table class="event-description" v-if="event._pm != null">
         <thead>
           <th>Value</th><th>Magnitude type</th><th>Station count</th><th>Method</th>
         </thead>
         <tbody>
-          <td>{{ magnitude.mag._pretty }}</td>
-          <td>{{ magnitude.type }}</td>
-          <td>{{ magnitude.station_count }}</td>
-          <td>{{ magnitude._pretty_method }}</td>
+          <td>{{ event._pm.mag._pretty }}</td>
+          <td>{{ event._pm.type }}</td>
+          <td>{{ event._pm.station_count }}</td>
+          <td>{{ event._pm.method_id }}</td>
         </tbody>
       </table>
       <div v-else>
-        <el-alert type="danger" title="No magnitude selected"></el-alert>
+        <el-alert type="error" title="No preferred magnitude"></el-alert>
       </div>
     </el-row>
     <el-row>
@@ -141,6 +141,7 @@ import addMore from 'highcharts/highcharts-more'
 import utils from './../utils/utils.js'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
+import 'leaflet-ellipse'
 
 addMore(Highcharts)
 
@@ -225,14 +226,10 @@ export default {
         ]
       },
       dirty: true,
-      loading: false,
       updating: false,
-      magnitude: null,
       commitPopover: false,
-      relocateBtnType: null,
-      magnitudeBtnType: null,
       map: null,
-      markers: [],
+      layers: [],
       chart: {
         timeResidual: null,
         travelTime: null,
@@ -253,16 +250,7 @@ export default {
   },
 
   activated () {
-    if (this.event._origin != null) {
-      this.relocateBtnType = 'warning'
-      this.magnitudeBtnType = 'warning'
-    } else {
-      this.relocateBtnType = null
-      this.magnitudeBtnType = null
-    }
     if (this.dirty) {
-      this.dirty = false
-      this.magnitude = this.event._magnitudes ? this.event._magnitudes[0] : this.event._pm
       this.updateAll()
     }
   },
@@ -278,7 +266,7 @@ export default {
 
     setSelectedArrival (selectedPickIDs) {
       for (let a of this.origin.arrival) {
-        a.time_weight = selectedPickIDs.indexOf(a._pick._id) >= 0 ? 1 : 0
+        a.time_weight = selectedPickIDs.indexOf(a.pick_id) >= 0 ? 1 : 0
       }
       this.updateAll()
     },
@@ -290,7 +278,7 @@ export default {
 
     updateArrivalTableData () {
       let data = this.origin.arrival.map(a => ({
-        id: a._pick._id,
+        id: a._pick.public_id,
         mode: a._pick.evaluation_mode == 'automatic' ? 'A' : 'M',
         modeColor: a._pick.evaluation_mode == 'manual' ? 'success' : 'danger',
         phase: a.phase,
@@ -307,7 +295,9 @@ export default {
       this.$set(this, 'arrivalTableData', data)
     },
 
-    updateAll () {
+    updateAll (o) {
+      // console.log(o == this.origin);
+      // console.log('updateAll', this.origin);
       this.updating = true
       this.updateArrivalTableData()
       this.eventMap()
@@ -317,6 +307,7 @@ export default {
       for (let row of this.arrivalTableData) {
         this.$refs.arrivalTable.toggleRowSelection(row, row.weight == 1)
       }
+      this.dirty = false
       this.updating = false
     },
 
@@ -343,13 +334,11 @@ export default {
     eventMap () {
       if (this.map == null) {
         this.initMap()
-      } else {
-        this.map.invalidateSize()
       }
-      for (let m of this.markers) {
-        m.remove()
+      for (let l of this.layers) {
+        l.remove()
       }
-      this.markers = []
+      this.layers = []
       let originPos = L.latLng([
         this.origin.latitude.value,
         this.origin.longitude.value
@@ -363,28 +352,38 @@ export default {
         }
         bounds.push(pos)
         if (a.time_weight == 1) {
-          this.markers.push(L.polyline([originPos, pos], {
+          this.layers.push(L.polyline([originPos, pos], {
             color: 'gray',
             weight: 1
           }).addTo(this.map))
         }
-        this.markers.push(L.circleMarker(pos, {
+        this.layers.push(L.circleMarker(pos, {
           radius: 2,
           weight: 1,
           color: a.time_weight == 1 ? 'black' : 'gray',
           fillOpacity: 1
         }).bindPopup(a._pick._seedid).addTo(this.map))
       }
-      this.markers.push(L.circleMarker(originPos, {
+      this.layers.push(L.ellipse(originPos, [
+        this.origin.longitude.uncertainty * 1000,
+        this.origin.latitude.uncertainty * 1000
+      ], 0, {
+        weight: 0,
+        color: 'red',
+        fillOpacity: .2
+      }).addTo(this.map))
+      this.layers.push(L.circleMarker(originPos, {
         radius: 8,
         weight: 1,
         color: 'red',
         fillOpacity: .8
       }).addTo(this.map))
       this.map.fitBounds(bounds)
+      // console.log(this.origin);
     },
 
     initChartsData () {
+      // console.log('initChartsData');
       this.chart.timeResidual = { p: [], s: [] }
       this.chart.travelTime = { p: [], s: [] }
       for (let a of this.origin.arrival) {
@@ -395,10 +394,10 @@ export default {
           'green'
         )
         this.chart.timeResidual[serie].push({
-          x: a.distance, y: a.time_residual, name: a._pick._seedid, color: color, id: a._pick._id
+          x: a.distance, y: a.time_residual, name: a._pick._seedid, color: color, id: a.pick_id
         })
         this.chart.travelTime[serie].push({
-          x: a.distance, y: a._traveltime.getTime()/1000., name: a._pick._seedid, color: color, id: a._pick._id
+          x: a.distance, y: a._traveltime.getTime()/1000., name: a._pick._seedid, color: color, id: a.pick_id
         })
       }
     },
@@ -463,125 +462,15 @@ export default {
     },
 
     handleCommitClick () {
-      let additionalMagnitudes = this.event._magnitudes != null ? this.event._magnitudes : []
-      let e = utils.composeEvent({
-        base: this.event,
-        origins: this.event.origin.concat([this.origin]),
-        po: this.origin,
-        magnitudes: this.event.magnitude.concat(additionalMagnitudes),
-        pm: this.magnitude
-      })
-      e.type = this.commitForm.eventType
-      if (this.commitForm.eventTypeCertainty != null) {
-        e.typeCertainty = this.commitForm.eventTypeCertainty
-      }
-      if (this.commitForm.originEvaluationStatus != null) {
-        let po = e.origin.find(x => x.public_id == e.preferred_origin_id)
-        po.evaluation_status = this.commitForm.originEvaluationStatus
-      }
-      console.log(e);
-      utils.ajax({
-        method: 'POST',
-        url: 'commit',
-        type: 'json',
-        dataMimeType: 'application/json',
-        data: JSON.stringify([e]),
-      }).then(data => {
-        console.log(data);
-      })
+      this.$emit('commit', this.commitForm)
     },
 
     handleComputeMagnitudeClick () {
-      this.loading = true
-      let e = utils.composeEvent({
-        base: this.event,
-        origins: [this.origin],
-        po: this.origin
-      })
-      utils.ajax({
-        method: 'POST',
-        url: 'compute_magnitudes',
-        type: 'json',
-        dataMimeType: 'application/json',
-        data: JSON.stringify([e]),
-      }).then(data => {
-        this.loading = false
-        this.$notify({
-          type: data.quakeml == null ? 'error' : 'info',
-          message: data.message
-        })
-        if (data.quakeml != null) {
-          let parser = new DOMParser()
-          let qml = parser.parseFromString(data.quakeml, 'application/xml')
-          let e = utils.xmlNodeToJson(
-            qml.getElementsByTagName('eventParameters')[0],
-            '',
-            utils.CONVERSION_RULES
-          ).event[0]
-          utils.processEventData(e)
-          console.log(e);
-          this.event._magnitudes = e.magnitude
-          this.magnitude = e.magnitude[0]
-          this.magnitudeBtnType = null
-        }
-      })
+      this.$emit('compute-magnitudes')
     },
 
     handleRelocateClick () {
-      this.loading = true
-      let e = utils.composeEvent({
-        base: this.event,
-        origins: [this.origin],
-        po: this.origin
-      })
-      utils.ajax({
-        method: 'POST',
-        url: 'relocate',
-        type: 'json',
-        dataMimeType: 'application/json',
-        data: JSON.stringify([e]),
-      }).then(data => {
-        this.loading = false
-        if (data.message != '') {
-          this.$notify.error({ message: data.message })
-        } else {
-          let parser = new DOMParser()
-          let qml = parser.parseFromString(data.quakeml, 'application/xml')
-          console.log(qml);
-          let e = utils.xmlNodeToJson(
-            qml.getElementsByTagName('eventParameters')[0],
-            '',
-            utils.CONVERSION_RULES
-          ).event[0]
-          utils.processEventData(e)
-          console.log(e);
-          let o = e.origin[0]
-          Object.assign(this.origin, {
-            time: o.time,
-            latitude: o.latitude,
-            longitude: o.longitude,
-            evaluation_mode: 'manual',
-            depth: o.depth,
-            origin_uncertainty: o.origin_uncertainty,
-            creation_info: o.creation_info
-          })
-          Object.assign(this.origin.quality, {
-            associated_phase_count: this.origin.arrival.length,
-            used_phase_count: o.arrival.filter(a => a.time_weight == 1).length,
-            standard_error: o.quality.standard_error,
-          })
-          for (let newA of o.arrival) {
-            let a = this.origin.arrival.find(x => x._pick_id == newA._pick_id)
-            Object.assign(a, {
-              azimuth: newA.azimuth,
-              distance: newA.distance,
-              timeResidual: newA.time_residual
-            })
-          }
-          this.relocateBtnType = null
-          this.updateAll()
-        }
-      })
+      this.$emit('relocate')
     }
   }
 }

@@ -146,6 +146,7 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
 
 def relocate_with_screloc(jquake):
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
+    # print(sc3ml)
     write_sc3ml(jquake, sc3ml)
     screloc = subprocess.Popen([
         SEISCOMP_PROGRAM, 'exec', 'screloc',
@@ -159,10 +160,18 @@ def relocate_with_screloc(jquake):
         '--replace'
     ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     result, error_message = screloc.communicate()
+    # _, screloc_result = tempfile.mkstemp(suffix=".sc3ml")
+    # print(screloc_result)
+    # with open(screloc_result, 'w') as f:
+    #     f.write(result)
     dom = etree.fromstring(result)
     update_sc3ml_origin_reference(dom)
     newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML0_10_TO_QML1_2)
     os.remove(sc3ml)
+    # _, qml_result = tempfile.mkstemp(suffix=".sc3ml")
+    # print(qml_result)
+    # with open(qml_result, 'w') as f:
+    #     f.write(etree.tostring(newdom))
     return {
         'message': error_message,
         'quakeml': etree.tostring(newdom)
@@ -170,7 +179,7 @@ def relocate_with_screloc(jquake):
 
 def commit_with_scdispatch(jquake):
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
-    print(sc3ml)
+    # print(sc3ml)
     write_sc3ml(jquake, sc3ml)
     scdispatch = subprocess.Popen([
         SEISCOMP_PROGRAM, 'exec', 'scdispatch',
@@ -179,7 +188,7 @@ def commit_with_scdispatch(jquake):
         '--debug'
     ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     result, error_message = scdispatch.communicate()
-    # os.remove(sc3ml)
+    os.remove(sc3ml)
     return {
         'message': error_message,
         'return_code': scdispatch.returncode

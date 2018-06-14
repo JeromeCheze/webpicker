@@ -7,26 +7,26 @@
     @row-click="handleRowClick"
     :height="height"
     style="width: 100%">
-    <el-table-column width="150" prop="time" label="Time" sortable></el-table-column>
-    <el-table-column width="60" prop="mag" label="M" sortable>
+    <el-table-column min-width="150" prop="time" label="Time" sortable></el-table-column>
+    <el-table-column min-width="60" prop="mag" label="M" sortable>
       <template slot-scope="scope">
         <strong>{{ scope.row.mag }}</strong>
       </template>
     </el-table-column>
-    <el-table-column width="50" prop="magType" label="MT"></el-table-column>
-    <el-table-column width="70" prop="phase" label="Ph." align="right" sortable></el-table-column>
-    <el-table-column width="80" prop="lat" label="Lat" align="right" sortable></el-table-column>
-    <el-table-column width="80" prop="lon" label="Lon" align="right" sortable></el-table-column>
-    <el-table-column width="80" prop="depth" label="Depth" align="right" sortable></el-table-column>
-    <el-table-column width="60" prop="mode" label="Mode">
+    <el-table-column min-width="50" prop="magType" label="MT"></el-table-column>
+    <el-table-column min-width="70" prop="phase" label="Ph." align="right" sortable></el-table-column>
+    <el-table-column min-width="80" prop="lat" label="Lat" align="right" sortable></el-table-column>
+    <el-table-column min-width="80" prop="lon" label="Lon" align="right" sortable></el-table-column>
+    <el-table-column min-width="80" prop="depth" label="Depth" align="right" sortable></el-table-column>
+    <el-table-column min-width="60" prop="mode" label="Mode">
       <template slot-scope="scope">
         <el-tag :type="scope.row.modeColor">{{ scope.row.mode }}</el-tag>
       </template>
     </el-table-column>
-    <el-table-column width="90" prop="eventType" label="type" sortable></el-table-column>
-    <el-table-column width="200" prop="author" label="Author"></el-table-column>
-    <el-table-column width="200" prop="region" label="Region"></el-table-column>
-    <el-table-column width="100" prop="id" label="ID" sortable></el-table-column>
+    <el-table-column min-width="90" prop="eventType" label="type" sortable></el-table-column>
+    <el-table-column min-width="200" prop="author" label="Author"></el-table-column>
+    <el-table-column min-width="200" prop="region" label="Region"></el-table-column>
+    <el-table-column min-width="100" prop="id" label="ID" sortable></el-table-column>
   </el-table>
 </template>
 
@@ -78,7 +78,7 @@ export default {
         modeColor: e._po.evaluation_mode == 'manual' ? 'success' : 'danger',
         author: e._po.creation_info.author,
         region: e.description[0].text,
-        id: e._id
+        id: e.public_id
       }))
       this.$set(this, 'tableData', data)
     }

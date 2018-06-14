@@ -1,36 +1,49 @@
 const CONVERSION_RULES = {
   // keep list for all these nodes :
-  '/eventParameters/event': true,
-  '/eventParameters/event/origin': true,
-  '/eventParameters/event/origin/arrival': true,
-  '/eventParameters/event/magnitude': true,
-  '/eventParameters/event/pick': true,
-  '/eventParameters/event/description': true,
+  '/event_parameters/event': true,
+  '/event_parameters/event/origin': true,
+  '/event_parameters/event/origin/arrival': true,
+  '/event_parameters/event/magnitude': true,
+  '/event_parameters/event/pick': true,
+  '/event_parameters/event/description': true,
   // conversion function :
-  '/eventParameters/event/origin/latitude/value': parseFloat,
-  '/eventParameters/event/origin/latitude/uncertainty': parseFloat,
-  '/eventParameters/event/origin/longitude/value': parseFloat,
-  '/eventParameters/event/origin/longitude/uncertainty': parseFloat,
-  '/eventParameters/event/origin/depth/value': parseFloat,
-  '/eventParameters/event/origin/depth/uncertainty': parseFloat,
-  '/eventParameters/event/origin/time/uncertainty': parseFloat,
-  '/eventParameters/event/origin/quality/standardError': parseFloat,
-  '/eventParameters/event/origin/quality/azimuthalGap': parseFloat,
-  '/eventParameters/event/origin/quality/associatedPhaseCount': parseInt,
-  '/eventParameters/event/origin/quality/associatedStationCount': parseInt,
-  '/eventParameters/event/origin/quality/usedPhaseCount': parseInt,
-  '/eventParameters/event/origin/quality/usedStationCount': parseInt,
-  '/eventParameters/event/origin/quality/minimumDistance': parseFloat,
-  '/eventParameters/event/origin/quality/maximumDistance': parseFloat,
-  '/eventParameters/event/origin/quality/medianDistance': parseFloat,
-  '/eventParameters/event/origin/arrival/timeResidual': parseFloat,
-  '/eventParameters/event/origin/arrival/timeWeight': parseFloat,
-  '/eventParameters/event/origin/arrival/distance': parseFloat,
-  '/eventParameters/event/origin/arrival/azimuth': parseFloat,
-  '/eventParameters/event/magnitude/mag/value': parseFloat,
-  '/eventParameters/event/magnitude/mag/uncertainty': parseFloat,
-  '/eventParameters/event/magnitude/stationCount': parseInt
+  '/event_parameters/event/origin/latitude/value': parseFloat,
+  '/event_parameters/event/origin/latitude/uncertainty': parseFloat,
+  '/event_parameters/event/origin/longitude/value': parseFloat,
+  '/event_parameters/event/origin/longitude/uncertainty': parseFloat,
+  '/event_parameters/event/origin/depth/value': parseFloat,
+  '/event_parameters/event/origin/depth/uncertainty': parseFloat,
+  '/event_parameters/event/origin/time/uncertainty': parseFloat,
+  '/event_parameters/event/origin/quality/standard_error': parseFloat,
+  '/event_parameters/event/origin/quality/azimuthal_gap': parseFloat,
+  '/event_parameters/event/origin/quality/associated_phase_count': parseInt,
+  '/event_parameters/event/origin/quality/associated_station_count': parseInt,
+  '/event_parameters/event/origin/quality/used_phase_count': parseInt,
+  '/event_parameters/event/origin/quality/used_station_count': parseInt,
+  '/event_parameters/event/origin/quality/minimum_distance': parseFloat,
+  '/event_parameters/event/origin/quality/maximum_distance': parseFloat,
+  '/event_parameters/event/origin/quality/median_distance': parseFloat,
+  '/event_parameters/event/origin/arrival/time_residual': parseFloat,
+  '/event_parameters/event/origin/arrival/time_weight': parseFloat,
+  '/event_parameters/event/origin/arrival/distance': parseFloat,
+  '/event_parameters/event/origin/arrival/azimuth': parseFloat,
+  '/event_parameters/event/magnitude/mag/value': parseFloat,
+  '/event_parameters/event/magnitude/mag/uncertainty': parseFloat,
+  '/event_parameters/event/magnitude/stationCount': parseInt
 }
+
+const RESOURCE_ID_KEYS = [
+  '/event_parameters/event/public_id',
+  '/event_parameters/event/preferred_origin_id',
+  '/event_parameters/event/preferred_magnitude_id',
+  '/event_parameters/event/origin/public_id',
+  '/event_parameters/event/origin/earth_model_id',
+  '/event_parameters/event/origin/method_id',
+  '/event_parameters/event/origin/arrival/pick_id',
+  '/event_parameters/event/magnitude/public_id',
+  '/event_parameters/event/magnitude/method_id',
+  '/event_parameters/event/pick/public_id',
+]
 
 
 function ajax(opt, xhr) {
@@ -68,24 +81,30 @@ function toSnakeCase(x) {
 }
 
 function xmlNodeToJson(x, path, rules) {
-  path = `${path}/${x.tagName}`
+  path = `${path}/${toSnakeCase(x.tagName)}`
   let obj = {}
   for (let a of x.attributes) {
-    let key = a.name
+    let key = toSnakeCase(a.name)
     let currentPath = `${path}/${key}`
     let conv = rules[currentPath]
-    obj[toSnakeCase(key)] = conv ? conv(a.value) : a.value
+    if (RESOURCE_ID_KEYS.indexOf(currentPath) >= 0) {
+      conv = x => x.split('/').splice(-1)[0]
+    }
+    obj[key] = conv ? conv(a.value) : a.value
   }
   if (x.children.length == 0) {
     // console.log(path);
     let conv = rules[path]
+    if (RESOURCE_ID_KEYS.indexOf(path) >= 0) {
+      conv = x => x.split('/').splice(-1)[0]
+    }
     // console.log(path, conv);
     let value = conv ? conv(x.textContent) : x.textContent
     return Object.keys(obj).length > 0 ? Object.assign(obj, { value }) : value
   } else {
     for (let c of x.children) {
-      let currentPath = `${path}/${c.tagName}`
       let key = toSnakeCase(c.tagName)
+      let currentPath = `${path}/${key}`
       let value = xmlNodeToJson(c, path, rules)
       if (rules[currentPath] == true) {// it's a list
         if (obj[key] == null) {
@@ -100,6 +119,18 @@ function xmlNodeToJson(x, path, rules) {
   return obj
 }
 
+function parseQuakeML(qml) {
+  let events = xmlNodeToJson(
+    qml.getElementsByTagName('eventParameters')[0],
+    '',
+    CONVERSION_RULES
+  ).event
+  for (let e of events) {
+    processEventData(e)
+  }
+  return events
+}
+
 function dict(k_list, v_list) {
   let result = {}
   for (let [i, k] of k_list.entries()) {
@@ -109,7 +140,7 @@ function dict(k_list, v_list) {
 }
 
 function processEventData(e) {
-  e._id = e.public_id.split('/').slice(-1)[0]
+  // e._id = e.public_id.split('/').slice(-1)[0]
   for (let o of e.origin) {
     o.time._value = new Date(Date.parse(o.time.value))
     o.time._pretty = o.time._value.toISOString().replace('T', ' ').substr(0, 19)
@@ -124,7 +155,7 @@ function processEventData(e) {
   if (e.magnitude != null) {
     for (let m of e.magnitude) {
       m.mag._pretty = m.mag.value.toFixed(2)
-      m._pretty_method = m.method_id != null ? m.method_id.split('/').slice(-1)[0] : ''
+      // m._pretty_method = m.method_id != null ? m.method_id.split('/').slice(-1)[0] : ''
     }
   } else {
     e.magnitude = []
@@ -137,21 +168,24 @@ function processEventData(e) {
     let pickMap = {}
     for (let p of e.pick) {
       p.time._value = new Date(Date.parse(p.time.value))
-      p._id = p.public_id.split('/').slice(-1)[0]
+      // p._id = p.public_id.split('/').slice(-1)[0]
       let wfid = p.waveform_id
       delete p.waveform_id.value
       let loc = wfid.location_code == null ? '' : wfid.location_code
       p._seedid = [wfid.network_code, wfid.station_code, loc, wfid.channel_code].join('.')
       p._fdsnid = p._seedid.replace('..', '.--.')
-      pickMap[p._id] = p
+      // pickMap[p._id] = p
+      pickMap[p.public_id] = p
     }
     for (let o of e.origin) {
       for (let a of o.arrival) {
         if (a.public_id) {
           delete a.public_id
         }
-        a._pick_id = a.pick_id.split('/').slice(-1)[0]
-        a._pick = pickMap[a._pick_id]
+        // a._pick_id = a.pick_id.split('/').slice(-1)[0]
+        // a._pick = pickMap[a._pick_id]
+        a.time_weight = a.time_weight == null ? 0 : a.time_weight
+        a._pick = pickMap[a.pick_id]
         a._traveltime = new Date(a._pick.time._value - o.time._value)
       }
     }
@@ -200,12 +234,12 @@ function parseInventory(raw_inv) {
   return result
 }
 
-function cloneAndClean(o) {
+function cloneAndClean(o, path) {
   let result
   if (o instanceof Array) {
     result = []
     for (let v of o) {
-      result.push(cloneAndClean(v))
+      result.push(cloneAndClean(v, path))
     }
   } else if (o instanceof Object) {
     result = {}
@@ -213,10 +247,11 @@ function cloneAndClean(o) {
       if (k.indexOf('_') == 0) {
         continue
       }
-      result[k] = cloneAndClean(v)
+      result[k] = cloneAndClean(v, `${path}/${k}`)
     }
   } else {
-    result = o
+    // console.log(path);
+    result = RESOURCE_ID_KEYS.indexOf(path) < 0 ? o : `smi:oca/${o}`
   }
   return result
 }
@@ -250,13 +285,23 @@ function composeEvent(o) {
   return result
 }
 
+function getId(prefix) {
+  return [
+    prefix,
+    new Date().toISOString().replace(/[\-:]/g, '').replace('T', '.').substr(0, 18),
+    (Math.random()*1000).toFixed(0)
+  ].join('-')
+}
+
 export default {
   CONVERSION_RULES,
   ajax,
   dict,
   processEventData,
   xmlNodeToJson,
+  parseQuakeML,
   parseInventory,
   cloneAndClean,
-  composeEvent
+  composeEvent,
+  getId
 }

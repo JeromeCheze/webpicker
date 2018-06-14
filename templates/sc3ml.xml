@@ -3,7 +3,7 @@
 {%- macro real_quantity(real) %}
   <value>{{ real.value }}</value>
   {%- if real.uncertainty %}
-  <uncertainty>{{ real.value }}</uncertainty>
+  <uncertainty>{{ real.uncertainty }}</uncertainty>
   {%- endif %}
 {%- endmacro %}
 

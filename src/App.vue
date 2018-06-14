@@ -5,13 +5,13 @@
         <el-menu-item index="eventForm">Form</el-menu-item>
         <el-menu-item index="eventList">Event list</el-menu-item>
         <el-menu-item index="eventPage" :disabled="currentEvent == null">
-          <span v-if="currentEvent != null">{{ currentEvent._id }}</span>
+          <span v-if="currentEvent != null">{{ currentEvent.public_id }}</span>
           <span v-else>No event</span>
         </el-menu-item>
         <el-menu-item index="eventPicker" :disabled="currentOrigin == null">Picker</el-menu-item>
       </el-menu>
     </el-header>
-    <el-main v-loading="loading" :element-loading-text="loadingText">
+    <el-main v-loading.fullscreen.lock="loading" :element-loading-text="loadingText">
       <keep-alive>
         <event-form
           @submit-event-form="handleSubmitEventForm"
@@ -21,9 +21,13 @@
           @select-event="handleSelectEvent"
           v-else-if="activeIndex == 'eventList'"></event-list>
         <event-page
+          ref="eventPage"
           :event="currentEvent"
           :origin="currentOrigin"
           :inventory="inventory"
+          @relocate="handleRelocate"
+          @compute-magnitudes="handleComputeMagnitudes"
+          @commit="handleCommit"
           v-else-if="activeIndex == 'eventPage'"></event-page>
         <event-picker
           :event="currentEvent"
@@ -95,14 +99,7 @@ export default {
         args: args,
         type: 'document'
       }).then(qml => {
-        let events = utils.xmlNodeToJson(
-          qml.getElementsByTagName('eventParameters')[0],
-          '',
-          utils.CONVERSION_RULES
-        ).event
-        for (let e of events) {
-          utils.processEventData(e)
-        }
+        let events = utils.parseQuakeML(qml)
         this.eventList = events
         this.loading = false
       })
@@ -119,20 +116,30 @@ export default {
     },
 
     handlePickerArrival (arrivals) {
-      let origin = Object.assign({}, this.currentOrigin)
-      let id = [
-        'Origin',
-        new Date().toISOString().replace(/[\-:]/g, '').replace('T', '.').substr(0, 18)
-      ].join('-')
-      origin._not_committed = true
-      origin.public_id = `smi:oca/${id}`
-      origin.arrival = arrivals
-      this.currentEvent._origin = origin
-      this.currentOrigin = origin
+      let o = Object.assign({}, this.currentOrigin)
+      o._not_committed = true
+      o._is_dirty = true
+      o.public_id = utils.getId('Origin')
+      o.arrival = arrivals
+      this.currentEvent.preferred_magnitude_id = null
+      this.currentEvent.origin.push(o)
+      this.currentOrigin = o
+      // update event picks (keep only used pick)
+      let picks = []
+      let all_arrivals = [].concat(arrivals)
+      for (let o of this.currentEvent) {
+        all_arrivals = all_arrivals.concat(o.arrival)
+      }
+      for (let a of all_arrivals) {
+        if (picks.indexOf(a._pick) < 0) {
+          picks.push(a._pick)
+        }
+      }
+      this.currentEvent.pick = picks
     },
 
     handleSelectEvent (eventId) {
-      let oldEvent = this.eventList.find(x => x._id == eventId)
+      let oldEvent = this.eventList.find(x => x.public_id == eventId)
       let index = this.eventList.indexOf(oldEvent)
       utils.ajax({
         method: 'GET',
@@ -146,12 +153,7 @@ export default {
         },
         type: 'document'
       }).then(qml => {
-        let e = utils.xmlNodeToJson(
-          qml.getElementsByTagName('eventParameters')[0],
-          '',
-          utils.CONVERSION_RULES
-        ).event[0]
-        utils.processEventData(e)
+        let e = utils.parseQuakeML(qml)[0]
         this.eventList.splice(index, 1, e)
         e._origin = oldEvent._origin
         this.currentOrigin = e._origin != null ? e._origin : e._po
@@ -159,6 +161,101 @@ export default {
         this.activeIndex = 'eventPage'
       })
     },
+
+    handleRelocate () {
+      this.loadingText = 'Relocate, please wait...'
+      this.loading = true
+      // console.log(this.currentOrigin);
+      let e = utils.composeEvent({
+        base: this.currentEvent, origins: [this.currentOrigin], po: this.currentOrigin
+      })
+      utils.ajax({
+        method: 'POST', url: 'relocate',
+        type: 'json', dataMimeType: 'application/json',
+        data: JSON.stringify([e]),
+      }).then(data => {
+        this.loading = false
+        if (data.message != '') {
+          this.$notify.error({ message: data.message })
+        } else {
+          let parser = new DOMParser()
+          let qml = parser.parseFromString(data.quakeml, 'application/xml')
+          // console.log(qml);
+          let e = utils.parseQuakeML(qml)[0]
+          // console.log(e);
+          let o = e.origin[0]
+          o.evaluation_mode = 'manual'
+          o._not_committed = true
+          // keep only one not committed origin
+          let notCommitted = this.currentEvent.origin.filter(x => x._not_committed)
+          for (let origin of notCommitted) {
+            this.currentEvent.origin.splice(this.currentEvent.origin.indexOf(origin), 1)
+          }
+          if (!this.currentOrigin._not_committed) {
+            o.public_id = utils.getId('Origin')
+          }
+          this.currentEvent.origin.push(o)
+          this.currentOrigin = o
+          this.currentEvent.preferred_magnitude_id = null
+          this.currentEvent._pm = null
+          this.$refs.eventPage.$nextTick(function() {
+            this.updateAll(o)
+          })
+        }
+      })
+    },
+
+    handleComputeMagnitudes () {
+      this.loadingText = 'Compute magnitudes, please wait...'
+      this.loading = true
+      let e = utils.composeEvent({
+        base: this.currentEvent, origins: [this.currentOrigin], po: this.currentOrigin
+      })
+      utils.ajax({
+        method: 'POST', url: 'compute_magnitudes',
+        type: 'json', dataMimeType: 'application/json',
+        data: JSON.stringify([e]),
+      }).then(data => {
+        this.loading = false
+        this.$notify({
+          type: data.quakeml == null ? 'error' : 'info',
+          message: data.message
+        })
+        if (data.quakeml != null) {
+          let parser = new DOMParser()
+          let qml = parser.parseFromString(data.quakeml, 'application/xml')
+          let e = utils.parseQuakeML(qml)[0]
+          // console.log(e);
+          for (let m of e.magnitude) {
+            m.origin_id = this.currentOrigin.public_id
+            this.currentEvent.magnitude.push(m)
+          }
+          this.currentEvent.preferred_magnitude_id = e.magnitude[0].public_id
+          this.currentEvent._pm = e.magnitude[0]
+        }
+      })
+    },
+
+    handleCommit (commitOpt) {
+      this.loadingText = 'Commit in progress...'
+      this.loading = true
+      this.currentEvent.type = commitOpt.eventType
+      this.currentEvent.type_certainty = commitOpt.eventTypeCertainty
+      this.currentEvent.preferred_origin_id = this.currentOrigin.public_id
+      this.currentOrigin.evaluation_status = commitOpt.originEvaluationStatus
+      let e = utils.cloneAndClean(this.currentEvent)
+      // console.log(e);
+      utils.ajax({
+        method: 'POST',
+        url: 'commit',
+        type: 'json',
+        dataMimeType: 'application/json',
+        data: JSON.stringify([e]),
+      }).then(data => {
+        this.loading = false
+        console.log(data);
+      })
+    }
   }
 }
 </script>

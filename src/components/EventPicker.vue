@@ -240,18 +240,18 @@ export default {
       }
       for (let p of picks) {
         let pTime = new Date(p.time)
-        p.id = p.id.indexOf('smi:') < 0 ? `smi:oca/${p.id}` : p.id // add 'smi:oca/' if missing
+        // p.id = p.id.indexOf('smi:') < 0 ? `smi:oca/${p.id}` : p.id // add 'smi:oca/' if missing
         arrivals.push({
           azimuth: this.stationInfoMap[staKey].azimuth,
           distance: this.stationInfoMap[staKey].distance,
           phase: p.phase,
           pick_id: p.id,
-          _pick_id: p.id.split('/').slice(-1)[0],
+          // _pick_id: p.id.split('/').slice(-1)[0],
           time_residual: p.residual,
           time_weight: p.weight,
           _traveltime: new Date(pTime - this.origin.time._value),
           _pick: {
-            _id: p.id.split('/').slice(-1)[0], // keep only short ID
+            // _id: p.id.split('/').slice(-1)[0], // keep only short ID
             public_id: p.id,
             evaluation_mode: p.mode,
             phase_hint: p.phase,
@@ -526,6 +526,7 @@ export default {
       if (ev.action == 'add') {
         for (let p of ev.picks) {
           if (dest.indexOf(p) < 0) {
+            p.id = utils.getId('Pick')
             dest.push(p)
           }
         }

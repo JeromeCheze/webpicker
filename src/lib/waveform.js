@@ -441,18 +441,18 @@ export default class Waveform {
     if (this.event.phase != null && this.event.phase != '') {
       let ref = this.waveforms[0].opt.ttt[this.view.refTime]
       let t = this.pos2time(ref, this.getMouseX(ev))
-      let id = [
-        'Pick',
-        new Date().toISOString().replace(/[\-:]/g, '').replace('T', '.').substr(0, 18),
-        this.event.hoverWf.opt.id,
-        this.event.phase
-      ].join('-')
+      // let id = [
+      //   'Pick',
+      //   new Date().toISOString().replace(/[\-:]/g, '').replace('T', '.').substr(0, 18),
+      //   this.event.hoverWf.opt.id,
+      //   this.event.phase
+      // ].join('-')
       let newPick = {
         phase: this.event.phase,
         mode: 'manual',
         time: t,
         polarity: null,
-        id: id,
+        id: null,
         weight: 1,
         residual: (t - this.waveforms[0].opt.ttt[this.event.phase]) / 1000
       }
