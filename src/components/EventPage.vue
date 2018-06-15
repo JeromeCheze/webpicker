@@ -3,7 +3,7 @@
     <el-row class="toolbar" type="flex" align="middle">
       <el-form :inline="true">
         <el-form-item>
-          <el-button :type="origin.is_dirty ? 'warning': null" icon="el-icon-location" @click="handleRelocateClick">Relocate</el-button>
+          <el-button :type="origin._is_dirty ? 'warning': null" icon="el-icon-location" @click="handleRelocateClick">Relocate</el-button>
         </el-form-item>
         <el-form-item>
           <el-button :type="event.preferred_magnitude_id == null ? 'warning': null" @click="handleComputeMagnitudeClick">Compute magnitude</el-button>
@@ -12,7 +12,7 @@
           <el-popover placement="bottom" width="300" v-model="commitPopover">
             <el-form :model="commitForm">
               <el-form-item label="Event Type">
-                <el-select v-model="commitForm.eventType">
+                <el-select v-model="commitForm.eventType" clearable>
                   <el-option
                     v-for="opt in commitForm.eventTypeOptions"
                     :key="opt"
@@ -21,7 +21,7 @@
                 </el-select>
               </el-form-item>
               <el-form-item label="Type certainty">
-                <el-select v-model="commitForm.eventTypeCertainty">
+                <el-select v-model="commitForm.eventTypeCertainty" clearable>
                   <el-option
                     v-for="opt in commitForm.eventTypeCertaintyOptions"
                     :key="opt"
@@ -30,7 +30,7 @@
                 </el-select>
               </el-form-item>
               <el-form-item label="Origin status">
-                <el-select v-model="commitForm.originEvaluationStatus">
+                <el-select v-model="commitForm.originEvaluationStatus" clearable>
                   <el-option
                     v-for="opt in commitForm.evaluationStatusOptions"
                     :key="opt"
@@ -102,7 +102,6 @@
         <el-tabs v-model="activeChartTab" @tab-click="handleChartChange">
           <el-tab-pane name="timeResidual" label="Time residual"><div class="chart-time-residual"></div></el-tab-pane>
           <el-tab-pane name="travelTime" label="Travel time"><div class="chart-travel-time"></div></el-tab-pane>
-          <el-tab-pane name="azimuth" label="Azimuth"><div class="chart-azimuth"></div></el-tab-pane>
         </el-tabs>
       </el-col>
     </el-row>
@@ -232,8 +231,7 @@ export default {
       layers: [],
       chart: {
         timeResidual: null,
-        travelTime: null,
-        Azimuth: null
+        travelTime: null
       },
       arrivalTableData: [],
       activeChartTab: 'timeResidual'
@@ -449,15 +447,11 @@ export default {
       })
     },
 
-    initChartAzimuth () {},
-
     handleChartChange (tab, ev) {
       if (tab.name == 'timeResidual') {
         this.initChartTimeResidual()
       } else if (tab.name == 'travelTime') {
         this.initChartTravelTime()
-      } else if (tab.name == 'azimuth') {
-        this.initChartAzimuth()
       }
     },
 

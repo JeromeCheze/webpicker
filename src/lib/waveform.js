@@ -374,6 +374,12 @@ export default class Waveform {
     this.event.hoverWf = wf
   }
 
+  applyCallback (callbackName, arg) {
+    if (this.opt.callback[callbackName] != null) {
+      this.opt.callback[callbackName].call(null, arg)
+    }
+  }
+
   /**
    * ACTIONS
    */
@@ -407,13 +413,11 @@ export default class Waveform {
       }
     }
     if (change) {
-      if (this.opt.callback.updatePick != null) {
-        this.opt.callback.updatePick.call(null, {
-          action: 'delete',
-          wfid: this.event.hoverWf.opt.id,
-          picks: this.event.selectedPicks
-        })
-      }
+      this.applyCallback('updatePick', {
+        action: 'delete',
+        wfid: this.event.hoverWf.opt.id,
+        picks: this.event.selectedPicks
+      })
       this.draw()
     }
   }
@@ -428,13 +432,11 @@ export default class Waveform {
       p.polarity = polarity
     }
     this.draw()
-    if (this.opt.callback.updatePick != null) {
-      this.opt.callback.updatePick.call(null, {
-        action: 'update',
-        wfid: this.event.hoverWf.opt.id,
-        picks: this.event.selectedPicks
-      })
-    }
+    this.applyCallback('updatePick', {
+      action: 'update',
+      wfid: this.event.hoverWf.opt.id,
+      picks: this.event.selectedPicks
+    })
   }
 
   createPick (ev) {
@@ -459,10 +461,8 @@ export default class Waveform {
       // remove all picks of same phase as newPick in all waveforms (keep only one pick per phase)
       for (let wf of this.waveforms) {
         for (let p of wf.opt.picks.filter(x => x.phase == newPick.phase)) {
-          this.opt.callback.updatePick.call(null, {
-            action: 'delete',
-            wfid: wf.opt.id,
-            picks: [p]
+          this.applyCallback('updatePick', {
+            action: 'delete', wfid: wf.opt.id, picks: [p]
           })
           wf.opt.picks.splice(wf.opt.picks.indexOf(p), 1)
         }
@@ -470,13 +470,9 @@ export default class Waveform {
       this.event.hoverWf.opt.picks.push(newPick)
       // this.event.clickPos = null
       this.draw()
-      if (this.opt.callback.updatePick != null) {
-        this.opt.callback.updatePick.call(null, {
-          action: 'add',
-          wfid: this.event.hoverWf.opt.id,
-          picks: [newPick]
-        })
-      }
+      this.applyCallback('updatePick', {
+        action: 'add', wfid: this.event.hoverWf.opt.id, picks: [newPick]
+      })
     }
   }
 
@@ -541,10 +537,10 @@ export default class Waveform {
     this.draw()
   }
 
-  setSelectedWaveformWindow (t1, t2) {
+  setSelectedWaveformWindow (view) {
     let wf = this.event.selectedWf
-    let p1 = this.time2pos(wf.opt.ttt[this.view.refTime], t1)
-    let p2 = this.time2pos(wf.opt.ttt[this.view.refTime], t2)
+    let p1 = this.time2pos(wf.opt.ttt[this.view.refTime], view.start)
+    let p2 = this.time2pos(wf.opt.ttt[this.view.refTime], view.end)
     let ctx = wf.ctx2
     ctx.save()
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
@@ -562,9 +558,7 @@ export default class Waveform {
     }
     this.event.selectedWf = wf
     this.event.selectedWf.el.classList.add('selected')
-    if (this.opt.callback.waveformClick != null) {
-      this.opt.callback.waveformClick.call(null, this.event.selectedWf.opt)
-    }
+    this.applyCallback('waveformClick', this.event.selectedWf.opt)
   }
 
   selectPrev () {
@@ -865,9 +859,11 @@ export default class Waveform {
       this.drawPicks(wf)
     }
     this.drawXAxis()
-    if (this.opt.mode == 'picker' && this.opt.callback.draw != null) {
+    if (this.opt.mode == 'picker') {
       let wf = this.waveforms[0]
-      this.opt.callback.draw.call(null, this.getStartTime(wf), this.getEndTime(wf))
+      this.applyCallback('draw', {
+        start: this.getStartTime(wf), end: this.getEndTime(wf)
+      })
     }
   }
 

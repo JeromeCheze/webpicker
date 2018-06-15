@@ -124,7 +124,7 @@ export default {
         view: {},
         callback: {
           updatePick: (ev) => this.handleUpdatePick(ev),
-          draw: (t1, t2) => this.list.setSelectedWaveformWindow(t1, t2)
+          draw: view => this.list.setSelectedWaveformWindow(view)
         }
       },
 
@@ -519,28 +519,10 @@ export default {
 
     handleUpdatePick (ev) {
       this.picksDirty = true
-      if (this.picks[ev.wfid] == null) {
-        this.picks[ev.wfid] = []
-      }
-      let dest = this.picks[ev.wfid]
+      console.log(ev);
       if (ev.action == 'add') {
         for (let p of ev.picks) {
-          if (dest.indexOf(p) < 0) {
-            p.id = utils.getId('Pick')
-            dest.push(p)
-          }
-        }
-      } else if (ev.action == 'update') {
-        for (let p of ev.picks) {
-          let oldPick = dest.find(x => x.id == p.id)
-          let i = dest.indexOf(oldPick)
-          dest.splice(i, 1, p)
-        }
-      } else if (ev.action == 'delete') {
-        for (let p of ev.picks) {
-          let oldPick = dest.find(x => x.id == p.id)
-          let i = dest.indexOf(oldPick)
-          dest.splice(i, 1)
+          p.id = utils.getId('Pick')
         }
       }
       this.list.draw()
@@ -592,6 +574,9 @@ export default {
     },
 
     getWaveformObject (tr) {
+      if (this.picks[tr.id] == null) {
+        this.picks[tr.id] = []
+      }
       let netsta = tr.id.split('.').slice(0, 2).join('.')
       return {
         start: tr.timeseries[0].starttime,

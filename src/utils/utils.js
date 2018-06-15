@@ -244,13 +244,12 @@ function cloneAndClean(o, path) {
   } else if (o instanceof Object) {
     result = {}
     for (let [k, v] of Object.entries(o)) {
-      if (k.indexOf('_') == 0) {
+      if (k.indexOf('_') == 0 || v == null) {
         continue
       }
       result[k] = cloneAndClean(v, `${path}/${k}`)
     }
   } else {
-    // console.log(path);
     result = RESOURCE_ID_KEYS.indexOf(path) < 0 ? o : `smi:oca/${o}`
   }
   return result

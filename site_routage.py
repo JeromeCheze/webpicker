@@ -154,7 +154,7 @@ def relocate_with_screloc(jquake):
         '--locator', 'LOCSAT',
         '--profile', 'iasp91',
         '--author', 'webpicker',
-        '--agencyID', 'oca',
+        '--agencyID', 'OCA',
         '--use-weight', '1',
         '--ep',  sc3ml,
         '--replace'

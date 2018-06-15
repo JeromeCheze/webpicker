@@ -127,7 +127,7 @@ export default {
       // update event picks (keep only used pick)
       let picks = []
       let all_arrivals = [].concat(arrivals)
-      for (let o of this.currentEvent) {
+      for (let o of this.currentEvent.origin) {
         all_arrivals = all_arrivals.concat(o.arrival)
       }
       for (let a of all_arrivals) {
@@ -155,8 +155,14 @@ export default {
       }).then(qml => {
         let e = utils.parseQuakeML(qml)[0]
         this.eventList.splice(index, 1, e)
-        e._origin = oldEvent._origin
-        this.currentOrigin = e._origin != null ? e._origin : e._po
+        // e._origin = oldEvent._origin
+        let notCommitted = oldEvent.origin.find(o => o._not_committed == true)
+        if (notCommitted != null) {
+          e.origin.push(notCommitted)
+          this.currentOrigin = notCommitted
+        } else {
+          this.currentOrigin = e._po
+        }
         this.currentEvent = e
         this.activeIndex = 'eventPage'
       })
@@ -182,7 +188,7 @@ export default {
           let qml = parser.parseFromString(data.quakeml, 'application/xml')
           // console.log(qml);
           let e = utils.parseQuakeML(qml)[0]
-          // console.log(e);
+          console.log(e);
           let o = e.origin[0]
           o.evaluation_mode = 'manual'
           o._not_committed = true
@@ -224,8 +230,9 @@ export default {
         if (data.quakeml != null) {
           let parser = new DOMParser()
           let qml = parser.parseFromString(data.quakeml, 'application/xml')
+          // console.log(qml);
           let e = utils.parseQuakeML(qml)[0]
-          // console.log(e);
+          console.log(e);
           for (let m of e.magnitude) {
             m.origin_id = this.currentOrigin.public_id
             this.currentEvent.magnitude.push(m)
@@ -243,7 +250,7 @@ export default {
       this.currentEvent.type_certainty = commitOpt.eventTypeCertainty
       this.currentEvent.preferred_origin_id = this.currentOrigin.public_id
       this.currentOrigin.evaluation_status = commitOpt.originEvaluationStatus
-      let e = utils.cloneAndClean(this.currentEvent)
+      let e = utils.cloneAndClean(this.currentEvent, '/event_parameters/event')
       // console.log(e);
       utils.ajax({
         method: 'POST',
@@ -252,8 +259,16 @@ export default {
         dataMimeType: 'application/json',
         data: JSON.stringify([e]),
       }).then(data => {
-        this.loading = false
         console.log(data);
+        this.loading = false
+        if (data.return_code == 0) {
+          this.currentOrigin._not_committed = false
+          this.handleSelectEvent(this.currentEvent.public_id)
+        } else {
+          this.$alert(data.message.replace('\n', '<br>'), 'scdispatch debug', {
+            dangerouslyUseHTMLString: true
+          })
+        }
       })
     }
   }
