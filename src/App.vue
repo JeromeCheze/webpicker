@@ -28,6 +28,7 @@
           @relocate="handleRelocate"
           @compute-magnitudes="handleComputeMagnitudes"
           @commit="handleCommit"
+          @set-current-origin="handleSetCurrentOrigin"
           v-else-if="activeIndex == 'eventPage'"></event-page>
         <event-picker
           :event="currentEvent"
@@ -157,7 +158,8 @@ export default {
         this.eventList.splice(index, 1, e)
         // e._origin = oldEvent._origin
         let notCommitted = oldEvent.origin.find(o => o._not_committed == true)
-        if (notCommitted != null) {
+        let foundOrigin = notCommitted != null ? e.origin.find(o => o.public_id == notCommitted.public_id) : null
+        if (notCommitted != null && foundOrigin == null) {
           e.origin.push(notCommitted)
           this.currentOrigin = notCommitted
         } else {
@@ -165,6 +167,13 @@ export default {
         }
         this.currentEvent = e
         this.activeIndex = 'eventPage'
+      })
+    },
+
+    handleSetCurrentOrigin (o) {
+      this.currentOrigin = o
+      this.$refs.eventPage.$nextTick(function() {
+        this.updateAll(o)
       })
     },
 
@@ -289,5 +298,9 @@ body {
 }
 .toolbar .el-form-item {
   margin-bottom: 0;
+}
+
+.text-right {
+  text-align: right;
 }
 </style>

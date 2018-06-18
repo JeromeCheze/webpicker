@@ -59,40 +59,79 @@
         {{ this.event.description.text }}
       </h3>
     </el-row>
+    <el-row class="text-right">
+      Selector mode <el-switch v-model="originSelectorMode"></el-switch>
+    </el-row>
+    <el-row>
+      <strong>Origin</strong>
+      <table class="event-description">
+        <thead>
+          <th v-if="originSelectorMode"></th>
+          <th v-if="originSelectorMode">Creation Time</th>
+          <th>Time</th><th>Latitude</th><th>Longitude</th><th>Depth</th><th>Phases</th><th>RMS</th><th>Az. Gap</th><th>Min Dist</th>
+        </thead>
+        <tbody class="selectable" v-if="originSelectorMode">
+          <tr
+            v-for="o in event.origin"
+            :class="{ preferred: o.public_id == event.preferred_origin_id }"
+            @click="$emit('set-current-origin', o)"
+            @dblclick="handleSetPreferredOrigin(o)">
+            <td><i class="el-icon-view" v-if="o == origin"></i></td>
+            <td>{{ o.creation_info._pretty_creation_time }}</td>
+            <td>{{ o.time._pretty }}</td>
+            <td>{{ o.latitude._pretty }} {{ o.latitude._pretty_uncertainty }}</td>
+            <td>{{ o.longitude._pretty }} {{ o.longitude._pretty_uncertainty }}</td>
+            <td>{{ o.depth._pretty }} {{ o.depth._pretty_uncertainty }}</td>
+            <td>{{ o.quality.used_phase_count }} / {{ o.quality.associated_phase_count }}</td>
+            <td>{{ o.quality.standard_error.toFixed(2) }} s</td>
+            <td>{{ o.quality.azimuthal_gap.toFixed(0) }} °</td>
+            <td>{{ o.quality.minimum_distance.toFixed(2) }} °</td>
+          </tr>
+        </tbody>
+        <tbody v-else>
+          <tr>
+            <td>{{ origin.time._pretty }}</td>
+            <td>{{ origin.latitude._pretty }} {{ origin.latitude._pretty_uncertainty }}</td>
+            <td>{{ origin.longitude._pretty }} {{ origin.longitude._pretty_uncertainty }}</td>
+            <td>{{ origin.depth._pretty }} {{ origin.depth._pretty_uncertainty }}</td>
+            <td>{{ origin.quality.used_phase_count }} / {{ origin.quality.associated_phase_count }}</td>
+            <td>{{ origin.quality.standard_error.toFixed(2) }} s</td>
+            <td>{{ origin.quality.azimuthal_gap.toFixed(0) }} °</td>
+            <td>{{ origin.quality.minimum_distance.toFixed(2) }} °</td>
+          </tr>
+        </tbody>
+      </table>
+    </el-row>
     <el-row>
       <strong>Magnitude</strong>
       <table class="event-description" v-if="event._pm != null">
         <thead>
           <th>Value</th><th>Magnitude type</th><th>Station count</th><th>Method</th>
         </thead>
-        <tbody>
-          <td>{{ event._pm.mag._pretty }}</td>
-          <td>{{ event._pm.type }}</td>
-          <td>{{ event._pm.station_count }}</td>
-          <td>{{ event._pm.method_id }}</td>
+        <tbody class="selectable" v-if="originSelectorMode">
+          <tr
+            v-for="m in event.magnitude"
+            v-if="m.origin_id == origin.public_id"
+            :class="{ preferred: m.public_id == event.preferred_magnitude_id }"
+            @dblclick="handleSetPreferredMagnitude(m)">
+            <td>{{ m.mag._pretty }}</td>
+            <td>{{ m.type }}</td>
+            <td>{{ m.station_count }}</td>
+            <td>{{ m.method_id }}</td>
+          </tr>
+        </tbody>
+        <tbody v-else>
+          <tr>
+            <td>{{ event._pm.mag._pretty }}</td>
+            <td>{{ event._pm.type }}</td>
+            <td>{{ event._pm.station_count }}</td>
+            <td>{{ event._pm.method_id }}</td>
+          </tr>
         </tbody>
       </table>
       <div v-else>
         <el-alert type="error" title="No preferred magnitude"></el-alert>
       </div>
-    </el-row>
-    <el-row>
-      <strong>Origin</strong>
-      <table class="event-description">
-        <thead>
-          <th>Time</th><th>Latitude</th><th>Longitude</th><th>Depth</th><th>Phases</th><th>RMS</th><th>Az. Gap</th><th>Min Dist</th>
-        </thead>
-        <tbody>
-          <td>{{ origin.time._pretty }}</td>
-          <td>{{ origin.latitude._pretty }} {{ origin.latitude._pretty_uncertainty }}</td>
-          <td>{{ origin.longitude._pretty }} {{ origin.longitude._pretty_uncertainty }}</td>
-          <td>{{ origin.depth._pretty }} {{ origin.depth._pretty_uncertainty }}</td>
-          <td>{{ origin.quality.used_phase_count }} / {{ origin.quality.associated_phase_count }}</td>
-          <td>{{ origin.quality.standard_error.toFixed(2) }} s</td>
-          <td>{{ origin.quality.azimuthal_gap.toFixed(0) }} °</td>
-          <td>{{ origin.quality.minimum_distance.toFixed(2) }} °</td>
-        </tbody>
-      </table>
     </el-row>
     <el-row>
       <el-col :span="8">
@@ -224,6 +263,7 @@ export default {
           'ice quak'
         ]
       },
+      originSelectorMode: false,
       dirty: true,
       updating: false,
       commitPopover: false,
@@ -300,7 +340,11 @@ export default {
       this.updateArrivalTableData()
       this.eventMap()
       this.initChartsData()
-      this.initChartTimeResidual()
+      if (this.activeChartTab == 'timeResidual') {
+        this.initChartTimeResidual()
+      } else if (this.activeChartTab == 'travelTime') {
+        this.initChartTravelTime()
+      }
       this.$refs.arrivalTable.clearSelection()
       for (let row of this.arrivalTableData) {
         this.$refs.arrivalTable.toggleRowSelection(row, row.weight == 1)
@@ -455,6 +499,18 @@ export default {
       }
     },
 
+    handleSetPreferredOrigin (o) {
+      this.origin._not_committed = false
+      this.event.preferred_origin_id = o.public_id
+      o._not_committed = true
+      this.$emit('set-current-origin', o)
+    },
+
+    handleSetPreferredMagnitude (m) {
+      this.event.preferred_magnitude_id = m.public_id
+      this.origin._not_committed = true
+    },
+
     handleCommitClick () {
       this.$emit('commit', this.commitForm)
     },
@@ -475,8 +531,10 @@ export default {
 .event-description th, .event-description td {padding: 3px;}
 .event-description th {text-align: right; padding-right: 10px;}*/
 .event-description {width: 100%; font-size: .8em; margin-top: 5px; margin-bottom: 10px;}
-.event-description th, td {padding: 8px; text-align: center;}
+.event-description th, td {padding: 4px; text-align: center;}
 .event-description th {font-weight: bold; background: #efefef;}
+.event-description tr.preferred td {font-weight: bold;}
+.event-description .selectable tr:hover {background-color: #fbfbfb; cursor: pointer;}
 
 .charts-container {padding-left: 20px;}
 </style>

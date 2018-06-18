@@ -42,6 +42,7 @@ const RESOURCE_ID_KEYS = [
   '/event_parameters/event/origin/arrival/pick_id',
   '/event_parameters/event/magnitude/public_id',
   '/event_parameters/event/magnitude/method_id',
+  '/event_parameters/event/magnitude/origin_id',
   '/event_parameters/event/pick/public_id',
 ]
 
@@ -144,6 +145,8 @@ function processEventData(e) {
   for (let o of e.origin) {
     o.time._value = new Date(Date.parse(o.time.value))
     o.time._pretty = o.time._value.toISOString().replace('T', ' ').substr(0, 19)
+    o.creation_info._creation_time = new Date(Date.parse(o.creation_info.creation_time))
+    o.creation_info._pretty_creation_time = o.creation_info._creation_time.toISOString().replace('T', ' ').substr(0, 19)
     let [lat, lon] = [o.latitude.value, o.longitude.value]
     o.latitude._pretty = lat > 0 ? `${lat.toFixed(2)}° N` : `${(-1*lat).toFixed(2)}° S`
     o.latitude._pretty_uncertainty = `+/- ${(o.latitude.uncertainty).toFixed(1)} km`
@@ -196,8 +199,8 @@ function parseInventory(raw_inv) {
   let cols = [
     'network', 'station', 'location', 'channel',
     'lat', 'lon', 'alt', 'depth',
-    'azimuth', 'dip', '_', 'scale', '_', 'scaleUnits',
-    'sampleRate', 'starttime', 'endtime'
+    'azimuth', 'dip', '_', 'scale', '_', 'units',
+    'sample_rate', 'starttime', 'endtime'
   ]
   let result = {}
   let sp_inv = raw_inv.split(/[\r\n]+/g)
@@ -211,23 +214,25 @@ function parseInventory(raw_inv) {
         result[c.network][c.station] = {
           lat: parseFloat(c.lat),
           lon: parseFloat(c.lon),
-          alt: parseFloat(c.alt)
+          alt: parseFloat(c.alt),
+          location: {}
         }
       }
-      if (result[c.network][c.station][c.location] == null) {
-        result[c.network][c.station][c.location] = {}
+      if (result[c.network][c.station].location[c.location] == null) {
+        result[c.network][c.station].location[c.location] = {}
       }
-      if (result[c.network][c.station][c.location][c.channel] == null) {
-        result[c.network][c.station][c.location][c.channel] = []
+      if (result[c.network][c.station].location[c.location][c.channel] == null) {
+        result[c.network][c.station].location[c.location][c.channel] = []
       }
-      result[c.network][c.station][c.location][c.channel].push({
+      result[c.network][c.station].location[c.location][c.channel].push({
         azimuth: parseFloat(c.azimuth),
         dip: parseFloat(c.dip),
         scale: parseFloat(c.scale),
         depth: parseFloat(c.depth),
         starttime: new Date(Date.parse(c.starttime)),
         endtime: c.endtime == '' ? new Date() : new Date(Date.parse(c.endtime)),
-        units: c.scaleUnits
+        sample_rate: parseFloat(c.sample_rate),
+        units: c.units
       })
     }
   }

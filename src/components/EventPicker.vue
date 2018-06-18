@@ -39,6 +39,10 @@
             <el-radio-button label="name"></el-radio-button>
           </el-radio-group>
         </el-form-item>
+        <el-form-item label="Station radius [km]">
+          <el-input-number :min="0" :max="180" :step="1" v-model="tools.stationRadius"></el-input-number>
+          <el-button @click="loadAdditionalStation">Load stations</el-button>
+        </el-form-item>
       </el-form>
     </el-row>
     <div class="picker" style="height: 410px;"></div>
@@ -51,6 +55,7 @@ import Waveform from '../lib/waveform.js'
 import utils from '../utils/utils.js'
 import mseed from '../lib/mseed.js'
 import Fili from 'fili'
+import L from 'leaflet'
 
 export default {
   props: ['event', 'origin', 'inventory'],
@@ -69,6 +74,7 @@ export default {
         lastFilter: null,
         alignment: 'O',
         sortBy: 'distance',
+        stationRadius: 100,
         filterList: [
           { name: 'HP 1', type: 'highpass', args: { Fc: 1, gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
           { name: 'BP 0.5-8', type: 'bandpass', fc: [.5, 8], args: { gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
@@ -185,7 +191,7 @@ export default {
         }
       }
     },
-    event: function(val) {
+    origin: function(val) {
       this.dirty = true
     }
   },
@@ -519,7 +525,7 @@ export default {
 
     handleUpdatePick (ev) {
       this.picksDirty = true
-      console.log(ev);
+      // console.log(ev);
       if (ev.action == 'add') {
         for (let p of ev.picks) {
           p.id = utils.getId('Pick')
@@ -560,10 +566,10 @@ export default {
       let [n, s, l, c] = seedid.split('.')
       if (this.inventory[n] != null &&
           this.inventory[n][s] != null &&
-          this.inventory[n][s][l] != null &&
-          this.inventory[n][s][l][c] != null) {
+          this.inventory[n][s].location[l] != null &&
+          this.inventory[n][s].location[l][c] != null) {
         let t0 = this.origin.time._value
-        return this.inventory[n][s][l][c].find(c => c.starttime <= t0 && c.endtime >= t0)
+        return this.inventory[n][s].location[l][c].find(c => c.starttime <= t0 && c.endtime >= t0)
       }
       return null
     },
@@ -571,6 +577,42 @@ export default {
     getChannelScale (seedid) {
       let cha = this.getChannel(seedid)
       return cha != null ? cha.scale : 1
+    },
+
+    loadAdditionalStation () {
+      let pos = L.latLng([this.origin.latitude.value, this.origin.longitude.value])
+      let t = this.origin.time._value
+      let wfidList = []
+      for (let [net, n] of Object.entries(this.inventory)) {
+        for (let [sta, s] of Object.entries(n)) {
+          let d = pos.distanceTo([s.lat, s.lon]) / 1000.
+          if (d > this.tools.stationRadius) {
+            continue
+          }
+          let stationWf = null
+          for (let [loc, l] of Object.entries(s.location)) {
+            for (let [cha, c] of Object.entries(l)) {
+              let channel = c.filter(x => t >= x.starttime && t <= x.endtime && cha.slice(-1) == 'Z' && x.units == 'M/S')
+              channel.sort((a, b) => {
+                a = a.sample_rate
+                b = b.sample_rate
+                return a == b ? 0 : a < b ? -1 : 1
+              })
+              if (channel.length > 0) {
+                stationWf = [net, sta, loc, cha].join('.')
+              }
+            }
+            if (stationWf != null) {
+              break
+            }
+          }
+          if (stationWf != null) {
+            wfidList.push(stationWf)
+          }
+        }
+      }
+      // TODO: remove already loaded wfid
+      console.log(wfidList);
     },
 
     getWaveformObject (tr) {
