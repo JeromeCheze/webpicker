@@ -289,6 +289,18 @@ function composeEvent(o) {
   return result
 }
 
+function coordinates2azimuth(latlon1, latlon2) {
+  let [lat1, lon1, lat2, lon2] = latlon1.concat(latlon2)
+  let x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1)
+  let y = Math.sin(lon2 - lon1) * Math.cos(lat2)
+  let result = Math.atan2(y, x) * 180 / Math.PI
+  return result >= 0 ? result : result + 360
+}
+
+function az2baz(az) {
+  return (az + 180) % 360
+}
+
 function getId(prefix) {
   return [
     prefix,
@@ -307,5 +319,7 @@ export default {
   parseInventory,
   cloneAndClean,
   composeEvent,
+  coordinates2azimuth,
+  az2baz,
   getId
 }

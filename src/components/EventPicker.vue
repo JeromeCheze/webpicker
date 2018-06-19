@@ -39,9 +39,19 @@
             <el-radio-button label="name"></el-radio-button>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="Station radius [km]">
-          <el-input-number :min="0" :max="180" :step="1" v-model="tools.stationRadius"></el-input-number>
-          <el-button @click="loadAdditionalStation">Load stations</el-button>
+        <el-form-item label="Station radius [°]">
+          <el-input-number :min="0" :max="180" :step=".1" v-model="tools.stationRadius"></el-input-number>
+          <el-button @click="loadAdditionalStation" :disabled="disableLoadAdditionalStation">Load stations</el-button>
+        </el-form-item>
+        <el-form-item label="Rotation">
+          <el-select v-model="tools.rotation">
+            <el-option
+            v-for="rotation in tools.rotationOptions"
+            :key="rotation"
+            :label="rotation"
+            :value="rotation"
+            ></el-option>
+          </el-select>
         </el-form-item>
       </el-form>
     </el-row>
@@ -63,6 +73,11 @@ export default {
     return {
       // toolbar variables
       tools: {
+        rotationOptions: [
+          'ZNE',
+          'ZRT'
+        ],
+        rotation: 'ZNE',
         phaseOptions: [
           { value: '', label: 'No picking' },
           { value: 'P', label: 'P' },
@@ -74,7 +89,7 @@ export default {
         lastFilter: null,
         alignment: 'O',
         sortBy: 'distance',
-        stationRadius: 100,
+        stationRadius: 1,
         filterList: [
           { name: 'HP 1', type: 'highpass', args: { Fc: 1, gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
           { name: 'BP 0.5-8', type: 'bandpass', fc: [.5, 8], args: { gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
@@ -97,6 +112,7 @@ export default {
       loadingText: '',
       keyDownBinded: false,
       horizontalDownloadStatus: '',
+      disableLoadAdditionalStation: true,
       xhr: [],
 
       // cache variables
@@ -116,6 +132,7 @@ export default {
         container: '.waveform-list',
         size: { height: 40 },
         waveforms: [],
+        equalScale: false,
         view: {},
         callback: {
           waveformClick: wf => this.handleWaveformClick(wf)
@@ -161,8 +178,8 @@ export default {
     },
     'tools.sameScale': function(val) {
       if (this.list != null) {
-        this.list.opt.equalScale = val
-        this.list.draw()
+        this.picker.opt.equalScale = val
+        this.picker.draw()
       }
     },
     'tools.filter': function(val) {
@@ -191,6 +208,9 @@ export default {
         }
       }
     },
+    'tools.rotation': function() {
+      this.handleWaveformClick(this.picker.waveforms[0].opt, true)
+    },
     origin: function(val) {
       this.dirty = true
     }
@@ -200,14 +220,22 @@ export default {
     if (this.dirty) {
       this.dirty = false
       this.reset()
-      this.getTTT(() => {
+      let stationDistanceMap = {}
+      for (let a of this.origin.arrival) {
+        let netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
+        stationDistanceMap[netsta] = a.distance
+      }
+      this.getTTT(stationDistanceMap, () => {
         let [mainWfidList, horizontalWfidList] = this.processArrival()
         this.loading = true
         this.loadingText = `Loading waveforms... (${mainWfidList.length + horizontalWfidList.length} channels)`
         this.downloadWaveforms(
           mainWfidList,
           st => this.plotWaveforms(st),
-          () => { this.$notify.info({ message: 'Waveform list is loaded.' }) }
+          () => {
+            this.$notify.info({ message: 'Waveform list is loaded.' })
+            this.disableLoadAdditionalStation = false
+          }
         )
         this.downloadWaveforms(
           horizontalWfidList,
@@ -308,6 +336,7 @@ export default {
     },
 
     reset () {
+      this.disableLoadAdditionalStation = true
       this.listOpt.waveforms = []
       if (this.picker != null) {
         this.picker.destroy()
@@ -317,9 +346,10 @@ export default {
         this.list.destroy()
         this.list = null
       }
+      this.tools.rotation = 'ZNE',
       this.tools.lastFilter = this.tools.filterList[0].name
       this.tools.phase = '',
-      this.tools.sameScale = false,
+      this.tools.sameScale = true,
       this.tools.filter = '',
       this.tools.alignment = 'O',
       this.tools.sortBy = 'distance'
@@ -364,17 +394,80 @@ export default {
       }
     },
 
-    getTTT (callback) {
+    ne2rt (wf) {
+      let horizontals = this.getHorizontalWaveforms(wf)
+      let [nWf, eWf] = [null, null]
+      if (horizontals.length == 2) {
+        [nWf, eWf] = horizontals
+      } else {
+        console.error('Cannot rotate to RT: no horizontal waveforms.')
+        return []
+      }
+      if (nWf.step != eWf.step) {
+        console.error('Cannot rotate to RT: different sampling rates for horizontal components !')
+        return []
+      }
+      let baseId = nWf.id.slice(0, -1)
+      let baz = utils.az2baz(nWf.azimuth) * Math.PI / 180
+      // sync horizontals
+      let start = Math.max(nWf.start, eWf.start),
+          end = Math.min(
+            nWf.start + nWf.values.length * nWf.step,
+            eWf.start + eWf.values.length * eWf.step
+          )
+      let iN = Math.floor((nWf.start - start) / nWf.step),
+          iE = Math.floor((eWf.start - start) / eWf.step)
+      let nb_samples = Math.floor((end - start) / nWf.step)
+      let r = [],
+          t = []
+      for (let i = 0; i < nb_samples; i++) {
+        let [n, e] = [nWf.values[iN + i], eWf.values[iE + i]]
+        if (n == null || e == null) {
+          r.push(null)
+          t.push(null)
+          continue
+        }
+        r.push(- e * Math.sin(baz) - n * Math.cos(baz))
+        t.push(- e * Math.cos(baz) + n * Math.sin(baz))
+      }
+      let wfList = []
+      let [rId, tId] = [`${baseId}R`, `${baseId}T`]
+      if (this.picks[rId] == null) {
+        this.picks[rId] = []
+      }
+      if (this.picks[tId] == null) {
+        this.picks[tId] = []
+      }
+      wfList.push({
+        start: start, step: nWf.step, values: r,
+        scale: 1, id: rId,
+        distance: nWf.distance, azimuth: nWf.azimuth,
+        ttt: nWf.ttt, picks: this.picks[rId]
+      })
+      wfList.push({
+        start: start, step: nWf.step, values: t,
+        scale: 1, id: tId,
+        distance: nWf.distance, azimuth: nWf.azimuth,
+        ttt: nWf.ttt, picks: this.picks[tId]
+      })
+      return wfList
+    },
+
+    getTTT (stationDistanceMap, callback) {
       this.loading = true
       this.loadingText = 'Loading theoretical travel time...'
       let data = {
         depth: this.origin.depth.value/1000,
-        station: {}
+        station: stationDistanceMap
       }
-      for (let a of this.origin.arrival) {
-        let netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
-        data.station[netsta] = a.distance
-      }
+      // for (let [wfid, distance] of Object.entries(wfidDistanceMap)) {
+      //   let netsta = wfid.split('.').slice(0, 2).join('.')
+      //   data.station[netsta] = distance
+      // }
+      // for (let a of this.origin.arrival) {
+      //   let netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
+      //   data.station[netsta] = a.distance
+      // }
       const xhr = new XMLHttpRequest()
       this.xhr.push(xhr)
       utils.ajax({
@@ -534,28 +627,48 @@ export default {
       this.list.draw()
     },
 
-    handleWaveformClick (wf) {
+    getHorizontalWaveforms (wf) {
+      let result = []
+      let horizontalIds = this.getHorizontalIds(wf.id)
+      for (let fdsnid of horizontalIds) {
+        let cached = this.horizontalWaveformCache[fdsnid]
+        if (cached != null) {
+          result.push(cached)
+        }
+      }
+      return result
+    },
+
+    handleWaveformClick (wf, force=false) {
+      if (this.picker != null) {
+        if (this.picker.waveforms[0].opt.id == wf.id && !force) {
+          return
+        }
+      }
+      let equalScale = true
+      let wfList = []
+      if (this.tools.rotation == 'ZNE') {
+        wfList = [wf].concat(this.getHorizontalWaveforms(wf))
+      } else if (this.tools.rotation == 'ZRT') {
+        equalScale = false
+        wfList = [wf].concat(this.ne2rt(wf))
+      }
+      this.setPickerWaveforms(wfList)
+    },
+
+    setPickerWaveforms (wfList) {
       let view = Object.assign({}, this.defaultView)
       let filterState = false
       let phase = null
       if (this.picker != null) {
-        if (this.picker.waveforms[0].opt.id == wf.id) {
-          return
-        }
         Object.assign(view, this.picker.view, {gain: 1})
         phase = this.picker.event.phase
         filterState = this.picker.event.useFiltered
         this.picker.destroy()
       }
+      this.pickerOpt.equalScale = this.tools.sameScale,
       this.pickerOpt.view = view
-      this.pickerOpt.waveforms = [wf]
-      let horizontalIds = this.getHorizontalIds(wf.id)
-      for (let fdsnid of horizontalIds) {
-        let cached = this.horizontalWaveformCache[fdsnid]
-        if (cached != null) {
-          this.pickerOpt.waveforms.push(cached)
-        }
-      }
+      this.pickerOpt.waveforms = wfList
       this.picker = new Waveform(this.pickerOpt)
       this.applyFilter(this.picker.waveforms)
       this.picker.setFilterState(filterState)
@@ -580,39 +693,75 @@ export default {
     },
 
     loadAdditionalStation () {
+      let kmRadius = (this.tools.stationRadius * 2 * Math.PI * 6371 ) / 360
+      console.log(`${kmRadius} km`);
+      let alreadyLoadedStation = this.list.waveforms.map(x => x.opt.id.split('.').slice(0, 2).join('.'))
       let pos = L.latLng([this.origin.latitude.value, this.origin.longitude.value])
       let t = this.origin.time._value
+      let stationDistanceMap = {}
       let wfidList = []
       for (let [net, n] of Object.entries(this.inventory)) {
         for (let [sta, s] of Object.entries(n)) {
-          let d = pos.distanceTo([s.lat, s.lon]) / 1000.
-          if (d > this.tools.stationRadius) {
+          let netsta = [net, sta].join('.')
+          if (alreadyLoadedStation.indexOf(netsta) >= 0) {
+            continue
+          }
+          let kmDistance = pos.distanceTo([s.lat, s.lon]) / 1000.
+          if (kmDistance > kmRadius) {
             continue
           }
           let stationWf = null
           for (let [loc, l] of Object.entries(s.location)) {
+            let availableChannel = []
             for (let [cha, c] of Object.entries(l)) {
-              let channel = c.filter(x => t >= x.starttime && t <= x.endtime && cha.slice(-1) == 'Z' && x.units == 'M/S')
-              channel.sort((a, b) => {
+              let tmp = c.filter(x => (
+                t >= x.starttime &&
+                t <= x.endtime &&
+                cha.slice(-1) == 'Z' && x.units == 'M/S'
+              ))
+              if (tmp.length > 0) {
+                availableChannel.push({ channel: cha, sample_rate: tmp[0].sample_rate })
+              }
+            }
+            if (availableChannel.length > 0) {
+              availableChannel.sort((a, b) => {
                 a = a.sample_rate
                 b = b.sample_rate
                 return a == b ? 0 : a < b ? -1 : 1
               })
-              if (channel.length > 0) {
-                stationWf = [net, sta, loc, cha].join('.')
-              }
-            }
-            if (stationWf != null) {
+              stationWf = [net, sta, loc, availableChannel.slice(-1)[0].channel].join('.').replace('..', '.--.')
               break
             }
           }
           if (stationWf != null) {
+            let degDistance  = (kmDistance * 360) / (2 * Math.PI * 6371)
+            this.stationInfoMap[netsta] = {
+              distance: degDistance,
+              azimuth: utils.coordinates2azimuth([pos.lat, pos.lng], [s.lat, s.lon])
+            }
+            stationDistanceMap[netsta] = degDistance
             wfidList.push(stationWf)
+            for (let wfid of this.getHorizontalIds(stationWf)) {
+              wfidList.push(wfid)
+            }
           }
         }
       }
-      // TODO: remove already loaded wfid
       console.log(wfidList);
+      if (wfidList.length == 0) {
+        this.$notify.info({ message: 'No additional station found in this range.' })
+        return
+      }
+      this.getTTT(stationDistanceMap, () => {
+        this.downloadWaveforms(
+          wfidList,
+          st => this.plotWaveforms(st),
+          () => {
+            this.$notify.info({ message: 'Loading additional station is complete.' })
+            this.disableLoadAdditionalStation = false
+          }
+        )
+      })
     },
 
     getWaveformObject (tr) {
@@ -661,7 +810,7 @@ export default {
         return a == b ? 0 : a < b ? -1 : 1
       })
       this.listOpt.waveforms = waveforms
-      this.listOpt.equalScale = this.tools.sameScale
+      // this.listOpt.equalScale = this.tools.sameScale
       this.list = new Waveform(this.listOpt)
       if (selectedWfId == null) {
         this.list.selectNext()

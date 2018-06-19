@@ -8,7 +8,8 @@ export default class Waveform {
       43200000, 21600000, 14400000, 7200000, 3600000, // >/= 1 hour
       1800000, 600000, 300000, 120000, 60000,         // >/= 1 minute
       30000, 10000, 5000, 2000, 1000,                 // >/= 1 seconde
-      500, 200, 100                                   // < 1 seconde
+      500, 200, 100,                                  // < 1 seconde
+      50, 20, 10                                      // < 100 ms
     ]
     this.waveforms = []
     this.event = {
@@ -79,6 +80,7 @@ export default class Waveform {
         labelText: 'white',
         // line
         line: '#9cb9c9',
+        avgLine: 'rgba(180,180,180,.3)',//'#a6dfea',
         // phases
         theoretical: 'blue',
         automatic: 'red',
@@ -758,7 +760,8 @@ export default class Waveform {
                (tick % 86400000) == 0 ? `${d.getDate()}/${d.getMonth()+1}` :
                (tick % 60000) == 0 ? d.toISOString().substr(11, 5) :
                (tick % 1000) == 0 ? d.toISOString().substr(11, 8) :
-               (tick % 100) == 0 ? d.toISOString().substr(11, 10) : '');
+               (tick % 100) == 0 ? d.toISOString().substr(11, 10) :
+               (tick % 10) == 0 ? d.toISOString().substr(11, 11) : '');
         }
         ctx.fillText(t, pos, 10);
       } else {
@@ -772,7 +775,7 @@ export default class Waveform {
   drawAVGLine (wf) {
     let ctx = wf.ctx;
     ctx.save();
-    ctx.fillStyle = '#a6dfea';
+    ctx.fillStyle = this.opt.color.avgLine;
     ctx.fillRect(0, this.value2pos(wf, wf.stats.avg), this.opt.size.width, 1);
     ctx.restore();
   }
