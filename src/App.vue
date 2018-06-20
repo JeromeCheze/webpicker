@@ -5,7 +5,7 @@
         <el-menu-item index="eventForm">Form</el-menu-item>
         <el-menu-item index="eventList">Event list</el-menu-item>
         <el-menu-item index="eventPage" :disabled="currentEvent == null">
-          <span v-if="currentEvent != null">{{ currentEvent.public_id }}</span>
+          <span v-if="currentEvent != null">Event: {{ currentEvent.public_id }}</span>
           <span v-else>No event</span>
         </el-menu-item>
         <el-menu-item index="eventPicker" :disabled="currentOrigin == null">Picker</el-menu-item>

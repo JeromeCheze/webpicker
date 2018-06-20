@@ -282,6 +282,7 @@ export default {
           pick_id: p.id,
           // _pick_id: p.id.split('/').slice(-1)[0],
           time_residual: p.residual,
+          takeoff_angle: p.takeoff,
           time_weight: p.weight,
           _traveltime: new Date(pTime - this.origin.time._value),
           _pick: {
@@ -525,7 +526,8 @@ export default {
           polarity: a._pick.polarity,
           time: a._pick.time._value.getTime(),
           residual: a.time_residual,
-          weight: a.time_weight
+          weight: a.time_weight,
+          takeoff: a.takeoff_angle
         })
         let zComponent = `${a._pick._seedid.slice(0, -1)}Z`
         if (mainWfidList.indexOf(zComponent) < 0) {

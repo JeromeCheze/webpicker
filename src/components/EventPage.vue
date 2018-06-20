@@ -50,14 +50,32 @@
         </el-form-item>
       </el-form>
     </el-row>
-    <el-row>
-      <h3>
-        <el-tag type="warning" v-if="origin.uncommitted">
-          <i class="el-icon-warning"></i>
-          Not committed
-        </el-tag>
-        {{ this.event.description.text }}
-      </h3>
+    <el-row :gutter="40">
+      <el-col :span="8">
+        <strong>Event info</strong>
+        <table class="event-description">
+          <thead><tr><th>Type</th><th>Type certainty</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>{{ event.type }}</td>
+              <td>{{ event.type_certainty }}</td>
+              <td>{{ origin.evaluation_status }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </el-col>
+      <el-col :span="6">
+        <strong>Locator info</strong>
+        <table class="event-description">
+          <thead><tr><th>Method</th><th>Earth model</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>{{ origin.method_id }}</td>
+              <td>{{ origin.earth_model_id }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </el-col>
     </el-row>
     <el-row class="text-right">
       Selector mode <el-switch v-model="originSelectorMode"></el-switch>
@@ -66,9 +84,13 @@
       <strong>Origin</strong>
       <table class="event-description">
         <thead>
-          <th v-if="originSelectorMode"></th>
-          <th v-if="originSelectorMode">Creation Time</th>
-          <th>Time</th><th>Latitude</th><th>Longitude</th><th>Depth</th><th>Phases</th><th>RMS</th><th>Az. Gap</th><th>Min Dist</th>
+          <tr>
+            <th v-if="originSelectorMode"></th>
+            <th v-if="originSelectorMode">Creation time</th>
+            <th v-if="originSelectorMode">Agency</th>
+            <th v-if="originSelectorMode">Author</th>
+            <th>Time</th><th>Latitude</th><th>Longitude</th><th>Depth</th><th>Phases</th><th>RMS</th><th>Az. Gap</th><th>Min Dist</th>
+          </tr>
         </thead>
         <tbody class="selectable" v-if="originSelectorMode">
           <tr
@@ -78,6 +100,8 @@
             @dblclick="handleSetPreferredOrigin(o)">
             <td><i class="el-icon-view" v-if="o == origin"></i></td>
             <td>{{ o.creation_info._pretty_creation_time }}</td>
+            <td>{{ o.creation_info.agency_id }}</td>
+            <td>{{ o.creation_info.author }}</td>
             <td>{{ o.time._pretty }}</td>
             <td>{{ o.latitude._pretty }} {{ o.latitude._pretty_uncertainty }}</td>
             <td>{{ o.longitude._pretty }} {{ o.longitude._pretty_uncertainty }}</td>
@@ -106,7 +130,12 @@
       <strong>Magnitude</strong>
       <table class="event-description" v-if="event._pm != null">
         <thead>
-          <th>Value</th><th>Magnitude type</th><th>Station count</th><th>Method</th>
+          <tr>
+            <th v-if="originSelectorMode">Creation time</th>
+            <th v-if="originSelectorMode">Agency</th>
+            <th v-if="originSelectorMode">Author</th>
+            <th>Value</th><th>Magnitude type</th><th>Station count</th><th>Method</th>
+          </tr>
         </thead>
         <tbody class="selectable" v-if="originSelectorMode">
           <tr
@@ -114,6 +143,9 @@
             v-if="m.origin_id == origin.public_id"
             :class="{ preferred: m.public_id == event.preferred_magnitude_id }"
             @dblclick="handleSetPreferredMagnitude(m)">
+            <td>{{ m.creation_info._pretty_creation_time }}</td>
+            <td>{{ m.creation_info.agency_id }}</td>
+            <td>{{ m.creation_info.author }}</td>
             <td>{{ m.mag._pretty }}</td>
             <td>{{ m.type }}</td>
             <td>{{ m.station_count }}</td>
@@ -151,6 +183,7 @@
         :default-sort="{ prop: 'distance', order: 'ascending' }"
         row-key="id"
         :height="500"
+        @row-click="handleRowClick"
         @selection-change="handleSelectionChange"
         style="width: 100%">
         <el-table-column type="selection" min-width="55" reserve-selection></el-table-column>
@@ -163,10 +196,12 @@
         <el-table-column min-width="70" prop="network" label="Net"></el-table-column>
         <el-table-column min-width="100" prop="station" label="Sta"></el-table-column>
         <el-table-column min-width="120" prop="loccha" label="Loc/Cha"></el-table-column>
+        <el-table-column min-width="120" prop="takeoffAngle" label="Takeoff [°]"></el-table-column>
         <el-table-column min-width="100" prop="polarity" label="Polarity"></el-table-column>
         <el-table-column min-width="70" prop="residual" label="Res" :formatter="floatFormatter" sortable></el-table-column>
         <el-table-column min-width="90" prop="distance" label="Dist" :formatter="floatFormatter" sortable></el-table-column>
         <el-table-column min-width="90" prop="azimuth" label="Az" :formatter="floatFormatter" sortable></el-table-column>
+        <el-table-column min-width="90" prop="weight" label="Weight" :formatter="floatFormatter" sortable></el-table-column>
         <el-table-column min-width="130" prop="time" label="Time" :formatter="timeFormatter" sortable></el-table-column>
       </el-table>
     </el-row>
@@ -183,13 +218,15 @@ import 'leaflet-ellipse'
 
 addMore(Highcharts)
 
-let handleChartSelection = function(ev) {
+let handleChartSelection = function(ev, manualOnly=false) {
   let [x, y] = [ev.xAxis[0], ev.yAxis[0]]
   let selectedPickIDs = []
   for (let s of this.series) {
     for (let p of s.points) {
-      if (p.x >= x.min && p.x <= x.max && p.y >= y.min && p.y <= y.max) {
-        selectedPickIDs.push(p.id)
+      if (manualOnly && p.manual || !manualOnly) {
+        if (p.x >= x.min && p.x <= x.max && p.y >= y.min && p.y <= y.max) {
+          selectedPickIDs.push(p.id)
+        }
       }
     }
   }
@@ -273,8 +310,10 @@ export default {
         timeResidual: null,
         travelTime: null
       },
+      shiftPressed: false,
       arrivalTableData: [],
-      activeChartTab: 'timeResidual'
+      activeChartTab: 'timeResidual',
+      keyHandlersBinded: false
     }
   },
 
@@ -291,11 +330,26 @@ export default {
     if (this.dirty) {
       this.updateAll()
     }
+    if (!this.keyHandlersBinded) {
+      this.keyHandlersBinded = true
+      document.body.addEventListener('keydown', ev => {
+        if (ev.key == 'Shift') {
+          this.shiftPressed = true
+        }
+      })
+      document.body.addEventListener('keyup', ev => {
+        if (ev.key == 'Shift') {
+          this.shiftPressed = false
+        }
+      })
+    }
   },
 
   methods: {
+
     floatFormatter (row, col) {
-      return row[col.property].toFixed(2)
+      let value = row[col.property]
+      return value == null ? '' : value.toFixed(2)
     },
 
     timeFormatter (row, col) {
@@ -323,6 +377,7 @@ export default {
         network: a._pick.waveform_id.network_code,
         station: a._pick.waveform_id.station_code,
         loccha: a._pick._fdsnid.split('.').slice(-2).join('.'),
+        takeoffAngle: a.takeoff_angle,
         polarity: a._pick.polarity != null ? a._pick.polarity : '',
         residual: a.time_residual,
         distance: a.distance,
@@ -358,8 +413,16 @@ export default {
       let worldtopomap = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
         attribution: '&copy; Esri, HERE, DeLorme, TomTom, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, <br>Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), swisstopo, MapmyIndia, © OpenStreetMap contributors, and the GIS User Community'
       })
-      worldtopomap.addTo(map)
+      let satmap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '&copy; Esri, DigitalGlobe, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, <br>USGS, AEX, Getmapping, Aerogrid, IGN, IGP, swisstopo, and the GIS User Community'
+      })
+      let baseLayers = {
+        Terrain: worldtopomap,
+        Satellite: satmap
+      }
+      L.control.layers(baseLayers).addTo(map);
       L.control.scale({ imperial: false }).addTo(map)
+      worldtopomap.addTo(map)
       this.map = map
     },
 
@@ -377,49 +440,72 @@ export default {
       if (this.map == null) {
         this.initMap()
       }
-      for (let l of this.layers) {
+      for (let l of Object.values(this.layers)) {
         l.remove()
       }
-      this.layers = []
+      this.layers = {}
       let originPos = L.latLng([
         this.origin.latitude.value,
         this.origin.longitude.value
       ])
       let bounds = [originPos]
+      let arrivalPerStation = {}
+      let maxRes = 0
       for (let a of this.origin.arrival) {
+        let netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
+        if (a.time_weight > 0) {
+          maxRes = Math.max(maxRes, Math.abs(a.time_residual))
+        }
+        if (arrivalPerStation[netsta] == null) {
+          arrivalPerStation[netsta] = a
+        } else {
+          if (a.time_weight != 0 &&
+              Math.abs(a.time_residual) > Math.abs(arrivalPerStation[netsta].time_residual)) {
+            arrivalPerStation[netsta] = a
+          }
+        }
+      }
+      utils.RESIDUAL_COLOR_SCALE[0][0] = -maxRes
+      utils.RESIDUAL_COLOR_SCALE[2][0] = maxRes
+      for (let [netsta, a] of Object.entries(arrivalPerStation)) {
         let pos = this.getStationCoordinates(a._pick._seedid)
         if (pos == null) {
           console.warn(`No coordinates found for channel ${a._pick._seedid}`)
           continue
         }
         bounds.push(pos)
-        if (a.time_weight == 1) {
-          this.layers.push(L.polyline([originPos, pos], {
+        if (a.time_weight > 0) {
+          this.layers[`${netsta}_line`] = L.polyline([originPos, pos], {
             color: 'gray',
             weight: 1
-          }).addTo(this.map))
+          }).addTo(this.map)
         }
-        this.layers.push(L.circleMarker(pos, {
-          radius: 2,
+        this.layers[netsta] = L.circleMarker(pos, {
+          radius: 4,
           weight: 1,
-          color: a.time_weight == 1 ? 'black' : 'gray',
+          color: 'gray',
+          fillColor: (
+            a.time_weight > 0 ?
+            utils.toRGB(utils.applyScale(a.time_residual, utils.RESIDUAL_COLOR_SCALE)) :
+            'gray'
+          ),
           fillOpacity: 1
-        }).bindPopup(a._pick._seedid).addTo(this.map))
+        }).bindPopup(a._pick._seedid).addTo(this.map)
       }
-      this.layers.push(L.ellipse(originPos, [
+      this.layers['ellipse'] = L.ellipse(originPos, [
         this.origin.longitude.uncertainty * 1000,
         this.origin.latitude.uncertainty * 1000
       ], 0, {
         weight: 0,
         color: 'red',
         fillOpacity: .2
-      }).addTo(this.map))
-      this.layers.push(L.circleMarker(originPos, {
+      }).addTo(this.map)
+      this.layers['epicenter'] = L.circleMarker(originPos, {
         radius: 8,
         weight: 1,
         color: 'red',
         fillOpacity: .8
-      }).addTo(this.map))
+      }).addTo(this.map)
       this.map.fitBounds(bounds)
       // console.log(this.origin);
     },
@@ -436,10 +522,10 @@ export default {
           'green'
         )
         this.chart.timeResidual[serie].push({
-          x: a.distance, y: a.time_residual, name: a._pick._seedid, color: color, id: a.pick_id
+          x: a.distance, y: a.time_residual, name: a._pick._seedid, color: color, id: a.pick_id, manual: a._pick.evaluation_mode == 'manual'
         })
         this.chart.travelTime[serie].push({
-          x: a.distance, y: a._traveltime.getTime()/1000., name: a._pick._seedid, color: color, id: a.pick_id
+          x: a.distance, y: a._traveltime.getTime()/1000., name: a._pick._seedid, color: color, id: a.pick_id, manual: a._pick.evaluation_mode == 'manual'
         })
       }
     },
@@ -451,9 +537,10 @@ export default {
         )
       )
       let container = this.$el.querySelector('.chart-time-residual')
+      let self = this
       Highcharts.chart({
         chart: { renderTo: container, type: 'scatter', zoomType: 'xy', events: {
-          selection: handleChartSelection,
+          selection: function(ev) {return handleChartSelection.call(this, ev, self.shiftPressed)},
           selectedpoints: selectedPickIDs => this.setSelectedArrival(selectedPickIDs)
         } },
         title: { text: 'Time residual/Distance' },
@@ -472,9 +559,10 @@ export default {
 
     initChartTravelTime () {
       let container = this.$el.querySelector('.chart-travel-time')
+      let self = this
       Highcharts.chart({
         chart: { renderTo: container, type: 'scatter', zoomType: 'xy', events: {
-          selection: handleChartSelection,
+          selection: function(ev) {return handleChartSelection.call(this, ev, self.shiftPressed)},
           selectedpoints: selectedPickIDs => this.setSelectedArrival(selectedPickIDs)
         } },
         title: { text: 'Travel time/Distance' },
@@ -489,6 +577,11 @@ export default {
           { name: 'S', data: this.chart.travelTime.s }
         ]
       })
+    },
+
+    handleRowClick (row, ev, col) {
+      let netsta = `${row.network}.${row.station}`
+      this.layers[netsta].openPopup()
     },
 
     handleChartChange (tab, ev) {

@@ -46,6 +46,32 @@ const RESOURCE_ID_KEYS = [
   '/event_parameters/event/pick/public_id',
 ]
 
+const RESIDUAL_COLOR_SCALE = [
+  [-1, [0, 0, 255]],
+  [0, [255, 255, 255]],
+  [1, [255, 0, 0]]
+]
+
+function applyScale(v, cs) {
+  if (v <= cs[0][0]) {
+    return cs[0][1]
+  }
+  if (v >= cs[cs.length-1][0]) {
+    return cs[cs.length-1][1]
+  }
+  let i;
+  for (i=0; cs[i][0] < v; i++);
+  let r = (v - cs[i-1][0])/(cs[i][0] - cs[i-1][0]),
+      result = []
+  for (let j=0; j < cs[i][1].length; j++) {
+    result.push(cs[i-1][1][j] + r * (cs[i][1][j] - cs[i-1][1][j]))
+  }
+  return result
+}
+
+function toRGB(rgb) {
+  return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`
+}
 
 function ajax(opt, xhr) {
   if (xhr == null) {
@@ -158,6 +184,8 @@ function processEventData(e) {
   if (e.magnitude != null) {
     for (let m of e.magnitude) {
       m.mag._pretty = m.mag.value.toFixed(2)
+      m.creation_info._creation_time = new Date(Date.parse(m.creation_info.creation_time))
+      m.creation_info._pretty_creation_time = m.creation_info._creation_time.toISOString().replace('T', ' ').substr(0, 19)
       // m._pretty_method = m.method_id != null ? m.method_id.split('/').slice(-1)[0] : ''
     }
   } else {
@@ -311,6 +339,9 @@ function getId(prefix) {
 
 export default {
   CONVERSION_RULES,
+  RESIDUAL_COLOR_SCALE,
+  applyScale,
+  toRGB,
   ajax,
   dict,
   processEventData,

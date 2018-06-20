@@ -77,12 +77,12 @@ export default {
       }
     }
   },
-  
+
   watch: {
-    minlat: function() {this.applyBoundsToArea()},
-    minlon: function() {this.applyBoundsToArea()},
-    maxlat: function() {this.applyBoundsToArea()},
-    maxlon: function() {this.applyBoundsToArea()}
+    'form.minlat': function() {this.applyBoundsToArea()},
+    'form.minlon': function() {this.applyBoundsToArea()},
+    'form.maxlat': function() {this.applyBoundsToArea()},
+    'form.maxlon': function() {this.applyBoundsToArea()}
   },
 
   activated () {
