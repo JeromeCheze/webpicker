@@ -9,6 +9,7 @@
           <span v-else>No event</span>
         </el-menu-item>
         <el-menu-item index="eventPicker" :disabled="currentOrigin == null">Picker</el-menu-item>
+        <el-menu-item index="userSettings" class="pull-right"><i class="el-icon-setting"></i></el-menu-item>
       </el-menu>
     </el-header>
     <el-main v-loading.fullscreen.lock="loading" :element-loading-text="loadingText">
@@ -36,6 +37,8 @@
           :inventory="inventory"
           @picker-arrival="handlePickerArrival"
           v-else-if="activeIndex == 'eventPicker'"></event-picker>
+        <user-settings
+          v-else-if="activeIndex == 'userSettings'"></user-settings>
       </keep-alive>
     </el-main>
   </el-container>
@@ -302,5 +305,9 @@ body {
 
 .text-right {
   text-align: right;
+}
+
+.el-menu-item.pull-right {
+  float: right;
 }
 </style>

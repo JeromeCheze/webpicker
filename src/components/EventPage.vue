@@ -128,7 +128,10 @@
     </el-row>
     <el-row>
       <strong>Magnitude</strong>
-      <table class="event-description" v-if="event._pm != null">
+      <div v-if="event._pm == null && !originSelectorMode">
+        <el-alert type="error" title="No preferred magnitude"></el-alert>
+      </div>
+      <table class="event-description" v-else>
         <thead>
           <tr>
             <th v-if="originSelectorMode">Creation time</th>
@@ -161,9 +164,6 @@
           </tr>
         </tbody>
       </table>
-      <div v-else>
-        <el-alert type="error" title="No preferred magnitude"></el-alert>
-      </div>
     </el-row>
     <el-row>
       <el-col :span="8">
@@ -600,8 +600,9 @@ export default {
     },
 
     handleSetPreferredMagnitude (m) {
-      this.event.preferred_magnitude_id = m.public_id
-      this.origin._not_committed = true
+      this.$set(this.event, 'preferred_magnitude_id', m.public_id)
+      this.$set(this.event, '_pm', m)
+      this.$set(this.origin, '_not_committed', true)
     },
 
     handleCommitClick () {

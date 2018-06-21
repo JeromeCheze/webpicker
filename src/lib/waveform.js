@@ -68,6 +68,7 @@ export default class Waveform {
       },
       color: {
         // global
+        amplitudeValue: 'gray',
         background: 'white',
         backgroundEven: '#e5eef1',
         grid: 'rgba(180,180,180,.3)',
@@ -297,22 +298,6 @@ export default class Waveform {
     }
   }
 
-  // handleKeyDown (ev) {
-  //   if (this.opt.mode == 'list') {
-  //     if (ev.key == 'ArrowDown') {
-  //       ev.preventDefault()
-  //       this.selectNext()
-  //     } else if (ev.key == 'ArrowUp') {
-  //       ev.preventDefault()
-  //       this.selectPrev()
-  //     }
-  //   } else if (this.opt.mode == 'picker') {
-  //     if (ev.key == 'Delete') {
-  //       this.deleteSelectedPicks()
-  //     }
-  //   }
-  // }
-
   wheelHandler (ev) {
     if (ev.shiftKey) {
       ev.preventDefault()
@@ -445,12 +430,6 @@ export default class Waveform {
     if (this.event.phase != null && this.event.phase != '') {
       let ref = this.waveforms[0].opt.ttt[this.view.refTime]
       let t = this.pos2time(ref, this.getMouseX(ev))
-      // let id = [
-      //   'Pick',
-      //   new Date().toISOString().replace(/[\-:]/g, '').replace('T', '.').substr(0, 18),
-      //   this.event.hoverWf.opt.id,
-      //   this.event.phase
-      // ].join('-')
       let newPick = {
         phase: this.event.phase,
         mode: 'manual',
@@ -599,7 +578,7 @@ export default class Waveform {
           useGrouping = true,
           i = Math.max(0, this.time2index(wf, this.getStartTime(wf))),
           iend = Math.min(values.length-1, this.time2index(wf, this.getEndTime(wf)))
-      wf.stats = {min: null, max: null, sum: 0, count: 0, avg: null}
+      wf.stats = { min: null, max: null, sum: 0., count: 0, avg: null }
       wf.groupedValues = []
       //console.log(i, iend, sppx);
       if (sppx < 3) {
@@ -608,7 +587,7 @@ export default class Waveform {
       }
       while (i <= iend) {
         let currentGroup = values.slice(i, i+sppx),
-            currStats = {sum: 0, count: 0}
+            currStats = { sum: 0., sq_sum: 0., count: 0 }
         for (let j=0, l=currentGroup.length; j<l; j++) {
           let v = currentGroup[j]
           if (v == null) continue
@@ -626,6 +605,7 @@ export default class Waveform {
         i += sppx
       }
       wf.stats.avg = wf.stats.count > 0 ? wf.stats.sum / wf.stats.count : null
+      wf.stats.amp = wf.stats.max - wf.stats.min
       if (!useGrouping) wf.groupedValues = null
       // MARKER
       let amp = (wf.stats.max - wf.stats.min) / wf.opt.scale
@@ -847,6 +827,14 @@ export default class Waveform {
     ctx.restore()
   }
 
+  drawAmplitudeValue (wf) {
+    let ctx = wf.ctx
+    ctx.save()
+    ctx.fillStyle = this.opt.color.amplitudeValue
+    ctx.fillText(wf.stats.amp.toFixed(0), 103, this.opt.size.height - 3)
+    ctx.restore()
+  }
+
   draw () {
     this.clearAll()
     this.getStatsAndGroupData()
@@ -860,6 +848,7 @@ export default class Waveform {
         this.drawLine(wf)
       }
       this.drawPicks(wf)
+      this.drawAmplitudeValue(wf)
     }
     this.drawXAxis()
     if (this.opt.mode == 'picker') {

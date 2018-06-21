@@ -194,6 +194,8 @@ function processEventData(e) {
   e._po = e.origin.find(x => x.public_id == e.preferred_origin_id)
   if (e.preferred_magnitude_id) {
     e._pm = e.magnitude.find(x => x.public_id == e.preferred_magnitude_id)
+  } else {
+    e.preferred_magnitude_id = null
   }
   if (e.pick != null && e._po.arrival != null) {
     let pickMap = {}

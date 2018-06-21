@@ -6,6 +6,7 @@ import EventForm from './components/EventForm.vue'
 import EventList from './components/EventList.vue'
 import EventPage from './components/EventPage.vue'
 import EventPicker from './components/EventPicker.vue'
+import UserSettings from './components/UserSettings.vue'
 
 import App from './App.vue'
 
@@ -16,6 +17,7 @@ Vue.component('event-form', EventForm)
 Vue.component('event-list', EventList)
 Vue.component('event-page', EventPage)
 Vue.component('event-picker', EventPicker)
+Vue.component('user-settings', UserSettings)
 
 new Vue({
   el: '#app',
