@@ -339,6 +339,21 @@ function getId(prefix) {
   ].join('-')
 }
 
+function shortcutString (ev) {
+  let k = []
+  let keyCode = ev.keyCode || ev.which || ev.charCode
+  if (ev.metaKey) k.push('meta')
+  if (ev.ctrlKey) k.push('ctrl')
+  if (ev.altKey) k.push('alt')
+  if (ev.shiftKey) k.push('shift')
+  if (keyCode >= 48 && keyCode <= 126) {
+    k.push(String.fromCharCode(keyCode).toLowerCase())
+  } else {
+    k.push(ev.key)
+  }
+  return k.join('+')
+}
+
 export default {
   CONVERSION_RULES,
   RESIDUAL_COLOR_SCALE,
@@ -354,5 +369,6 @@ export default {
   composeEvent,
   coordinates2azimuth,
   az2baz,
-  getId
+  getId,
+  shortcutString
 }

@@ -127,17 +127,6 @@ export default {
 
       // constructor options
       defaultView: { duration: 30000, offset: 10000 },
-      listOpt: {
-        mode: 'list',
-        container: '.waveform-list',
-        size: { height: 40 },
-        waveforms: [],
-        equalScale: false,
-        view: {},
-        callback: {
-          waveformClick: wf => this.handleWaveformClick(wf)
-        }
-      },
       pickerOpt: {
         mode: 'picker',
         container: '.picker',
@@ -150,23 +139,49 @@ export default {
           draw: view => this.list.setSelectedWaveformWindow(view)
         }
       },
+      listOpt: {
+        mode: 'list',
+        container: '.waveform-list',
+        size: { height: 40 },
+        waveforms: [],
+        equalScale: false,
+        view: {},
+        callback: {
+          waveformClick: wf => this.handleWaveformClick(wf)
+        }
+      },
 
       // keybinding mapping
+      shortcutAction: {
+        nextStation () { this.list.selectNext() },
+        previousStation () { this.list.selectPrev() },
+        setPolarityPositive () { this.picker.setPolarity('positive') },
+        setPolarityNegative () { this.picker.setPolarity('negative') },
+        setNoPolarity () { this.picker.setPolarity(null) },
+        setPickerPhaseP () { this.tools.phase = 'P' },
+        setPickerPhaseS () { this.tools.phase = 'S' },
+        deletePick () { this.picker.deleteSelectedPicks() },
+        alignToOrigin () { this.tools.alignment = 'O' },
+        alignToP () { this.tools.alignment = 'P' },
+        alignToS () { this.tools.alignment = 'S' },
+        toggleFilter () { this.tools.filter = this.tools.filter == '' ? this.tools.lastFilter : '' },
+        toggleEqualScale () { this.tools.sameScale = !this.tools.sameScale }
+      },
       shortcut: {
-        'ArrowDown' () { this.list.selectNext() },
-        'ArrowUp' () { this.list.selectPrev() },
-        'shift+ArrowUp' () { this.picker.setPolarity('positive') },
-        'shift+ArrowDown' () { this.picker.setPolarity('negative') },
-        'Escape' () { this.picker.setPolarity(null) },
-        'p' () { this.tools.phase = 'P' },
-        's' () { this.tools.phase = 'S' },
-        'Delete' () { this.picker.deleteSelectedPicks() },
-        'Backspace' () { this.picker.deleteSelectedPicks() },
-        'alt+o' () { this.tools.alignment = 'O' },
-        'alt+p' () { this.tools.alignment = 'P' },
-        'alt+s' () { this.tools.alignment = 'S' },
-        'f' () { this.tools.filter = this.tools.filter == '' ? this.tools.lastFilter : '' },
-        '=' () { this.tools.sameScale = !this.tools.sameScale }
+        'ArrowDown': 'nextStation',
+        'ArrowUp': 'previousStation',
+        'shift+ArrowUp': 'setPolarityPositive',
+        'shift+ArrowDown': 'setPolarityNegative',
+        'Escape': 'setNoPolarity',
+        'p': 'setPickerPhaseP',
+        's': 'setPickerPhaseS',
+        'Delete': 'deletePick',
+        'Backspace': 'deletePick',
+        'alt+o': 'alignToOrigin',
+        'alt+p': 'alignToP',
+        'alt+s': 'alignToS',
+        'f': 'toggleFilter',
+        '=': 'toggleEqualScale'
       }
     }
   },
@@ -308,23 +323,12 @@ export default {
   },
   methods: {
     handleKeyDown (ev) {
-      let k = []
-      let keyCode = ev.keyCode || ev.which || ev.charCode
-      if (ev.metaKey) k.push('meta')
-      if (ev.ctrlKey) k.push('ctrl')
-      if (ev.altKey) k.push('alt')
-      if (ev.shiftKey) k.push('shift')
-      if (keyCode >= 48 && keyCode <= 126) {
-        k.push(String.fromCharCode(keyCode).toLowerCase())
-      } else {
-        k.push(ev.key)
-      }
-      k = k.join('+')
+      let k = utils.shortcutString(ev)
       // console.log(k, ev);
       let bindedAction = this.shortcut[k]
       if (bindedAction != null) {
         ev.preventDefault()
-        bindedAction.call(this)
+        this.shortcutAction[bindedAction].call(this)
       }
     },
 
