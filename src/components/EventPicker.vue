@@ -68,7 +68,7 @@ import Fili from 'fili'
 import L from 'leaflet'
 
 export default {
-  props: ['event', 'origin', 'inventory'],
+  props: ['event', 'origin', 'inventory', 'settings'],
   data () {
     return {
       // toolbar variables
@@ -166,22 +166,6 @@ export default {
         alignToS () { this.tools.alignment = 'S' },
         toggleFilter () { this.tools.filter = this.tools.filter == '' ? this.tools.lastFilter : '' },
         toggleEqualScale () { this.tools.sameScale = !this.tools.sameScale }
-      },
-      shortcut: {
-        'ArrowDown': 'nextStation',
-        'ArrowUp': 'previousStation',
-        'shift+ArrowUp': 'setPolarityPositive',
-        'shift+ArrowDown': 'setPolarityNegative',
-        'Escape': 'setNoPolarity',
-        'p': 'setPickerPhaseP',
-        's': 'setPickerPhaseS',
-        'Delete': 'deletePick',
-        'Backspace': 'deletePick',
-        'alt+o': 'alignToOrigin',
-        'alt+p': 'alignToP',
-        'alt+s': 'alignToS',
-        'f': 'toggleFilter',
-        '=': 'toggleEqualScale'
       }
     }
   },
@@ -261,6 +245,7 @@ export default {
     } else {
       this.updatePicksWeightAndResidual()
     }
+    this.redraw()
     if (!this.keyDownBinded) {
       this.keyDownBinded = true
       document.body.addEventListener('keydown', ev => this.handleKeyDown(ev))
@@ -289,19 +274,16 @@ export default {
       }
       for (let p of picks) {
         let pTime = new Date(p.time)
-        // p.id = p.id.indexOf('smi:') < 0 ? `smi:oca/${p.id}` : p.id // add 'smi:oca/' if missing
         arrivals.push({
           azimuth: this.stationInfoMap[staKey].azimuth,
           distance: this.stationInfoMap[staKey].distance,
           phase: p.phase,
           pick_id: p.id,
-          // _pick_id: p.id.split('/').slice(-1)[0],
           time_residual: p.residual,
           takeoff_angle: p.takeoff,
           time_weight: p.weight,
           _traveltime: new Date(pTime - this.origin.time._value),
           _pick: {
-            // _id: p.id.split('/').slice(-1)[0], // keep only short ID
             public_id: p.id,
             evaluation_mode: p.mode,
             phase_hint: p.phase,
@@ -322,12 +304,26 @@ export default {
     this.$emit('picker-arrival', arrivals)
   },
   methods: {
+    redraw () {
+      if (this.picker != null) {
+        this.setPickerWaveforms(this.picker.opt.waveforms)
+      }
+      if (this.list != null) {
+        this.setListWaveforms(this.list.opt.waveforms)
+      }
+    },
+
     handleKeyDown (ev) {
       let k = utils.shortcutString(ev)
-      // console.log(k, ev);
-      let bindedAction = this.shortcut[k]
+      let keybindings = Object.keys(this.settings).filter(x => x.indexOf('pickerKeybinding') == 0)
+      let bindedAction = null
+      for (let key of keybindings) {
+        if (this.settings[key].value == k) {
+          bindedAction = key.split('.')[1]
+        }
+      }
       if (bindedAction != null) {
-        ev.preventDefault()
+        // ev.preventDefault()
         this.shortcutAction[bindedAction].call(this)
       }
     },
@@ -465,14 +461,6 @@ export default {
         depth: this.origin.depth.value/1000,
         station: stationDistanceMap
       }
-      // for (let [wfid, distance] of Object.entries(wfidDistanceMap)) {
-      //   let netsta = wfid.split('.').slice(0, 2).join('.')
-      //   data.station[netsta] = distance
-      // }
-      // for (let a of this.origin.arrival) {
-      //   let netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
-      //   data.station[netsta] = a.distance
-      // }
       const xhr = new XMLHttpRequest()
       this.xhr.push(xhr)
       utils.ajax({
@@ -662,6 +650,16 @@ export default {
       this.setPickerWaveforms(wfList)
     },
 
+    getColorSettings () {
+      let colorSettingKey = Object.keys(this.settings).filter(x => x.indexOf('pickerColor') == 0)
+      let result = {}
+      for (let key of colorSettingKey) {
+        let optKey = key.split('.')[1]
+        result[optKey] = this.settings[key].value
+      }
+      return result
+    },
+
     setPickerWaveforms (wfList) {
       let view = Object.assign({}, this.defaultView)
       let filterState = false
@@ -672,6 +670,7 @@ export default {
         filterState = this.picker.event.useFiltered
         this.picker.destroy()
       }
+      this.pickerOpt.color = this.getColorSettings()
       this.pickerOpt.equalScale = this.tools.sameScale,
       this.pickerOpt.view = view
       this.pickerOpt.waveforms = wfList
@@ -788,35 +787,24 @@ export default {
       }
     },
 
-    plotWaveforms (st) {
-      this.loading = false
-      let waveforms = []
+    setListWaveforms (wfList) {
       let selectedWfId = null
+      this.listOpt.color = this.getColorSettings()
       Object.assign(this.listOpt.view, {refTime: this.tools.alignment}, this.defaultView)
       if (this.list != null) {
-        waveforms = this.listOpt.waveforms
         if (this.list.event.selectedWf != null) {
           selectedWfId = this.list.event.selectedWf.opt.id
         }
         Object.assign(this.listOpt.view, this.list.view)
         this.list.destroy()
       }
-      for (let tr of st.trace) {
-        if (tr.id.slice(-1) != 'Z') {
-          let wf = this.getWaveformObject(tr)
-          this.horizontalWaveformCache[tr.id.replace('..', '.--.')] = wf
-        } else {
-          waveforms.push(this.getWaveformObject(tr))
-        }
-      }
       let sortKey = this.tools.sortBy == 'name' ? 'id' : 'distance'
-      waveforms.sort((a, b) => {
+      wfList.sort((a, b) => {
         a = a[sortKey]
         b = b[sortKey]
         return a == b ? 0 : a < b ? -1 : 1
       })
-      this.listOpt.waveforms = waveforms
-      // this.listOpt.equalScale = this.tools.sameScale
+      this.listOpt.waveforms = wfList
       this.list = new Waveform(this.listOpt)
       if (selectedWfId == null) {
         this.list.selectNext()
@@ -824,7 +812,24 @@ export default {
         let wf = this.list.waveforms.find(wf => wf.opt.id == selectedWfId)
         this.list.selectWaveform(wf)
       }
-      this.tools.filter = this.tools.filter
+    },
+
+    plotWaveforms (st) {
+      this.loading = false
+      let wfList = []
+      if (this.list != null) {
+        wfList = this.listOpt.waveforms
+      }
+      for (let tr of st.trace) {
+        if (tr.id.slice(-1) != 'Z') {
+          let wf = this.getWaveformObject(tr)
+          this.horizontalWaveformCache[tr.id.replace('..', '.--.')] = wf
+        } else {
+          wfList.push(this.getWaveformObject(tr))
+        }
+      }
+      this.setListWaveforms(wfList)
+      // this.tools.filter = this.tools.filter
     }
   }
 }

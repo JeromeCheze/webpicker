@@ -32,12 +32,16 @@
           @set-current-origin="handleSetCurrentOrigin"
           v-else-if="activeIndex == 'eventPage'"></event-page>
         <event-picker
+          ref="eventPicker"
           :event="currentEvent"
           :origin="currentOrigin"
           :inventory="inventory"
+          :settings="settings"
           @picker-arrival="handlePickerArrival"
           v-else-if="activeIndex == 'eventPicker'"></event-picker>
         <user-settings
+          v-model="settings"
+          @settings-updated="storeSettings"
           v-else-if="activeIndex == 'userSettings'"></user-settings>
       </keep-alive>
     </el-main>
@@ -46,11 +50,15 @@
 
 <script>
 import utils from './utils/utils.js'
+import settings from './settings.json'
+
+const STORAGE_KEY = 'settings'
 
 export default {
   name: 'app',
   data () {
     return {
+      settings: {},
       loading: true,
       loadingText: '',
       activeIndex: 'eventForm',
@@ -65,6 +73,7 @@ export default {
     }
   },
   mounted () {
+    this.loadSettings()
     this.queryOpt.end = new Date()
     this.queryOpt.start = new Date(this.queryOpt.end.getTime() - 86400000 * 7)
     this.loadInventory(() => {
@@ -72,6 +81,29 @@ export default {
     })
   },
   methods: {
+    storeSettings () {
+      let toStore = {}
+      for (let [k, v] of Object.entries(this.settings)) {
+        if (v.value != v.default) {
+          toStore[k] = v.value
+        }
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore))
+      this.$notify.success({ message: 'Settings successfully saved' })
+    },
+
+    loadSettings () {
+      let storedSettings = localStorage.getItem(STORAGE_KEY)
+      storedSettings = storedSettings != null ? JSON.parse(storedSettings) : {}
+      for (let [key, defaultValue] of Object.entries(settings)) {
+        let storedValue = storedSettings[key]
+        this.$set(this.settings, key, {
+          default: defaultValue,
+          value: storedValue != null ? storedValue : defaultValue
+        })
+      }
+    },
+
     loadInventory (callback) {
       this.loadingText = 'Loading inventory...'
       utils.ajax({
@@ -301,6 +333,10 @@ body {
 }
 .toolbar .el-form-item {
   margin-bottom: 0;
+}
+
+.text-center {
+  text-align: center;
 }
 
 .text-right {

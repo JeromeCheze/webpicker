@@ -133,25 +133,27 @@ export default class Waveform {
 
   initStyle () {
     let styleId = 'waveform-style';
-    if (document.getElementById(styleId) == null) {
-      let s = document.createElement('style');
-      s.id = styleId;
-      s.innerHTML = `
-        .trace-container {
-          overflow-x: hidden;
-          overflow-y: auto;
-          border-top: 1px solid ${this.opt.color.border};
-        }
-        .wf-container {position: relative; background: ${this.opt.color.background};}
-        .wf-list .wf-container:nth-child(even) {background: ${this.opt.color.backgroundEven};}
-        .wf-list .wf-container.selected {background: ${this.opt.color.selected};}
-        .wf-canvas, .user-canvas {position: absolute; top: 0; left: 0; z-index: 0;}
-        .user-canvas {z-index: 10;}
-        .wf-label-container {position: absolute; top: 0; left: 0; background: ${this.opt.color.labelBackground}; z-index: 10; width: 100px;}
-        .wf-label {font-family: sans-serif; color: ${this.opt.color.labelText}; font-size: 10px; margin: 5px;}
-        .wf-label .distance {font-size: .9em; margin: 10px;}`;
-      document.head.appendChild(s);
+    let styleEl = document.getElementById(styleId)
+    if (styleEl != null) {
+      styleEl.parentNode.removeChild(styleEl)
     }
+    let s = document.createElement('style');
+    s.id = styleId;
+    s.innerHTML = `
+    .trace-container {
+      overflow-x: hidden;
+      overflow-y: auto;
+      border-top: 1px solid ${this.opt.color.border};
+    }
+    .wf-container {position: relative; background: ${this.opt.color.background};}
+    .wf-list .wf-container:nth-child(even) {background: ${this.opt.color.backgroundEven};}
+    .wf-list .wf-container.selected {background: ${this.opt.color.selected};}
+    .wf-canvas, .user-canvas {position: absolute; top: 0; left: 0; z-index: 0;}
+    .user-canvas {z-index: 10;}
+    .wf-label-container {position: absolute; top: 0; left: 0; background: ${this.opt.color.labelBackground}; z-index: 10; width: 100px;}
+    .wf-label {font-family: sans-serif; color: ${this.opt.color.labelText}; font-size: 10px; margin: 5px;}
+    .wf-label .distance {font-size: .9em; margin: 10px;}`;
+    document.head.appendChild(s);
   }
 
   initStructure () {

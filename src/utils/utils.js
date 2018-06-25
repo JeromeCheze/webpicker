@@ -347,11 +347,11 @@ function shortcutString (ev) {
   if (ev.altKey) k.push('alt')
   if (ev.shiftKey) k.push('shift')
   if (keyCode >= 48 && keyCode <= 126) {
-    k.push(String.fromCharCode(keyCode).toLowerCase())
+    k.push(String.fromCharCode(keyCode))
   } else {
     k.push(ev.key)
   }
-  return k.join('+')
+  return k.join('+').toLowerCase().replace('arrow', '')
 }
 
 export default {
