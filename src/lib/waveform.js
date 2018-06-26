@@ -82,6 +82,7 @@ export default class Waveform {
         // line
         line: '#9cb9c9',
         avgLine: 'rgba(180,180,180,.3)',//'#a6dfea',
+        lineBar: 'black',
         // phases
         theoretical: 'blue',
         automatic: 'red',
@@ -468,7 +469,7 @@ export default class Waveform {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
         ctx.save()
         ctx.textBaseline = 'top'
-        ctx.fillStyle = 'black'
+        ctx.fillStyle = this.opt.color.lineBar
         ctx.fillRect(pos, 0, 1, this.opt.size.height)
         if (i == 0) {
           ctx.fillText(this.event.phase, pos+4, 3)

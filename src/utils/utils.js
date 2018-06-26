@@ -351,7 +351,12 @@ function shortcutString (ev) {
   } else {
     k.push(ev.key)
   }
-  return k.join('+').toLowerCase().replace('arrow', '')
+  k = k.join('+').toLowerCase()
+  if (k.indexOf('arrow') >= 0) {
+    ev.preventDefault()
+    k = k.replace('arrow', '')
+  }
+  return k
 }
 
 export default {

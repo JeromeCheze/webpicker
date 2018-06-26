@@ -3,8 +3,8 @@
     <el-row>{{ horizontalDownloadStatus }}</el-row>
     <el-row class="toolbar" type="flex" align="middle">
       <el-form :inline="true">
-        <el-form-item label="Picker phase">
-          <el-select v-model="tools.phase">
+        <el-form-item label="Picker phase:">
+          <el-select v-model="tools.phase" style="width: 80px;">
             <el-option
             v-for="item in tools.phaseOptions"
             :key="item.value"
@@ -16,8 +16,8 @@
         <el-form-item>
           <el-checkbox v-model="tools.sameScale">Same scale</el-checkbox>
         </el-form-item>
-        <el-form-item label="Filter">
-          <el-select v-model="tools.filter" clearable>
+        <el-form-item label="Filter:">
+          <el-select v-model="tools.filter" clearable style="width: 80px;">
             <el-option
             v-for="filter in tools.filterList"
             :key="filter.name"
@@ -26,25 +26,25 @@
             ></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="Alignment">
+        <el-form-item label="Alignment:">
           <el-radio-group v-model="tools.alignment">
             <el-radio-button label="O"></el-radio-button>
             <el-radio-button label="P"></el-radio-button>
             <el-radio-button label="S"></el-radio-button>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="Sort">
+        <el-form-item label="Sort by:">
           <el-radio-group v-model="tools.sortBy">
             <el-radio-button label="distance"></el-radio-button>
             <el-radio-button label="name"></el-radio-button>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="Station radius [°]">
+        <el-form-item label="Station radius [°]:">
           <el-input-number :min="0" :max="180" :step=".1" v-model="tools.stationRadius"></el-input-number>
           <el-button @click="loadAdditionalStation" :disabled="disableLoadAdditionalStation">Load stations</el-button>
         </el-form-item>
-        <el-form-item label="Rotation">
-          <el-select v-model="tools.rotation">
+        <el-form-item label="Rotation:">
+          <el-select v-model="tools.rotation" style="width: 80px;">
             <el-option
             v-for="rotation in tools.rotationOptions"
             :key="rotation"
@@ -130,7 +130,7 @@ export default {
       pickerOpt: {
         mode: 'picker',
         container: '.picker',
-        size: { height: 120 },
+        // size: { height: 120 },
         waveforms: [],
         equalScale: true,
         view: {},
@@ -142,7 +142,7 @@ export default {
       listOpt: {
         mode: 'list',
         container: '.waveform-list',
-        size: { height: 40 },
+        // size: { height: 40 },
         waveforms: [],
         equalScale: false,
         view: {},
@@ -315,6 +315,7 @@ export default {
 
     handleKeyDown (ev) {
       let k = utils.shortcutString(ev)
+      console.log(k);
       let keybindings = Object.keys(this.settings).filter(x => x.indexOf('pickerKeybinding') == 0)
       let bindedAction = null
       for (let key of keybindings) {
@@ -639,14 +640,15 @@ export default {
           return
         }
       }
-      let equalScale = true
+      let sameScale = true
       let wfList = []
       if (this.tools.rotation == 'ZNE') {
         wfList = [wf].concat(this.getHorizontalWaveforms(wf))
       } else if (this.tools.rotation == 'ZRT') {
-        equalScale = false
+        sameScale = false
         wfList = [wf].concat(this.ne2rt(wf))
       }
+      this.tools.sameScale = sameScale
       this.setPickerWaveforms(wfList)
     },
 
@@ -670,7 +672,9 @@ export default {
         filterState = this.picker.event.useFiltered
         this.picker.destroy()
       }
+      let height = this.settings['pickerSize.pickerWaveformHeight'].value
       this.pickerOpt.color = this.getColorSettings()
+      this.pickerOpt.size = { height: height, wrapperMaxHeight: 3 * height }
       this.pickerOpt.equalScale = this.tools.sameScale,
       this.pickerOpt.view = view
       this.pickerOpt.waveforms = wfList
@@ -789,6 +793,8 @@ export default {
 
     setListWaveforms (wfList) {
       let selectedWfId = null
+      let height = this.settings['pickerSize.listWaveformHeight'].value
+      this.listOpt.size = { height }
       this.listOpt.color = this.getColorSettings()
       Object.assign(this.listOpt.view, {refTime: this.tools.alignment}, this.defaultView)
       if (this.list != null) {

@@ -10,6 +10,7 @@
   "pickerColor.labelBackground": "rgba(75, 75, 75, 0.8)",
   "pickerColor.labelText": "#ffffff",
   "pickerColor.line": "#9cb9c9",
+  "pickerColor.lineBar": "#000000",
   "pickerColor.avgLine": "rgba(180,180,180,.3)",
   "pickerColor.theoretical": "#0000ff",
   "pickerColor.automatic": "#ff0000",

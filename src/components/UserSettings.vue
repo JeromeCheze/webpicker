@@ -81,6 +81,11 @@ export default {
             component: 'el-color-picker',
             props: {}
           },
+          lineBar: {
+            label: 'Line bar',
+            component: 'el-color-picker',
+            props: {}
+          },
           avgLine: {
             label: 'Average line',
             component: 'el-color-picker',
