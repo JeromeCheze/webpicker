@@ -17,21 +17,32 @@ import os
 app = Flask(__name__)
 app.debug = True
 
-# FDSNWS_EVENT = 'http://encelade.unice.fr:8080/fdsnws/event'
-FDSNWS_EVENT = 'http://localhost:8080/fdsnws/event'
-FDSNWS_STATION = 'http://encelade.unice.fr:8080/fdsnws/station'
+FDSNWS_EVENT = 'http://thufir.unice.fr:8080/fdsnws/event'
+FDSNWS_STATION = 'http://thufir.unice.fr:8080/fdsnws/station'
 FDSNWS_DATASELECT = 'http://encelade.unice.fr:8000/fdsnws/dataselect'
 # used for screloc :
-SC3ML_INVENTORY_FILENAME = '/home/cheze/encelade_inventory.xml'
+SC3ML_INVENTORY_FILENAME = '/home/cheze/thufir_inventory.xml'
 SEISCOMP_PROGRAM = '/home/cheze/seiscomp3/bin/seiscomp'
-# XSL_SC3ML0_9_TO_QML1_2 = '/home/cheze/seiscomp3/share/xml/0.9/sc3ml_0.9__quakeml_1.2.xsl'
+XSL_SC3ML0_9_TO_QML1_2 = '/home/cheze/seiscomp3/share/xml/0.9/sc3ml_0.9__quakeml_1.2.xsl'
 XSL_SC3ML0_10_TO_QML1_2 = '/home/cheze/seiscomp3/share/xml/0.10/sc3ml_0.10__quakeml_1.2.xsl'
 XSL_QML1_2_TO_SC3ML0_9 = '/home/cheze/seiscomp3/share/xml/0.9/quakeml_1.2__sc3ml_0.9.xsl'
 # used for scamp and scmag :
-FDSNWS_BASE_URL = 'http://encelade.unice.fr:8080'
-SC3ML_CONFIG_FILENAME = '/home/cheze/encelade_config.xml'
+FDSNWS_BASE_URL = 'http://encelade.unice.fr:8000'
+SC3ML_CONFIG_FILENAME = '/home/cheze/thufir_config.xml'
 # used for scdispatch :
-SC3_MESSAGING_HOST = 'localhost:4803'
+SC3_MESSAGING_HOST = 'thufir.unice.fr:4803'
+FDSN_EVENT_FORMAT = 'sc3ml'
+
+@app.template_filter('sc3ml_type')
+def qml_type_to_sc3ml(event_type):
+    if event_type == 'induced or triggered event':
+        return 'induced earthquake'
+    elif event_type == 'meteorite':
+        return 'meteor impact'
+    elif event_type == 'other event':
+        return 'other'
+    else:
+        return event_type
 
 def apply_xslt(document, xslt_path):
     xslt = etree.parse(xslt_path)
@@ -54,6 +65,11 @@ def fix_scmag_magnitude_public_id(root):
     mags = origin.findall('{%s}magnitude' % namespace)
     for mag in mags:
         mag.attrib['publicID'] = mag.attrib['publicID'].replace('/', '.')
+
+def sc3ml_to_qml(sc3ml_str):
+    dom = etree.fromstring(sc3ml_str)
+    newdom = apply_xslt(dom, XSL_SC3ML0_9_TO_QML1_2)
+    return etree.tostring(newdom)
 
 def write_sc3ml(jquake, filename):
     with open(filename, 'w') as f:
@@ -266,15 +282,21 @@ def fdsnws(service, path):
         req = '%s%s' % (host, path)
         try:
             if request.method == 'GET':
-                result = urlopen('%s?%s' % (req, urlencode(request.args.to_dict(flat=True))))
+                args = request.args.to_dict(flat=True)
+                if service == 'event' and FDSN_EVENT_FORMAT != 'xml':
+                    args['format'] = FDSN_EVENT_FORMAT
+                response = urlopen('%s?%s' % (req, urlencode(args)))
             elif request.method == 'POST':
                 # print(request.data)
                 r = Request(req, data=request.data, headers={'Content-Type': request.headers['Content-Type']})
-                result = urlopen(r)
+                response = urlopen(r)
 
         except HTTPError, err:
             abort(err.code)
-        return Response(result.read(), mimetype=result.headers.type)
+        result = response.read()
+        if service == 'event' and FDSN_EVENT_FORMAT == 'sc3ml':
+            result = sc3ml_to_qml(result)
+        return Response(result, mimetype=response.headers.type)
     else:
         return urlopen(FDSNWS_ROOT).read()
 

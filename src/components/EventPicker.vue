@@ -550,6 +550,9 @@ export default {
     },
 
     downloadWaveforms (wfidList, callback, complete) {
+      if (wfidList.length == 0) {
+        return
+      }
       let start = new Date(this.origin.time._value.getTime() - 20000).toISOString().substr(0, 19)
       let end = this.getEnd()
       let chunks = []

@@ -179,7 +179,7 @@ function processEventData(e) {
     o.longitude._pretty = lon > 0 ? `${lon.toFixed(2)}° E` : `${(-1*lon).toFixed(2)}° W`
     o.longitude._pretty_uncertainty = `+/- ${(o.longitude.uncertainty).toFixed(1)} km`
     o.depth._pretty = `${(o.depth.value/1000).toFixed(0)} km`
-    o.depth._pretty_uncertainty = `+/- ${(o.depth.uncertainty/1000).toFixed(1)} km`
+    o.depth._pretty_uncertainty = o.depth.uncertainty != null ? `+/- ${(o.depth.uncertainty/1000).toFixed(1)} km` : '(fixed)'
   }
   if (e.magnitude != null) {
     for (let m of e.magnitude) {
@@ -211,6 +211,7 @@ function processEventData(e) {
       pickMap[p.public_id] = p
     }
     for (let o of e.origin) {
+      let arrivalToIgnore = []
       for (let a of o.arrival) {
         if (a.public_id) {
           delete a.public_id
@@ -219,7 +220,15 @@ function processEventData(e) {
         // a._pick = pickMap[a._pick_id]
         a.time_weight = a.time_weight == null ? 0 : a.time_weight
         a._pick = pickMap[a.pick_id]
+        if (a._pick == null) {
+          arrivalToIgnore.push(a)
+          console.warn(`Can't find the pick ${a.pick_id} referenced by an arrival, ignoring arrival.`)
+          continue
+        }
         a._traveltime = new Date(a._pick.time._value - o.time._value)
+      }
+      for (let a of arrivalToIgnore) {
+        o.arrival.splice(o.arrival.indexOf(a), 1)
       }
     }
   }

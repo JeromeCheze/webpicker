@@ -79,7 +79,9 @@
       </longitude>
       <depth>
         <value>{{ origin.depth.value / 1000 }}</value>
+      {% if origin.depth.uncertainty %}
         <uncertainty>{{ origin.depth.uncertainty / 1000 }}</uncertainty>
+      {% endif %}
       </depth>
     {%- if origin.method_id %}
       <methodID>{{ origin.method_id.split('/')[-1] }}</methodID>
@@ -180,7 +182,7 @@
       <preferredMagnitudeID>{{ event.preferred_magnitude_id.split('/')[-1] }}</preferredMagnitudeID>
     {%- endif %}
     {%- if event.type %}
-      <type>{{ event.type }}</type>
+      <type>{{ event.type | sc3ml_type }}</type>
     {%- endif %}
     {%- if event.type_certainty %}
       <typeCertainty>{{ event.type_certainty }}</typeCertainty>
