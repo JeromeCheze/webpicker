@@ -2,6 +2,7 @@
   <el-container style="height: 100vh;">
     <el-header>
       <el-menu :default-active="activeIndex" mode="horizontal" @select="(x, y) => activeIndex = x">
+        <li class="menu-title">WebPicker</li>
         <el-menu-item index="eventForm">Form</el-menu-item>
         <el-menu-item index="eventList">Event list</el-menu-item>
         <el-menu-item index="eventPage" :disabled="currentEvent == null">
@@ -343,7 +344,22 @@ body {
   text-align: right;
 }
 
+.el-header {
+  padding: 0;
+}
+
 .el-menu-item.pull-right {
   float: right;
+}
+
+.menu-title {
+  float: left;
+  height: 60px;
+  line-height: 60px;
+  margin: 0;
+  font-size: 14px;
+  padding: 0 20px;
+  font-weight: bold;
+  box-sizing: border-box;
 }
 </style>

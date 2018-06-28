@@ -171,17 +171,20 @@ export default {
   },
   watch: {
     'tools.phase': function(val) {
+      this.blurActiveElement()
       if (this.picker != null) {
         this.picker.setPickerPhase(val)
       }
     },
     'tools.sameScale': function(val) {
+      this.blurActiveElement()
       if (this.list != null) {
         this.picker.opt.equalScale = val
         this.picker.draw()
       }
     },
     'tools.filter': function(val) {
+      this.blurActiveElement()
       if (val && this.picker != null && this.list != null) {
         this.applyFilter()
         // this.list.setFilterState(true)
@@ -191,6 +194,7 @@ export default {
       }
     },
     'tools.alignment': function(val) {
+      this.blurActiveElement()
       if (this.picker != null && this.list != null) {
         this.list.setTimeAlignment(val)
         this.list.draw()
@@ -199,6 +203,7 @@ export default {
       }
     },
     'tools.sortBy': function(val) {
+      this.blurActiveElement()
       if (this.list != null) {
         if (val == 'name') {
           this.list.sortWaveformsBy(x => x.id)
@@ -208,6 +213,7 @@ export default {
       }
     },
     'tools.rotation': function() {
+      this.blurActiveElement()
       this.handleWaveformClick(this.picker.waveforms[0].opt, true)
     },
     origin: function(val) {
@@ -304,6 +310,10 @@ export default {
     this.$emit('picker-arrival', arrivals)
   },
   methods: {
+    blurActiveElement () {
+      document.activeElement.blur()
+    },
+
     redraw () {
       if (this.picker != null) {
         this.setPickerWaveforms(this.picker.opt.waveforms)
