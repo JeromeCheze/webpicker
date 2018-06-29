@@ -456,11 +456,13 @@ export default {
         if (a.time_weight > 0) {
           maxRes = Math.max(maxRes, Math.abs(a.time_residual))
         }
-        if (arrivalPerStation[netsta] == null) {
+        let otherArr = arrivalPerStation[netsta]
+        if (otherArr == null) {
           arrivalPerStation[netsta] = a
         } else {
-          if (a.time_weight != 0 &&
-              Math.abs(a.time_residual) > Math.abs(arrivalPerStation[netsta].time_residual)) {
+          if (a.time_weight != 0 && (
+                otherArr.time_weight == 0 ||
+                Math.abs(a.time_residual) > Math.abs(otherArr.time_residual))) {
             arrivalPerStation[netsta] = a
           }
         }

@@ -214,7 +214,9 @@ export default {
     },
     'tools.rotation': function() {
       this.blurActiveElement()
-      this.handleWaveformClick(this.picker.waveforms[0].opt, true)
+      if (this.picker != null) {
+        this.handleWaveformClick(this.picker.waveforms[0].opt, true)
+      }
     },
     origin: function(val) {
       this.dirty = true

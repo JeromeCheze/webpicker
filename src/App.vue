@@ -268,10 +268,9 @@ export default {
         data: JSON.stringify([e]),
       }).then(data => {
         this.loading = false
-        this.$notify({
-          type: data.quakeml == null ? 'error' : 'info',
-          message: data.message
-        })
+        if (data.quakeml == null) {
+          this.$notify.error({ message: data.message })
+        }
         if (data.quakeml != null) {
           let parser = new DOMParser()
           let qml = parser.parseFromString(data.quakeml, 'application/xml')
