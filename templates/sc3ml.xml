@@ -37,7 +37,7 @@
   <EventParameters>
 {%- for event in jquake %}
   {%- for pick in event.pick %}
-    <pick publicID="{{ pick.public_id.split('/')[-1] }}">
+    <pick publicID="{{ pick.public_id | remove_resource_prefix }}">
       <time>
         <value>{{ pick.time.value }}</value>
       </time>
@@ -49,10 +49,10 @@
       {%- endif %}
         channelCode="{{ pick.waveform_id.channel_code }}"/>
     {%- if pick.filter_id %}
-      <filterID>{{ pick.filter_id.split('/')[-1] }}</filterID>
+      <filterID>{{ pick.filter_id | remove_resource_prefix }}</filterID>
     {%- endif %}
     {%- if pick.method_id %}
-      <methodID>{{ pick.method_id.split('/')[-1] }}</methodID>
+      <methodID>{{ pick.method_id | remove_resource_prefix }}</methodID>
     {%- endif %}
       <phaseHint>{{ pick.phase_hint }}</phaseHint>
       <evaluationMode>{{ pick.evaluation_mode }}</evaluationMode>
@@ -66,7 +66,7 @@
   {%- endfor %}
 
   {%- for origin in event.origin %}
-    <origin publicID="{{ origin.public_id.split('/')[-1] }}">
+    <origin publicID="{{ origin.public_id | remove_resource_prefix }}">
       <time>
         <value>{{ origin.time.value }}</value>
         <uncertainty>{{ origin.time.uncertainty }}</uncertainty>
@@ -84,10 +84,10 @@
       {% endif %}
       </depth>
     {%- if origin.method_id %}
-      <methodID>{{ origin.method_id.split('/')[-1] }}</methodID>
+      <methodID>{{ origin.method_id | remove_resource_prefix }}</methodID>
     {%- endif %}
     {%- if origin.earth_model_id %}
-      <earthModelID>{{ origin.earth_model_id.split('/')[-1] }}</earthModelID>
+      <earthModelID>{{ origin.earth_model_id | remove_resource_prefix }}</earthModelID>
     {%- endif %}
     {%- if origin.quality %}
       <quality>
@@ -131,7 +131,7 @@
   {%- if origin.arrival %}
     {%- for arrival in origin.arrival %}
       <arrival>
-        <pickID>{{ arrival.pick_id.split('/')[-1] }}</pickID>
+        <pickID>{{ arrival.pick_id | remove_resource_prefix }}</pickID>
         <phase>{{ arrival.phase }}</phase>
         <azimuth>{{ arrival.azimuth }}</azimuth>
         <distance>{{ arrival.distance }}</distance>
@@ -147,17 +147,17 @@
 
 {%- if event.magnitude %}
   {%- for magnitude in event.magnitude %}
-    {%- if magnitude.origin_id.split('/')[-1] == origin.public_id.split('/')[-1] %}
-      <magnitude publicID="{{ magnitude.public_id.split('/')[-1] }}">
+    {%- if magnitude.origin_id == origin.public_id %}
+      <magnitude publicID="{{ magnitude.public_id | remove_resource_prefix }}">
         <magnitude>
           {{ real_quantity(magnitude.mag) }}
         </magnitude>
         <type>{{ magnitude.type }}</type>
       {%- if magnitude.origin_id %}
-        <originID>{{ magnitude.origin_id.split('/')[-1] }}</originID>
+        <originID>{{ magnitude.origin_id | remove_resource_prefix }}</originID>
       {%- endif %}
       {%- if magnitude.method_id %}
-        <methodID>{{ magnitude.method_id.split('/')[-1] }}</methodID>
+        <methodID>{{ magnitude.method_id | remove_resource_prefix }}</methodID>
       {%- endif %}
       {%- if magnitude.station_count %}
         <stationCount>{{ magnitude.station_count }}</stationCount>
@@ -174,12 +174,12 @@
 
   {%- endfor %}
 
-    <event publicID="{{ event.public_id.split('/')[-1] }}">
+    <event publicID="{{ event.public_id | remove_resource_prefix }}">
     {%- if event.preferred_origin_id %}
-      <preferredOriginID>{{ event.preferred_origin_id.split('/')[-1] }}</preferredOriginID>
+      <preferredOriginID>{{ event.preferred_origin_id | remove_resource_prefix }}</preferredOriginID>
     {%- endif %}
     {%- if event.preferred_magnitude_id %}
-      <preferredMagnitudeID>{{ event.preferred_magnitude_id.split('/')[-1] }}</preferredMagnitudeID>
+      <preferredMagnitudeID>{{ event.preferred_magnitude_id | remove_resource_prefix }}</preferredMagnitudeID>
     {%- endif %}
     {%- if event.type %}
       <type>{{ event.type | sc3ml_type }}</type>
@@ -203,7 +203,7 @@
       <comment>{{ event.comment }}</comment>
     {%- endif %}
     {%- for origin in event.origin %}
-      <originReference>{{ origin.public_id.split('/')[-1] }}</originReference>
+      <originReference>{{ origin.public_id | remove_resource_prefix }}</originReference>
     {%- endfor %}
     </event>
 {%- endfor %}

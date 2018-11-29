@@ -27,7 +27,7 @@ FDSNWS_DATASELECT = 'http://%s/fdsnws/dataselect' % FDSNWS_DATASELECT_HOST
 #FDSNWS_DATASELECT = 'http://localhost:8002'
 # used for screloc :
 
-# generated with scxmldump -I 
+# generated with scxmldump -I
 SC3ML_INVENTORY_FILENAME = os.getenv('SC3ML_INVENTORY_FILENAME', '/home/cheze/encelade_inventory.xml')
 
 # Generated with scxmldump -C
@@ -61,6 +61,14 @@ def qml_type_to_sc3ml(event_type):
         return 'other'
     else:
         return event_type
+
+@app.template_filter('remove_resource_prefix')
+def remove_resource_prefix(resource_id):
+    if resource_id.startswith('smi:org.gfz-potsdam.de/geofon/'):
+        return resource_id.replace('smi:org.gfz-potsdam.de/geofon/', '')
+    elif resource_id.startswith('smi:scs'):
+        return '/'.join(resource_id.split('/')[2:])
+    raise ValueError('Failed to remove prefix of resource ID: %s' % resource_id)
 
 def apply_xslt(document, xslt_path):
     xslt = etree.parse(xslt_path)

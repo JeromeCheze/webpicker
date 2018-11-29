@@ -107,6 +107,16 @@ function toSnakeCase(x) {
   return x.replace(/([A-Z]+)/g, '_$1').toLowerCase()
 }
 
+function removeResourcePrefix(id) {
+  if (id.indexOf('smi:org.gfz-potsdam.de/geofon/') == 0) {
+    return replace('smi:org.gfz-potsdam.de/geofon/', '')
+  } else if (id.indexOf('smi:scs')) {
+    return id.split('/').slice(2).join('/')
+  }
+  console.warn(`Failed to remove prefix of resource ID: ${id}`)
+  return id
+}
+
 function xmlNodeToJson(x, path, rules) {
   path = `${path}/${toSnakeCase(x.tagName)}`
   let obj = {}
@@ -115,7 +125,7 @@ function xmlNodeToJson(x, path, rules) {
     let currentPath = `${path}/${key}`
     let conv = rules[currentPath]
     if (RESOURCE_ID_KEYS.indexOf(currentPath) >= 0) {
-      conv = x => x.split('/').splice(-1)[0]
+      conv = removeResourcePrefix
     }
     obj[key] = conv ? conv(a.value) : a.value
   }
@@ -123,7 +133,7 @@ function xmlNodeToJson(x, path, rules) {
     // console.log(path);
     let conv = rules[path]
     if (RESOURCE_ID_KEYS.indexOf(path) >= 0) {
-      conv = x => x.split('/').splice(-1)[0]
+      conv = removeResourcePrefix
     }
     // console.log(path, conv);
     let value = conv ? conv(x.textContent) : x.textContent
