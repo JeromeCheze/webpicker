@@ -1,7 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 from flask import Flask, request, render_template, Response, abort
-from oca.pyquakeml.generator import QuakeMLGenerator
 from urllib2 import urlopen, Request, HTTPError
 from obspy.clients.fdsn import Client
 from obspy.taup import TauPyModel
@@ -17,20 +16,24 @@ import os
 app = Flask(__name__)
 app.debug = True
 
-FDSNWS_EVENT = 'http://thufir.unice.fr:8080/fdsnws/event'
-FDSNWS_STATION = 'http://thufir.unice.fr:8080/fdsnws/station'
+FDSNWS_EVENT = 'http://encelade.unice.fr:8080/fdsnws/event'
+FDSNWS_STATION = 'http://encelade.unice.fr:8080/fdsnws/station'
 FDSNWS_DATASELECT = 'http://encelade.unice.fr:8000/fdsnws/dataselect'
+#FDSNWS_DATASELECT = 'http://localhost:8002'
 # used for screloc :
-SC3ML_INVENTORY_FILENAME = '/home/cheze/thufir_inventory.xml'
+SC3ML_INVENTORY_FILENAME = '/home/cheze/encelade_inventory.xml'
 SEISCOMP_PROGRAM = '/home/cheze/seiscomp3/bin/seiscomp'
-XSL_SC3ML0_9_TO_QML1_2 = '/home/cheze/seiscomp3/share/xml/0.9/sc3ml_0.9__quakeml_1.2.xsl'
-XSL_SC3ML0_10_TO_QML1_2 = '/home/cheze/seiscomp3/share/xml/0.10/sc3ml_0.10__quakeml_1.2.xsl'
-XSL_QML1_2_TO_SC3ML0_9 = '/home/cheze/seiscomp3/share/xml/0.9/quakeml_1.2__sc3ml_0.9.xsl'
+XSL_SC3ML_TO_QML1_2 = {
+  '0.7': '/home/cheze/seiscomp3/share/xml/0.7/sc3ml_0.7__quakeml_1.2.xsl',
+  '0.9': '/home/cheze/seiscomp3/share/xml/0.9/sc3ml_0.9__quakeml_1.2.xsl',
+  '0.10': '/home/cheze/seiscomp3/share/xml/0.10/sc3ml_0.10__quakeml_1.2.xsl'
+}
 # used for scamp and scmag :
 FDSNWS_BASE_URL = 'http://encelade.unice.fr:8000'
-SC3ML_CONFIG_FILENAME = '/home/cheze/thufir_config.xml'
+SC3ML_CONFIG_FILENAME = '/home/cheze/encelade_config.xml'
 # used for scdispatch :
-SC3_MESSAGING_HOST = 'thufir.unice.fr:4803'
+SC3_MESSAGING_HOST = 'encelade.unice.fr:4803'
+
 FDSN_EVENT_FORMAT = 'sc3ml'
 
 @app.template_filter('sc3ml_type')
@@ -66,14 +69,14 @@ def fix_scmag_magnitude_public_id(root):
     for mag in mags:
         mag.attrib['publicID'] = mag.attrib['publicID'].replace('/', '.')
 
-def sc3ml_to_qml(sc3ml_str):
+def sc3ml_to_qml(sc3ml_str, sc3ml_version):
     dom = etree.fromstring(sc3ml_str)
-    newdom = apply_xslt(dom, XSL_SC3ML0_9_TO_QML1_2)
+    newdom = apply_xslt(dom, XSL_SC3ML_TO_QML1_2[sc3ml_version])
     return etree.tostring(newdom)
 
-def write_sc3ml(jquake, filename):
+def write_sc3ml(jquake, filename, version):
     with open(filename, 'w') as f:
-        f.write(render_template('sc3ml.xml', jquake=jquake))
+        f.write(render_template('sc3ml.xml', version=version, jquake=jquake))
 
 # def set_used_arrival_and_save_sc3ml(catalog, sc3ml):
 #     fake_sc3ml = StringIO()
@@ -96,7 +99,7 @@ def write_sc3ml(jquake, filename):
 def compute_magnitudes_with_scamp_and_scmag(jquake):
     # 1) save sc3ml
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
-    write_sc3ml(jquake, sc3ml)
+    write_sc3ml(jquake, sc3ml, '0.9')
     catalog = obspy.read_events(sc3ml)
 
     # 2) download data
@@ -150,20 +153,20 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
     dom = etree.fromstring(result)
     update_sc3ml_origin_reference(dom)
     fix_scmag_magnitude_public_id(dom)
-    newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML0_10_TO_QML1_2)
+    newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML_TO_QML1_2['0.10'])
 
     # _, scmag_result = tempfile.mkstemp(suffix='.sc3ml')
     # print(scmag_result)
     # with open(scmag_result, 'w') as f:
     #     f.write(result)
 
-    os.remove(scamp_result)
+    # os.remove(scamp_result)
     return { 'message': error_message, 'quakeml': etree.tostring(newdom) }
 
 def relocate_with_screloc(jquake):
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
     # print(sc3ml)
-    write_sc3ml(jquake, sc3ml)
+    write_sc3ml(jquake, sc3ml, '0.10')
     screloc = subprocess.Popen([
         SEISCOMP_PROGRAM, 'exec', 'screloc',
         '--inventory-db', SC3ML_INVENTORY_FILENAME,
@@ -182,7 +185,7 @@ def relocate_with_screloc(jquake):
     #     f.write(result)
     dom = etree.fromstring(result)
     update_sc3ml_origin_reference(dom)
-    newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML0_10_TO_QML1_2)
+    newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML_TO_QML1_2['0.10'])
     os.remove(sc3ml)
     # _, qml_result = tempfile.mkstemp(suffix=".sc3ml")
     # print(qml_result)
@@ -196,10 +199,11 @@ def relocate_with_screloc(jquake):
 def commit_with_scdispatch(jquake):
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
     # print(sc3ml)
-    write_sc3ml(jquake, sc3ml)
+    write_sc3ml(jquake, sc3ml, '0.7')
     scdispatch = subprocess.Popen([
         SEISCOMP_PROGRAM, 'exec', 'scdispatch',
         '-H', SC3_MESSAGING_HOST,
+        '-O', 'add',
         '-i', sc3ml,
         '--debug'
     ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -295,7 +299,7 @@ def fdsnws(service, path):
             abort(err.code)
         result = response.read()
         if service == 'event' and FDSN_EVENT_FORMAT == 'sc3ml':
-            result = sc3ml_to_qml(result)
+            result = sc3ml_to_qml(result, '0.7')
         return Response(result, mimetype=response.headers.type)
     else:
         return urlopen(FDSNWS_ROOT).read()

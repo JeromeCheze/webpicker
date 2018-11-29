@@ -534,7 +534,7 @@ export default {
           weight: a.time_weight,
           takeoff: a.takeoff_angle
         })
-        let zComponent = `${a._pick._seedid.slice(0, -1)}Z`
+        let zComponent = `${a._pick._fdsnid.slice(0, -1)}Z`
         if (mainWfidList.indexOf(zComponent) < 0) {
           mainWfidList.push(zComponent)
         }
