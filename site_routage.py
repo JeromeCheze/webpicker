@@ -16,25 +16,40 @@ import os
 app = Flask(__name__)
 app.debug = True
 
-FDSNWS_EVENT = 'http://encelade.unice.fr:8080/fdsnws/event'
-FDSNWS_STATION = 'http://encelade.unice.fr:8080/fdsnws/station'
-FDSNWS_DATASELECT = 'http://encelade.unice.fr:8000/fdsnws/dataselect'
+
+FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'encelade.unice.fr:8080')
+FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'encelade.unice.fr:8080')
+FDSNWS_DATASELECT_HOST = os.getenv('FDSNWS_DATASELECT_HOST', 'encelade.unice.fr:8000')
+
+FDSNWS_EVENT = 'http://%s/fdsnws/event' % FDSNWS_EVENT_HOST
+FDSNWS_STATION = 'http://%s/fdsnws/station' % FDSNWS_STATION_HOST
+FDSNWS_DATASELECT = 'http://%s/fdsnws/dataselect' % FDSNWS_DATASELECT_HOST
 #FDSNWS_DATASELECT = 'http://localhost:8002'
 # used for screloc :
-SC3ML_INVENTORY_FILENAME = '/home/cheze/encelade_inventory.xml'
-SEISCOMP_PROGRAM = '/home/cheze/seiscomp3/bin/seiscomp'
-XSL_SC3ML_TO_QML1_2 = {
-  '0.7': '/home/cheze/seiscomp3/share/xml/0.7/sc3ml_0.7__quakeml_1.2.xsl',
-  '0.9': '/home/cheze/seiscomp3/share/xml/0.9/sc3ml_0.9__quakeml_1.2.xsl',
-  '0.10': '/home/cheze/seiscomp3/share/xml/0.10/sc3ml_0.10__quakeml_1.2.xsl'
-}
-# used for scamp and scmag :
-FDSNWS_BASE_URL = 'http://encelade.unice.fr:8000'
-SC3ML_CONFIG_FILENAME = '/home/cheze/encelade_config.xml'
-# used for scdispatch :
-SC3_MESSAGING_HOST = 'encelade.unice.fr:4803'
 
-FDSN_EVENT_FORMAT = 'sc3ml'
+# generated with scxmldump -I 
+SC3ML_INVENTORY_FILENAME = os.getenv('SC3ML_INVENTORY_FILENAME', '/home/cheze/encelade_inventory.xml')
+
+# Generated with scxmldump -C
+SC3ML_CONFIG_FILENAME = os.getenv('SC3ML_CONFIG_FILENAME', '/home/cheze/encelade_config.xml')
+
+SEISCOMP_ROOT = os.getenv('SEISCOMP_ROOT', '/home/cheze/seiscomp3/')
+SEISCOMP_PROGRAM = os.path.join(SEISCOMP_ROOT, 'bin/seiscomp')
+SCP3ML_DISPATCH_VERSION = os.getenv('SCP3ML_DISPATCH_VERSION', '0.10')
+
+XSL_SC3ML_TO_QML1_2 = {
+  '0.7': os.path.join(SEISCOMP_ROOT, 'share/xml/0.7/sc3ml_0.7__quakeml_1.2.xsl'),
+  '0.9': os.path.join(SEISCOMP_ROOT, 'share/xml/0.9/sc3ml_0.9__quakeml_1.2.xsl'),
+  '0.10': os.path.join(SEISCOMP_ROOT, 'share/xml/0.10/sc3ml_0.10__quakeml_1.2.xsl')
+}
+
+# used for scamp and scmag :
+FDSNWS_BASE_URL = 'http://%s' % FDSNWS_DATASELECT_HOST
+
+# used for scdispatch :
+SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'encelade.unice.fr:4803')
+
+FDSN_EVENT_FORMAT = 'xml'
 
 @app.template_filter('sc3ml_type')
 def qml_type_to_sc3ml(event_type):
@@ -199,7 +214,7 @@ def relocate_with_screloc(jquake):
 def commit_with_scdispatch(jquake):
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
     # print(sc3ml)
-    write_sc3ml(jquake, sc3ml, '0.7')
+    write_sc3ml(jquake, sc3ml, SCP3ML_DISPATCH_VERSION)
     scdispatch = subprocess.Popen([
         SEISCOMP_PROGRAM, 'exec', 'scdispatch',
         '-H', SC3_MESSAGING_HOST,
