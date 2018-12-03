@@ -226,7 +226,7 @@ def commit_with_scdispatch(jquake):
     scdispatch = subprocess.Popen([
         SEISCOMP_PROGRAM, 'exec', 'scdispatch',
         '-H', SC3_MESSAGING_HOST,
-        '-O', 'add',
+        '-O', 'update',
         '-i', sc3ml,
         '--debug'
     ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
