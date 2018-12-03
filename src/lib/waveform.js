@@ -305,15 +305,15 @@ export default class Waveform {
     if (ev.shiftKey) {
       ev.preventDefault()
       let delta = (
-        Math.abs(ev.deltaY) > 5 ? ev.deltaY :
-        Math.abs(ev.deltaX) > 5 ? ev.deltaX :
+        Math.abs(ev.deltaY) > 1 ? ev.deltaY :
+        Math.abs(ev.deltaX) > 1 ? ev.deltaX :
         0
       )
       if (this.event.wheelDelta == null) {
         this.event.wheelDelta = 0
       }
       this.event.wheelDelta += delta
-      if (Math.abs(this.event.wheelDelta) < 10) {
+      if (Math.abs(this.event.wheelDelta) < 5) {
         return
       }
       delta = this.event.wheelDelta

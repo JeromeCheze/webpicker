@@ -79,10 +79,10 @@ export default {
   },
 
   watch: {
-    'form.minlat': function() {this.applyBoundsToArea()},
-    'form.minlon': function() {this.applyBoundsToArea()},
-    'form.maxlat': function() {this.applyBoundsToArea()},
-    'form.maxlon': function() {this.applyBoundsToArea()}
+    'form.minlat': function() { this.applyBoundsToArea() },
+    'form.minlon': function() { this.applyBoundsToArea() },
+    'form.maxlat': function() { this.applyBoundsToArea() },
+    'form.maxlon': function() { this.applyBoundsToArea() }
   },
 
   activated () {
@@ -125,7 +125,6 @@ export default {
 
     applyBoundsToArea () {
       this.area.setBounds(this.bounds)
-      this.map.fitBounds(this.bounds)
     },
 
     submitForm () {

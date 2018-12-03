@@ -110,7 +110,7 @@ function toSnakeCase(x) {
 function removeResourcePrefix(id) {
   if (id.indexOf('smi:org.gfz-potsdam.de/geofon/') == 0) {
     return replace('smi:org.gfz-potsdam.de/geofon/', '')
-  } else if (id.indexOf('smi:scs')) {
+  } else if (id.indexOf('smi:scs') == 0) {
     return id.split('/').slice(2).join('/')
   }
   console.warn(`Failed to remove prefix of resource ID: ${id}`)
