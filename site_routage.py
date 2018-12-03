@@ -66,7 +66,7 @@ def qml_type_to_sc3ml(event_type):
 def remove_resource_prefix(resource_id):
     if resource_id.startswith('smi:org.gfz-potsdam.de/geofon/'):
         return resource_id.replace('smi:org.gfz-potsdam.de/geofon/', '')
-    elif resource_id.startswith('smi:scs'):
+    elif resource_id.startswith('smi:'):
         return '/'.join(resource_id.split('/')[2:])
     raise ValueError('Failed to remove prefix of resource ID: %s' % resource_id)
 

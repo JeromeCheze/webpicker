@@ -110,7 +110,7 @@ function toSnakeCase(x) {
 function removeResourcePrefix(id) {
   if (id.indexOf('smi:org.gfz-potsdam.de/geofon/') == 0) {
     return id.replace('smi:org.gfz-potsdam.de/geofon/', '')
-  } else if (id.indexOf('smi:scs') == 0) {
+  } else if (id.indexOf('smi:') == 0) {
     return id.split('/').slice(2).join('/')
   }
   console.warn(`Failed to remove prefix of resource ID: ${id}`)
@@ -304,14 +304,15 @@ function cloneAndClean(o, path) {
       result[k] = cloneAndClean(v, `${path}/${k}`)
     }
   } else {
-    result = RESOURCE_ID_KEYS.indexOf(path) < 0 ? o : `smi:oca/${o}`
+    result = RESOURCE_ID_KEYS.indexOf(path) < 0 ? o : `smi:oca/1.0/${o}`
   }
   return result
 }
 
 function composeEvent(o) {
   let opt = Object.assign({ base: {}, origins: [], po: null, magnitudes: [], pm: null }, o)
-  let result = cloneAndClean(opt.base)
+  let root = '/event_parameters/event'
+  let result = cloneAndClean(opt.base, root)
   result.pick = []
   let originList = []
   for (let o of opt.origins) {
@@ -319,19 +320,19 @@ function composeEvent(o) {
       continue
     }
     for (let a of o.arrival) {
-      result.pick.push(cloneAndClean(a._pick))
+      result.pick.push(cloneAndClean(a._pick, `${root}/pick`))
     }
-    originList.push(cloneAndClean(o))
+    originList.push(cloneAndClean(o, `${root}/origin`))
   }
   result.origin = originList
-  result.magnitude = cloneAndClean(opt.magnitudes)
+  result.magnitude = cloneAndClean(opt.magnitudes, `${root}/magnitude`)
   if (opt.po != null) {
-    result.preferred_origin_id = opt.po.public_id
+    result.preferred_origin_id = cloneAndClean(opt.po.public_id, `${root}/preferred_origin_id`)
   } else {
     delete result.preferred_origin_id
   }
   if (opt.pm != null) {
-    result.preferred_magnitude_id = opt.pm.public_id
+    result.preferred_magnitude_id = cloneAndClean(opt.pm.public_id, `${root}/preferred_magnitude_id`)
   } else {
     delete result.preferred_magnitude_id
   }
