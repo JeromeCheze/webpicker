@@ -1,7 +1,7 @@
 const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
-const UglifyJsPlugin = require('uglifyjs-webpack-plugin')
+const TerserPlugin = require('terser-webpack-plugin')
 const webpack = require('webpack')
 const path = require('path')
 
@@ -30,7 +30,7 @@ module.exports = (env, argv) => {
   if (argv.mode === 'development') {
     // plugins.push(new BundleAnalyzerPlugin())
   } else {
-    plugins.push(new UglifyJsPlugin({ sourceMap: true }))
+    plugins.push(new TerserPlugin({ sourceMap: true }))
   }
 
   return {

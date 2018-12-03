@@ -27,7 +27,7 @@
     "leaflet-ellipse": "^0.9.1",
     "mini-css-extract-plugin": "^0.4.5",
     "style-loader": "^0.23.1",
-    "uglifyjs-webpack-plugin": "^2.0.1",
+    "terser-webpack-plugin": "^1.1.0",
     "url-loader": "^1.1.2",
     "vue": "^2.5.17",
     "vue-loader": "^14.2.2",
