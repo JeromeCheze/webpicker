@@ -454,14 +454,14 @@ export default {
       }
       wfList.push({
         start: start, step: nWf.step, values: r,
-        scale: 1, id: rId,
-        distance: nWf.distance, azimuth: nWf.azimuth,
+        scale: -eWf.scale * Math.sin(baz) - nWf.scale * Math.cos(baz),
+        id: rId, distance: nWf.distance, azimuth: nWf.azimuth,
         ttt: nWf.ttt, picks: this.picks[rId]
       })
       wfList.push({
         start: start, step: nWf.step, values: t,
-        scale: 1, id: tId,
-        distance: nWf.distance, azimuth: nWf.azimuth,
+        scale: - eWf.scale * Math.cos(baz) + nWf.scale * Math.sin(baz),
+        id: tId, distance: nWf.distance, azimuth: nWf.azimuth,
         ttt: nWf.ttt, picks: this.picks[tId]
       })
       return wfList
@@ -660,7 +660,6 @@ export default {
       if (this.tools.rotation == 'ZNE') {
         wfList = [wf].concat(this.getHorizontalWaveforms(wf))
       } else if (this.tools.rotation == 'ZRT') {
-        sameScale = false
         wfList = [wf].concat(this.ne2rt(wf))
       }
       this.tools.sameScale = sameScale
