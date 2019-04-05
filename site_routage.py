@@ -17,8 +17,8 @@ app = Flask(__name__)
 app.debug = True
 
 
-FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'encelade.unice.fr:8080')
-FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'encelade.unice.fr:8080')
+FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'thufir.unice.fr:8080')
+FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'thufir.unice.fr:8080')
 FDSNWS_DATASELECT_HOST = os.getenv('FDSNWS_DATASELECT_HOST', 'encelade.unice.fr:8000')
 
 FDSNWS_EVENT = 'http://%s/fdsnws/event' % FDSNWS_EVENT_HOST
@@ -47,7 +47,7 @@ XSL_SC3ML_TO_QML1_2 = {
 FDSNWS_BASE_URL = 'http://%s' % FDSNWS_DATASELECT_HOST
 
 # used for scdispatch :
-SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'encelade.unice.fr:4803')
+SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'thufir.unice.fr:4803')
 
 FDSN_EVENT_FORMAT = 'xml'
 

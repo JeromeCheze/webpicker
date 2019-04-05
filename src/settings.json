@@ -22,6 +22,7 @@
   "pickerKeybinding.setPolarityPositive": "shift+up",
   "pickerKeybinding.setPolarityNegative": "shift+down",
   "pickerKeybinding.setNoPolarity": "escape",
+  "pickerKeybinding.leavePickingMode": "escape",
   "pickerKeybinding.setPickerPhaseP": "p",
   "pickerKeybinding.setPickerPhaseS": "s",
   "pickerKeybinding.deletePick": "backspace",
@@ -29,5 +30,10 @@
   "pickerKeybinding.alignToP": "alt+p",
   "pickerKeybinding.alignToS": "alt+s",
   "pickerKeybinding.toggleFilter": "f",
-  "pickerKeybinding.toggleEqualScale": "="
+  "pickerKeybinding.toggleEqualScale": "=",
+  "pickerKeybinding.createPick": "space",
+  "pickerKeybinding.movePickLineRight": "right",
+  "pickerKeybinding.moveFastPickLineRight": "shift+right",
+  "pickerKeybinding.movePickLineLeft": "left",
+  "pickerKeybinding.moveFastPickLineLeft": "shift+left"
 }

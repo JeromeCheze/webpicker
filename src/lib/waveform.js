@@ -13,6 +13,7 @@ export default class Waveform {
     ]
     this.waveforms = []
     this.event = {
+      pickLineTime: null,
       handlers: [],
       xOffset: 0,
       moved: false,
@@ -214,8 +215,8 @@ export default class Waveform {
       )
       if (this.opt.mode == 'picker') {
         this.event.handlers = this.event.handlers.concat([
-          {type: 'mousemove', el: userCanvas, callback: ev => this.updatePickLine(ev)},
-          {type: 'dblclick', el: userCanvas, callback: ev => this.createPick(ev)},
+          {type: 'mousemove', el: userCanvas, callback: ev => this.handleMouseMove(ev)},
+          {type: 'dblclick', el: userCanvas, callback: ev => this.handleDblClick(ev)},
           {type: 'click', el: userCanvas, callback: ev => this.selectPick(ev)}
         ])
       }
@@ -364,6 +365,18 @@ export default class Waveform {
     this.event.hoverWf = wf
   }
 
+  handleDblClick (ev) {
+    let ref = this.waveforms[0].opt.ttt[this.view.refTime]
+    this.event.pickLineTime = this.pos2time(ref, this.getMouseX(ev))
+    this.createPick()
+  }
+
+  handleMouseMove (ev) {
+    let ref = this.waveforms[0].opt.ttt[this.view.refTime]
+    this.event.pickLineTime = this.pos2time(ref, this.getMouseX(ev))
+    this.updatePickLine()
+  }
+
   applyCallback (callbackName, arg) {
     if (this.opt.callback[callbackName] != null) {
       this.opt.callback[callbackName].call(null, arg)
@@ -418,6 +431,9 @@ export default class Waveform {
   }
 
   setPolarity (polarity) {
+    if (this.event.selectedPicks.length == 0) {
+      return
+    }
     for (let p of this.event.selectedPicks) {
       p.polarity = polarity
     }
@@ -429,10 +445,10 @@ export default class Waveform {
     })
   }
 
-  createPick (ev) {
+  createPick () {
     if (this.event.phase != null && this.event.phase != '') {
       let ref = this.waveforms[0].opt.ttt[this.view.refTime]
-      let t = this.pos2time(ref, this.getMouseX(ev))
+      let t = this.event.pickLineTime
       let newPick = {
         phase: this.event.phase,
         mode: 'manual',
@@ -453,6 +469,7 @@ export default class Waveform {
       }
       this.event.hoverWf.opt.picks.push(newPick)
       // this.event.clickPos = null
+      this.event.clickPos = this.time2pos(ref, t)
       this.draw()
       this.applyCallback('updatePick', {
         action: 'add', wfid: this.event.hoverWf.opt.id, picks: [newPick]
@@ -460,10 +477,20 @@ export default class Waveform {
     }
   }
 
-  updatePickLine (ev) {
+  movePickLine ({ direction, fast }) {
+    let sign = direction == 'right' ? 1 : -1
+    let shift = fast ? this.view.duration * 0.1 : this.view.xRatio
+    if (this.event.pickLineTime == null) {
+      this.event.pickLineTime = this.waveforms[0].opt.ttt[this.view.refTime]
+    }
+    this.event.pickLineTime += sign * shift
+    this.updatePickLine()
+  }
+
+  updatePickLine () {
     if (this.event.phase != null && this.event.phase != '') {
-      let pos = this.getMouseX(ev)
       let ref = this.waveforms[0].opt.ttt[this.view.refTime]
+      let pos = this.time2pos(ref, this.event.pickLineTime)
       for (let [i, wf] of this.waveforms.entries()) {
         let ctx = wf.ctx2
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)

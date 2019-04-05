@@ -1,0 +1,229 @@
+<template>
+  <div class="toolbar">
+    <v-btn
+      :color="origin._is_dirty ? 'orange' : 'white'"
+      @click="handleRelocateClick"
+      small>Relocate</v-btn>
+    <v-btn
+      :color="event.preferred_magnitude_id == null ? 'orange' : 'white'"
+      @click="handleComputeMagnitudeClick"
+      small>Compute magnitudes</v-btn>
+    <v-menu v-model="commitPopover" bottom offset-y :close-on-content-click="false">
+      <template v-slot:activator="{ on }">
+        <v-btn
+          v-on="on"
+          :color="origin._not_committed ? 'orange' : 'white'"
+          small>Commit</v-btn>
+      </template>
+      <v-card class="pa-3">
+        <v-select
+          label="Event type"
+          v-model="commitForm.eventType"
+          :items="commitForm.eventTypeOptions"
+          clearable
+        ></v-select>
+        <v-select
+          label="Type certainty"
+          v-model="commitForm.eventTypeCertainty"
+          :items="commitForm.eventTypeCertaintyOptions"
+          clearable
+        ></v-select>
+        <v-select
+          label="Origin status"
+          v-model="commitForm.originEvaluationStatus"
+          :items="commitForm.evaluationStatusOptions"
+          clearable
+        ></v-select>
+        <v-btn small @click="commitPopover = false">Cancel</v-btn>
+        <v-btn small color="primary" @click="handleCommitClick">Commit</v-btn>
+      </v-card>
+    </v-menu>
+  </div>
+</template>
+
+<script>
+import utils from '@/utils/utils'
+
+export default {
+
+  data () {
+    return {
+      commitPopover: false,
+      commitForm: {
+        eventType: 'earthquake',
+        eventTypeCertainty: null,
+        originEvaluationStatus: null,
+        eventTypeCertaintyOptions: [
+          'known',
+          'suspected'
+        ],
+        evaluationStatusOptions: [
+          'preliminary',
+          'confirmed',
+          'reviewed',
+          'final',
+          'rejected'
+        ],
+        eventTypeOptions: [
+          'not existing',
+          'not reported',
+          'earthquake',
+          'anthropogenic event',
+          'collapse',
+          'cavity collapse',
+          'mine collapse',
+          'building collapse',
+          'explosion',
+          'accidental explosion',
+          'chemical explosion',
+          'controlled explosion',
+          'experimental explosion',
+          'industrial explosion',
+          'mining explosion',
+          'quarry blast',
+          'road cut',
+          'blasting levee',
+          'nuclear explosion',
+          'induced or triggered event',
+          'rock burst',
+          'reservoir loading',
+          'fluid injection',
+          'fluid extraction',
+          'crash',
+          'plane crash',
+          'train crash',
+          'boat crash',
+          'other event',
+          'atmospheric event',
+          'sonic boom',
+          'sonic blast',
+          'acoustic noise',
+          'thunder',
+          'avalanche',
+          'snow avalanche',
+          'debris avalanche',
+          'hydroacoustic event',
+          'ice quak'
+        ]
+      }
+    }
+  },
+
+  computed: {
+    event () {
+      return this.$store.state.currentEvent
+    },
+    origin () {
+      return this.$store.state.currentOrigin
+    }
+  },
+
+  methods: {
+
+    handleRelocateClick () {
+      this.$store.dispatch('setLoading', { value: true, text: 'Relocate, please wait...' })
+      // console.log(this.currentOrigin);
+      let e = utils.composeEvent({
+        base: this.event, origins: [ this.origin ], po: this.origin
+      })
+      utils.ajax({
+        method: 'POST',
+        url: this.$store.getters.getLink('relocate'),
+        dataMimeType: 'application/json',
+        data: JSON.stringify([ e ]),
+        type: 'json'
+      }).then(data => {
+        this.$store.dispatch('setLoading', { value: false })
+        if (data.message != '') {
+          alert(data.message)
+        } else {
+          let parser = new DOMParser()
+          let qml = parser.parseFromString(data.quakeml, 'application/xml')
+          // console.log(qml);
+          let e = utils.parseQuakeML(qml)[0]
+          console.log(e);
+          let o = e.origin[0]
+          o.evaluation_mode = 'manual'
+          o._not_committed = true
+          // keep only one not committed origin
+          let notCommitted = this.event.origin.filter(x => x._not_committed)
+          for (let origin of notCommitted) {
+            this.event.origin.splice(this.event.origin.indexOf(origin), 1)
+          }
+          if (!this.origin._not_committed) {
+            o.public_id = utils.getId('Origin')
+          }
+          this.event.origin.push(o)
+          this.event.preferred_magnitude_id = null
+          this.event._pm = null
+          this.$store.dispatch('setCurrentOrigin', o)
+          this.$emit('need-update')
+        }
+      })
+    },
+
+    handleComputeMagnitudeClick () {
+      this.$store.dispatch('setLoading', { value: true, text: 'Compute magnitudes, please wait...' })
+      let e = utils.composeEvent({
+        base: this.event, origins: [ this.origin ], po: this.origin
+      })
+      utils.ajax({
+        method: 'POST',
+        url: this.$store.getters.getLink('compute_magnitudes'),
+        dataMimeType: 'application/json',
+        data: JSON.stringify([ e ]),
+        type: 'json'
+      }).then(data => {
+        this.$store.dispatch('setLoading', { value: false })
+        if (data.quakeml == null) {
+          alert(data.message)
+        }
+        if (data.quakeml != null) {
+          let parser = new DOMParser()
+          let qml = parser.parseFromString(data.quakeml, 'application/xml')
+          // console.log(qml);
+          let e = utils.parseQuakeML(qml)[0]
+          console.log(e);
+          for (let m of e.magnitude) {
+            m.origin_id = this.origin.public_id
+            this.event.magnitude.push(m)
+          }
+          this.event.preferred_magnitude_id = e.magnitude[0].public_id
+          this.event._pm = e.magnitude[0]
+        }
+      })
+    },
+
+    handleCommitClick () {
+      this.$store.dispatch('setLoading', { value: true, text: 'Commit in progress...' })
+      let e = this.event,
+          o = this.origin
+      e.type = this.commitForm.eventType
+      e.type_certainty = this.commitForm.eventTypeCertainty
+      e.preferred_origin_id = o.public_id
+      o.evaluation_status = this.commitForm.originEvaluationStatus
+      let cloneEvent = utils.cloneAndClean(e, '/event_parameters/event')
+      // console.log(e);
+      utils.ajax({
+        method: 'POST',
+        url: this.$store.getters.getLink('commit'),
+        dataMimeType: 'application/json',
+        data: JSON.stringify([ cloneEvent ]),
+        type: 'json'
+      }).then(data => {
+        console.log(data);
+        this.$store.dispatch('setLoading', { value: false })
+        if (data.return_code == 0) {
+          o._not_committed = false
+          this.$emit('need-update')
+          // this.handleSelectEvent(this.currentEvent.public_id)
+        } else {
+          alert(data.message)
+        }
+      })
+    }
+
+  }
+
+}
+</script>

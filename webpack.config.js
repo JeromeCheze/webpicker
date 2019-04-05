@@ -1,18 +1,12 @@
-const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+// const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const TerserPlugin = require('terser-webpack-plugin')
-const webpack = require('webpack')
 const path = require('path')
 
 let extractCssInstance = new MiniCssExtractPlugin({
   filename: 'static/dist/webpicker.css'
 })
-
-let languageReplacement = new webpack.NormalModuleReplacementPlugin(
-  /element-ui[\/\\]lib[\/\\]locale[\/\\]lang[\/\\]zh-CN/,
-  'element-ui/lib/locale/lang/en'
-)
 
 let appHtml = new HtmlWebpackPlugin({
   template: 'src/app.html',
@@ -23,7 +17,6 @@ let appHtml = new HtmlWebpackPlugin({
 module.exports = (env, argv) => {
   let plugins = [
     extractCssInstance,
-    languageReplacement,
     appHtml
   ]
 
@@ -59,7 +52,9 @@ module.exports = (env, argv) => {
           use: [{
             loader: 'url-loader',
             options: {
-              outputPath: 'static/dist',
+              publicPath: '../..',
+              name: 'static/dist/[hash].[ext]',
+              // outputPath: 'static/dist',
               limit: 10000
             }
           }]
@@ -69,8 +64,10 @@ module.exports = (env, argv) => {
     devtool: argv.mode === 'development' ? "cheap-eval-source-map" : "source-map",
     plugins: plugins,
     resolve: {
+      extensions: ['.js', '.vue', '.json'],
       alias: {
-        'vue$': 'vue/dist/vue.esm.js'
+        'vue$': 'vue/dist/vue.esm.js',
+        '@': path.resolve('src')
       }
     }
   }

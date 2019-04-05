@@ -1,92 +1,82 @@
 <template>
-  <div v-loading="loading" :element-loading-text="loadingText">
-    <el-row>{{ horizontalDownloadStatus }}</el-row>
-    <el-row class="toolbar" type="flex" align="middle">
-      <el-form :inline="true">
-        <el-form-item label="Picker phase:">
-          <el-select v-model="tools.phase" style="width: 80px;">
-            <el-option
-            v-for="item in tools.phaseOptions"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-checkbox v-model="tools.sameScale">Same scale</el-checkbox>
-        </el-form-item>
-        <el-form-item label="Filter:">
-          <el-select v-model="tools.filter" clearable style="width: 80px;">
-            <el-option
-            v-for="filter in tools.filterList"
-            :key="filter.name"
-            :label="filter.name"
-            :value="filter.name"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="Alignment:">
-          <el-radio-group v-model="tools.alignment">
-            <el-radio-button label="O"></el-radio-button>
-            <el-radio-button label="P"></el-radio-button>
-            <el-radio-button label="S"></el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="Sort by:">
-          <el-radio-group v-model="tools.sortBy">
-            <el-radio-button label="distance"></el-radio-button>
-            <el-radio-button label="name"></el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="Station radius [°]:">
-          <el-input-number :min="0" :max="180" :step=".1" v-model="tools.stationRadius"></el-input-number>
-          <el-button @click="loadAdditionalStation" :disabled="disableLoadAdditionalStation">Load stations</el-button>
-        </el-form-item>
-        <el-form-item label="Rotation:">
-          <el-select v-model="tools.rotation" style="width: 80px;">
-            <el-option
-            v-for="rotation in tools.rotationOptions"
-            :key="rotation"
-            :label="rotation"
-            :value="rotation"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-      </el-form>
-    </el-row>
-    <div class="picker" style="height: 410px;"></div>
-    <div class="waveform-list"></div>
+  <div>
+    <v-toolbar dense :style="{ zIndex: 10 }">
+      <v-overflow-btn
+        v-model="tools.phase"
+        label="Phase"
+        :items="tools.phaseOptions"
+        hide-details
+        clearable
+      ></v-overflow-btn>
+      <v-divider vertical class="mr-2"></v-divider>
+
+      <v-checkbox v-model="tools.sameScale" label="Same scale" hide-details :style="{ maxWidth: '160px' }"></v-checkbox>
+      <v-divider vertical></v-divider>
+
+      <v-overflow-btn
+        v-model="tools.filter"
+        label="Filter"
+        item-text="name"
+        :items="tools.filterList"
+        hide-details
+        clearable
+      ></v-overflow-btn>
+      <v-divider vertical class="mr-2"></v-divider>
+
+      <v-btn-toggle v-model="tools.alignment">
+        <v-btn flat :value="'O'">O</v-btn>
+        <v-btn flat :value="'P'">P</v-btn>
+        <v-btn flat :value="'S'">S</v-btn>
+      </v-btn-toggle>
+      <v-divider vertical class="mx-2"></v-divider>
+
+      <v-btn-toggle v-model="tools.sortBy">
+        <v-btn flat :value="'distance'"><v-icon>mdi-map-marker-distance</v-icon></v-btn>
+        <v-btn flat :value="'name'"><v-icon>mdi-sort-alphabetical</v-icon></v-btn>
+      </v-btn-toggle>
+      <v-divider vertical class="mx-2"></v-divider>
+
+      <number-field v-model="tools.stationRadius" label="Radius" hide-details :style="{ maxWidth: '60px' }"></number-field>
+      <v-btn icon @click="loadAdditionalStation" :disabled="disableLoadAdditionalStation">
+        <v-icon>mdi-less-than-or-equal</v-icon>
+      </v-btn>
+      <v-divider vertical></v-divider>
+
+      <v-overflow-btn
+        v-model="tools.rotation"
+        label="Rotation"
+        :items="tools.rotationOptions"
+        hide-details
+      ></v-overflow-btn>
+    </v-toolbar>
+    <div class="picker-view__container--picker" :style="{ height: '410px' }"></div>
+    <div class="picker-view__container--list"></div>
   </div>
 </template>
 
 <script>
-import Waveform from '../lib/waveform.js'
-import utils from '../utils/utils.js'
-import mseed from '../lib/mseed.js'
+import Waveform from '@/lib/waveform'
+import utils from '@/utils/utils'
+import mseed from '@/lib/mseed'
 import Fili from 'fili'
 import L from 'leaflet'
 
 export default {
-  props: ['event', 'origin', 'inventory', 'settings'],
+
   data () {
     return {
       // toolbar variables
       tools: {
-        rotationOptions: [
-          'ZNE',
-          'ZRT'
-        ],
+        rotationOptions: [ 'ZNE', 'ZRT' ],
         rotation: 'ZNE',
         phaseOptions: [
-          { value: '', label: 'No picking' },
-          { value: 'P', label: 'P' },
-          { value: 'S', label: 'S' }
+          { value: 'P', text: 'P' },
+          { value: 'S', text: 'S' }
         ],
-        phase: '',
-        sameScale: false,
-        filter: '',
-        lastFilter: null,
+        phase: null,
+        sameScale: true,
+        filter: null,
+        lastFilter: 'HP 1',
         alignment: 'O',
         sortBy: 'distance',
         stationRadius: 1,
@@ -107,9 +97,7 @@ export default {
 
       // state variables
       dirty: true,
-      loading: true,
       picksDirty: false,
-      loadingText: '',
       keyDownBinded: false,
       horizontalDownloadStatus: '',
       disableLoadAdditionalStation: true,
@@ -129,7 +117,7 @@ export default {
       defaultView: { duration: 30000, offset: 10000 },
       pickerOpt: {
         mode: 'picker',
-        container: '.picker',
+        container: '.picker-view__container--picker',
         // size: { height: 120 },
         waveforms: [],
         equalScale: true,
@@ -141,8 +129,8 @@ export default {
       },
       listOpt: {
         mode: 'list',
-        container: '.waveform-list',
-        // size: { height: 40 },
+        container: '.picker-view__container--list',
+        // size: { height: this.settings['pickerSize.listWaveformHeight'] },
         waveforms: [],
         equalScale: false,
         view: {},
@@ -158,17 +146,36 @@ export default {
         setPolarityPositive () { this.picker.setPolarity('positive') },
         setPolarityNegative () { this.picker.setPolarity('negative') },
         setNoPolarity () { this.picker.setPolarity(null) },
+        leavePickingMode (ev) { ev.preventDefault() ; this.tools.phase = null },
         setPickerPhaseP () { this.tools.phase = 'P' },
         setPickerPhaseS () { this.tools.phase = 'S' },
         deletePick () { this.picker.deleteSelectedPicks() },
         alignToOrigin () { this.tools.alignment = 'O' },
         alignToP () { this.tools.alignment = 'P' },
         alignToS () { this.tools.alignment = 'S' },
-        toggleFilter () { this.tools.filter = this.tools.filter == '' ? this.tools.lastFilter : '' },
-        toggleEqualScale () { this.tools.sameScale = !this.tools.sameScale }
+        toggleFilter () { this.tools.filter = this.tools.filter == null ? this.tools.lastFilter : null },
+        toggleEqualScale () { this.tools.sameScale = !this.tools.sameScale },
+        createPick (ev) { ev.preventDefault(); this.picker.createPick() },
+        movePickLineRight () { this.picker.movePickLine({ direction: 'right', fast: false }) },
+        moveFastPickLineRight () { this.picker.movePickLine({ direction: 'right', fast: true }) },
+        movePickLineLeft () { this.picker.movePickLine({ direction: 'left', fast: false }) },
+        moveFastPickLineLeft () { this.picker.movePickLine({ direction: 'left', fast: true }) }
       }
     }
   },
+
+  computed: {
+    origin () {
+      return this.$store.state.currentOrigin
+    },
+    inventory () {
+      return this.$store.state.inventory
+    },
+    settings () {
+      return this.$store.state.settings
+    }
+  },
+
   watch: {
     'tools.phase': function(val) {
       this.blurActiveElement()
@@ -222,11 +229,12 @@ export default {
       this.dirty = true
     }
   },
-  activated () {
+
+  mounted () {
     this.picksDirty = false
     if (this.dirty) {
       this.dirty = false
-      this.reset()
+      // this.reset()
       let stationDistanceMap = {}
       for (let a of this.origin.arrival) {
         let netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
@@ -234,20 +242,23 @@ export default {
       }
       this.getTTT(stationDistanceMap, () => {
         let [mainWfidList, horizontalWfidList] = this.processArrival()
-        this.loading = true
-        this.loadingText = `Loading waveforms... (${mainWfidList.length + horizontalWfidList.length} channels)`
+        this.$store.dispatch('setLoading', { value: true, text: `Loading waveforms... (${mainWfidList.length + horizontalWfidList.length} channels)` })
         this.downloadWaveforms(
           mainWfidList,
           st => this.plotWaveforms(st),
           () => {
-            this.$notify.info({ message: 'Waveform list is loaded.' })
+            // this.$notify.info({ message: 'Waveform list is loaded.' })
+            console.log('Waveform list is loaded.');
             this.disableLoadAdditionalStation = false
           }
         )
         this.downloadWaveforms(
           horizontalWfidList,
           st => this.handleHorizontalWaveforms(st),
-          () => { this.$notify.info({ message: 'All waveforms loading is complete.' }) }
+          () => {
+            // this.$notify.info({ message: 'All waveforms loading is complete.' })
+            console.log('All waveforms loading is complete.');
+          }
         )
       })
     } else {
@@ -259,7 +270,8 @@ export default {
       document.body.addEventListener('keydown', ev => this.handleKeyDown(ev))
     }
   },
-  deactivated () {
+
+  beforeDestroy () {
     if (this.xhr.length > 0) {
       this.dirty = true
       for (let xhr of this.xhr) {
@@ -311,6 +323,7 @@ export default {
     }
     this.$emit('picker-arrival', arrivals)
   },
+
   methods: {
     blurActiveElement () {
       document.activeElement.blur()
@@ -329,15 +342,14 @@ export default {
       let k = utils.shortcutString(ev)
       console.log(k);
       let keybindings = Object.keys(this.settings).filter(x => x.indexOf('pickerKeybinding') == 0)
-      let bindedAction = null
+      let bindedAction = []
       for (let key of keybindings) {
-        if (this.settings[key].value == k) {
-          bindedAction = key.split('.')[1]
+        if (this.settings[key] == k) {
+          bindedAction.push(key.split('.')[1])
         }
       }
-      if (bindedAction != null) {
-        // ev.preventDefault()
-        this.shortcutAction[bindedAction].call(this)
+      for (let action of bindedAction) {
+        this.shortcutAction[action].call(this, ev)
       }
     },
 
@@ -362,9 +374,9 @@ export default {
       }
       this.tools.rotation = 'ZNE',
       this.tools.lastFilter = this.tools.filterList[0].name
-      this.tools.phase = '',
+      this.tools.phase = null,
       this.tools.sameScale = true,
-      this.tools.filter = '',
+      this.tools.filter = null,
       this.tools.alignment = 'O',
       this.tools.sortBy = 'distance'
 
@@ -468,8 +480,7 @@ export default {
     },
 
     getTTT (stationDistanceMap, callback) {
-      this.loading = true
-      this.loadingText = 'Loading theoretical travel time...'
+      this.$store.dispatch('setLoading', { value: true, text: 'Loading theoretical travel time...' })
       let data = {
         depth: this.origin.depth.value/1000,
         station: stationDistanceMap
@@ -478,7 +489,7 @@ export default {
       this.xhr.push(xhr)
       utils.ajax({
         method: 'POST',
-        url: 'ttt',
+        url: this.$store.getters.getLink('ttt'),
         dataMimeType: 'application/json',
         data: JSON.stringify(data),
         type: 'json'
@@ -497,15 +508,17 @@ export default {
       })
     },
 
-    getEnd () {
-      let t0 = this.origin.time._value.getTime()
+    getTimeWindow () {
       let times = this.origin.arrival.map(a => a._pick.time._value.getTime())
       for (let sta of Object.values(this.ttt)) {
         for (let ttt of Object.values(sta.ttt)) {
           times.push(ttt)
         }
       }
-      return new Date(Math.max.apply(null, times) + 10000).toISOString().substr(0, 19)
+      return [
+        new Date(this.origin.time._value.getTime() - 15e3).toISOString().substr(0, 19),
+        new Date(Math.max.apply(null, times) + 20e3).toISOString().substr(0, 19)
+      ]
     },
 
     processArrival () {
@@ -565,8 +578,7 @@ export default {
       if (wfidList.length == 0) {
         return
       }
-      let start = new Date(this.origin.time._value.getTime() - 20000).toISOString().substr(0, 19)
-      let end = this.getEnd()
+      let [start, end] = this.getTimeWindow()
       let chunks = []
       for (let i = 0; i < wfidList.length; i += 10) {
         chunks.push(wfidList.slice(i, i + 10))
@@ -578,7 +590,7 @@ export default {
         this.xhr.push(xhr)
         utils.ajax({
           method: 'POST',
-          url: 'fdsnws/dataselect/1/query',
+          url: this.$store.getters.getLink('fdsnws/dataselect/1/query'),
           dataMimeType: 'text/plain',
           data: query.join('\r\n'),
           type: 'arraybuffer'
@@ -597,12 +609,13 @@ export default {
             downloader(i, chunks)
           } else {
             if (wfidList.length > 0) {
-              let content = wfidList.map(x => `<li>${x}</li>`).join('')
-              this.$notify.error({
-                duration: 0,
-                dangerouslyUseHTMLString: true,
-                message: `These channels couldn't be retrieved:<ul>${content}</ul>`
-              })
+              let content = wfidList.join('\n')
+              // this.$notify.error({
+              //   duration: 0,
+              //   dangerouslyUseHTMLString: true,
+              //   message: `These channels couldn't be retrieved:<ul>${content}</ul>`
+              // })
+              console.log(`These channels couldn't be retrieved:\n${content}`);
             }
             if (complete != null) {
               complete.call()
@@ -649,53 +662,89 @@ export default {
       return result
     },
 
-    handleWaveformClick (wf, force=false) {
-      if (this.picker != null) {
-        if (this.picker.waveforms[0].opt.id == wf.id && !force) {
-          return
-        }
-      }
-      let sameScale = true
-      let wfList = []
-      if (this.tools.rotation == 'ZNE') {
-        wfList = [wf].concat(this.getHorizontalWaveforms(wf))
-      } else if (this.tools.rotation == 'ZRT') {
-        wfList = [wf].concat(this.ne2rt(wf))
-      }
-      this.tools.sameScale = sameScale
-      this.setPickerWaveforms(wfList)
-    },
-
     getColorSettings () {
       let colorSettingKey = Object.keys(this.settings).filter(x => x.indexOf('pickerColor') == 0)
       let result = {}
       for (let key of colorSettingKey) {
         let optKey = key.split('.')[1]
-        result[optKey] = this.settings[key].value
+        result[optKey] = this.settings[key]
       }
       return result
     },
 
-    setPickerWaveforms (wfList) {
-      let view = Object.assign({}, this.defaultView)
-      let filterState = false
-      let phase = null
-      if (this.picker != null) {
-        Object.assign(view, this.picker.view, {gain: 1})
-        phase = this.picker.event.phase
-        filterState = this.picker.event.useFiltered
-        this.picker.destroy()
-      }
-      let height = this.settings['pickerSize.pickerWaveformHeight'].value
-      this.pickerOpt.color = this.getColorSettings()
-      this.pickerOpt.size = { height: height, wrapperMaxHeight: 3 * height }
-      this.pickerOpt.equalScale = this.tools.sameScale,
-      this.pickerOpt.view = view
-      this.pickerOpt.waveforms = wfList
-      this.picker = new Waveform(this.pickerOpt)
-      this.applyFilter(this.picker.waveforms)
-      this.picker.setFilterState(filterState)
-      this.picker.setPickerPhase(phase)
+    loadAdditionalStation () {
+      let alreadyLoadedStation = this.list.waveforms.map(x => x.opt.id.split('.').slice(0, 2).join('.'))
+      let strTime = this.origin.time._value.toISOString().slice(0, 19)
+      this.$store.dispatch('setLoading', { value: true, text: 'Loading inventory...' })
+      utils.ajax({
+        method: 'GET',
+        url: this.$store.getters.getLink('fdsnws/station/1/query'),
+        args: {
+          starttime: strTime, endtime: strTime,
+          level: 'channel', format: 'text',
+          latitude: this.origin.latitude.value,
+          longitude: this.origin.longitude.value,
+          minradius: 0, maxradius: this.tools.stationRadius
+        }
+      }).then(data => {
+        let inv = utils.parseInventory(data)
+        console.log(inv);
+        this.$store.dispatch('mergeInventory', inv)
+        let wfidList = []
+        let stationDistanceMap = {}
+        let pos = L.latLng([this.origin.latitude.value, this.origin.longitude.value])
+        for (let [net, netObj] of Object.entries(inv)) {
+          for (let [sta, staObj] of Object.entries(netObj)) {
+            let netsta = `${net}.${sta}`
+            if (alreadyLoadedStation.indexOf(netsta) >= 0) {
+              continue
+            }
+            let stationWf = null
+            for (let [loc, locObj] of Object.entries(staObj.location)) {
+              let availableChannel = []
+              for (let [cha, chaObj] of Object.entries(locObj)) {
+                availableChannel.push({ channel: cha, sample_rate: chaObj[0].sample_rate })
+              }
+              availableChannel.sort((a, b) => {
+                a = a.sample_rate
+                b = b.sample_rate
+                return a == b ? 0 : a < b ? -1 : 1
+              })
+              stationWf = [net, sta, loc, availableChannel.slice(-1)[0].channel].join('.').replace('..', '.--.')
+              break
+            }
+            if (stationWf != null) {
+              let degDistance  = ((pos.distanceTo([staObj.lat, staObj.lon]) / 1000.) * 360) / (2 * Math.PI * 6371)
+              this.stationInfoMap[netsta] = {
+                distance: degDistance,
+                azimuth: utils.coordinates2azimuth([pos.lat, pos.lng], [staObj.lat, staObj.lon])
+              }
+              stationDistanceMap[netsta] = degDistance
+              wfidList.push(stationWf)
+              for (let wfid of this.getHorizontalIds(stationWf)) {
+                wfidList.push(wfid)
+              }
+            }
+          }
+        }
+        console.log(wfidList);
+        if (wfidList.length == 0) {
+          // this.$notify.info({ message: 'No additional station found in this range.' })
+          console.log('No additional station found in this range.');
+          return
+        }
+        this.getTTT(stationDistanceMap, () => {
+          this.downloadWaveforms(
+            wfidList,
+            st => this.plotWaveforms(st),
+            () => {
+              // this.$notify.info({ message: 'Loading additional station is complete.' })
+              console.log('Loading additional station is complete.');
+              this.disableLoadAdditionalStation = false
+            }
+          )
+        })
+      })
     },
 
     getChannel (seedid) {
@@ -713,78 +762,6 @@ export default {
     getChannelScale (seedid) {
       let cha = this.getChannel(seedid)
       return cha != null ? cha.scale : 1
-    },
-
-    loadAdditionalStation () {
-      let kmRadius = (this.tools.stationRadius * 2 * Math.PI * 6371 ) / 360
-      console.log(`${kmRadius} km`);
-      let alreadyLoadedStation = this.list.waveforms.map(x => x.opt.id.split('.').slice(0, 2).join('.'))
-      let pos = L.latLng([this.origin.latitude.value, this.origin.longitude.value])
-      let t = this.origin.time._value
-      let stationDistanceMap = {}
-      let wfidList = []
-      for (let [net, n] of Object.entries(this.inventory)) {
-        for (let [sta, s] of Object.entries(n)) {
-          let netsta = [net, sta].join('.')
-          if (alreadyLoadedStation.indexOf(netsta) >= 0) {
-            continue
-          }
-          let kmDistance = pos.distanceTo([s.lat, s.lon]) / 1000.
-          if (kmDistance > kmRadius) {
-            continue
-          }
-          let stationWf = null
-          for (let [loc, l] of Object.entries(s.location)) {
-            let availableChannel = []
-            for (let [cha, c] of Object.entries(l)) {
-              let tmp = c.filter(x => (
-                t >= x.starttime &&
-                t <= x.endtime &&
-                cha.slice(-1) == 'Z' && x.units == 'M/S'
-              ))
-              if (tmp.length > 0) {
-                availableChannel.push({ channel: cha, sample_rate: tmp[0].sample_rate })
-              }
-            }
-            if (availableChannel.length > 0) {
-              availableChannel.sort((a, b) => {
-                a = a.sample_rate
-                b = b.sample_rate
-                return a == b ? 0 : a < b ? -1 : 1
-              })
-              stationWf = [net, sta, loc, availableChannel.slice(-1)[0].channel].join('.').replace('..', '.--.')
-              break
-            }
-          }
-          if (stationWf != null) {
-            let degDistance  = (kmDistance * 360) / (2 * Math.PI * 6371)
-            this.stationInfoMap[netsta] = {
-              distance: degDistance,
-              azimuth: utils.coordinates2azimuth([pos.lat, pos.lng], [s.lat, s.lon])
-            }
-            stationDistanceMap[netsta] = degDistance
-            wfidList.push(stationWf)
-            for (let wfid of this.getHorizontalIds(stationWf)) {
-              wfidList.push(wfid)
-            }
-          }
-        }
-      }
-      console.log(wfidList);
-      if (wfidList.length == 0) {
-        this.$notify.info({ message: 'No additional station found in this range.' })
-        return
-      }
-      this.getTTT(stationDistanceMap, () => {
-        this.downloadWaveforms(
-          wfidList,
-          st => this.plotWaveforms(st),
-          () => {
-            this.$notify.info({ message: 'Loading additional station is complete.' })
-            this.disableLoadAdditionalStation = false
-          }
-        )
-      })
     },
 
     getWaveformObject (tr) {
@@ -805,12 +782,33 @@ export default {
       }
     },
 
+    setPickerWaveforms (wfList) {
+      let view = Object.assign({}, this.defaultView)
+      let filterState = false
+      let phase = null
+      if (this.picker != null) {
+        Object.assign(view, this.picker.view, { gain: 1 })
+        phase = this.picker.event.phase
+        filterState = this.picker.event.useFiltered
+        this.picker.destroy()
+      }
+      let height = this.settings['pickerSize.pickerWaveformHeight']
+      this.pickerOpt.color = this.getColorSettings()
+      this.pickerOpt.size = { height, wrapperMaxHeight: 3 * height + 40 }
+      this.pickerOpt.equalScale = this.tools.sameScale,
+      this.pickerOpt.view = view
+      this.pickerOpt.waveforms = wfList
+      this.picker = new Waveform(this.pickerOpt)
+      this.applyFilter(this.picker.waveforms)
+      this.picker.setFilterState(filterState)
+      this.picker.setPickerPhase(phase)
+    },
+
     setListWaveforms (wfList) {
       let selectedWfId = null
-      let height = this.settings['pickerSize.listWaveformHeight'].value
-      this.listOpt.size = { height }
+      this.listOpt.size = { height: this.settings['pickerSize.listWaveformHeight'] }
       this.listOpt.color = this.getColorSettings()
-      Object.assign(this.listOpt.view, {refTime: this.tools.alignment}, this.defaultView)
+      Object.assign(this.listOpt.view, { refTime: this.tools.alignment }, this.defaultView)
       if (this.list != null) {
         if (this.list.event.selectedWf != null) {
           selectedWfId = this.list.event.selectedWf.opt.id
@@ -830,12 +828,28 @@ export default {
         this.list.selectNext()
       } else {
         let wf = this.list.waveforms.find(wf => wf.opt.id == selectedWfId)
-        this.list.selectWaveform(wf)
+        this.list.selectWaveform(wf) // this will trigger an event that call 'handleWaveformClick'
       }
     },
 
+    handleWaveformClick (wf, force=false) {
+      if (this.picker != null) {
+        if (this.picker.waveforms[0].opt.id == wf.id && !force) {
+          return
+        }
+      }
+      let wfList = []
+      if (this.tools.rotation == 'ZNE') {
+        wfList = [wf].concat(this.getHorizontalWaveforms(wf))
+      } else if (this.tools.rotation == 'ZRT') {
+        wfList = [wf].concat(this.ne2rt(wf))
+      }
+      this.tools.sameScale = true
+      this.setPickerWaveforms(wfList)
+    },
+
     plotWaveforms (st) {
-      this.loading = false
+      this.$store.dispatch('setLoading', { value: false })
       let wfList = []
       if (this.list != null) {
         wfList = this.listOpt.waveforms
