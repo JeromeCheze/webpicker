@@ -22,10 +22,13 @@
 </template>
 
 <script>
+import utils from '@/utils/utils'
+
 export default {
 
+  props: [ 'start', 'end', 'minlat', 'maxlat', 'minlon', 'maxlon', 'mindepth', 'maxdepth', 'minmag', 'maxmag' ],
+
   data () {
-    let data = this.getTableData()
     return {
       tableHeader: [
         { text: 'Time', value: 'time' },
@@ -46,22 +49,58 @@ export default {
         page: 1,
         rowsPerPage: -1,
         sortBy: 'time',
-        totalItems: data.length
+        totalItems: 0
       },
-      tableData: data,
-      selectEvent: null
+      tableData: []
       // height: 500
+    }
+  },
+
+  mounted () {
+    let dirty = false
+    let query = Object.assign(Object.assign({}, this.$store.state.form), this.$route.query)
+    for (let [k, v] of Object.entries(query)) {
+      if (this.$store[k] != v) {
+        dirty = true
+        break
+      }
+    }
+    if (dirty && this.$store.state.eventList.length == 0) {
+      this.$store.dispatch('setFormValues', this.$route.query)
+      this.$store.dispatch('setLoading', { value: true, text: 'Loading events...' })
+      let args = {}
+      for (let [k, v] of Object.entries(this.$store.state.form)) {
+        if (v != null) {
+          args[k] = v
+        }
+      }
+      utils.ajax({
+        method: 'GET',
+        url: 'fdsnws/event/1/query',
+        args: args,
+        type: 'document'
+      }).then(qml => {
+        let events = utils.parseQuakeML(qml)
+        this.$store.dispatch('eventList', events)
+        let data = this.getTableData()
+        this.pagination.totalItems = data.length
+        this.tableData = data
+        this.$store.dispatch('setLoading', { value: false })
+      })
+    } else {
+      let data = this.getTableData()
+      this.pagination.totalItems = data.length
+      this.tableData = data
     }
   },
 
   methods: {
     tableRowClassName (row) {
-      return row.id == this.selectEvent ? 'selected-event-row' : ''
+      return this.$store.state.currentEvent != null && this.$store.state.currentEvent.public_id == row.id ? 'selected-event-row' : ''
     },
 
     handleRowClick (row) {
       if (row != null) {
-        this.selectEvent = row.id
         this.$router.push({ name: 'Event', params: { code: row.id } })
       }
     },

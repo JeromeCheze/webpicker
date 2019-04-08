@@ -1,3 +1,5 @@
+import utils from '@/utils/utils'
+
 export const initialize = ({ commit }) => {
   commit('INITIALIZE')
 }
@@ -32,4 +34,17 @@ export const setSettings = ({ commit }, data) => {
 
 export const mergeInventory = ({ commit }, data) => {
   commit('MERGE_INVENTORY', data)
+}
+
+export const setFormValues = ({ commit }, data) => {
+  commit('SET_FORM_VALUES', data)
+}
+
+export const pickerData = ({ state, commit, getters }, data) => {
+  let o = JSON.parse(JSON.stringify(state.currentOrigin))
+  o._not_committed = true
+  o._is_dirty = true
+  o.public_id = getters.getId('Origin')
+  o.arrival = data
+  commit('PICKER_DATA', o)
 }

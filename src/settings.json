@@ -1,4 +1,9 @@
 {
+  "darkPickerColor.background": "rgba(37, 37, 37, 1)",
+  "darkPickerColor.backgroundEven": "rgba(45, 45, 45, 1)",
+  "darkPickerColor.line": "#57c3ff",
+  "darkPickerColor.lineBar": "#ffffff",
+  "darkPickerColor.selected": "rgba(73, 89, 98, 1)",
   "pickerColor.amplitudeValue": "#808080",
   "pickerColor.background": "rgba(255, 255, 255, 1)",
   "pickerColor.backgroundEven": "rgba(229, 238, 241, 1)",
@@ -35,5 +40,22 @@
   "pickerKeybinding.movePickLineRight": "right",
   "pickerKeybinding.moveFastPickLineRight": "shift+right",
   "pickerKeybinding.movePickLineLeft": "left",
-  "pickerKeybinding.moveFastPickLineLeft": "shift+left"
+  "pickerKeybinding.moveFastPickLineLeft": "shift+left",
+  "pickerKeybinding.xZoomIn": "shift+>",
+  "pickerKeybinding.xZoomOut": "shift+<",
+  "pickerKeybinding.yZoomIn": "shift+y",
+  "pickerKeybinding.yZoomOut": "y",
+  "pickerKeybinding.setFocusComponentZ": "z",
+  "pickerKeybinding.setFocusComponentN": "n",
+  "pickerKeybinding.setFocusComponentE": "e",
+  "pickerKeybinding.setTimeUncertainty0": "shift+0",
+  "pickerKeybinding.setTimeUncertainty1": "shift+1",
+  "pickerKeybinding.setTimeUncertainty2": "shift+2",
+  "pickerKeybinding.setTimeUncertainty3": "shift+3",
+  "pickerKeybinding.setTimeUncertainty4": "shift+4",
+  "pickerKeybinding.setTimeUncertainty5": "shift+5",
+  "pickerKeybinding.setTimeUncertainty6": "shift+6",
+  "pickerKeybinding.setTimeUncertainty7": "shift+7",
+  "pickerKeybinding.setTimeUncertainty8": "shift+8",
+  "pickerKeybinding.setTimeUncertainty9": "shift+9"
 }

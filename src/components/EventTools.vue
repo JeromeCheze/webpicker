@@ -151,7 +151,7 @@ export default {
             this.event.origin.splice(this.event.origin.indexOf(origin), 1)
           }
           if (!this.origin._not_committed) {
-            o.public_id = utils.getId('Origin')
+            o.public_id = this.$store.getters.getId('Origin')
           }
           this.event.origin.push(o)
           this.event.preferred_magnitude_id = null
@@ -214,8 +214,8 @@ export default {
         console.log(data);
         this.$store.dispatch('setLoading', { value: false })
         if (data.return_code == 0) {
-          o._not_committed = false
-          this.$emit('need-update')
+          // o._not_committed = false
+          this.$emit('need-init')
           // this.handleSelectEvent(this.currentEvent.public_id)
         } else {
           alert(data.message)

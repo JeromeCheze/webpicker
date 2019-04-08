@@ -351,14 +351,6 @@ function az2baz(az) {
   return (az + 180) % 360
 }
 
-function getId(prefix) {
-  return [
-    prefix,
-    new Date().toISOString().replace(/[\-:]/g, '').replace('T', '.').substr(0, 18),
-    (Math.random()*1000).toFixed(0)
-  ].join('-')
-}
-
 function shortcutString (ev) {
   let k = []
   let keyCode = ev.keyCode || ev.which || ev.charCode
@@ -396,6 +388,5 @@ export default {
   composeEvent,
   coordinates2azimuth,
   az2baz,
-  getId,
   shortcutString
 }

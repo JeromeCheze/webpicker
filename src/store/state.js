@@ -1,5 +1,8 @@
 import settings from '@/settings'
 
+let end = new Date(new Date().getTime() + 86400e3)
+let start = new Date(end.getTime() - 86400e3 * 8)
+
 export default {
 
   root: '/',
@@ -17,8 +20,8 @@ export default {
   inventory: {},
 
   form: {
-    starttime: null,
-    endtime: null,
+    start: start.toISOString().slice(0, 10),
+    end: end.toISOString().slice(0, 10),
     minlat: -90,
     maxlat: 90,
     minlon: -180,

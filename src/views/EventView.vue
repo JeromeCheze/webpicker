@@ -1,7 +1,7 @@
 <template>
   <v-card v-if="event != null && origin != null" class="pa-3">
 
-    <event-tools @need-update="updateAll"></event-tools>
+    <event-tools @need-update="updateAll" @need-init="initEvent"></event-tools>
 
     <event-description @need-update="updateAll"></event-description>
 

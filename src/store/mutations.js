@@ -89,3 +89,21 @@ export const MERGE_INVENTORY = (state, data) => {
     }
   }
 }
+
+export const SET_FORM_VALUES = (state, data) => {
+  Object.assign(state.form, data)
+}
+
+export const PICKER_DATA = (state, data) => {
+  let e = state.currentEvent
+  e.preferred_magnitude_id = null
+  e.origin.push(data)
+  let picks = {}
+  for (let o of e.origin) {
+    for (let a of o.arrival) {
+      picks[a.pick_id] = a._pick
+    }
+  }
+  e.pick = Object.values(picks)
+  state.currentOrigin = data
+}

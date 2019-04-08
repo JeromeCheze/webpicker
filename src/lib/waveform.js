@@ -87,10 +87,14 @@ export default class Waveform {
         // phases
         theoretical: 'blue',
         automatic: 'red',
-        manual: '#1ab11b'
+        manual: '#1ab11b',
+        uncertainty: 'rgba(26, 177, 27, 0.2)'
       },
       callback: {
-        waveformClick: null
+        waveformClick: null,
+        updatePick: null,
+        draw: null,
+        waveformFocus: null
       },
       view: {
         refTime: 'O',
@@ -322,7 +326,7 @@ export default class Waveform {
       if (ev.ctrlKey || ev.metaKey ) {
         Math.sign(delta) > 0 ? this.yZoomOut() : this.yZoomIn()
       } else {
-        Math.sign(delta) > 0 ? this.xZoomIn() : this.xZoomOut()
+        Math.sign(delta) > 0 ? this.xZoomOut() : this.xZoomIn()
       }
     }
   }
@@ -363,6 +367,7 @@ export default class Waveform {
   handleWaveformMouseenter (ev) {
     let wf = this.waveforms.find(x => x.el == ev.target)
     this.event.hoverWf = wf
+    this.applyCallback('waveformFocus', this.waveforms.indexOf(wf))
   }
 
   handleDblClick (ev) {
@@ -425,6 +430,10 @@ export default class Waveform {
     }
   }
 
+  setFocusWaveform (index) {
+    this.event.hoverWf = this.waveforms[index]
+  }
+
   selectPick (ev) {
     this.event.clickPos = this.getMouseX(ev)
     this.draw()
@@ -445,6 +454,25 @@ export default class Waveform {
     })
   }
 
+  setTimeUncertainty (lower, upper) {
+    if (upper == null) {
+      upper = lower
+    }
+    if (this.event.selectedPicks.length == 0) {
+      return
+    }
+    for (let p of this.event.selectedPicks) {
+      p.lower_uncertainty = lower
+      p.upper_uncertainty = upper
+    }
+    this.draw()
+    this.applyCallback('updatePick', {
+      action: 'update',
+      wfid: this.event.hoverWf.opt.id,
+      picks: this.event.selectedPicks
+    })
+  }
+
   createPick () {
     if (this.event.phase != null && this.event.phase != '') {
       let ref = this.waveforms[0].opt.ttt[this.view.refTime]
@@ -453,6 +481,8 @@ export default class Waveform {
         phase: this.event.phase,
         mode: 'manual',
         time: t,
+        lower_uncertainty: null,
+        upper_uncertainty: null,
         polarity: null,
         id: null,
         weight: 1,
@@ -479,7 +509,7 @@ export default class Waveform {
 
   movePickLine ({ direction, fast }) {
     let sign = direction == 'right' ? 1 : -1
-    let shift = fast ? this.view.duration * 0.1 : this.view.xRatio
+    let shift = fast ? this.view.duration * 0.05 : this.view.xRatio
     if (this.event.pickLineTime == null) {
       this.event.pickLineTime = this.waveforms[0].opt.ttt[this.view.refTime]
     }
@@ -490,6 +520,9 @@ export default class Waveform {
   updatePickLine () {
     if (this.event.phase != null && this.event.phase != '') {
       let ref = this.waveforms[0].opt.ttt[this.view.refTime]
+      if (this.event.pickLineTime == null) {
+        this.event.pickLineTime = ref
+      }
       let pos = this.time2pos(ref, this.event.pickLineTime)
       for (let [i, wf] of this.waveforms.entries()) {
         let ctx = wf.ctx2
@@ -528,12 +561,12 @@ export default class Waveform {
     }
   }
 
-  xZoomIn () {
+  xZoomOut () {
     this.view.duration *= 1.2
     this.draw()
   }
 
-  xZoomOut () {
+  xZoomIn () {
     this.view.duration *= .8
     this.draw()
   }
@@ -821,8 +854,9 @@ export default class Waveform {
     ctx.textBaseline = 'top'
     ctx.setLineDash([4, 1])
     ctx.strokeStyle = 'gray'
+    let ref = wf.opt.ttt[this.view.refTime]
     for (let p of wf.opt.picks) {
-      let pos = this.time2pos(wf.opt.ttt[this.view.refTime], p.time)
+      let pos = this.time2pos(ref, p.time)
       if (this.event.clickPos != null &&
           wf == this.event.hoverWf &&
           Math.abs(this.event.clickPos - pos) < 5) {
@@ -833,6 +867,15 @@ export default class Waveform {
         ctx.moveTo(pos+4.5, 0)
         ctx.lineTo(pos+4.5, this.opt.size.height)
         ctx.stroke()
+      }
+      ctx.fillStyle = this.opt.color.uncertainty
+      if (p.lower_uncertainty != null) {
+        let minPos = this.time2pos(ref, p.time - p.lower_uncertainty * 1e3)
+        ctx.fillRect(minPos, 0, pos - minPos, this.opt.size.height)
+      }
+      if (p.upper_uncertainty != null) {
+        let maxPos = this.time2pos(ref, p.time + p.upper_uncertainty * 1e3)
+        ctx.fillRect(pos, 0, maxPos - pos, this.opt.size.height)
       }
       ctx.fillStyle = this.opt.color[p.mode]
       ctx.fillRect(pos-.5, 0, 1, this.opt.size.height)

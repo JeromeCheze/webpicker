@@ -30,6 +30,11 @@
       </v-btn-toggle>
       <v-divider vertical class="mx-2"></v-divider>
 
+      <v-btn-toggle v-model="tools.focusComponent">
+        <v-btn flat v-for="(comp, index) in tools.focusComponentOption" :key="index">{{ comp }}</v-btn>
+      </v-btn-toggle>
+      <v-divider vertical class="mx-2"></v-divider>
+
       <v-btn-toggle v-model="tools.sortBy">
         <v-btn flat :value="'distance'"><v-icon>mdi-map-marker-distance</v-icon></v-btn>
         <v-btn flat :value="'name'"><v-icon>mdi-sort-alphabetical</v-icon></v-btn>
@@ -73,6 +78,8 @@ export default {
           { value: 'P', text: 'P' },
           { value: 'S', text: 'S' }
         ],
+        focusComponent: 0,
+        focusComponentOption: [],
         phase: null,
         sameScale: true,
         filter: null,
@@ -95,8 +102,9 @@ export default {
         ]
       },
 
+      uncertaintyList: [ null, 0.05, 0.2, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 99.0 ],
+
       // state variables
-      dirty: true,
       picksDirty: false,
       keyDownBinded: false,
       horizontalDownloadStatus: '',
@@ -124,7 +132,8 @@ export default {
         view: {},
         callback: {
           updatePick: (ev) => this.handleUpdatePick(ev),
-          draw: view => this.list.setSelectedWaveformWindow(view)
+          draw: view => this.list.setSelectedWaveformWindow(view),
+          waveformFocus: index => this.tools.focusComponent = index
         }
       },
       listOpt: {
@@ -159,7 +168,24 @@ export default {
         movePickLineRight () { this.picker.movePickLine({ direction: 'right', fast: false }) },
         moveFastPickLineRight () { this.picker.movePickLine({ direction: 'right', fast: true }) },
         movePickLineLeft () { this.picker.movePickLine({ direction: 'left', fast: false }) },
-        moveFastPickLineLeft () { this.picker.movePickLine({ direction: 'left', fast: true }) }
+        moveFastPickLineLeft () { this.picker.movePickLine({ direction: 'left', fast: true }) },
+        xZoomIn () { this.picker != null && this.picker.xZoomIn() },
+        xZoomOut () { this.picker != null && this.picker.xZoomOut() },
+        yZoomIn () { this.picker != null && this.picker.yZoomIn() },
+        yZoomOut () { this.picker != null && this.picker.yZoomOut() },
+        setFocusComponentZ () { this.tools.focusComponent = 0 },
+        setFocusComponentN () { this.tools.focusComponent = 1 },
+        setFocusComponentE () { this.tools.focusComponent = 2 },
+        setTimeUncertainty0 () { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[0]) },
+        setTimeUncertainty1 () { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[1]) },
+        setTimeUncertainty2 () { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[2]) },
+        setTimeUncertainty3 () { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[3]) },
+        setTimeUncertainty4 () { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[4]) },
+        setTimeUncertainty5 () { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[5]) },
+        setTimeUncertainty6 () { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[6]) },
+        setTimeUncertainty7 () { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[7]) },
+        setTimeUncertainty8 () { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[8]) },
+        setTimeUncertainty9 () { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[9]) }
       }
     }
   },
@@ -177,20 +203,20 @@ export default {
   },
 
   watch: {
-    'tools.phase': function(val) {
+    'tools.phase': function (val) {
       this.blurActiveElement()
       if (this.picker != null) {
         this.picker.setPickerPhase(val)
       }
     },
-    'tools.sameScale': function(val) {
+    'tools.sameScale': function (val) {
       this.blurActiveElement()
       if (this.list != null) {
         this.picker.opt.equalScale = val
         this.picker.draw()
       }
     },
-    'tools.filter': function(val) {
+    'tools.filter': function (val) {
       this.blurActiveElement()
       if (val && this.picker != null && this.list != null) {
         this.applyFilter()
@@ -200,7 +226,7 @@ export default {
         this.resetFilter()
       }
     },
-    'tools.alignment': function(val) {
+    'tools.alignment': function (val) {
       this.blurActiveElement()
       if (this.picker != null && this.list != null) {
         this.list.setTimeAlignment(val)
@@ -209,7 +235,13 @@ export default {
         this.picker.draw()
       }
     },
-    'tools.sortBy': function(val) {
+    'tools.focusComponent': function (val, oldVal) {
+      this.blurActiveElement()
+      if (this.picker != null && val != oldVal) {
+        this.picker.setFocusWaveform(val)
+      }
+    },
+    'tools.sortBy': function (val) {
       this.blurActiveElement()
       if (this.list != null) {
         if (val == 'name') {
@@ -219,70 +251,62 @@ export default {
         }
       }
     },
-    'tools.rotation': function() {
+    'tools.rotation': function () {
       this.blurActiveElement()
       if (this.picker != null) {
         this.handleWaveformClick(this.picker.waveforms[0].opt, true)
       }
-    },
-    origin: function(val) {
-      this.dirty = true
     }
   },
 
   mounted () {
     this.picksDirty = false
-    if (this.dirty) {
-      this.dirty = false
-      // this.reset()
-      let stationDistanceMap = {}
-      for (let a of this.origin.arrival) {
-        let netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
-        stationDistanceMap[netsta] = a.distance
-      }
-      this.getTTT(stationDistanceMap, () => {
-        let [mainWfidList, horizontalWfidList] = this.processArrival()
-        this.$store.dispatch('setLoading', { value: true, text: `Loading waveforms... (${mainWfidList.length + horizontalWfidList.length} channels)` })
-        this.downloadWaveforms(
-          mainWfidList,
-          st => this.plotWaveforms(st),
-          () => {
-            // this.$notify.info({ message: 'Waveform list is loaded.' })
-            console.log('Waveform list is loaded.');
-            this.disableLoadAdditionalStation = false
-          }
-        )
-        this.downloadWaveforms(
-          horizontalWfidList,
-          st => this.handleHorizontalWaveforms(st),
-          () => {
-            // this.$notify.info({ message: 'All waveforms loading is complete.' })
-            console.log('All waveforms loading is complete.');
-          }
-        )
-      })
-    } else {
-      this.updatePicksWeightAndResidual()
-    }
-    this.redraw()
     if (!this.keyDownBinded) {
       this.keyDownBinded = true
-      document.body.addEventListener('keydown', ev => this.handleKeyDown(ev))
+      document.body.addEventListener('keydown', this.handleKeyDown)
     }
+    let stationDistanceMap = {}
+    for (let a of this.origin.arrival) {
+      let netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
+      stationDistanceMap[netsta] = a.distance
+    }
+    this.getTTT(stationDistanceMap, () => {
+      let [mainWfidList, horizontalWfidList] = this.processArrival()
+      this.$store.dispatch('setLoading', { value: true, text: `Loading waveforms... (${mainWfidList.length + horizontalWfidList.length} channels)` })
+      this.downloadWaveforms(
+        mainWfidList,
+        st => this.plotWaveforms(st),
+        () => {
+          // this.$notify.info({ message: 'Waveform list is loaded.' })
+          console.log('Waveform list is loaded.');
+          this.disableLoadAdditionalStation = false
+        }
+      )
+      this.downloadWaveforms(
+        horizontalWfidList,
+        st => this.handleHorizontalWaveforms(st),
+        () => {
+          // this.$notify.info({ message: 'All waveforms loading is complete.' })
+          console.log('All waveforms loading is complete.');
+        }
+      )
+    })
   },
 
   beforeDestroy () {
     if (this.xhr.length > 0) {
-      this.dirty = true
       for (let xhr of this.xhr) {
         xhr.abort()
       }
     }
-    if (this.picks == null && this.ttt == null) {
-      this.dirty = true
-      return
+    document.body.removeEventListener('keydown', this.handleKeyDown)
+    if (this.picker != null) {
+      this.picker.destroy()
     }
-    if (this.picksDirty == false) {
+    if (this.list != null) {
+      this.list.destroy()
+    }
+    if (this.picks == null && this.ttt == null || this.picksDirty == false) {
       return
     }
     let arrivals = []
@@ -302,7 +326,7 @@ export default {
           time_residual: p.residual,
           takeoff_angle: p.takeoff,
           time_weight: p.weight,
-          _traveltime: new Date(pTime - this.origin.time._value),
+          _traveltime: new Date(pTime.getTime() - this.origin.time._value),
           _pick: {
             public_id: p.id,
             evaluation_mode: p.mode,
@@ -310,7 +334,12 @@ export default {
             polarity: p.polarity,
             _seedid: seedid,
             _fdsnid: seedid.replace('..', '.--.'),
-            time: { value: pTime.toISOString(), _value: pTime },
+            time: {
+              value: pTime.toISOString(),
+              _value: pTime,
+              lower_uncertainty: p.lower_uncertainty,
+              upper_uncertainty: p.upper_uncertainty
+            },
             waveform_id: {
               network_code: net,
               station_code: sta,
@@ -321,7 +350,7 @@ export default {
         })
       }
     }
-    this.$emit('picker-arrival', arrivals)
+    this.$store.dispatch('pickerData', arrivals)
   },
 
   methods: {
@@ -350,14 +379,6 @@ export default {
       }
       for (let action of bindedAction) {
         this.shortcutAction[action].call(this, ev)
-      }
-    },
-
-    updatePicksWeightAndResidual () {
-      for (let a of this.origin.arrival) {
-        let p = this.picks[a._pick._seedid].find(x => x.id == a.pick_id)
-        p.weight = a.time_weight
-        p.residual = a.time_residual
       }
     },
 
@@ -543,6 +564,8 @@ export default {
           mode: a._pick.evaluation_mode,
           polarity: a._pick.polarity,
           time: a._pick.time._value.getTime(),
+          lower_uncertainty: a._pick.time.lower_uncertainty,
+          upper_uncertainty: a._pick.time.upper_uncertainty,
           residual: a.time_residual,
           weight: a.time_weight,
           takeoff: a.takeoff_angle
@@ -644,7 +667,7 @@ export default {
       // console.log(ev);
       if (ev.action == 'add') {
         for (let p of ev.picks) {
-          p.id = utils.getId('Pick')
+          p.id = this.$store.getters.getId('Pick')
         }
       }
       this.list.draw()
@@ -802,6 +825,9 @@ export default {
       this.applyFilter(this.picker.waveforms)
       this.picker.setFilterState(filterState)
       this.picker.setPickerPhase(phase)
+      this.tools.focusComponentOption = wfList.map(x => x.id.slice(-1))
+      this.picker.setFocusWaveform(this.tools.focusComponent)
+      this.picker.updatePickLine()
     },
 
     setListWaveforms (wfList) {

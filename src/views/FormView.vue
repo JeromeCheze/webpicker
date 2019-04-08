@@ -10,17 +10,17 @@
             <v-flex xs12 md6 class="pa-3">
               <v-menu offset-y v-model="startMenu">
                 <template v-slot:activator="{ on }">
-                  <v-text-field v-on="on" v-model="form.starttime" label="Start" prepend-icon="mdi-calendar"></v-text-field>
+                  <v-text-field v-on="on" v-model="form.start" label="Start" prepend-icon="mdi-calendar"></v-text-field>
                 </template>
-                <v-date-picker v-model="form.starttime" :allowed-dates="allowedStartDate"></v-date-picker>
+                <v-date-picker v-model="form.start" :allowed-dates="allowedStartDate"></v-date-picker>
               </v-menu>
             </v-flex>
             <v-flex xs12 md6 class="pa-3">
               <v-menu offset-y v-model="endMenu">
                 <template v-slot:activator="{ on }">
-                  <v-text-field v-on="on" v-model="form.endtime" label="End" prepend-icon="mdi-calendar"></v-text-field>
+                  <v-text-field v-on="on" v-model="form.end" label="End" prepend-icon="mdi-calendar"></v-text-field>
                 </template>
-                <v-date-picker v-model="form.endtime" :allowed-dates="allowedEndDate"></v-date-picker>
+                <v-date-picker v-model="form.end" :allowed-dates="allowedEndDate"></v-date-picker>
               </v-menu>
             </v-flex>
           </v-layout>
@@ -88,12 +88,12 @@ export default {
 
     allowedStartDate (v) {
       let start = new Date(v).getTime()
-      let end = new Date(this.form.endtime).getTime()
+      let end = new Date(this.form.end).getTime()
       return start < end
     },
 
     allowedEndDate (v) {
-      let start = new Date(this.form.starttime).getTime()
+      let start = new Date(this.form.start).getTime()
       let end = new Date(v).getTime()
       let now = new Date(new Date().toISOString().slice(0, 10)).getTime() + 86400e3
       return end > start && end <= now
@@ -128,24 +128,14 @@ export default {
     },
 
     handleSubmit () {
-      this.$store.dispatch('setLoading', { value: true, text: 'Loading events...' })
-      let args = {}
-      for (let [k, v] of Object.entries(this.form)) {
-        if (v != null) {
-          args[k] = v
-        }
+      let query = Object.assign({}, this.form)
+      if (query.minmag == null) {
+        delete query.minmag
       }
-      utils.ajax({
-        method: 'GET',
-        url: 'fdsnws/event/1/query',
-        args: args,
-        type: 'document'
-      }).then(qml => {
-        let events = utils.parseQuakeML(qml)
-        this.$store.dispatch('eventList', events)
-        this.$router.push({ name: 'List' })
-        this.$store.dispatch('setLoading', { value: false })
-      })
+      if (query.maxmag == null) {
+        delete query.maxmag
+      }
+      this.$router.push({ name: 'List', query })
     }
 
     // resetForm () {

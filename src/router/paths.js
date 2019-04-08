@@ -7,7 +7,8 @@ export default [
   {
     path: '/list',
     name: 'List',
-    view: 'ListView'
+    view: 'ListView',
+    props: true
   },
   {
     path: '/event/:code',
