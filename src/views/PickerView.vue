@@ -294,6 +294,7 @@ export default {
   },
 
   beforeDestroy () {
+    this.$store.dispatch('setLoading', { value: false })
     if (this.xhr.length > 0) {
       for (let xhr of this.xhr) {
         xhr.abort()
@@ -590,8 +591,8 @@ export default {
       return [mainWfidList, horizontalWfidList]
     },
 
-    handleHorizontalWaveforms (st) {
-      for (let tr of st.trace) {
+    handleHorizontalWaveforms (traceList) {
+      for (let tr of traceList) {
         let wf = this.getWaveformObject(tr)
         this.horizontalWaveformCache[tr.id.replace('..', '.--.')] = wf
       }
@@ -601,10 +602,22 @@ export default {
       if (wfidList.length == 0) {
         return
       }
+      let cache = this.$store.state.waveformCache
       let [start, end] = this.getTimeWindow()
+      let cacheKey = `${start.slice(0, 16)}_${end.slice(0, 16)}`
+      let traceList = []
+      let notCached = []
+      for (let fdsnid of wfidList.map(x => x)) {
+        if (cache[fdsnid] == null || cache[fdsnid][cacheKey] == null) {
+          notCached.push(fdsnid)
+        } else {
+          traceList.push(cache[fdsnid][cacheKey])
+          wfidList.splice(wfidList.indexOf(fdsnid), 1)
+        }
+      }
       let chunks = []
-      for (let i = 0; i < wfidList.length; i += 10) {
-        chunks.push(wfidList.slice(i, i + 10))
+      for (let i = 0; i < notCached.length; i += 10) {
+        chunks.push(notCached.slice(i, i + 10))
       }
       let downloader = (i, chunks) => {
         let chunk = chunks[i++]
@@ -624,9 +637,15 @@ export default {
           for (let tr of st.trace) {
             let fdsnid = tr.id.replace('..', '.--.')
             wfidList.splice(wfidList.indexOf(fdsnid), 1)
+            if (cache[fdsnid] == null) {
+              cache[fdsnid] = {}
+            }
+            cache[fdsnid][cacheKey] = tr
+            traceList.push(tr)
           }
           if (callback != null) {
-            callback.call(null, st)
+            callback.call(null, traceList)
+            traceList = []
           }
           if (i < chunks.length) {
             downloader(i, chunks)
@@ -646,7 +665,16 @@ export default {
           }
         })
       }
-      downloader(0, chunks)
+      if (chunks.length == 0) {
+        if (callback != null) {
+          callback.call(null, traceList)
+        }
+        if (complete != null) {
+          complete.call()
+        }
+      } else {
+        downloader(0, chunks)
+      }
     },
 
     getHorizontalIds (verticalId) {
@@ -874,13 +902,13 @@ export default {
       this.setPickerWaveforms(wfList)
     },
 
-    plotWaveforms (st) {
+    plotWaveforms (traceList) {
       this.$store.dispatch('setLoading', { value: false })
       let wfList = []
       if (this.list != null) {
         wfList = this.listOpt.waveforms
       }
-      for (let tr of st.trace) {
+      for (let tr of traceList) {
         if (tr.id.slice(-1) != 'Z') {
           let wf = this.getWaveformObject(tr)
           this.horizontalWaveformCache[tr.id.replace('..', '.--.')] = wf

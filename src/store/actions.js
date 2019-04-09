@@ -41,7 +41,7 @@ export const setFormValues = ({ commit }, data) => {
 }
 
 export const pickerData = ({ state, commit, getters }, data) => {
-  let o = JSON.parse(JSON.stringify(state.currentOrigin))
+  let o = Object.assign({}, state.currentOrigin)
   o._not_committed = true
   o._is_dirty = true
   o.public_id = getters.getId('Origin')

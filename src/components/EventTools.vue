@@ -1,19 +1,19 @@
 <template>
-  <div class="toolbar">
+  <v-footer :value="true" fixed :height="40">
     <v-btn
       :color="origin._is_dirty ? 'orange' : 'white'"
       @click="handleRelocateClick"
-      small>Relocate</v-btn>
+      small>RELOCATE</v-btn>
     <v-btn
       :color="event.preferred_magnitude_id == null ? 'orange' : 'white'"
       @click="handleComputeMagnitudeClick"
-      small>Compute magnitudes</v-btn>
+      small>COMPUTE MAGNITUDES</v-btn>
     <v-menu v-model="commitPopover" bottom offset-y :close-on-content-click="false">
       <template v-slot:activator="{ on }">
         <v-btn
           v-on="on"
           :color="origin._not_committed ? 'orange' : 'white'"
-          small>Commit</v-btn>
+          small>COMMIT</v-btn>
       </template>
       <v-card class="pa-3">
         <v-select
@@ -38,7 +38,7 @@
         <v-btn small color="primary" @click="handleCommitClick">Commit</v-btn>
       </v-card>
     </v-menu>
-  </div>
+  </v-footer>
 </template>
 
 <script>
@@ -215,6 +215,7 @@ export default {
         this.$store.dispatch('setLoading', { value: false })
         if (data.return_code == 0) {
           // o._not_committed = false
+          this.commitPopover = false
           this.$emit('need-init')
           // this.handleSelectEvent(this.currentEvent.public_id)
         } else {
