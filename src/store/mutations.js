@@ -61,7 +61,7 @@ export const SET_SETTINGS = (state, data) => {
       stored[k] = v
     }
   }
-  localStorage.setItem('settings', stored)
+  localStorage.setItem('settings', JSON.stringify(stored))
 }
 
 export const MERGE_INVENTORY = (state, data) => {

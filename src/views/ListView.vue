@@ -1,8 +1,8 @@
 <template>
   <v-card>
     <v-tabs v-model="activeTab" right>
-      <v-tab>List</v-tab>
-      <v-tab>Map</v-tab>
+      <v-tab><v-icon>mdi-view-list</v-icon></v-tab>
+      <v-tab><v-icon>mdi-map</v-icon></v-tab>
       <v-tab-item>
         <v-data-table :headers="tableHeader" :items="tableData" :pagination.sync="pagination">
           <template v-slot:items="props">
@@ -27,6 +27,44 @@
         <div class="list-view__map-canvas"></div>
       </v-tab-item>
     </v-tabs>
+    <v-bottom-sheet v-model="bottomSheet">
+      <v-card class="pa-3">
+        <table v-if="mapSelectedEvent != null" class="list-view__map-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>M</th>
+              <th>MT</th>
+              <th>Ph.</th>
+              <th>Lat</th>
+              <th>Lon</th>
+              <th>Depth</th>
+              <th>Mode</th>
+              <th>Type</th>
+              <th>Region</th>
+              <th>Author</th>
+              <th>ID</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr @click="handleRowClick({ id: mapSelectedEvent.public_id })">
+              <td>{{ mapSelectedEvent._po.time._pretty }}</td>
+              <td>{{ mapSelectedEvent._pm ? mapSelectedEvent._pm.mag._pretty : '--' }}</td>
+              <td>{{ mapSelectedEvent._pm ? mapSelectedEvent._pm.type : '--' }}</td>
+              <td>{{ mapSelectedEvent._po.quality.used_phase_count }}</td>
+              <td>{{ mapSelectedEvent._po.latitude._pretty }}</td>
+              <td>{{ mapSelectedEvent._po.longitude._pretty }}</td>
+              <td>{{ mapSelectedEvent._po.depth._pretty }}</td>
+              <td>{{ mapSelectedEvent._po.evaluation_mode == 'manual' ? 'M' : 'A' }}</td>
+              <td>{{ mapSelectedEvent.type ? mapSelectedEvent.type : '' }}</td>
+              <td>{{ mapSelectedEvent.description[0].text }}</td>
+              <td>{{ mapSelectedEvent._po.creation_info.author }}</td>
+              <td>{{ mapSelectedEvent.public_id }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </v-card>
+    </v-bottom-sheet>
   </v-card>
 </template>
 
@@ -63,7 +101,10 @@ export default {
         totalItems: 0
       },
       tableData: [],
-      map: null
+      map: null,
+      bottomSheet: false,
+      mapSelectedEvent: null,
+      markerMap: {}
       // height: 500
     }
   },
@@ -149,13 +190,25 @@ export default {
             color: e._po.evaluation_mode == 'manual' ? 'lime' : 'red'
           })
         }
+        this.markerMap[e.public_id] = m
+        m.bindPopup(e.public_id)
+        m.on('click', () => this.handleMarkerClick(e))
         m.addTo(map)
       }
       map.fitBounds(bounds)
+      if (this.$store.state.currentEvent != null) {
+        this.handleMarkerClick(this.$store.state.currentEvent)
+      }
     },
 
     tableRowClassName (row) {
       return this.$store.state.currentEvent != null && this.$store.state.currentEvent.public_id == row.id ? 'selected-event-row' : ''
+    },
+
+    handleMarkerClick(e) {
+      this.markerMap[e.public_id].openPopup()
+      this.mapSelectedEvent = e
+      this.bottomSheet = true
     },
 
     handleRowClick (row) {
@@ -192,5 +245,10 @@ export default {
 }
 .list-view__map-canvas {
   height: 80vh;
+  z-index: 1;
 }
+.list-view__map-table {width: 100%;}
+.list-view__map-table tr:hover {background-color: #d1edf5; cursor: pointer;}
+.list-view__map-table th, td {padding: 4px; text-align: center;}
+.list-view__map-table th {font-weight: bold; background: #efefef;}
 </style>

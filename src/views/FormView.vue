@@ -135,6 +135,7 @@ export default {
       if (query.maxmag == null) {
         delete query.maxmag
       }
+      this.$store.dispatch('eventList', [])
       this.$router.push({ name: 'List', query })
     }
 

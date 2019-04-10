@@ -1,110 +1,165 @@
 <template>
   <div>
     <h1>Settings</h1>
-    <div v-for="(form, mainKey) in formStruct">
-      <h4>{{ form.label }}</h4>
-      <div class="field" v-for="(field, subKey) in form.fields">
-        <div class="label">{{ field.label }}</div>
-        <component :is="field.component" v-model="field.value" v-bind="field.props"></component>
-        <el-button
-          v-if="field.value != field.default"
-          type="text" size="mini"
-          @click="handleResetParameter(mainKey, subKey)">reset</el-button>
+    <div class="my-3">
+      Picker color mode
+      <v-btn @click="handleDarkModeClick" dark small>dark</v-btn>
+      <v-btn @click="handleLightModeClick" light small>light</v-btn>
+    </div>
+    <div v-for="(form, mainKey) in formStruct" class="my-3">
+      <h3>{{ form.label }}</h3>
+      <div class="setting-view__field" v-for="(field, subKey) in form.fields">
+        <div class="setting-view__field--input">
+          <keybinding-field
+            v-if="field.component == 'keybinding-field'"
+            v-model="field.value"
+            :key-value="currentShortcut"
+            v-bind="field.props"></keybinding-field>
+          <component
+            v-else
+            :is="field.component"
+            v-model="field.value"
+            v-bind="field.props"></component>
+        </div>
+        <div class="setting-view__field--reset">
+          <v-btn
+            v-if="field.value != field.default"
+            @click="handleResetParameter(mainKey, subKey)"
+            color="primary" small flat>reset</v-btn>
+        </div>
       </div>
     </div>
+    <div></div>
     <div class="text-center">
-      <el-button type="primary" size="medium" @click="handleSaveSettings">Save</el-button>
+      <v-btn color="primary" @click="handleSaveSettings">Save</v-btn>
     </div>
   </div>
 </template>
 
 <script>
+import utils from '@/utils/utils'
+
 export default {
+
   props: ['value'],
+
   data () {
     let formStruct = {
       pickerColor: {
         label: 'Picker colors',
         fields: {
           amplitudeValue: {
-            label: 'Text amplitude value',
-            component: 'el-color-picker',
-            props: {}
+            component: 'color-picker',
+            props: {
+              label: 'Text amplitude value',
+              format: 'hex'
+            }
           },
           background: {
-            label: 'Waveform background',
-            component: 'el-color-picker',
-            props: { 'show-alpha': true }
+            component: 'color-picker',
+            props: {
+              label: 'Waveform background',
+              format: 'rgba'
+            }
           },
           backgroundEven: {
-            label: 'Waveform background even',
-            component: 'el-color-picker',
-            props: { 'show-alpha': true }
+            component: 'color-picker',
+            props: {
+              label: 'Waveform background even',
+              format: 'rgba'
+            }
           },
           grid: {
-            label: 'Grid',
-            component: 'el-color-picker',
-            props: { 'show-alpha': true }
+            component: 'color-picker',
+            props: {
+              label: 'Grid',
+              format: 'rgba'
+            }
+
           },
           selected: {
-            label: 'Waveform selected',
-            component: 'el-color-picker',
-            props: { 'show-alpha': true }
+            component: 'color-picker',
+            props: {
+              label: 'Waveform selected',
+              format: 'rgba'
+            }
           },
           selectedWindow: {
-            label: 'Selected time window',
-            component: 'el-color-picker',
-            props: { 'show-alpha': true }
+            component: 'color-picker',
+            props: {
+              label: 'Selected time window',
+              format: 'rgba'
+            }
           },
           border: {
-            label: 'Border',
-            component: 'el-color-picker',
-            props: {}
+            component: 'color-picker',
+            props: {
+              label: 'Border',
+              format: 'hex'
+            }
           },
           text: {
-            label: 'X axis text',
-            component: 'el-color-picker',
-            props: {}
+            component: 'color-picker',
+            props: {
+              label: 'X axis text',
+              format: 'hex'
+            }
           },
           labelBackground: {
-            label: 'Label background',
-            component: 'el-color-picker',
-            props: { 'show-alpha': true }
+            component: 'color-picker',
+            props: {
+              label: 'Label background',
+              format: 'rgba'
+            }
           },
           labelText: {
-            label: 'Label text',
-            component: 'el-color-picker',
-            props: {}
+            component: 'color-picker',
+            props: {
+              label: 'Label text',
+              format: 'hex'
+            }
           },
           line: {
-            label: 'Line',
-            component: 'el-color-picker',
-            props: {}
+            component: 'color-picker',
+            props: {
+              label: 'Line',
+              format: 'hex'
+            }
           },
           lineBar: {
-            label: 'Line bar',
-            component: 'el-color-picker',
-            props: {}
+            component: 'color-picker',
+            props: {
+              label: 'Line bar',
+              format: 'hex'
+            }
           },
           avgLine: {
-            label: 'Average line',
-            component: 'el-color-picker',
-            props: { 'show-alpha': true }
+            component: 'color-picker',
+            props: {
+              label: 'Average line',
+              format: 'rgba'
+            }
           },
           theoretical: {
-            label: 'Pick theoretical',
-            component: 'el-color-picker',
-            props: {}
+            component: 'color-picker',
+            props: {
+              label: 'Pick theoretical',
+              format: 'hex'
+            }
           },
           automatic: {
-            label: 'Pick automatic',
-            component: 'el-color-picker',
-            props: {}
+            component: 'color-picker',
+            props: {
+              label: 'Pick automatic',
+              format: 'hex'
+            }
           },
           manual: {
-            label: 'Pick manual',
-            component: 'el-color-picker',
-            props: {}
+            component: 'color-picker',
+            props: {
+              label: 'Pick manual',
+              format: 'hex'
+            }
           }
         }
       },
@@ -112,14 +167,16 @@ export default {
         label: 'Picker sizes',
         fields: {
           pickerWaveformHeight: {
-            label: 'Picker waveform height [px]',
-            component: 'el-input-number',
-            props: { min: 0, step: 1 }
+            component: 'number-field',
+            props: {
+              label: 'Picker waveform height [px]'
+            }
           },
           listWaveformHeight: {
-            label: 'List waveform height [px]',
-            component: 'el-input-number',
-            props: { min: 0, step: 1 }
+            component: 'number-field',
+            props: {
+              label: 'List waveform height [px]'
+            }
           }
         }
       },
@@ -127,100 +184,307 @@ export default {
         label: 'Picker key binding',
         fields: {
           nextStation: {
-            label: 'Next station',
-            component: 'el-input',
-            props: {}
+            component: 'keybinding-field',
+            props: {
+              label: 'Next station'
+            }
           },
           previousStation: {
-            label: 'Previous station',
-            component: 'el-input',
-            props: {}
+            component: 'keybinding-field',
+            props: {
+              label: 'Previous station'
+            }
           },
           setPolarityPositive: {
-            label: 'Set polarity positive',
-            component: 'el-input',
-            props: {}
+            component: 'keybinding-field',
+            props: {
+              label: 'Set polarity positive'
+            }
           },
           setPolarityNegative: {
-            label: 'Set polarity negative',
-            component: 'el-input',
-            props: {}
+            component: 'keybinding-field',
+            props: {
+              label: 'Set polarity negative'
+            }
           },
           setNoPolarity: {
-            label: 'Set no polarity',
-            component: 'el-input',
-            props: {}
+            component: 'keybinding-field',
+            props: {
+              label: 'Set no polarity'
+            }
+          },
+          leavePickingMode: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Leave picking mode'
+            }
           },
           setPickerPhaseP: {
-            label: 'Set picker phase P',
-            component: 'el-input',
-            props: {}
+            component: 'keybinding-field',
+            props: {
+              label: 'Set picker phase P'
+            }
           },
           setPickerPhaseS: {
-            label: 'Set picker phase S',
-            component: 'el-input',
-            props: {}
+            component: 'keybinding-field',
+            props: {
+              label: 'Set picker phase S'
+            }
           },
           deletePick: {
-            label: 'Delete pick',
-            component: 'el-input',
-            props: {}
+            component: 'keybinding-field',
+            props: {
+              label: 'Delete pick'
+            }
           },
           alignToOrigin: {
-            label: 'Align waveforms to origin',
-            component: 'el-input',
-            props: {}
+            component: 'keybinding-field',
+            props: {
+              label: 'Align waveforms to origin'
+            }
           },
           alignToP: {
-            label: 'Align waveforms to P',
-            component: 'el-input',
-            props: {}
+            component: 'keybinding-field',
+            props: {
+              label: 'Align waveforms to P'
+            }
           },
           alignToS: {
-            label: 'Align waveforms to S',
-            component: 'el-input',
-            props: {}
+            component: 'keybinding-field',
+            props: {
+              label: 'Align waveforms to S'
+            }
           },
           toggleFilter: {
-            label: 'Toggle filter',
-            component: 'el-input',
-            props: {}
+            component: 'keybinding-field',
+            props: {
+              label: 'Toggle filter'
+            }
           },
           toggleEqualScale: {
-            label: 'Toggle equal scale',
-            component: 'el-input',
-            props: {}
+            component: 'keybinding-field',
+            props: {
+              label: 'Toggle equal scale'
+            }
+          },
+          createPick: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Create pick'
+            }
+          },
+          movePickLineRight: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Move pickline to the right'
+            }
+          },
+          moveFastPickLineRight: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Move fast the pickline to the right'
+            }
+          },
+          movePickLineLeft: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Move pickline to the left'
+            }
+          },
+          moveFastPickLineLeft: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Move fast the pickline to the left'
+            }
+          },
+          xZoomIn: {
+            component: 'keybinding-field',
+            props: {
+              label: 'X zoom in '
+            }
+          },
+          xZoomOut: {
+            component: 'keybinding-field',
+            props: {
+              label: 'X zoom out'
+            }
+          },
+          yZoomIn: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Y zoom in'
+            }
+          },
+          yZoomOut: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Y zoom out'
+            }
+          },
+          setFocusComponentZ: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Select component Z'
+            }
+          },
+          setFocusComponentN: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Select component N'
+            }
+          },
+          setFocusComponentE: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Select component E'
+            }
+          },
+          setTimeUncertainty0: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Set no time unvertainty'
+            }
+          },
+          setTimeUncertainty1: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Set time unvertainty level 1'
+            }
+          },
+          setTimeUncertainty2: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Set time unvertainty level 2'
+            }
+          },
+          setTimeUncertainty3: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Set time unvertainty level 3'
+            }
+          },
+          setTimeUncertainty4: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Set time unvertainty level 4'
+            }
+          },
+          setTimeUncertainty5: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Set time unvertainty level 5'
+            }
+          },
+          setTimeUncertainty6: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Set time unvertainty level 6'
+            }
+          },
+          setTimeUncertainty7: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Set time unvertainty level 7'
+            }
+          },
+          setTimeUncertainty8: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Set time unvertainty level 8'
+            }
+          },
+          setTimeUncertainty9: {
+            component: 'keybinding-field',
+            props: {
+              label: 'Set time unvertainty level 9'
+            }
           }
         }
       }
     }
-    for (let [key, field] of Object.entries(this.value)) {
-      let [mainKey, subKey] = key.split('.')
-      Object.assign(formStruct[mainKey].fields[subKey], field)
+    for (let [mainKey, form] of Object.entries(formStruct)) {
+      for (let [subKey, field] of Object.entries(form.fields)) {
+        let key = `${mainKey}.${subKey}`
+        field.value = this.$store.state.settings[key]
+        field.default = this.$store.state.defaultSettings[key]
+      }
     }
     return {
-      formStruct
+      formStruct,
+      currentShortcut: ''
     }
   },
+
+  mounted () {
+    document.body.addEventListener('keydown', this.handleKeyDown)
+  },
+
+  beforeDestroy () {
+    document.body.removeEventListener('keydown', this.handleKeyDown)
+  },
+
   methods: {
+
+    handleKeyDown (ev) {
+      this.currentShortcut = utils.shortcutString(ev)
+      console.log(this.currentShortcut);
+    },
+
+    handleDarkModeClick () {
+      for (let [k, v] of Object.entries(this.$store.state.defaultSettings)) {
+        let [mainKey, subKey] = k.split('.')
+        if (mainKey == 'darkPickerColor') {
+          this.formStruct['pickerColor'].fields[subKey].value = v
+        }
+      }
+    },
+
+    handleLightModeClick () {
+      let defaultSettings = this.$store.state.defaultSettings
+      for (let [k, v] of Object.entries(defaultSettings)) {
+        let [mainKey, subKey] = k.split('.')
+        if (mainKey == 'darkPickerColor') {
+          let key = `pickerColor.${subKey}`
+          this.formStruct['pickerColor'].fields[subKey].value = defaultSettings[key]
+        }
+      }
+    },
+
     handleResetParameter (mainKey, subKey) {
       let field = this.formStruct[mainKey].fields[subKey]
       field.value = field.default
     },
+
     handleSaveSettings () {
-      for (let [key, field] of Object.entries(this.value)) {
-        let [mainKey, subKey] = key.split('.')
-        field.value = this.formStruct[mainKey].fields[subKey].value
+      let result = {}
+      for (let [mainKey, form] of Object.entries(this.formStruct)) {
+        for (let [subKey, field] of Object.entries(form.fields)) {
+          let key = `${mainKey}.${subKey}`
+          result[key] = field.value
+        }
       }
-      this.$emit('input', this.value)
-      this.$emit('settings-updated')
+      this.$store.dispatch('setSettings', result)
     }
+
   }
 }
 </script>
 
 <style>
-.field, .field > * {
+.setting-view__field {
+  display: inline-block;
+  padding-right: 20px;
+  width: 30%;
+}
+.setting-view__field--input {
+  display: inline-block;
+  min-width: 100px;
+}
+.setting-view__field--reset {
+  display: inline-block;
+  width: 100px;
+}
+/*.field, .field > * {
   display: inline-block;
   vertical-align: middle;
 }
@@ -234,7 +498,7 @@ export default {
   width: 200px;
   text-align: right;
 }
-.field .el-input {
+.field .v-text-field {
   width: 130px;
-}
+}*/
 </style>

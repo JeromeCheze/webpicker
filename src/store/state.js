@@ -8,7 +8,7 @@ export default {
   root: '/',
 
   defaultSettings: settings,
-  settings,
+  settings: Object.assign({}, settings),
 
   loading: false,
   loadingMsg: '',
