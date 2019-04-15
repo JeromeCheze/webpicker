@@ -13,6 +13,8 @@ export default {
   loading: false,
   loadingMsg: '',
 
+  notificationList: [],
+
   eventList: [],
 
   currentEvent: null,

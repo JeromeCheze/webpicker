@@ -36,6 +36,12 @@
             </v-card-text>
           </v-card>
         </v-dialog>
+        <v-snackbar
+          v-for="notification in $store.state.notificationList"
+          v-model="notification.value"
+          :color="notification.color"
+          bottom right
+        >{{ notification.text }}</v-snackbar>
       </v-container>
     </v-content>
   </v-app>

@@ -4,6 +4,12 @@
       :color="origin._is_dirty ? 'orange' : 'white'"
       @click="handleRelocateClick"
       small>RELOCATE</v-btn>
+    <div class="event-tools__select-wrapper">
+      <v-select label="Locator" v-model="locator" :items="locatorOptions"></v-select>
+    </div>
+    <div class="event-tools__select-wrapper">
+      <v-select label="Profile" v-model="profile" :items="profileOptions"></v-select>
+    </div>
     <v-btn
       :color="event.preferred_magnitude_id == null ? 'orange' : 'white'"
       @click="handleComputeMagnitudeClick"
@@ -47,7 +53,13 @@ import utils from '@/utils/utils'
 export default {
 
   data () {
+    let locatorOptions = [ 'LOCSAT' ]
+    let profileOptions = [ 'iasp91' ]
     return {
+      locator: locatorOptions[0],
+      profile: profileOptions[0],
+      locatorOptions,
+      profileOptions,
       commitPopover: false,
       commitForm: {
         eventType: 'earthquake',
@@ -129,6 +141,10 @@ export default {
       utils.ajax({
         method: 'POST',
         url: this.$store.getters.getLink('relocate'),
+        args: {
+          locator: this.locator,
+          profile: this.profile
+        },
         dataMimeType: 'application/json',
         data: JSON.stringify([ e ]),
         type: 'json'
@@ -228,3 +244,11 @@ export default {
 
 }
 </script>
+
+<style lang="css">
+.event-tools__select-wrapper {
+  display: inline-block;
+  max-width: 200px;
+  margin-left: 5px;
+}
+</style>

@@ -699,9 +699,10 @@ export default class Waveform {
       min -= delta * .2;
       max += delta * .2;
       delta = max - min;
+      let amplitude = max == min ? 1 : max - min
       Object.assign(wf.drawOpt, {
         min: min, max : max,
-        yRatio: this.opt.size.height / (max - min)
+        yRatio: this.opt.size.height / amplitude
       });
     }
   }

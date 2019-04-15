@@ -1,8 +1,8 @@
 export const INITIALIZE = (state) => {
   let end = new Date(new Date().getTime() + 86400e3)
   let start = new Date(end - 86400e3 * 8)
-  state.form.starttime = start.toISOString().slice(0, 10)
-  state.form.endtime = end.toISOString().slice(0, 10)
+  state.form.start = start.toISOString().slice(0, 10)
+  state.form.end = end.toISOString().slice(0, 10)
 
   let storedSettings = localStorage.getItem('settings')
   state.settings = Object.assign(state.settings, storedSettings != null ? JSON.parse(storedSettings) : {})
@@ -44,6 +44,14 @@ export const SET_CURRENT_ORIGIN = (state, data) => {
 export const SET_LOADING = (state, data) => {
   state.loading = data.value
   state.loadingMsg = data.text || 'Loading...'
+}
+
+export const ADD_NOTIFICATION = (state, data) => {
+  let outdated = state.notificationList.filter(x => !x.value)
+  for (let notification of outdated) {
+    state.notificationList.splice(state.notificationList.indexOf(notification), 1)
+  }
+  state.notificationList.push({ text: data.text, value: true, color: data.color })
 }
 
 export const SET_INVENTORY = (state, data) => {

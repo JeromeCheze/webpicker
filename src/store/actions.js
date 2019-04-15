@@ -24,6 +24,10 @@ export const setLoading = ({ commit }, data) => {
   commit('SET_LOADING', data)
 }
 
+export const notify = ({ commit }, data) => {
+  commit('ADD_NOTIFICATION', data)
+}
+
 export const setInventory = ({ commit }, data) => {
   commit('SET_INVENTORY', data)
 }

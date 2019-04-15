@@ -8,7 +8,7 @@
         <v-flex xs12 md6>
           <v-layout wrap>
             <v-flex xs12 md6 class="pa-3">
-              <v-menu offset-y v-model="startMenu">
+              <v-menu offset-y :close-on-content-click="false" v-model="startMenu">
                 <template v-slot:activator="{ on }">
                   <v-text-field v-on="on" v-model="form.start" label="Start" prepend-icon="mdi-calendar"></v-text-field>
                 </template>
@@ -16,7 +16,7 @@
               </v-menu>
             </v-flex>
             <v-flex xs12 md6 class="pa-3">
-              <v-menu offset-y v-model="endMenu">
+              <v-menu offset-y :close-on-content-click="false" v-model="endMenu">
                 <template v-slot:activator="{ on }">
                   <v-text-field v-on="on" v-model="form.end" label="End" prepend-icon="mdi-calendar"></v-text-field>
                 </template>

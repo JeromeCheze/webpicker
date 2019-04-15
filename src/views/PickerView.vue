@@ -54,7 +54,7 @@
         hide-details
       ></v-overflow-btn>
     </v-toolbar>
-    <div class="picker-view__container--picker" :style="{ height: '410px' }"></div>
+    <div class="picker-view__container--picker"></div>
     <div class="picker-view__container--list"></div>
   </div>
 </template>
@@ -81,7 +81,7 @@ export default {
         focusComponent: 0,
         focusComponentOption: [],
         phase: null,
-        sameScale: true,
+        sameScale: false,
         filter: null,
         lastFilter: 'HP 1',
         alignment: 'O',
@@ -114,7 +114,7 @@ export default {
       // cache variables
       picks: {},
       ttt: null,
-      horizontalWaveformCache: {},
+      waveformCache: {},
       stationInfoMap: {},
 
       // instances
@@ -128,7 +128,7 @@ export default {
         container: '.picker-view__container--picker',
         // size: { height: 120 },
         waveforms: [],
-        equalScale: true,
+        equalScale: false,
         view: {},
         callback: {
           updatePick: (ev) => this.handleUpdatePick(ev),
@@ -277,8 +277,9 @@ export default {
         mainWfidList,
         st => this.plotWaveforms(st),
         () => {
+          this.$store.dispatch('notify', { color: 'info', text: 'Waveform list is loaded.' })
           // this.$notify.info({ message: 'Waveform list is loaded.' })
-          console.log('Waveform list is loaded.');
+          // console.log('Waveform list is loaded.');
           this.disableLoadAdditionalStation = false
         }
       )
@@ -286,8 +287,9 @@ export default {
         horizontalWfidList,
         st => this.handleHorizontalWaveforms(st),
         () => {
+          this.$store.dispatch('notify', { color: 'info', text: 'All waveforms loading is complete.' })
           // this.$notify.info({ message: 'All waveforms loading is complete.' })
-          console.log('All waveforms loading is complete.');
+          // console.log('All waveforms loading is complete.');
         }
       )
     })
@@ -397,12 +399,12 @@ export default {
       this.tools.rotation = 'ZNE',
       this.tools.lastFilter = this.tools.filterList[0].name
       this.tools.phase = null,
-      this.tools.sameScale = true,
+      this.tools.sameScale = false,
       this.tools.filter = null,
       this.tools.alignment = 'O',
       this.tools.sortBy = 'distance'
 
-      this.horizontalWaveformCache = {}
+      this.waveformCache = {}
       this.stationInfoMap = {}
       this.picks = null
       this.ttt = null
@@ -575,7 +577,7 @@ export default {
         if (mainWfidList.indexOf(zComponent) < 0) {
           mainWfidList.push(zComponent)
         }
-        for (let fdsnid of this.getHorizontalIds(zComponent)) {
+        for (let fdsnid of this.getHorizontalIds(zComponent).concat(this.getAuxiliaryIds(zComponent))) {
           if (i < 3) {
             // download horizontal components in main download for the 3 first arrivals
             if (mainWfidList.indexOf(fdsnid) < 0) {
@@ -594,7 +596,7 @@ export default {
     handleHorizontalWaveforms (traceList) {
       for (let tr of traceList) {
         let wf = this.getWaveformObject(tr)
-        this.horizontalWaveformCache[tr.id.replace('..', '.--.')] = wf
+        this.waveformCache[tr.id.replace('..', '.--.')] = wf
       }
     },
 
@@ -651,13 +653,14 @@ export default {
             downloader(i, chunks)
           } else {
             if (wfidList.length > 0) {
-              let content = wfidList.join('\n')
+              let content = wfidList.join(', ')
               // this.$notify.error({
               //   duration: 0,
               //   dangerouslyUseHTMLString: true,
               //   message: `These channels couldn't be retrieved:<ul>${content}</ul>`
               // })
-              console.log(`These channels couldn't be retrieved:\n${content}`);
+              this.$store.dispatch('notify', { color: 'error', text: `These channels couldn't be retrieved: ${content}` })
+              // console.log(`These channels couldn't be retrieved:\n${content}`);
             }
             if (complete != null) {
               complete.call()
@@ -679,7 +682,20 @@ export default {
 
     getHorizontalIds (verticalId) {
       let baseId = verticalId.replace('.--.', '..').slice(0, -1)
-      let ids = [ `${baseId}N`, `${baseId}E` ]
+      let ids = [ `${baseId}N`, `${baseId}E`, `${baseId}1`, `${baseId}2`, `${baseId}3` ]
+      let result = []
+      for (let id of ids) {
+        let cha = this.getChannel(id)
+        if (cha != null) {
+          result.push(id.replace('..', '.--.'))
+        }
+      }
+      return result
+    },
+
+    getAuxiliaryIds (verticalId) {
+      let baseId = verticalId.replace('.--.', '..').slice(0, -4)
+      let ids = [ `${baseId}.HDH` ]
       let result = []
       for (let id of ids) {
         let cha = this.getChannel(id)
@@ -705,7 +721,19 @@ export default {
       let result = []
       let horizontalIds = this.getHorizontalIds(wf.id)
       for (let fdsnid of horizontalIds) {
-        let cached = this.horizontalWaveformCache[fdsnid]
+        let cached = this.waveformCache[fdsnid]
+        if (cached != null) {
+          result.push(cached)
+        }
+      }
+      return result
+    },
+
+    getAuxiliaryWaveforms (wf) {
+      let result = []
+      let auxiliaryIds = this.getAuxiliaryIds(wf.id)
+      for (let fdsnid of auxiliaryIds) {
+        let cached = this.waveformCache[fdsnid]
         if (cached != null) {
           result.push(cached)
         }
@@ -772,7 +800,7 @@ export default {
               }
               stationDistanceMap[netsta] = degDistance
               wfidList.push(stationWf)
-              for (let wfid of this.getHorizontalIds(stationWf)) {
+              for (let wfid of this.getHorizontalIds(stationWf).concat(this.getAuxiliaryIds(stationWf))) {
                 wfidList.push(wfid)
               }
             }
@@ -780,8 +808,10 @@ export default {
         }
         console.log(wfidList);
         if (wfidList.length == 0) {
+          this.$store.dispatch('setLoading', { value: false })
           // this.$notify.info({ message: 'No additional station found in this range.' })
-          console.log('No additional station found in this range.');
+          this.$store.dispatch('notify', { color: 'info', text: 'No additional station found in this range.' })
+          // console.log('No additional station found in this range.');
           return
         }
         this.getTTT(stationDistanceMap, () => {
@@ -790,7 +820,8 @@ export default {
             st => this.plotWaveforms(st),
             () => {
               // this.$notify.info({ message: 'Loading additional station is complete.' })
-              console.log('Loading additional station is complete.');
+              this.$store.dispatch('notify', { color: 'info', text: 'Loading additional station is complete.' })
+              // console.log('Loading additional station is complete.');
               this.disableLoadAdditionalStation = false
             }
           )
@@ -845,7 +876,7 @@ export default {
       }
       let height = this.settings['pickerSize.pickerWaveformHeight']
       this.pickerOpt.color = this.getColorSettings()
-      this.pickerOpt.size = { height, wrapperMaxHeight: 3 * height + 40 }
+      this.pickerOpt.size = { height, wrapperMaxHeight: wfList.length * height + 40 }
       this.pickerOpt.equalScale = this.tools.sameScale,
       this.pickerOpt.view = view
       this.pickerOpt.waveforms = wfList
@@ -894,11 +925,11 @@ export default {
       }
       let wfList = []
       if (this.tools.rotation == 'ZNE') {
-        wfList = [wf].concat(this.getHorizontalWaveforms(wf))
+        wfList = [wf].concat(this.getHorizontalWaveforms(wf)).concat(this.getAuxiliaryWaveforms(wf))
       } else if (this.tools.rotation == 'ZRT') {
         wfList = [wf].concat(this.ne2rt(wf))
       }
-      this.tools.sameScale = true
+      this.tools.sameScale = false
       this.setPickerWaveforms(wfList)
     },
 
@@ -911,7 +942,7 @@ export default {
       for (let tr of traceList) {
         if (tr.id.slice(-1) != 'Z') {
           let wf = this.getWaveformObject(tr)
-          this.horizontalWaveformCache[tr.id.replace('..', '.--.')] = wf
+          this.waveformCache[tr.id.replace('..', '.--.')] = wf
         } else {
           wfList.push(this.getWaveformObject(tr))
         }

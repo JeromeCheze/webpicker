@@ -185,9 +185,9 @@ function processEventData(e) {
     o.creation_info._pretty_creation_time = o.creation_info._creation_time.toISOString().replace('T', ' ').substr(0, 19)
     let [lat, lon] = [o.latitude.value, o.longitude.value]
     o.latitude._pretty = lat > 0 ? `${lat.toFixed(2)}° N` : `${(-1*lat).toFixed(2)}° S`
-    o.latitude._pretty_uncertainty = `+/- ${(o.latitude.uncertainty).toFixed(1)} km`
+    o.latitude._pretty_uncertainty = o.latitude.uncertainty != null ? `+/- ${(o.latitude.uncertainty).toFixed(1)} km` : ''
     o.longitude._pretty = lon > 0 ? `${lon.toFixed(2)}° E` : `${(-1*lon).toFixed(2)}° W`
-    o.longitude._pretty_uncertainty = `+/- ${(o.longitude.uncertainty).toFixed(1)} km`
+    o.longitude._pretty_uncertainty = o.longitude.uncertainty != null ? `+/- ${(o.longitude.uncertainty).toFixed(1)} km` : ''
     o.depth._pretty = `${(o.depth.value/1000).toFixed(0)} km`
     o.depth._pretty_uncertainty = o.depth.uncertainty != null ? `+/- ${(o.depth.uncertainty/1000).toFixed(1)} km` : '(fixed)'
   }
