@@ -17,9 +17,9 @@ app = Flask(__name__)
 app.debug = True
 
 
-FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'catseis:8080')
-FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'catseis:8080')
-FDSNWS_DATASELECT_HOST = os.getenv('FDSNWS_DATASELECT_HOST', 'catseis.unice.fr:8000')
+FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'thufir.unice.fr:8080')
+FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'thufir.unice.fr:8080')
+FDSNWS_DATASELECT_HOST = os.getenv('FDSNWS_DATASELECT_HOST', 'encelade.unice.fr:8000')
 
 FDSNWS_EVENT = 'http://%s/fdsnws/event' % FDSNWS_EVENT_HOST
 FDSNWS_STATION = 'http://%s/fdsnws/station' % FDSNWS_STATION_HOST
@@ -28,10 +28,10 @@ FDSNWS_DATASELECT = 'http://%s/fdsnws/dataselect' % FDSNWS_DATASELECT_HOST
 # used for screloc :
 
 # generated with scxmldump -I
-SC3ML_INVENTORY_FILENAME = os.getenv('SC3ML_INVENTORY_FILENAME', '/home/cheze/catseis_inventory.xml')
+SC3ML_INVENTORY_FILENAME = os.getenv('SC3ML_INVENTORY_FILENAME', '/home/cheze/thufir_inventory.xml')
 
 # Generated with scxmldump -C
-SC3ML_CONFIG_FILENAME = os.getenv('SC3ML_CONFIG_FILENAME', '/home/cheze/catseis_config.xml')
+SC3ML_CONFIG_FILENAME = os.getenv('SC3ML_CONFIG_FILENAME', '/home/cheze/thufir_config.xml')
 
 SEISCOMP_ROOT = os.getenv('SEISCOMP_ROOT', '/home/cheze/seiscomp3/')
 SEISCOMP_PROGRAM = os.path.join(SEISCOMP_ROOT, 'bin/seiscomp')
@@ -47,7 +47,7 @@ XSL_SC3ML_TO_QML1_2 = {
 FDSNWS_BASE_URL = 'http://%s' % FDSNWS_DATASELECT_HOST
 
 # used for scdispatch :
-SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'catseis.unice.fr:4803')
+SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'thufir.unice.fr:4803')
 
 FDSN_EVENT_FORMAT = 'xml'
 

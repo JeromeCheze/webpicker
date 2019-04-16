@@ -6,6 +6,21 @@ export const INITIALIZE = (state) => {
 
   let storedSettings = localStorage.getItem('settings')
   state.settings = Object.assign(state.settings, storedSettings != null ? JSON.parse(storedSettings) : {})
+
+  state.author = localStorage.getItem('author')
+  if (state.author == null) {
+    state.authorDialog = true
+  }
+}
+
+export const SET_AUTHOR = (state, data) => {
+  state.author = data.author
+  if (data.remember) {
+    localStorage.setItem('author', data.author)
+  } else {
+    localStorage.removeItem('author')
+  }
+  state.authorDialog = false
 }
 
 export const SET_EVENT_LIST = (state, data) => {

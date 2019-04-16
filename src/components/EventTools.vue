@@ -1,5 +1,5 @@
 <template>
-  <v-footer :value="true" fixed :height="40">
+  <v-footer :value="true" fixed :height="70" :style="{ borderTop: '1px solid #ddd' }">
     <v-btn
       :color="origin._is_dirty ? 'orange' : 'white'"
       @click="handleRelocateClick"
@@ -80,19 +80,19 @@ export default {
           'not existing',
           'not reported',
           'earthquake',
+          'quarry blast',
+          'explosion',
           'anthropogenic event',
           'collapse',
           'cavity collapse',
           'mine collapse',
           'building collapse',
-          'explosion',
           'accidental explosion',
           'chemical explosion',
           'controlled explosion',
           'experimental explosion',
           'industrial explosion',
           'mining explosion',
-          'quarry blast',
           'road cut',
           'blasting levee',
           'nuclear explosion',
@@ -159,6 +159,7 @@ export default {
           let e = utils.parseQuakeML(qml)[0]
           console.log(e);
           let o = e.origin[0]
+          o.creation_info.author = this.$store.state.author
           o.evaluation_mode = 'manual'
           o._not_committed = true
           // keep only one not committed origin
@@ -249,6 +250,6 @@ export default {
 .event-tools__select-wrapper {
   display: inline-block;
   max-width: 200px;
-  margin-left: 5px;
+  margin-right: 10px;
 }
 </style>

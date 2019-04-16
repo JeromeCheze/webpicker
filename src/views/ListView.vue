@@ -74,8 +74,6 @@ import L from 'leaflet'
 
 export default {
 
-  props: [ 'start', 'end', 'minlat', 'maxlat', 'minlon', 'maxlon', 'mindepth', 'maxdepth', 'minmag', 'maxmag' ],
-
   data () {
     return {
       activeTab: 0,
@@ -159,6 +157,24 @@ export default {
 
   methods: {
 
+    getEventColor (e) {
+      if (['not existing', 'not reported', 'other event'].indexOf(e.type) >= 0) {
+        return [ 'black', 'black' ]
+      }
+      let strokeColor = e._po.evaluation_mode == 'manual' ? 'lime' : 'red'
+      if (e._pm == null) {
+        return [ 'blue', strokeColor ]
+      } else {
+        if (['explosion', 'quarry blast'].indexOf(e.type) >= 0) {
+          return ['yellow', strokeColor ]
+        } else if (e.type == 'earthquake') {
+          return [ 'lime', strokeColor ]
+        } else {
+          return [ 'transparent', strokeColor ]
+        }
+      }
+    },
+
     initMap () {
       let map = L.map(this.$el.querySelector('.list-view__map-canvas'), {trackResize: false, attributionControl: false})
       let worldtopomap = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
@@ -180,16 +196,14 @@ export default {
         let m
         let pos = [e._po.latitude.value, e._po.longitude.value]
         bounds.push(pos)
-        if (e._pm == null) {
-          m = L.circleMarker(pos, { radius: 10, weight: 1, color: 'gray', fillOpacity: 0.5 })
-        } else {
-          m = L.circleMarker(pos, {
-            radius: 4 + e._pm.mag.value * 2,
-            weight: 1,
-            fillOpacity: 0.5,
-            color: e._po.evaluation_mode == 'manual' ? 'lime' : 'red'
-          })
-        }
+        let [fillColor, color] = this.getEventColor(e)
+        m = L.circleMarker(pos, {
+          radius: e._pm == null ? 10 : 4 + e._pm.mag.value * 2,
+          weight: 2,
+          fillOpacity: 0.5,
+          color,
+          fillColor
+        })
         this.markerMap[e.public_id] = m
         m.bindPopup(e.public_id)
         m.on('click', () => this.handleMarkerClick(e))

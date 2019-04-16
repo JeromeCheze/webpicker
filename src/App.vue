@@ -15,20 +15,52 @@
           :disabled="$store.state.currentOrigin == null"
           :to="{ name: 'Picker' }"
           flat>Picker</v-btn>
-        <v-btn flat :to="{ name: 'Settings' }" icon>
-          <v-icon>mdi-settings-outline</v-icon>
-        </v-btn>
+        <v-menu v-model="toolbarMenu" offset-y>
+          <template v-slot:activator="{ on }">
+            <v-btn icon v-on="on"><v-icon>mdi-dots-vertical</v-icon></v-btn>
+          </template>
+          <v-list>
+            <v-list-tile v-if="$store.state.author != null" @click="handleChangeAuthorClick">
+              <v-icon left>mdi-account-switch</v-icon> Change author
+              <span class="caption ml-2 text-lighten-1">({{ $store.state.author }})</span>
+            </v-list-tile>
+            <v-list-tile :to="{ name: 'Settings' }">
+              <v-icon left>mdi-settings</v-icon> Settings
+            </v-list-tile>
+          </v-list>
+        </v-menu>
       </v-toolbar-items>
     </v-toolbar>
     <v-content>
       <v-container fluid>
         <router-view></router-view>
         <v-dialog
+          v-model="$store.state.authorDialog"
+          persistent
+          max-width="600px">
+          <v-card>
+            <v-card-title>
+              <span class="headline">Set author name</span>
+            </v-card-title>
+            <v-card-text>
+              <v-text-field label="Author" v-model="author"></v-text-field>
+              <v-checkbox label="Remember" v-model="remember"></v-checkbox>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn
+                :disabled="author == null || author == ''"
+                color="primary"
+                @click="handleAuthorFormSubmit()"
+              >Submit</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+        <v-dialog
           v-model="$store.state.loading"
           hide-overlay
           persistent
-          width="300"
-        >
+          width="300">
           <v-card color="primary" dark>
             <v-card-text>
               {{ $store.state.loadingMsg }}
@@ -58,7 +90,11 @@ export default {
   name: 'app',
 
   data () {
-    return {}
+    return {
+      toolbarMenu: false,
+      author: this.$store.state.author,
+      remember: false
+    }
   },
 
   computed: {
@@ -75,6 +111,19 @@ export default {
 
   mounted () {
     this.$store.dispatch('initialize')
+  },
+
+  methods: {
+    handleChangeAuthorClick () {
+      this.author = this.$store.state.author
+      this.$store.state.authorDialog = true
+    },
+    handleAuthorFormSubmit () {
+      this.$store.dispatch('setAuthor', {
+        author: this.author,
+        remember: this.remember
+      })
+    }
   }
 
 }

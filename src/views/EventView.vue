@@ -1,5 +1,5 @@
 <template>
-  <v-card v-if="event != null && origin != null" class="pa-3">
+  <v-card v-if="event != null && origin != null" class="pt-3 px-3 pb-5">
 
     <event-tools @need-update="updateAll" @need-init="initEvent"></event-tools>
 

@@ -52,3 +52,7 @@ export const pickerData = ({ state, commit, getters }, data) => {
   o.arrival = data
   commit('PICKER_DATA', o)
 }
+
+export const setAuthor = ({ commit }, data) => {
+  commit('SET_AUTHOR', data)
+}

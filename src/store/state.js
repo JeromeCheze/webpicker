@@ -7,6 +7,9 @@ export default {
 
   root: '/',
 
+  author: null,
+  authorDialog: false,
+
   defaultSettings: settings,
   settings: Object.assign({}, settings),
 
