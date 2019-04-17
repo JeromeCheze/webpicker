@@ -29,7 +29,6 @@
         </div>
       </div>
     </div>
-    <div></div>
     <div class="text-center">
       <v-btn color="primary" @click="handleSaveSettings">Save</v-btn>
     </div>

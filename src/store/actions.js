@@ -8,10 +8,6 @@ export const eventList = ({ commit }, data) => {
   commit('SET_EVENT_LIST', data)
 }
 
-export const selectEvent = ({ commit }, data) => {
-  commit('SET_SELECTED_EVENT_CODE', data)
-}
-
 export const setCurrentEvent = ({ commit }, data) => {
   commit('SET_CURRENT_EVENT', data)
 }

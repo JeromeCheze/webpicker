@@ -1,5 +1,6 @@
 <template>
   <v-app>
+
     <v-toolbar app dense :style="{ zIndex: 1000 }">
       <v-toolbar-title>WebPicker</v-toolbar-title>
       <v-spacer></v-spacer>
@@ -20,6 +21,9 @@
             <v-btn icon v-on="on"><v-icon>mdi-dots-vertical</v-icon></v-btn>
           </template>
           <v-list>
+            <v-list-tile @click="handleCreateEventClick">
+              <v-icon left>mdi-creation</v-icon> Create new event
+            </v-list-tile>
             <v-list-tile v-if="$store.state.author != null" @click="handleChangeAuthorClick">
               <v-icon left>mdi-account-switch</v-icon> Change author
               <span class="caption ml-2 text-lighten-1">({{ $store.state.author }})</span>
@@ -31,13 +35,16 @@
         </v-menu>
       </v-toolbar-items>
     </v-toolbar>
+
     <v-content>
       <v-container fluid>
+
         <router-view></router-view>
+
         <v-dialog
           v-model="$store.state.authorDialog"
           persistent
-          max-width="600px">
+          max-width="400px">
           <v-card>
             <v-card-title>
               <span class="headline">Set author name</span>
@@ -56,6 +63,36 @@
             </v-card-actions>
           </v-card>
         </v-dialog>
+
+        <v-dialog
+          v-model="newEventDialog"
+          persistent
+          max-width="400px">
+          <v-card>
+            <v-card-title>
+              <span class="headline">Create new event</span>
+            </v-card-title>
+            <v-card-text>
+              <v-text-field
+                label="Time [YYYY-mm-dd HH:MM:SS]"
+                v-model="newEventTime"
+                mask="####-##-## ##:##:##"
+                return-masked-value></v-text-field>
+              <number-field label="Latitude [°]" v-model="newEventLatitude"></number-field>
+              <number-field label="Longitude [°]" v-model="newEventLongitude"></number-field>
+              <number-field label="Depth [km]" v-model="newEventDepth"></number-field>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn @click="newEventDialog = false">Cancel</v-btn>
+              <v-btn
+                @click="handleCreateEventFormSubmit"
+                :disabled="!isNewEventFormValid"
+                color="primary">Validate</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
         <v-dialog
           v-model="$store.state.loading"
           hide-overlay
@@ -68,20 +105,27 @@
             </v-card-text>
           </v-card>
         </v-dialog>
-        <v-snackbar
-          v-for="notification in $store.state.notificationList"
-          v-model="notification.value"
-          :color="notification.color"
-          bottom right
-        >{{ notification.text }}</v-snackbar>
+
+        <div class="notification-container">
+          <v-alert
+            v-for="notification in $store.state.notificationList"
+            :value="notification.value"
+            :type="notification.color"
+            transition="scale-transition">
+            <div class="notification-container__content-wrapper">
+              {{ notification.text }}
+            </div>
+          </v-alert>
+        </div>
+
       </v-container>
     </v-content>
   </v-app>
 </template>
 
 <script>
-import utils from './utils/utils.js'
 import settings from './settings.json'
+import utils from './utils/utils.js'
 
 const STORAGE_KEY = 'settings'
 
@@ -93,11 +137,18 @@ export default {
     return {
       toolbarMenu: false,
       author: this.$store.state.author,
-      remember: false
+      remember: false,
+      newEventDialog: false,
+      newEventTimeMenu: false,
+      newEventTime: null,
+      newEventLatitude: null,
+      newEventLongitude: null,
+      newEventDepth: null
     }
   },
 
   computed: {
+
     listQuery () {
       let query = {}
       for (let [k, v] of Object.entries(this.$store.state.form)) {
@@ -106,7 +157,25 @@ export default {
         }
       }
       return query
+    },
+
+    isNewEventFormValid () {
+      let valid = true
+      if (this.newEventTime == null) {
+        valid = false
+      }
+      if (this.newEventLatitude == null || this.newEventLatitude < -90 || this.newEventLatitude > 90) {
+        valid = false
+      }
+      if (this.newEventLongitude == null || this.newEventLongitude < -180 || this.newEventLongitude > 180) {
+        valid = false
+      }
+      if (this.newEventDepth == null || this.newEventDepth < 0 || this.newEventDepth > 6400) {
+        valid = false
+      }
+      return valid
     }
+
   },
 
   mounted () {
@@ -114,16 +183,73 @@ export default {
   },
 
   methods: {
+
     handleChangeAuthorClick () {
       this.author = this.$store.state.author
       this.$store.state.authorDialog = true
     },
+
     handleAuthorFormSubmit () {
       this.$store.dispatch('setAuthor', {
         author: this.author,
         remember: this.remember
       })
+    },
+
+    handleCreateEventClick () {
+      let o = this.$store.state.currentOrigin
+      if (o) {
+        this.newEventTime = o.time._pretty
+        this.newEventLatitude = o.latitude.value
+        this.newEventLongitude = o.longitude.value
+        this.newEventDepth = o.depth.value / 1e3
+      }
+      this.newEventDialog = true
+    },
+
+    handleCreateEventFormSubmit () {
+      let eventId = this.$store.getters.getId('Event')
+      let originId = this.$store.getters.getId('Origin')
+      let creationInfo = {
+        agency_id: this.$store.state.agencyId,
+        creation_time: new Date().toISOString(),
+        author: this.$store.state.author
+      }
+      let e = {
+        origin: [{
+          _not_committed: true,
+          public_id: originId,
+          creation_info: creationInfo,
+          time: { value: this.newEventTime.replace(' ', 'T')+'Z' },
+          latitude: { value: this.newEventLatitude },
+          longitude: { value: this.newEventLongitude },
+          depth: { value: this.newEventDepth * 1e3 },
+          quality: {
+            used_phase_count: 0,
+            used_station_count: 0,
+            associated_phase_count: 0,
+            associated_station_count: 0,
+            minimum_distance: 0,
+            maximum_distance: 0,
+            median_distance: 0,
+            azimuthal_gap: 0,
+            standard_error: 0
+          },
+          arrival: []
+        }],
+        pick: [],
+        description: [{ type: 'region name', text: '' }],
+        creation_info: creationInfo,
+        public_id: eventId,
+        preferred_origin_id: originId
+      }
+      utils.processEventData(e)
+      console.log(e);
+      this.$store.dispatch('setCurrentEvent', e)
+      this.$router.push({ name: 'Event', params: { code: eventId } })
+      this.newEventDialog = false
     }
+
   }
 
 }
@@ -170,5 +296,17 @@ export default {
   padding: 0 20px;
   font-weight: bold;
   box-sizing: border-box;
+}
+
+.notification-container {
+  position: fixed;
+  z-index: 1000;
+  bottom: 20px;
+  right: 20px;
+  width: 300px;
+}
+.notification-container__content-wrapper {
+  max-height: 200px;
+  overflow-y: auto;
 }
 </style>

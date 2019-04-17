@@ -9,6 +9,7 @@ export default {
 
   author: null,
   authorDialog: false,
+  agencyId: 'OCA',
 
   defaultSettings: settings,
   settings: Object.assign({}, settings),

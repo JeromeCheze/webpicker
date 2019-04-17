@@ -78,10 +78,11 @@ export default {
         ],
         eventTypeOptions: [
           'not existing',
-          'not reported',
+          'other event',
           'earthquake',
           'quarry blast',
           'explosion',
+          'not reported',
           'anthropogenic event',
           'collapse',
           'cavity collapse',
@@ -105,7 +106,6 @@ export default {
           'plane crash',
           'train crash',
           'boat crash',
-          'other event',
           'atmospheric event',
           'sonic boom',
           'sonic blast',
@@ -175,6 +175,17 @@ export default {
           this.event._pm = null
           this.$store.dispatch('setCurrentOrigin', o)
           this.$emit('need-update')
+          utils.ajax({
+            method: 'GET',
+            url: this.$store.getters.getLink('region'),
+            args: {
+              latitude: o.latitude.value,
+              longitude: o.longitude.value
+            },
+            type: 'json'
+          }).then(data => {
+            this.event.description = [{ type: 'region name', text: data }]
+          })
         }
       })
     },

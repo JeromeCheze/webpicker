@@ -1,4 +1,17 @@
 {
+  "picker.filters": [
+    { "name": "HP 1", "type": "highpass", "fc": 1, "order": 4 },
+    { "name": "BP 0.5-8", "type": "bandpass", "fc": [0.5, 8], "order": 4 },
+    { "name": "BP 1-8", "type": "bandpass", "fc": [1, 8], "order": 4 },
+    { "name": "BP 1-10", "type": "bandpass", "fc": [1, 10], "order": 4 },
+    { "name": "BP 1-50", "type": "bandpass", "fc": [1, 50], "order": 4 },
+    { "name": "BP 2-10", "type": "bandpass", "fc": [2, 10], "order": 4 },
+    { "name": "BP 2-20", "type": "bandpass", "fc": [2, 20], "order": 4 },
+    { "name": "BP 4-20", "type": "bandpass", "fc": [4, 20], "order": 4 },
+    { "name": "LP 4", "type": "lowpass", "fc": 4, "order": 4 },
+    { "name": "LP 10", "type": "lowpass", "fc": 10, "order": 4 },
+    { "name": "LP 25", "type": "lowpass", "fc": 25, "order": 4 }
+  ],
   "darkPickerColor.background": "rgba(37, 37, 37, 1)",
   "darkPickerColor.backgroundEven": "rgba(45, 45, 45, 1)",
   "darkPickerColor.line": "#57c3ff",

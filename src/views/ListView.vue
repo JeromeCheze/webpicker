@@ -16,7 +16,7 @@
               <td class="text-xs-right"><div :style="{ minWidth: '60px' }">{{ props.item.depth }}</div></td>
               <td><v-chip label outline small :color="props.item.modeColor">{{ props.item.mode }}</v-chip></td>
               <td>{{ props.item.eventType }}</td>
-              <td><div :style="{ minWidth: '200px' }">{{ props.item.region }}</div></td>
+              <td><div :style="{ minWidth: '250px' }">{{ props.item.region }}</div></td>
               <td>{{ props.item.author }}</td>
               <td>{{ props.item.id }}</td>
             </tr>
@@ -159,7 +159,7 @@ export default {
 
     getEventColor (e) {
       if (['not existing', 'not reported', 'other event'].indexOf(e.type) >= 0) {
-        return [ 'black', 'black' ]
+        return [ 'gray', 'gray' ]
       }
       let strokeColor = e._po.evaluation_mode == 'manual' ? 'lime' : 'red'
       if (e._pm == null) {
@@ -220,9 +220,12 @@ export default {
     },
 
     handleMarkerClick(e) {
-      this.markerMap[e.public_id].openPopup()
-      this.mapSelectedEvent = e
-      this.bottomSheet = true
+      let m = this.markerMap[e.public_id]
+      if (m) {
+        m.openPopup()
+        this.mapSelectedEvent = e
+        this.bottomSheet = true
+      }
     },
 
     handleRowClick (row) {
@@ -244,7 +247,7 @@ export default {
         mode: e._po.evaluation_mode == 'manual' ? 'M' : 'A',
         modeColor: e._po.evaluation_mode == 'manual' ? 'green' : 'red',
         author: e._po.creation_info.author,
-        region: e.description[0].text,
+        region: e.description != null ? e.description[0].text.toUpperCase() : '',
         id: e.public_id
       }))
     }

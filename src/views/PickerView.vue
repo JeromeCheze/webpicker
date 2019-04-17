@@ -87,19 +87,7 @@ export default {
         alignment: 'O',
         sortBy: 'distance',
         stationRadius: 1,
-        filterList: [
-          { name: 'HP 1', type: 'highpass', args: { Fc: 1, gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
-          { name: 'BP 0.5-8', type: 'bandpass', fc: [.5, 8], args: { gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
-          { name: 'BP 1-8', type: 'bandpass', fc: [1, 8], args: { gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
-          { name: 'BP 1-10', type: 'bandpass', fc: [1, 10], args: { gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
-          { name: 'BP 1-50', type: 'bandpass', fc: [1, 50], args: { gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
-          { name: 'BP 2-10', type: 'bandpass', fc: [2, 10], args: { gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
-          { name: 'BP 4-20', type: 'bandpass', fc: [4, 20], args: { gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
-          { name: 'BP 2-20', type: 'bandpass', fc: [2, 20], args: { gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
-          { name: 'LP 4', type: 'lowpass', args: { Fc: 4, gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
-          { name: 'LP 10', type: 'lowpass', args: { Fc: 10, gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } },
-          { name: 'LP 25', type: 'lowpass', args: { Fc: 25, gain: 0, preGain: false, order: 4, characteristic: 'butterworth' } }
-        ]
+        filterList: this.$store.state.settings['picker.filters']
       },
 
       uncertaintyList: [ null, 0.05, 0.2, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 99.0 ],
@@ -271,27 +259,33 @@ export default {
       stationDistanceMap[netsta] = a.distance
     }
     this.getTTT(stationDistanceMap, () => {
+      this.$store.dispatch('setLoading', { value: false })
       let [mainWfidList, horizontalWfidList] = this.processArrival()
-      this.$store.dispatch('setLoading', { value: true, text: `Loading waveforms... (${mainWfidList.length + horizontalWfidList.length} channels)` })
-      this.downloadWaveforms(
-        mainWfidList,
-        st => this.plotWaveforms(st),
-        () => {
-          this.$store.dispatch('notify', { color: 'info', text: 'Waveform list is loaded.' })
-          // this.$notify.info({ message: 'Waveform list is loaded.' })
-          // console.log('Waveform list is loaded.');
-          this.disableLoadAdditionalStation = false
-        }
-      )
-      this.downloadWaveforms(
-        horizontalWfidList,
-        st => this.handleHorizontalWaveforms(st),
-        () => {
-          this.$store.dispatch('notify', { color: 'info', text: 'All waveforms loading is complete.' })
-          // this.$notify.info({ message: 'All waveforms loading is complete.' })
-          // console.log('All waveforms loading is complete.');
-        }
-      )
+      let nbChannels = mainWfidList.length + horizontalWfidList.length
+      if (nbChannels > 0) {
+        this.$store.dispatch('setLoading', { value: true, text: `Loading waveforms... (${nbChannels} channels)` })
+        this.downloadWaveforms(
+          mainWfidList,
+          st => this.plotWaveforms(st),
+          () => {
+            this.$store.dispatch('notify', { color: 'info', text: 'Waveform list is loaded.' })
+            // this.$notify.info({ message: 'Waveform list is loaded.' })
+            // console.log('Waveform list is loaded.');
+            this.disableLoadAdditionalStation = false
+          }
+        )
+        this.downloadWaveforms(
+          horizontalWfidList,
+          st => this.handleHorizontalWaveforms(st),
+          () => {
+            this.$store.dispatch('notify', { color: 'info', text: 'All waveforms loading is complete.' })
+            // this.$notify.info({ message: 'All waveforms loading is complete.' })
+            // console.log('All waveforms loading is complete.');
+          }
+        )
+      } else {
+        this.disableLoadAdditionalStation = false
+      }
     })
   },
 
@@ -423,10 +417,12 @@ export default {
       }
       let iirCalculator = new Fili.CalcCascades();
       for (let wf of wfList) {
-        let filterOpt = Object.assign({ Fs: 1000. / wf.opt.step }, f.args)
+        let filterOpt = { Fs: 1000. / wf.opt.step, order: f.order, gain: 0, preGain: false, characteristic: 'butterworth' }
         if (f.type == 'bandpass') {
           filterOpt.Fc = Math.sqrt(f.fc[1] * f.fc[0])
           filterOpt.BW = Math.log2(f.fc[1] / f.fc[0])
+        } else {
+          filterOpt.Fc = f.fc
         }
         let iirFilterCoeffs = iirCalculator[f.type](filterOpt)
         let iirFilter = new Fili.IirFilter(iirFilterCoeffs)
@@ -645,7 +641,7 @@ export default {
             cache[fdsnid][cacheKey] = tr
             traceList.push(tr)
           }
-          if (callback != null) {
+          if (callback != null && traceList.length > 0) {
             callback.call(null, traceList)
             traceList = []
           }
@@ -752,7 +748,7 @@ export default {
     },
 
     loadAdditionalStation () {
-      let alreadyLoadedStation = this.list.waveforms.map(x => x.opt.id.split('.').slice(0, 2).join('.'))
+      let alreadyLoadedStation = this.list != null ? this.list.waveforms.map(x => x.opt.id.split('.').slice(0, 2).join('.')) : []
       let strTime = this.origin.time._value.toISOString().slice(0, 19)
       this.$store.dispatch('setLoading', { value: true, text: 'Loading inventory...' })
       utils.ajax({

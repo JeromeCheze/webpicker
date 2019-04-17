@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from flask import Flask, request, render_template, Response, abort
 from urllib2 import urlopen, Request, HTTPError
+from obspy.geodetics import FlinnEngdahl
 from obspy.clients.fdsn import Client
 from obspy.taup import TauPyModel
 from StringIO import StringIO
@@ -16,6 +17,7 @@ import os
 app = Flask(__name__)
 app.debug = True
 
+FE = FlinnEngdahl()
 
 FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'thufir.unice.fr:8080')
 FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'thufir.unice.fr:8080')
@@ -272,6 +274,12 @@ def get_ttt():
         #     if (a.name.upper() == 'S')
         #     result[sta]['ttt'][a.name] = a.time
     return Response(json.dumps(result), mimetype='application/json')
+
+@app.route('/region', methods=['GET'])
+def get_region_name():
+    longitude = float(request.args.get('longitude'))
+    latitude = float(request.args.get('latitude'))
+    return Response(json.dumps(FE.get_region(longitude, latitude)), mimetype='application/json')
 
 @app.route('/compute_magnitudes', methods=['POST'])
 def compute_magnitudes():

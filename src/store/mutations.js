@@ -27,10 +27,6 @@ export const SET_EVENT_LIST = (state, data) => {
   state.eventList = data
 }
 
-export const SET_SELECTED_EVENT_CODE = (state, data) => {
-  state.selectedEventCode = data
-}
-
 export const SET_CURRENT_EVENT = (state, data) => {
   let oldEvent = state.eventList.find(x => x.public_id == data.public_id)
   let index = state.eventList.indexOf(oldEvent)
@@ -66,7 +62,11 @@ export const ADD_NOTIFICATION = (state, data) => {
   for (let notification of outdated) {
     state.notificationList.splice(state.notificationList.indexOf(notification), 1)
   }
-  state.notificationList.push({ text: data.text, value: true, color: data.color })
+  let notification = { text: data.text, value: true, color: data.color }
+  state.notificationList.push(notification)
+  setTimeout(() => {
+    notification.value = false
+  }, 6000)
 }
 
 export const SET_INVENTORY = (state, data) => {

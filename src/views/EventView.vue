@@ -379,14 +379,16 @@ export default {
           fillOpacity: 1
         }).bindPopup(a._pick._seedid).addTo(this.map)
       }
-      this.layers['ellipse'] = L.ellipse(originPos, [
-        this.origin.longitude.uncertainty * 1000,
-        this.origin.latitude.uncertainty * 1000
-      ], 0, {
-        weight: 0,
-        color: 'red',
-        fillOpacity: .2
-      }).addTo(this.map)
+      if (this.origin.longitude.uncertainty != null && this.origin.latitude.uncertainty != null) {
+        this.layers['ellipse'] = L.ellipse(originPos, [
+          this.origin.longitude.uncertainty * 1000,
+          this.origin.latitude.uncertainty * 1000
+        ], 0, {
+          weight: 0,
+          color: 'red',
+          fillOpacity: .2
+        }).addTo(this.map)
+      }
       this.layers['epicenter'] = L.circleMarker(originPos, {
         radius: 8,
         weight: 1,
