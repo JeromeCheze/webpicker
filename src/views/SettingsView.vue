@@ -29,9 +29,77 @@
         </div>
       </div>
     </div>
+    <div class="my-3">
+      <h3>Filters</h3>
+      <table class="settings-view__filter-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Order</th>
+            <th>Cutoff frequencies</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(f, i) in filterList" :key="i">
+            <td>{{ f.name }}</td>
+            <td>{{ f.type }}</td>
+            <td>{{ f.order }}</td>
+            <td>{{ f.type == 'bandpass' ? `${f.fc[0]} - ${f.fc[1]}` : f.fc }}</td>
+            <td>
+              <v-btn @click="editFilter(i)" icon small><v-icon>mdi-pencil</v-icon></v-btn>
+              <v-btn @click="deleteFilter(i)" icon small><v-icon>mdi-delete</v-icon></v-btn>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="text-xs-right">
+        <v-btn @click="addFilter">Add filter</v-btn>
+      </div>
+    </div>
     <div class="text-center">
       <v-btn color="primary" @click="handleSaveSettings">Save</v-btn>
     </div>
+    <v-dialog v-model="filterDialog" max-width="600px">
+      <v-card>
+        <v-card-title>
+          <span class="headline">{{ filterForm.filterIndex != null ? 'Edit' : 'Add' }} filter</span>
+        </v-card-title>
+        <v-card-text>
+          <v-layout wrap>
+            <v-flex xs12>
+              <v-text-field label="Name" v-model="filterForm.name"></v-text-field>
+            </v-flex>
+            <v-flex xs12>
+              <v-select label="Type" :items="filterForm.typeItems" v-model="filterForm.type"></v-select>
+            </v-flex>
+            <template v-if="filterForm.type == 'bandpass'">
+              <v-flex xs6 class="pr-1">
+                <number-field label="Cuttoff 1" v-model="filterForm.fc1"></number-field>
+              </v-flex>
+              <v-flex xs6 class="pl-1">
+                <number-field label="Cuttoff 2" v-model="filterForm.fc2"></number-field>
+              </v-flex>
+            </template>
+            <v-flex xs12 v-else>
+              <number-field label="Cuttoff" v-model="filterForm.fc1"></number-field>
+            </v-flex>
+            <v-flex xs12>
+              <number-field label="Order" v-model="filterForm.order"></number-field>
+            </v-flex>
+          </v-layout>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            @click="handleFilterFormSubmit"
+            color="primary"
+            :disabled="!isfilterFormValid"
+            small flat>Submit</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -410,7 +478,18 @@ export default {
     }
     return {
       formStruct,
-      currentShortcut: ''
+      currentShortcut: '',
+      filterDialog: false,
+      filterList: JSON.parse(JSON.stringify(this.$store.state.settings['picker.filters'])),
+      filterForm: {
+        filterIndex: null,
+        type: 'lowpass',
+        typeItems: ['lowpass', 'bandpass', 'highpass'],
+        name: null,
+        order: 4,
+        fc1: null,
+        fc2: null
+      }
     }
   },
 
@@ -422,7 +501,67 @@ export default {
     document.body.removeEventListener('keydown', this.handleKeyDown)
   },
 
+  computed: {
+    isfilterFormValid () {
+      let f = this.filterForm
+      if (f.type == 'bandpass') {
+        if (f.fc1 == null || f.fc2 == null) {
+          return false
+        }
+        if (f.fc1 >= f.fc2) {
+          return false
+        }
+      } else {
+        if (f.fc1 == null) {
+          return false
+        }
+      }
+      return true
+    }
+  },
+
   methods: {
+
+    addFilter () {
+      let f = this.filterForm
+      f.filterIndex = null
+      Object.assign(f, { name: null, order: 4, type: 'lowpass', fc1: null, fc2: null })
+      this.filterDialog = true
+    },
+
+    editFilter (i) {
+      let f = this.filterForm
+      f.name = this.filterList[i].name
+      f.type = this.filterList[i].type
+      f.order = this.filterList[i].order
+      if (f.type == 'bandpass') {
+        f.fc1 = this.filterList[i].fc[0]
+        f.fc2 = this.filterList[i].fc[1]
+      } else {
+        f.fc1 = this.filterList[i].fc
+      }
+      this.filterDialog = true
+    },
+
+    deleteFilter (i) {
+      this.filterList.splice(i, 1)
+    },
+
+    handleFilterFormSubmit () {
+      let f = this.filterForm
+      let result = { type: f.type, name: f.name, order: f.order }
+      if (f.type == 'bandpass') {
+        result.fc = [f.fc1, f.fc2]
+      } else {
+        result.fc = f.fc1
+      }
+      if (f.filterIndex != null) {
+        this.filterList.splice(f.filterIndex, 1, result)
+      } else {
+        this.filterList.push(result)
+      }
+      this.filterDialog = false
+    },
 
     handleKeyDown (ev) {
       this.currentShortcut = utils.shortcutString(ev)
@@ -462,6 +601,7 @@ export default {
           result[key] = field.value
         }
       }
+      result['picker.filters'] = this.filterList
       this.$store.dispatch('setSettings', result)
     }
 
@@ -482,6 +622,16 @@ export default {
 .setting-view__field--reset {
   display: inline-block;
   width: 100px;
+}
+.settings-view__filter-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.settings-view__filter-table th,
+.settings-view__filter-table td {
+  padding: 5px;
+  border: 1px solid #ddd;
+  text-align: center;
 }
 /*.field, .field > * {
   display: inline-block;
