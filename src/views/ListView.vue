@@ -127,7 +127,7 @@ export default {
       }
       utils.ajax({
         method: 'GET',
-        url: 'fdsnws/event/1/query',
+        url: this.$store.getters.getLink('fdsnws/event/1/query'),
         args: args,
         type: 'document'
       }).then(qml => {
