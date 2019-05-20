@@ -202,7 +202,7 @@ export default {
         let e = utils.parseQuakeML(qml)[0]
         let chList = []
         for (let o of e.origin) {
-          for (let a of e._po.arrival) {
+          for (let a of o.arrival) {
             let ch = a._pick._fdsnid.split('.').slice(0, 3).concat(['*']).join(' ')
             if (chList.indexOf(ch) < 0) {
               chList.push(ch)
