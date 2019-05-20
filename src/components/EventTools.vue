@@ -54,7 +54,7 @@ export default {
 
   data () {
     let locatorOptions = [ 'LOCSAT' ]
-    let profileOptions = [ 'iasp91' ]
+    let profileOptions = [ 'iasp91', 'tab' ]
     return {
       locator: locatorOptions[0],
       profile: profileOptions[0],

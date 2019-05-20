@@ -10,4 +10,5 @@ os.environ["SC3_MESSAGING_HOST"] = "event-processor.oca:4803"
 os.environ["SC3ML_INVENTORY_FILENAME"] = "/var/www/webpicker/config/inventory.xml"
 os.environ["SC3ML_CONFIG_FILENAME"] = "/var/www/webpicker/config/config.xml"
 os.environ["SCP3ML_DISPATCH_VERSION"] = "0.10"
+os.environ["SCP3ML_DISPATCH_VERSION"] = "0.10"
 from site_routage import app as application

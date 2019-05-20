@@ -26,23 +26,20 @@ FDSNWS_DATASELECT_HOST = os.getenv('FDSNWS_DATASELECT_HOST', 'encelade.unice.fr:
 FDSNWS_EVENT = 'http://%s/fdsnws/event' % FDSNWS_EVENT_HOST
 FDSNWS_STATION = 'http://%s/fdsnws/station' % FDSNWS_STATION_HOST
 FDSNWS_DATASELECT = 'http://%s/fdsnws/dataselect' % FDSNWS_DATASELECT_HOST
-#FDSNWS_DATASELECT = 'http://localhost:8002'
-# used for screloc :
-
-# generated with scxmldump -I
-SC3ML_INVENTORY_FILENAME = os.getenv('SC3ML_INVENTORY_FILENAME', '/home/cheze/thufir_inventory.xml')
 
 # Generated with scxmldump -C
-SC3ML_CONFIG_FILENAME = os.getenv('SC3ML_CONFIG_FILENAME', '/home/cheze/thufir_config.xml')
+SC3ML_CONFIG_FILENAME = os.getenv('SC3ML_CONFIG_FILENAME', '/home/cheze/Documents/VRAC/thufir_config.xml')
 
 SEISCOMP_ROOT = os.getenv('SEISCOMP_ROOT', '/home/cheze/seiscomp3/')
 SEISCOMP_PROGRAM = os.path.join(SEISCOMP_ROOT, 'bin/seiscomp')
 SCP3ML_DISPATCH_VERSION = os.getenv('SCP3ML_DISPATCH_VERSION', '0.10')
+SCP3ML_BINARY_VERSION = os.getenv('SCP3ML_BINARY_VERSION', '0.10')
 
 XSL_SC3ML_TO_QML1_2 = {
   '0.7': os.path.join(SEISCOMP_ROOT, 'share/xml/0.7/sc3ml_0.7__quakeml_1.2.xsl'),
   '0.9': os.path.join(SEISCOMP_ROOT, 'share/xml/0.9/sc3ml_0.9__quakeml_1.2.xsl'),
-  '0.10': os.path.join(SEISCOMP_ROOT, 'share/xml/0.10/sc3ml_0.10__quakeml_1.2.xsl')
+  '0.10': os.path.join(SEISCOMP_ROOT, 'share/xml/0.10/sc3ml_0.10__quakeml_1.2.xsl'),
+  '0.11': os.path.join(SEISCOMP_ROOT, 'share/xml/0.11/sc3ml_0.11__quakeml_1.2.xsl')
 }
 
 # used for scamp and scmag :
@@ -103,31 +100,36 @@ def write_sc3ml(jquake, filename, version):
     with open(filename, 'w') as f:
         f.write(render_template('sc3ml.xml', version=version, jquake=jquake))
 
-# def set_used_arrival_and_save_sc3ml(catalog, sc3ml):
-#     fake_sc3ml = StringIO()
-#     catalog.write(fake_sc3ml, format="SC3ML")
-#     fake_sc3ml.seek(0)
-#     dom = etree.parse(fake_sc3ml)
-#     root = dom.getroot()
-#     namespace = root.nsmap.values()[0]
-#     o = root[0].find('{%s}origin' % namespace)
-#     for a in o.findall('{%s}arrival' % namespace):
-#         w = a.find('{%s}weight' % namespace)
-#         tu = etree.Element('timeUsed')
-#         tu.text = 'false' if float(w.text) == 0 else 'true'
-#         a.append(tu)
-#     fake_sc3ml.truncate(0)
-#     dom.write(fake_sc3ml)
-#     with open(sc3ml, 'w') as f:
-#         f.write(fake_sc3ml.getvalue().replace('smi:org.gfz-potsdam.de/geofon/', ''))
+def get_inventory(jquake):
+    data = [
+        'level=response',
+        'format=sc3ml'
+    ]
+    t = jquake[0]['origin'][0]['time']['value'][0:19]
+    for pick in jquake[0]['pick']:
+        wfid = pick['waveform_id']
+        loc = wfid['location_code'] if 'location_code' in wfid else '--'
+        data.append('%s %s %s %s %s %s' % (
+            wfid['network_code'], wfid['station_code'],
+            loc, wfid['channel_code'], t, t
+        ))
+    r = Request('%s/1/query' % FDSNWS_STATION, data='\n'.join(data), headers={'Content-Type': 'text/plain'})
+    inv = urlopen(r).read()
+    _, inv_filename = tempfile.mkstemp(suffix=".xml")
+    with open(inv_filename, 'w') as f:
+        f.write(inv)
+    return inv_filename
 
 def compute_magnitudes_with_scamp_and_scmag(jquake):
-    # 1) save sc3ml
+    # 1) get inventory
+    inventory = get_inventory(jquake)
+
+    # 2) save sc3ml
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
     write_sc3ml(jquake, sc3ml, '0.9')
     catalog = obspy.read_events(sc3ml)
 
-    # 2) download data
+    # 3) download data
     _, data = tempfile.mkstemp(suffix='.mseed')
     req = []
     picks = {}
@@ -146,11 +148,11 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
     st = cl.get_waveforms_bulk('\r\n'.join(req))
     st.write(data, format='MSEED', reclen=512)
 
-    # 3) compute amplitudes with scamp
+    # 4) compute amplitudes with scamp
     _, scamp_result = tempfile.mkstemp(suffix='.sc3ml')
     scamp = subprocess.Popen([
         SEISCOMP_PROGRAM, 'exec', 'scamp',
-        '--inventory-db', SC3ML_INVENTORY_FILENAME,
+        '--inventory-db', inventory,
         '--config-db', SC3ML_CONFIG_FILENAME,
         '-I', data,
         '--ep', sc3ml
@@ -166,10 +168,10 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
     os.remove(sc3ml)
     os.remove(data)
 
-    # 4) compute magnitudes with scmag
+    # 5) compute magnitudes with scmag
     scmag = subprocess.Popen([
         SEISCOMP_PROGRAM, 'exec', 'scmag',
-        '--inventory-db', SC3ML_INVENTORY_FILENAME,
+        '--inventory-db', inventory,
         '--config-db', SC3ML_CONFIG_FILENAME,
         '--ep', scamp_result
     ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -178,23 +180,25 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
     dom = etree.fromstring(result)
     update_sc3ml_origin_reference(dom)
     fix_scmag_magnitude_public_id(dom)
-    newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML_TO_QML1_2['0.10'])
+    newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML_TO_QML1_2[SCP3ML_BINARY_VERSION])
 
     # _, scmag_result = tempfile.mkstemp(suffix='.sc3ml')
     # print(scmag_result)
     # with open(scmag_result, 'w') as f:
     #     f.write(result)
 
-    # os.remove(scamp_result)
+    os.remove(scamp_result)
+    os.remove(inventory)
     return { 'message': error_message, 'quakeml': etree.tostring(newdom) }
 
 def relocate_with_screloc(jquake, locator, profile):
+    inventory = get_inventory(jquake)
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
     # print(sc3ml)
-    write_sc3ml(jquake, sc3ml, '0.10')
+    write_sc3ml(jquake, sc3ml, SCP3ML_BINARY_VERSION)
     screloc = subprocess.Popen([
         SEISCOMP_PROGRAM, 'exec', 'screloc',
-        '--inventory-db', SC3ML_INVENTORY_FILENAME,
+        '--inventory-db', inventory,
         '--locator', locator,
         '--profile', profile,
         '--author', 'webpicker',
@@ -210,8 +214,9 @@ def relocate_with_screloc(jquake, locator, profile):
     #     f.write(result)
     dom = etree.fromstring(result)
     update_sc3ml_origin_reference(dom)
-    newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML_TO_QML1_2['0.10'])
+    newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML_TO_QML1_2[SCP3ML_BINARY_VERSION])
     os.remove(sc3ml)
+    os.remove(inventory)
     # _, qml_result = tempfile.mkstemp(suffix=".sc3ml")
     # print(qml_result)
     # with open(qml_result, 'w') as f:
@@ -238,7 +243,6 @@ def commit_with_scdispatch(jquake):
         'message': error_message,
         'return_code': scdispatch.returncode
     }
-    # return 'true'
 
 def get_first_arrival_P(arrivals, distance):
     result = None
@@ -270,9 +274,6 @@ def get_ttt():
         s_arrivals = [a.time for a in arrivals if a.name.upper() == 'S']
         if len(s_arrivals) > 0:
             result[sta]['ttt']['S'] = min(s_arrivals)
-        # for a in arrivals:
-        #     if (a.name.upper() == 'S')
-        #     result[sta]['ttt'][a.name] = a.time
     return Response(json.dumps(result), mimetype='application/json')
 
 @app.route('/region', methods=['GET'])
