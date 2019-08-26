@@ -236,7 +236,8 @@ export default {
     },
 
     timeFormatter (value) {
-      return value.toISOString().split('T')[1].substr(0, 12)
+      // return value.toISOString().split('T')[1].substr(0, 12)
+      return value.toISOString().split('T')[1].substr(0, 8)
     },
 
     setSelectedArrival (selectedPickIDs) {
@@ -266,7 +267,8 @@ export default {
         residual: a.time_residual,
         distance: a.distance,
         azimuth: a.azimuth,
-        time: a._traveltime,
+        // time: a._traveltime,
+        time: a._pick.time._value,
         weight: a.time_weight
       }))
     },

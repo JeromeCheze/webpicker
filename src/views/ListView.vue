@@ -1,5 +1,8 @@
 <template>
   <v-card>
+    <div class="px-3 py-1">
+      <v-checkbox v-model="hideDiscardedEvents" label="Hide discarded events"></v-checkbox>
+    </div>
     <v-tabs v-model="activeTab" right>
       <v-tab><v-icon>mdi-view-list</v-icon></v-tab>
       <v-tab><v-icon>mdi-map</v-icon></v-tab>
@@ -91,6 +94,7 @@ export default {
         { text: 'Author', value: 'author', sortable: false },
         { text: 'ID', value: 'id' }
       ],
+      hideDiscardedEvents: false,
       pagination: {
         descending: true,
         page: 1,
@@ -145,17 +149,49 @@ export default {
     }
   },
 
+  computed: {
+    filteredEvents () {
+      return this.$store.state.eventList.filter(e => {
+        return (
+          !this.hideDiscardedEvents ||
+          this.hideDiscardedEvents && (
+            e.type == null || ['not existing', 'other event'].indexOf(e.type) == -1
+          )
+        )
+      })
+    }
+  },
+
   watch: {
     activeTab: function (newValue, oldValue) {
-      if (newValue == 1 && this.map == null) {
+      if (newValue == 0) {
+        this.updateTable()
+      } else if (newValue == 1) {
         setTimeout(() => {
-          this.initMap()
+          if (this.map == null) {
+            this.initMap()
+          } else {
+            this.plotEvents()
+          }
         }, 500)
       }
+    },
+    hideDiscardedEvents: function (newValue, oldValue) {
+      this.activeTab == 0 ? this.updateTable() : this.plotEvents()
     }
   },
 
   methods: {
+
+    filterEvents (events) {
+      let result = events
+      if (this.hideDiscardedEvents) {
+        result = events.filter(e => {
+          e.type == null || ['not existing', 'other'].indexOf(e.type) == -1
+        })
+      }
+      return result
+    },
 
     getEventColor (e) {
       if (['not existing', 'not reported', 'other event'].indexOf(e.type) >= 0) {
@@ -177,6 +213,7 @@ export default {
 
     initMap () {
       let map = L.map(this.$el.querySelector('.list-view__map-canvas'), {trackResize: false, attributionControl: false})
+      this.map = map
       let worldtopomap = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
         attribution: '&copy; Esri, HERE, DeLorme, TomTom, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, <br>Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), swisstopo, MapmyIndia, © OpenStreetMap contributors, and the GIS User Community'
       })
@@ -190,14 +227,20 @@ export default {
       L.control.layers(baseLayers).addTo(map);
       L.control.scale({ imperial: false }).addTo(map)
       worldtopomap.addTo(map)
+      this.plotEvents()
+    },
+
+    plotEvents () {
+      for (let [k, v] of Object.entries(this.markerMap)) {
+        v.remove()
+        delete this.markerMap[k]
+      }
       let bounds = []
-      this.map = map
-      for (let e of this.$store.state.eventList) {
-        let m
+      for (let e of this.filteredEvents) {
         let pos = [e._po.latitude.value, e._po.longitude.value]
         bounds.push(pos)
         let [fillColor, color] = this.getEventColor(e)
-        m = L.circleMarker(pos, {
+        let m = L.circleMarker(pos, {
           radius: e._pm == null ? 10 : 4 + e._pm.mag.value * 2,
           weight: 2,
           fillOpacity: 0.5,
@@ -207,9 +250,9 @@ export default {
         this.markerMap[e.public_id] = m
         m.bindPopup(e.public_id)
         m.on('click', () => this.handleMarkerClick(e))
-        m.addTo(map)
+        m.addTo(this.map)
       }
-      map.fitBounds(bounds)
+      this.map.fitBounds(bounds)
       if (this.$store.state.currentEvent != null) {
         this.handleMarkerClick(this.$store.state.currentEvent)
       }
@@ -234,8 +277,14 @@ export default {
       }
     },
 
+    updateTable () {
+      let data = this.getTableData()
+      this.pagination.totalItems = data.length
+      this.tableData = data
+    },
+
     getTableData () {
-      return this.$store.state.eventList.map(e => ({
+      return this.filteredEvents.map(e => ({
         time: e._po.time._pretty,
         mag: e._pm ? e._pm.mag._pretty : '--',
         magType: e._pm ? e._pm.type : '--',

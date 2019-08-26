@@ -514,6 +514,7 @@ export default {
         data: JSON.stringify(data),
         type: 'json'
       }, xhr).then(ttt => {
+        this.$store.dispatch('setLoading', { value: false })
         this.xhr.splice(this.xhr.indexOf(xhr), 1)
         this.ttt = ttt
         let t0 = this.origin.time._value.getTime()
@@ -776,20 +777,37 @@ export default {
             }
             let stationWf = null
             for (let [loc, locObj] of Object.entries(staObj.location)) {
-              let availableChannel = []
+              let availableChannel = {}
               for (let [cha, chaObj] of Object.entries(locObj)) {
-                availableChannel.push({ channel: cha, sample_rate: chaObj[0].sample_rate })
+                if (cha.slice(-1) != "Z") {
+                  continue
+                }
+                if (availableChannel[cha[1]] == null) {
+                  availableChannel[cha[1]] = []
+                }
+                availableChannel[cha[1]].push({ channel: cha, sample_rate: chaObj[0].sample_rate })
               }
-              availableChannel.sort((a, b) => {
+              let keys = Object.keys(availableChannel)
+              if (keys.length == 0) {
+                console.warn(`No vertical component found for stream ${net}.${sta}.${loc}`)
+                continue
+              }
+              let order = ['N', 'H']
+              keys.sort((a, b) => {
+                a = order.indexOf(a)
+                b = order.indexOf(b)
+                return a > b ? -1 : a < b ? 1 : 0
+              })
+              availableChannel[keys[0]].sort((a, b) => {
                 a = a.sample_rate
                 b = b.sample_rate
-                return a == b ? 0 : a < b ? -1 : 1
+                return a < b ? 1 : a > b ? -1 : 0
               })
-              stationWf = [net, sta, loc, availableChannel.slice(-1)[0].channel].join('.').replace('..', '.--.')
+              stationWf = [net, sta, loc, availableChannel[keys[0]][0].channel].join('.').replace('..', '.--.')
               break
             }
             if (stationWf != null) {
-              let degDistance  = ((pos.distanceTo([staObj.lat, staObj.lon]) / 1000.) * 360) / (2 * Math.PI * 6371)
+              let degDistance = ((pos.distanceTo([staObj.lat, staObj.lon]) / 1000.) * 360) / (2 * Math.PI * 6371)
               this.stationInfoMap[netsta] = {
                 distance: degDistance,
                 azimuth: utils.coordinates2azimuth([pos.lat, pos.lng], [staObj.lat, staObj.lon])
