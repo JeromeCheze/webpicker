@@ -6,6 +6,7 @@ from obspy.geodetics import FlinnEngdahl
 from obspy.clients.fdsn import Client
 from obspy.taup import TauPyModel
 from StringIO import StringIO
+from obspy import UTCDateTime
 from urllib import urlencode
 from lxml import etree
 import subprocess
@@ -124,57 +125,61 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
     # 1) get inventory
     inventory = get_inventory(jquake)
 
-    # 2) save sc3ml
-    _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
-    write_sc3ml(jquake, sc3ml, '0.9')
-    catalog = obspy.read_events(sc3ml)
-
-    # 3) download data
+    # 2) download data
     _, data = tempfile.mkstemp(suffix='.mseed')
     req = []
     picks = {}
-    for p in catalog.events[0].picks:
-        picks[p.resource_id.id] = p
-    for a in catalog.events[0].origins[0].arrivals:
-        if a.time_weight == 1:
-            p = picks[a.pick_id.id]
-            net, sta, loc, cha = p.waveform_id.get_seed_string().split('.')
-            if loc == '':
-                loc = '--'
-            t1 = (p.time - 95).isoformat()
-            t2 = (p.time + 107).isoformat()
-            req.append(' '.join([net, sta, loc, cha, t1, t2]))
+    for p in jquake[0]['pick']:
+        picks[p['public_id']] = p
+    for a in jquake[0]['origin'][0]['arrival']:
+        if a['time_weight'] == 1:
+            net, sta, loc, cha = 'network_code', 'station_code', 'location_code', 'channel_code'
+            p = picks[a['pick_id']]
+            wfid = p['waveform_id']
+            location = wfid[loc] if loc in wfid else '--'
+            t = UTCDateTime(p['time']['value'])
+            t1 = (t - 95).isoformat()
+            t2 = (t + 107).isoformat()
+            req.append(' '.join([wfid[net], wfid[sta], location, wfid[cha], t1, t2]))
     cl = Client(base_url=FDSNWS_BASE_URL)
     st = cl.get_waveforms_bulk('\r\n'.join(req))
     st.write(data, format='MSEED', reclen=512)
 
+    # 3) save sc3ml
+    _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
+    write_sc3ml(jquake, sc3ml, SCP3ML_BINARY_VERSION)
+
     # 4) compute amplitudes with scamp
     _, scamp_result = tempfile.mkstemp(suffix='.sc3ml')
-    scamp = subprocess.Popen([
+    scamp_cmd = [
         SEISCOMP_PROGRAM, 'exec', 'scamp',
         '--inventory-db', inventory,
         '--config-db', SC3ML_CONFIG_FILENAME,
         '-I', data,
         '--ep', sc3ml
-    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    ]
+    scamp = subprocess.Popen(scamp_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     result, error_message = scamp.communicate()
     with open(scamp_result, 'w') as f:
         f.write(result)
 
     # print(sc3ml)
     # print(data)
+    # print(' '.join(scamp_cmd))
     # print(scamp_result)
 
     os.remove(sc3ml)
     os.remove(data)
 
     # 5) compute magnitudes with scmag
-    scmag = subprocess.Popen([
+    scmag_cmd = [
         SEISCOMP_PROGRAM, 'exec', 'scmag',
         '--inventory-db', inventory,
         '--config-db', SC3ML_CONFIG_FILENAME,
         '--ep', scamp_result
-    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    ]
+    # print(' '.join(scmag_cmd))
+    scmag = subprocess.Popen(scmag_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     result, error_message2 = scmag.communicate()
     error_message += error_message2
     dom = etree.fromstring(result)
