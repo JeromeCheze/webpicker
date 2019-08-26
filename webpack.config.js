@@ -5,13 +5,12 @@ const TerserPlugin = require('terser-webpack-plugin')
 const path = require('path')
 
 let extractCssInstance = new MiniCssExtractPlugin({
-  filename: 'static/dist/webpicker.css'
+  filename: '[chunkhash].webpicker.css'
 })
 
 let appHtml = new HtmlWebpackPlugin({
   template: 'src/app.html',
-  filename: 'templates/app.html',
-  hash: true
+  filename: '../../templates/app.html'
 })
 
 module.exports = (env, argv) => {
@@ -30,9 +29,10 @@ module.exports = (env, argv) => {
     watch: argv.mode === 'development',
     entry: path.resolve('./src/main.js'),
     output: {
-      path: path.resolve('.'),
-      publicPath: '',
-      filename: 'static/dist/webpicker.js'
+      chunkFilename: '[id].[chunkhash].js',
+      path: path.resolve('./static/dist'),
+      publicPath: 'static/dist/',
+      filename: '[chunkhash].webpicker.js'
     },
     module: {
       rules: [
@@ -52,8 +52,8 @@ module.exports = (env, argv) => {
           use: [{
             loader: 'url-loader',
             options: {
-              publicPath: '../..',
-              name: 'static/dist/[hash].[ext]',
+              publicPath: '../dist/',
+              name: '[hash].[ext]',
               // outputPath: 'static/dist',
               limit: 10000
             }
