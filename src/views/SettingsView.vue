@@ -409,61 +409,61 @@ export default {
           setTimeUncertainty0: {
             component: 'keybinding-field',
             props: {
-              label: 'Set no time unvertainty'
+              label: 'Set no time uncertainty'
             }
           },
           setTimeUncertainty1: {
             component: 'keybinding-field',
             props: {
-              label: 'Set time unvertainty level 1'
+              label: 'Set time uncertainty level 1'
             }
           },
           setTimeUncertainty2: {
             component: 'keybinding-field',
             props: {
-              label: 'Set time unvertainty level 2'
+              label: 'Set time uncertainty level 2'
             }
           },
           setTimeUncertainty3: {
             component: 'keybinding-field',
             props: {
-              label: 'Set time unvertainty level 3'
+              label: 'Set time uncertainty level 3'
             }
           },
           setTimeUncertainty4: {
             component: 'keybinding-field',
             props: {
-              label: 'Set time unvertainty level 4'
+              label: 'Set time uncertainty level 4'
             }
           },
           setTimeUncertainty5: {
             component: 'keybinding-field',
             props: {
-              label: 'Set time unvertainty level 5'
+              label: 'Set time uncertainty level 5'
             }
           },
           setTimeUncertainty6: {
             component: 'keybinding-field',
             props: {
-              label: 'Set time unvertainty level 6'
+              label: 'Set time uncertainty level 6'
             }
           },
           setTimeUncertainty7: {
             component: 'keybinding-field',
             props: {
-              label: 'Set time unvertainty level 7'
+              label: 'Set time uncertainty level 7'
             }
           },
           setTimeUncertainty8: {
             component: 'keybinding-field',
             props: {
-              label: 'Set time unvertainty level 8'
+              label: 'Set time uncertainty level 8'
             }
           },
           setTimeUncertainty9: {
             component: 'keybinding-field',
             props: {
-              label: 'Set time unvertainty level 9'
+              label: 'Set time uncertainty level 9'
             }
           }
         }

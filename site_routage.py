@@ -8,6 +8,7 @@ from obspy.taup import TauPyModel
 from StringIO import StringIO
 from obspy import UTCDateTime
 from urllib import urlencode
+from functools import wraps
 from lxml import etree
 import subprocess
 import tempfile
@@ -50,6 +51,31 @@ FDSNWS_BASE_URL = 'http://%s' % FDSNWS_DATASELECT_HOST
 SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'thufir.unice.fr:4803')
 
 FDSN_EVENT_FORMAT = 'xml'
+
+
+def check_auth(username, password):
+    """This function is called to check if a username /
+    password combination is valid.
+    """
+    return username == 's2rhai' and password == '52rh@!'
+
+def authenticate():
+    """Sends a 401 response that enables basic auth"""
+    return Response(
+        'Could not verify your access level for that URL.\n'
+        'You have to login with proper credentials', 401,
+        {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+def requires_auth(f):
+   @wraps(f)
+   def decorated(*args, **kwargs):
+       auth = request.authorization
+       print(auth)
+       if not auth or not check_auth(auth.username, auth.password):
+           return authenticate()
+       return f(*args, **kwargs)
+   return decorated
+
 
 @app.template_filter('sc3ml_type')
 def qml_type_to_sc3ml(event_type):
@@ -261,10 +287,12 @@ def get_first_arrival_P(arrivals, distance):
     return None
 
 @app.route('/')
+@requires_auth
 def index():
     return render_template('app.html')
 
 @app.route('/ttt', methods=['POST'])
+@requires_auth
 def get_ttt():
     phase_list = ['P', 'p', 'Pn', 'Pg', 'Pdiff', 'S', 's']
     model = TauPyModel(model="iasp91")
@@ -282,24 +310,28 @@ def get_ttt():
     return Response(json.dumps(result), mimetype='application/json')
 
 @app.route('/region', methods=['GET'])
+@requires_auth
 def get_region_name():
     longitude = float(request.args.get('longitude'))
     latitude = float(request.args.get('latitude'))
     return Response(json.dumps(FE.get_region(longitude, latitude)), mimetype='application/json')
 
 @app.route('/compute_magnitudes', methods=['POST'])
+@requires_auth
 def compute_magnitudes():
     jquake = request.get_json()
     result = compute_magnitudes_with_scamp_and_scmag(jquake)
     return Response(json.dumps(result), mimetype='application/json')
 
 @app.route('/relocate', methods=['POST'])
+@requires_auth
 def relocate():
     jquake = request.get_json()
     result = relocate_with_screloc(jquake, request.args.get('locator'), request.args.get('profile'))
     return Response(json.dumps(result), mimetype='application/json')
 
 @app.route('/commit', methods=['POST'])
+@requires_auth
 def commit():
     jquake = request.get_json()
     result = commit_with_scdispatch(jquake)

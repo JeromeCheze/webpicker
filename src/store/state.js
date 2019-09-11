@@ -5,7 +5,7 @@ let start = new Date(end.getTime() - 86400e3 * 8)
 
 export default {
 
-  root: '/',
+  root: '/webpicker/',
 
   author: null,
   authorDialog: false,
