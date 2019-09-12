@@ -159,6 +159,7 @@ export default {
           let e = utils.parseQuakeML(qml)[0]
           console.log(e);
           let o = e.origin[0]
+          o.creation_info.agency_id = this.event.creation_info.agency_id
           o.creation_info.author = this.$store.state.author
           o.evaluation_mode = 'manual'
           o._not_committed = true
@@ -212,7 +213,12 @@ export default {
           // console.log(qml);
           let e = utils.parseQuakeML(qml)[0]
           console.log(e);
+          if (e.magnitude.length == 0) {
+            alert('No magnitude computed.\n'+data.message)
+            return
+          }
           for (let m of e.magnitude) {
+            m.creation_info.agency_id = this.event.creation_info.agency_id
             m.origin_id = this.origin.public_id
             this.event.magnitude.push(m)
           }
