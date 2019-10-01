@@ -26,6 +26,8 @@ export default {
   inventory: {},
 
   waveformCache: {},
+  tttCache: {},
+  pickerLastOrigin: null,
 
   form: {
     start: start.toISOString().slice(0, 10),
