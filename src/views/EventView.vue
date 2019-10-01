@@ -438,7 +438,7 @@ export default {
         xAxis: { title: { text: 'Distance [°]' }, min: 0 },
         yAxis: { title: { text: 'Time residual [s]'}, min: -1 * extreme, max: extreme },
         tooltip: { formatter: function() {
-          return `<b>${this.point.name}</b><br>Distance: ${this.x.toFixed(2)} km<br>Residual: ${this.y.toFixed(2)} s`
+          return `<b>${this.point.name}</b><br>Distance: ${this.x.toFixed(2)}°<br>Residual: ${this.y.toFixed(2)} s`
         } },
         plotOptions: { series: { animation: false } },
         series: [
@@ -460,7 +460,7 @@ export default {
         xAxis: { title: { text: 'Distance [°]' }, min: 0 },
         yAxis: { title: { text: 'Travel time [s]' }, min: 0 },
         tooltip: { formatter: function() {
-          return `<b>${this.point.name}</b><br>Distance: ${this.x.toFixed(2)} km<br>Time: ${this.y.toFixed(2)} s`
+          return `<b>${this.point.name}</b><br>Distance: ${this.x.toFixed(2)}°<br>Time: ${this.y.toFixed(2)} s`
         } },
         plotOptions: { series: { animation: false } },
         series: [
