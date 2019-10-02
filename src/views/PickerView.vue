@@ -500,30 +500,28 @@ export default {
     },
 
     getTTT (stationDistanceMap, callback) {
-      if (this.$store.state.pickerLastOrigin == null) {
-        this.$store.state.pickerLastOrigin = {
-          latitude: this.origin.latitude.value,
-          longitude: this.origin.longitude.value,
-          depth: this.origin.depth.value
+      let [caO, cuO] = [this.$store.state.pickerLastOrigin, this.origin]
+      if (
+        caO != null &&
+        caO.latitude == cuO.latitude.value &&
+        caO.longitude == cuO.longitude.value &&
+        caO.depth == cuO.depth.value
+      ) {
+        console.log('Origin is unchanged, do not recompute theoretical travel times.')
+        this.ttt = this.$store.state.tttCache
+        if (callback != null) {
+          callback.call()
         }
-      } else {
-        let [caO, cuO] = [this.$store.state.pickerLastOrigin, this.origin]
-        if (
-          caO.latitude == cuO.latitude.value &&
-          caO.longitude == cuO.longitude.value &&
-          caO.depth == cuO.depth.value
-        ) {
-          console.log('Origin is unchanged, do not recompute theoretical travel times.')
-          this.ttt = this.$store.state.tttCache
-          if (callback != null) {
-            callback.call()
-          }
-          return
-        }
+        return
+      }
+      this.$store.state.pickerLastOrigin = {
+        latitude: cuO.latitude.value,
+        longitude: cuO.longitude.value,
+        depth: cuO.depth.value
       }
       this.$store.dispatch('setLoading', { value: true, text: 'Loading theoretical travel time...' })
       let data = {
-        depth: this.origin.depth.value/1000,
+        depth: cuO.depth.value / 1000,
         station: stationDistanceMap
       }
       const xhr = new XMLHttpRequest()
