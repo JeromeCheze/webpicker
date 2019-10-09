@@ -33,6 +33,16 @@
   </creationInfo>
 {%- endmacro %}
 
+{%- macro waveform_id(wfid) %}
+<waveformID
+  networkCode="{{ wfid.network_code }}"
+  stationCode="{{ wfid.station_code }}"
+{%- if wfid.location_code %}
+  locationCode="{{ wfid.location_code }}"
+{%- endif %}
+  channelCode="{{ wfid.channel_code }}"/>
+{%- endmacro %}
+
 <seiscomp xmlns="http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/{{ version }}" version="{{ version }}">
   <EventParameters>
 {%- for event in jquake %}
@@ -41,13 +51,7 @@
       <time>
         <value>{{ pick.time.value }}</value>
       </time>
-      <waveformID
-        networkCode="{{ pick.waveform_id.network_code }}"
-        stationCode="{{ pick.waveform_id.station_code }}"
-      {%- if pick.waveform_id.location_code %}
-        locationCode="{{ pick.waveform_id.location_code }}"
-      {%- endif %}
-        channelCode="{{ pick.waveform_id.channel_code }}"/>
+      {{ waveform_id(pick.waveform_id) }}
     {%- if pick.filter_id %}
       <filterID>{{ pick.filter_id | remove_resource_prefix }}</filterID>
     {%- endif %}
@@ -64,6 +68,28 @@
     {%- endif %}
     </pick>
   {%- endfor %}
+
+{%- if event.amplitude %}
+  {%- for amplitude in event.amplitude  %}
+    <amplitude publicID="{{ amplitude.public_id | remove_resource_prefix }}">
+      <type>{{ amplitude.type }}</type>
+      <amplitude>
+        <value>{{ amplitude.generic_amplitude.value }}</value>
+      </amplitude>
+      <timeWindow>
+        <reference>{{ amplitude.time_window.reference }}</reference>
+        <begin>{{ amplitude.time_window.begin }}</begin>
+        <end>{{ amplitude.time_window.end }}</end>
+      </timeWindow>
+      <snr>{{ amplitude.snr }}</snr>
+      <pickID>{{ amplitude.pick_id | remove_resource_prefix }}</pickID>
+      {{ waveform_id(amplitude.waveform_id) }}
+    {%- if amplitude.creation_info %}
+      {{ creation_info(amplitude.creation_info) }}
+    {%- endif %}
+    </amplitude>
+  {%- endfor  %}
+{%- endif %}
 
   {%- for origin in event.origin %}
     <origin publicID="{{ origin.public_id | remove_resource_prefix }}">
@@ -145,6 +171,24 @@
     {%- endfor %}
   {%- endif %}
 
+{%- if event.station_magnitude %}
+  {%- for station_magnitude in event.station_magnitude %}
+    {%- if station_magnitude.origin_id == origin.public_id %}
+      <stationMagnitude publicID="{{ station_magnitude.public_id | remove_resource_prefix }}">
+        <magnitude>
+          <value>{{ station_magnitude.mag.value }}</value>
+        </magnitude>
+        <type>{{ station_magnitude.type }}</type>
+        <amplitudeID>{{ station_magnitude.amplitude_id | remove_resource_prefix }}</amplitudeID>
+        {{ waveform_id(station_magnitude.waveform_id) }}
+      {%- if station_magnitude.creation_info %}
+        {{ creation_info(station_magnitude.creation_info) }}
+      {%- endif %}
+      </stationMagnitude>
+    {%- endif %}
+  {%- endfor %}
+{%- endif %}
+
 {%- if event.magnitude %}
   {%- for magnitude in event.magnitude %}
     {%- if magnitude.origin_id == origin.public_id %}
@@ -165,6 +209,19 @@
       {%- if magnitude.creation_info %}
         {{ creation_info(magnitude.creation_info) }}
       {%- endif %}
+    {%- if magnitude.station_magnitude_contribution %}
+      {%- for station_magnitude_contribution in magnitude.station_magnitude_contribution %}
+        <stationMagnitudeContribution>
+          <stationMagnitudeID>{{ station_magnitude_contribution.station_magnitude_id | remove_resource_prefix }}</stationMagnitudeID>
+        {%- if station_magnitude_contribution.residual %}
+          <residual>{{ station_magnitude_contribution.residual }}</residual>
+        {%- endif %}
+        {%- if station_magnitude_contribution.weight %}
+          <weight>{{ station_magnitude_contribution.weight }}</weight>
+        {%- endif %}
+        </stationMagnitudeContribution>
+      {%- endfor %}
+    {%- endif %}
       </magnitude>
     {%- endif %}
   {%- endfor %}

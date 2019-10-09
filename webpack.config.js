@@ -1,4 +1,5 @@
 // const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const TerserPlugin = require('terser-webpack-plugin')
@@ -15,6 +16,7 @@ let appHtml = new HtmlWebpackPlugin({
 
 module.exports = (env, argv) => {
   let plugins = [
+    new CleanWebpackPlugin(),
     extractCssInstance,
     appHtml
   ]

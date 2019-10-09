@@ -244,7 +244,7 @@ export default {
         preferred_origin_id: originId
       }
       utils.processEventData(e)
-      console.log(e);
+      console.log('[App::handleCreateEventFormSubmit] create event', e);
       this.$store.dispatch('setCurrentEvent', e)
       this.$router.push({ name: 'Event', params: { code: eventId } })
       this.newEventDialog = false

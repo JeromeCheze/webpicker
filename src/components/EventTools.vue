@@ -10,11 +10,36 @@
     <div class="event-tools__select-wrapper">
       <v-select label="Profile" v-model="profile" :items="profileOptions"></v-select>
     </div>
-    <v-btn
-      :color="event.preferred_magnitude_id == null ? 'orange' : 'white'"
-      @click="handleComputeMagnitudeClick"
-      small>COMPUTE MAGNITUDES</v-btn>
-    <v-menu v-model="commitPopover" bottom offset-y :close-on-content-click="false">
+    <v-menu v-model="magnitudePopover" top left offset-y :close-on-content-click="false" :max-width="300">
+      <template v-slot:activator="{ on }">
+        <v-btn
+          v-on="on" small @click="initStationMagnitude"
+          :color="event.preferred_magnitude_id == null ? 'orange' : 'white'">
+          MAGNITUDE
+        </v-btn>
+      </template>
+      <v-card>
+        <v-card-title>
+          <h4>Station magnitude configuration</h4>
+        </v-card-title>
+        <v-card-text :max-height="400">
+          <p>Define which station could be used for magnitude computation.</p>
+          <div v-for="(item, index) in stationMagnitude" :key="index">
+            <label class="event-tools__station-mag-checkbox">
+              <input type="checkbox" v-model="stationMagnitude[index].value"> {{ item.key }}
+            </label>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="white"
+            @click="handleComputeMagnitudeClick"
+            small>COMPUTE</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-menu>
+    <v-menu v-model="commitPopover" top offset-y :close-on-content-click="false">
       <template v-slot:activator="{ on }">
         <v-btn
           v-on="on"
@@ -56,6 +81,8 @@ export default {
     let locatorOptions = [ 'LOCSAT' ]
     let profileOptions = [ 'iasp91', 'tab' ]
     return {
+      magnitudePopover: false,
+      stationMagnitude: [],
       locator: locatorOptions[0],
       profile: profileOptions[0],
       locatorOptions,
@@ -132,6 +159,28 @@ export default {
 
   methods: {
 
+    initStationMagnitude () {
+      let tmp = {}
+      let prev = {}
+      for (let sm of this.stationMagnitude) {
+        prev[sm.key] = sm.value
+      }
+      for (let a of this.origin.arrival) {
+        let netSta = a._pick._seedid.split('.').slice(0, 2).join('.')
+        tmp[netSta] = null
+      }
+      let sm = []
+      for (let netSta of Object.keys(tmp)) {
+        sm.push({ key: netSta, value: prev[netSta] != null ? prev[netSta] : true })
+      }
+      sm.sort((a, b) => {
+        a = a.key
+        b = b.key
+        return a < b ? -1 : a > b ? 1 : 0
+      })
+      this.stationMagnitude = sm
+    },
+
     handleRelocateClick () {
       this.$store.dispatch('setLoading', { value: true, text: 'Relocate, please wait...' })
       // console.log(this.currentOrigin);
@@ -157,7 +206,7 @@ export default {
           let qml = parser.parseFromString(data.quakeml, 'application/xml')
           // console.log(qml);
           let e = utils.parseQuakeML(qml)[0]
-          console.log(e);
+          console.log('[EventTools::handleRelocateClick] relocate result', e);
           let o = e.origin[0]
           o.creation_info.agency_id = this.event.creation_info.agency_id
           o.creation_info.author = this.$store.state.author
@@ -192,10 +241,14 @@ export default {
     },
 
     handleComputeMagnitudeClick () {
+      this.magnitudePopover = false
       this.$store.dispatch('setLoading', { value: true, text: 'Compute magnitudes, please wait...' })
+      let discardedStation = this.stationMagnitude.filter(x => x.value == false).map(x => x.key)
       let e = utils.composeEvent({
-        base: this.event, origins: [ this.origin ], po: this.origin
+        base: this.event, origins: [ this.origin ], po: this.origin, discardedStation
       })
+      delete e.amplitude
+      delete e.station_magnitude
       utils.ajax({
         method: 'POST',
         url: this.$store.getters.getLink('compute_magnitudes'),
@@ -212,12 +265,28 @@ export default {
           let qml = parser.parseFromString(data.quakeml, 'application/xml')
           // console.log(qml);
           let e = utils.parseQuakeML(qml)[0]
-          console.log(e);
+          console.log('[EventTools::handleComputeMagnitudeClick] compute magnitude result', e);
           if (e.magnitude.length == 0) {
             alert('No magnitude computed.\n'+data.message)
             return
           }
+          for (let a of e.amplitude) {
+            if (this.event.amplitude == null) {
+              this.event.amplitude = []
+            }
+            this.event.amplitude.push(a)
+          }
+          for (let sm of e.station_magnitude) {
+            if (this.event.station_magnitude == null) {
+              this.event.station_magnitude = []
+            }
+            this.event.station_magnitude.push(sm)
+          }
           for (let m of e.magnitude) {
+            if (this.event.magnitude == null) {
+              this.event.magnitude = []
+            }
+            m.public_id = this.$store.getters.getId('Magnitude')
             m.creation_info.agency_id = this.event.creation_info.agency_id
             m.origin_id = this.origin.public_id
             this.event.magnitude.push(m)
@@ -237,7 +306,7 @@ export default {
       e.preferred_origin_id = o.public_id
       o.evaluation_status = this.commitForm.originEvaluationStatus
       let cloneEvent = utils.cloneAndClean(e, '/event_parameters/event')
-      // console.log(e);
+      console.log('[EventTools::handleCommitClick] commit', cloneEvent);
       utils.ajax({
         method: 'POST',
         url: this.$store.getters.getLink('commit'),
@@ -245,7 +314,7 @@ export default {
         data: JSON.stringify([ cloneEvent ]),
         type: 'json'
       }).then(data => {
-        console.log(data);
+        console.log('[EventTools::handleCommitClick] commit result', data);
         this.$store.dispatch('setLoading', { value: false })
         if (data.return_code == 0) {
           // o._not_committed = false
@@ -268,5 +337,16 @@ export default {
   display: inline-block;
   max-width: 200px;
   margin-right: 10px;
+}
+
+.event-tools__station-mag-checkbox,
+.event-tools__station-mag-checkbox input {
+  cursor: pointer;
+}
+.event-tools__station-mag-checkbox input {
+  background-color: #af4646;
+}
+.event-tools__station-mag-checkbox input:checked {
+  background-color: #82b1ff;
 }
 </style>

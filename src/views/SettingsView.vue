@@ -565,7 +565,7 @@ export default {
 
     handleKeyDown (ev) {
       this.currentShortcut = utils.shortcutString(ev)
-      console.log(this.currentShortcut);
+      // console.log(this.currentShortcut);
     },
 
     handleDarkModeClick () {

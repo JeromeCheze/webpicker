@@ -1,6 +1,9 @@
 const CONVERSION_RULES = {
   // keep list for all these nodes :
   '/event_parameters/event': true,
+  '/event_parameters/event/amplitude': true,
+  '/event_parameters/event/station_magnitude': true,
+  '/event_parameters/event/magnitude/station_magnitude_contribution': true,
   '/event_parameters/event/origin': true,
   '/event_parameters/event/origin/arrival': true,
   '/event_parameters/event/magnitude': true,
@@ -29,7 +32,14 @@ const CONVERSION_RULES = {
   '/event_parameters/event/origin/arrival/azimuth': parseFloat,
   '/event_parameters/event/magnitude/mag/value': parseFloat,
   '/event_parameters/event/magnitude/mag/uncertainty': parseFloat,
-  '/event_parameters/event/magnitude/stationCount': parseInt
+  '/event_parameters/event/magnitude/stationCount': parseInt,
+  '/event_parameters/event/magnitude/station_magnitude_contribution/weight': parseFloat,
+  '/event_parameters/event/magnitude/station_magnitude_contribution/residual': parseFloat,
+  '/event_parameters/event/amplitude/generic_amplitude': parseFloat,
+  '/event_parameters/event/amplitude/snr': parseFloat,
+  '/event_parameters/event/amplitude/time_window/begin': parseFloat,
+  '/event_parameters/event/amplitude/time_window/end': parseFloat,
+  '/event_parameters/event/station_magnitude/mag/value': parseFloat
 }
 
 const RESOURCE_ID_KEYS = [
@@ -43,7 +53,13 @@ const RESOURCE_ID_KEYS = [
   '/event_parameters/event/magnitude/public_id',
   '/event_parameters/event/magnitude/method_id',
   '/event_parameters/event/magnitude/origin_id',
+  '/event_parameters/event/magnitude/station_magnitude_contribution/station_magnitude_id',
   '/event_parameters/event/pick/public_id',
+  '/event_parameters/event/station_magnitude/origin_id',
+  '/event_parameters/event/station_magnitude/public_id',
+  '/event_parameters/event/station_magnitude/amplitude_id',
+  '/event_parameters/event/amplitude/public_id',
+  '/event_parameters/event/amplitude/pick_id',
 ]
 
 const RESIDUAL_COLOR_SCALE = [
@@ -176,6 +192,14 @@ function dict(k_list, v_list) {
   return result
 }
 
+function toSeedId (wfid) {
+  if (wfid.value) {
+    delete wfid.value
+  }
+  let loc = wfid.location_code == null ? '' : wfid.location_code
+  return [wfid.network_code, wfid.station_code, loc, wfid.channel_code].join('.')
+}
+
 function processEventData(e) {
   // e._id = e.public_id.split('/').slice(-1)[0]
   for (let o of e.origin) {
@@ -191,12 +215,32 @@ function processEventData(e) {
     o.depth._pretty = `${(o.depth.value/1000).toFixed(0)} km`
     o.depth._pretty_uncertainty = o.depth.uncertainty != null ? `+/- ${(o.depth.uncertainty/1000).toFixed(1)} km` : '(fixed)'
   }
+  if (e.amplitude != null && e.station_magnitude != null) {
+    for (let a of e.amplitude) {
+      a._seedid = toSeedId(a.waveform_id)
+    }
+    for (let sm of e.station_magnitude) {
+      sm._amplitude = e.amplitude.find(x => x.public_id == sm.amplitude_id)
+      sm.mag._pretty = sm.mag.value.toFixed(2)
+      sm._seedid = toSeedId(sm.waveform_id)
+    }
+  }
   if (e.magnitude != null) {
     for (let m of e.magnitude) {
       m.mag._pretty = m.mag.value.toFixed(2)
       m.creation_info._creation_time = new Date(Date.parse(m.creation_info.creation_time))
       m.creation_info._pretty_creation_time = m.creation_info._creation_time.toISOString().replace('T', ' ').substr(0, 19)
       // m._pretty_method = m.method_id != null ? m.method_id.split('/').slice(-1)[0] : ''
+      if (e.station_magnitude != null && m.station_magnitude_contribution != null) {
+        for (let smc of m.station_magnitude_contribution) {
+          smc._station_magnitude = e.station_magnitude.find(x => x.public_id == smc.station_magnitude_id)
+          if (smc.residual == null) {
+            smc.residual = smc._station_magnitude.mag.value - m.mag.value
+          }
+          smc._pretty_residual = smc.residual != null ? smc.residual.toFixed(2) : '-'
+          smc._pretty_weight = smc.weight != null ? smc.weight.toFixed(2) : '-'
+        }
+      }
     }
   } else {
     e.magnitude = []
@@ -213,9 +257,7 @@ function processEventData(e) {
       p.time._value = new Date(Date.parse(p.time.value))
       // p._id = p.public_id.split('/').slice(-1)[0]
       let wfid = p.waveform_id
-      delete p.waveform_id.value
-      let loc = wfid.location_code == null ? '' : wfid.location_code
-      p._seedid = [wfid.network_code, wfid.station_code, loc, wfid.channel_code].join('.')
+      p._seedid = toSeedId(wfid)
       p._fdsnid = p._seedid.replace('..', '.--.')
       // pickMap[p._id] = p
       pickMap[p.public_id] = p
@@ -310,7 +352,7 @@ function cloneAndClean(o, path) {
 }
 
 function composeEvent(o) {
-  let opt = Object.assign({ base: {}, origins: [], po: null, magnitudes: [], pm: null }, o)
+  let opt = Object.assign({ base: {}, origins: [], po: null, magnitudes: [], pm: null, discardedStation: [] }, o)
   let root = '/event_parameters/event'
   let result = cloneAndClean(opt.base, root)
   result.pick = []
@@ -320,9 +362,21 @@ function composeEvent(o) {
       continue
     }
     for (let a of o.arrival) {
-      result.pick.push(cloneAndClean(a._pick, `${root}/pick`))
+      let netSta = a._pick._seedid.split('.').slice(0, 2).join('.')
+      // add only picks of non discarded stations
+      if (opt.discardedStation.indexOf(netSta) < 0) {
+        result.pick.push(cloneAndClean(a._pick, `${root}/pick`))
+      }
     }
-    originList.push(cloneAndClean(o, `${root}/origin`))
+    let cloneOrigin = cloneAndClean(o, `${root}/origin`)
+    for (let i=cloneOrigin.arrival.length - 1; i >= 0; i--) {
+      let pickFound = result.pick.find(x => x.public_id == cloneOrigin.arrival[i].pick_id)
+      if (pickFound == null) {
+        // remove arrival of discarded station
+        cloneOrigin.arrival.splice(i, 1)
+      }
+    }
+    originList.push(cloneOrigin)
   }
   result.origin = originList
   result.magnitude = cloneAndClean(opt.magnitudes, `${root}/magnitude`)
@@ -380,6 +434,7 @@ export default {
   toRGB,
   ajax,
   dict,
+  toSeedId,
   processEventData,
   xmlNodeToJson,
   parseQuakeML,

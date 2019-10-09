@@ -88,7 +88,11 @@
             <th v-if="originSelectorMode">Creation time</th>
             <th v-if="originSelectorMode">Agency</th>
             <th v-if="originSelectorMode">Author</th>
-            <th>Value</th><th>Magnitude type</th><th>Station count</th><th>Method</th>
+            <th>Value</th>
+            <th>Magnitude type</th>
+            <th>Station count</th>
+            <th>Method</th>
+            <th>Station magnitudes</th>
           </tr>
         </thead>
         <tbody class="selectable" v-if="originSelectorMode">
@@ -104,6 +108,15 @@
             <td>{{ m.type }}</td>
             <td>{{ m.station_count }}</td>
             <td>{{ m.method_id }}</td>
+            <td>
+              <button
+                v-if="magDetails == m"
+                @click="magDetails = null" class="primary--text">hide</button>
+              <button
+                v-else-if="m.station_magnitude_contribution != null"
+                @click="magDetails = m" class="primary--text">show</button>
+              <span v-else>-</span>
+            </td>
           </tr>
         </tbody>
         <tbody v-else>
@@ -112,9 +125,50 @@
             <td>{{ event._pm.type }}</td>
             <td>{{ event._pm.station_count }}</td>
             <td>{{ event._pm.method_id }}</td>
+            <td>
+              <button
+                v-if="magDetails == event._pm"
+                @click="magDetails = null" class="primary--text">hide</button>
+              <button
+                v-else-if="event._pm.station_magnitude_contribution != null"
+                @click="magDetails = event._pm" class="primary--text">show</button>
+              <span v-else>-</span>
+            </td>
           </tr>
         </tbody>
       </table>
+      <div v-if="magDetails != null">
+        <v-layout row wrap>
+          <v-flex md8>
+            <h4>Station magnitudes</h4>
+          </v-flex>
+          <v-flex md4 class="text-xs-right">
+            <button @click="magDetails = null" class="primary--text">hide</button>
+          </v-flex>
+        </v-layout>
+        <table class="event-description__table">
+          <thead>
+            <tr>
+              <th>Channel</th>
+              <th>SNR</th>
+              <th>Type</th>
+              <th>Magnitude</th>
+              <th>Residual</th>
+              <th>Weight</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="smc in magDetails.station_magnitude_contribution">
+              <td>{{ smc._station_magnitude._seedid }}</td>
+              <td>{{ smc._station_magnitude._amplitude.snr.toFixed(2) }}</td>
+              <td>{{ smc._station_magnitude.type }}</td>
+              <td>{{ smc._station_magnitude.mag._pretty }}</td>
+              <td>{{ smc._pretty_residual }}</td>
+              <td>{{ smc._pretty_weight }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
@@ -124,7 +178,8 @@ export default {
 
   data () {
     return {
-      originSelectorMode: false
+      originSelectorMode: false,
+      magDetails: null
     }
   },
 
@@ -137,9 +192,16 @@ export default {
     }
   },
 
+  watch: {
+    'event._pm': function (newValue, oldValue) {
+      this.magDetails = null
+    }
+  },
+
   methods: {
 
     handleSetCurrentOrigin (o) {
+      this.magDetails = null
       this.$store.dispatch('setCurrentOrigin', o)
       this.$emit('need-update')
     },

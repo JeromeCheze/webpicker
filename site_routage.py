@@ -14,6 +14,7 @@ import subprocess
 import tempfile
 import obspy
 import json
+import sys
 import os
 
 app = Flask(__name__)
@@ -21,9 +22,11 @@ app.debug = True
 
 FE = FlinnEngdahl()
 
-FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'thufir.unice.fr:8080')
-FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'thufir.unice.fr:8080')
-FDSNWS_DATASELECT_HOST = os.getenv('FDSNWS_DATASELECT_HOST', 'encelade.unice.fr:8000')
+RESTRICTED = False
+
+FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'ayiti.unice.fr:8080')
+FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'ayiti.unice.fr:8080')
+FDSNWS_DATASELECT_HOST = os.getenv('FDSNWS_DATASELECT_HOST', 'ayiti.unice.fr:8000')
 
 FDSNWS_EVENT = 'http://%s/fdsnws/event' % FDSNWS_EVENT_HOST
 FDSNWS_STATION = 'http://%s/fdsnws/station' % FDSNWS_STATION_HOST
@@ -34,8 +37,9 @@ SC3ML_CONFIG_FILENAME = os.getenv('SC3ML_CONFIG_FILENAME', '/home/cheze/Document
 
 SEISCOMP_ROOT = os.getenv('SEISCOMP_ROOT', '/home/cheze/seiscomp3/')
 SEISCOMP_PROGRAM = os.path.join(SEISCOMP_ROOT, 'bin/seiscomp')
-SCP3ML_DISPATCH_VERSION = os.getenv('SCP3ML_DISPATCH_VERSION', '0.10')
-SCP3ML_BINARY_VERSION = os.getenv('SCP3ML_BINARY_VERSION', '0.10')
+SCP3ML_DISPATCH_VERSION = os.getenv('SCP3ML_DISPATCH_VERSION', '0.11')
+SCP3ML_BINARY_VERSION = os.getenv('SCP3ML_BINARY_VERSION', '0.11')
+SEISCOMP_DB_URI = os.getenv('SEISCOMP_DB_URI', 'postgresql://sc3reader:@babel.unice.fr/seiscomp3_ayiti')
 
 XSL_SC3ML_TO_QML1_2 = {
   '0.7': os.path.join(SEISCOMP_ROOT, 'share/xml/0.7/sc3ml_0.7__quakeml_1.2.xsl'),
@@ -48,9 +52,11 @@ XSL_SC3ML_TO_QML1_2 = {
 FDSNWS_BASE_URL = 'http://%s' % FDSNWS_DATASELECT_HOST
 
 # used for scdispatch :
-SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'thufir.unice.fr:4803')
+SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'ayiti.unice.fr:4803')
 
 FDSN_EVENT_FORMAT = 'xml'
+
+DEBUG = False
 
 
 def check_auth(username, password):
@@ -70,7 +76,7 @@ def requires_auth(f):
    @wraps(f)
    def decorated(*args, **kwargs):
        auth = request.authorization
-       if not auth or not check_auth(auth.username, auth.password):
+       if RESTRICTED and (not auth or not check_auth(auth.username, auth.password)):
            return authenticate()
        return f(*args, **kwargs)
    return decorated
@@ -188,13 +194,14 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
     with open(scamp_result, 'w') as f:
         f.write(result)
 
-    # print(sc3ml)
-    # print(data)
-    # print(' '.join(scamp_cmd))
-    # print(scamp_result)
-
-    os.remove(sc3ml)
-    os.remove(data)
+    if DEBUG:
+        sys.stderr.write('initial sc3ml file from jquake: %s\n' % sc3ml)
+        sys.stderr.write('mseed data: %s\n' % data)
+        sys.stderr.write('scamp cmd: %s\n' % ' '.join(scamp_cmd))
+        sys.stderr.write('scamp result: %s\n' % scamp_result)
+    else:
+        os.remove(sc3ml)
+        os.remove(data)
 
     # 5) compute magnitudes with scmag
     scmag_cmd = [
@@ -203,7 +210,8 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
         '--config-db', SC3ML_CONFIG_FILENAME,
         '--ep', scamp_result
     ]
-    # print(' '.join(scmag_cmd))
+    if DEBUG:
+        sys.stderr.write('scamg cmd: %s\n' % scmag_cmd)
     scmag = subprocess.Popen(scmag_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     result, error_message2 = scmag.communicate()
     error_message += error_message2
@@ -212,13 +220,14 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
     fix_scmag_magnitude_public_id(dom)
     newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML_TO_QML1_2[SCP3ML_BINARY_VERSION])
 
-    # _, scmag_result = tempfile.mkstemp(suffix='.sc3ml')
-    # print(scmag_result)
-    # with open(scmag_result, 'w') as f:
-    #     f.write(result)
-
-    os.remove(scamp_result)
-    os.remove(inventory)
+    if DEBUG:
+        _, scmag_result = tempfile.mkstemp(suffix='.sc3ml')
+        sys.stderr.write('scmag result: %s\n' % scmag_result)
+        with open(scmag_result, 'w') as f:
+            f.write(result)
+    else:
+        os.remove(scamp_result)
+        os.remove(inventory)
     return { 'message': error_message, 'quakeml': etree.tostring(newdom) }
 
 def relocate_with_screloc(jquake, locator, profile):
@@ -285,6 +294,20 @@ def get_first_arrival_P(arrivals, distance):
             return a
     return None
 
+def get_event_full_description(eventid):
+    cmd = [
+        SEISCOMP_PROGRAM, 'exec', 'scxmldump',
+        '-d', SEISCOMP_DB_URI,
+        '-E', request.args['eventid'],
+        '-mPAM'
+    ]
+    # print(' '.join(cmd))
+    scxmldump = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result, error_message = scxmldump.communicate()
+    dom = etree.fromstring(result)
+    newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML_TO_QML1_2[SCP3ML_BINARY_VERSION])
+    return etree.tostring(newdom)
+
 @app.route('/')
 @requires_auth
 def index():
@@ -347,6 +370,11 @@ def fdsnws(service, path):
         host = ''
         if service == 'event':
             host = FDSNWS_EVENT
+            # handle non standard argument, request is not forwarded to FDSNWS
+            if('eventid' in request.args and
+               'fulldescription' in request.args and
+               SEISCOMP_DB_URI is not None):
+                return Response(get_event_full_description(request.args['eventid']), mimetype='application/xml')
         elif service == 'station':
             host = FDSNWS_STATION
         elif service == 'dataselect':

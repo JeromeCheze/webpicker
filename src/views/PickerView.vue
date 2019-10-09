@@ -268,6 +268,7 @@ export default {
           mainWfidList,
           st => this.plotWaveforms(st),
           () => {
+            this.$store.dispatch('setLoading', { value: false })
             this.$store.dispatch('notify', { color: 'info', text: 'Waveform list is loaded.' })
             // this.$notify.info({ message: 'Waveform list is loaded.' })
             // console.log('Waveform list is loaded.');
@@ -366,7 +367,7 @@ export default {
 
     handleKeyDown (ev) {
       let k = utils.shortcutString(ev)
-      console.log(k);
+      // console.log(k);
       let keybindings = Object.keys(this.settings).filter(x => x.indexOf('pickerKeybinding') == 0)
       let bindedAction = []
       for (let key of keybindings) {
@@ -507,7 +508,7 @@ export default {
         caO.longitude == cuO.longitude.value &&
         caO.depth == cuO.depth.value
       ) {
-        console.log('Origin is unchanged, do not recompute theoretical travel times.')
+        console.log('[PickerView::getTTT] Origin is unchanged, do not recompute theoretical travel times.')
         this.ttt = this.$store.state.tttCache
         if (callback != null) {
           callback.call()
@@ -784,7 +785,7 @@ export default {
         }
       }).then(data => {
         let inv = utils.parseInventory(data)
-        console.log(inv);
+        console.log('[PickerView::loadAdditionalStation] additional station result', inv);
         this.$store.dispatch('mergeInventory', inv)
         let wfidList = []
         let stationDistanceMap = {}
@@ -840,7 +841,7 @@ export default {
             }
           }
         }
-        console.log(wfidList);
+        // console.log(wfidList);
         if (wfidList.length == 0) {
           this.$store.dispatch('setLoading', { value: false })
           // this.$notify.info({ message: 'No additional station found in this range.' })
@@ -851,7 +852,10 @@ export default {
         this.getTTT(stationDistanceMap, () => {
           this.downloadWaveforms(
             wfidList,
-            st => this.plotWaveforms(st),
+            st => {
+              this.$store.dispatch('setLoading', { value: false })
+              this.plotWaveforms(st)
+            },
             () => {
               // this.$notify.info({ message: 'Loading additional station is complete.' })
               this.$store.dispatch('notify', { color: 'info', text: 'Loading additional station is complete.' })
@@ -968,7 +972,6 @@ export default {
     },
 
     plotWaveforms (traceList) {
-      this.$store.dispatch('setLoading', { value: false })
       let wfList = []
       if (this.list != null) {
         wfList = this.listOpt.waveforms

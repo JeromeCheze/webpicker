@@ -195,11 +195,18 @@ export default {
           eventid: this.code,
           includeallorigins: 'true',
           includeallmagnitudes: 'true',
-          includearrivals: 'true'
+          includearrivals: 'true',
+
+          // Non-standard argument handled by site_routage.
+          // It used to get event description from scxmldump (if possible)
+          // instead of requesting the regular FDSNWS. So that the amplitude and
+          // the station magnitude are retrieved, which is not the case from FDSNWS.
+          fulldescription: 'true'
         },
         type: 'document'
       }).then(qml => {
         let e = utils.parseQuakeML(qml)[0]
+        console.log('[EventView::initEvent] full description event', e);
         let chList = []
         for (let o of e.origin) {
           for (let a of o.arrival) {
