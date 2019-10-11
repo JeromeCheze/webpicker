@@ -10,6 +10,19 @@
         <v-data-table :headers="tableHeader" :items="tableData" :pagination.sync="pagination">
           <template v-slot:items="props">
             <tr :class="tableRowClassName(props.item)" @click="handleRowClick(props.item)">
+              <td v-if="props.item.activity != null">
+                <v-menu offset-x open-on-hover>
+                  <template v-slot:activator="{ on }">
+                    <v-icon v-on="on" color="primary">mdi-account</v-icon>
+                  </template>
+                  <v-card>
+                    <v-card-text>
+                      <div v-for="(msg, index) in props.item.activity" :key="index">{{ msg }}</div>
+                    </v-card-text>
+                  </v-card>
+                </v-menu>
+              </td>
+              <td v-else></td>
               <td><div :style="{ minWidth: '140px' }">{{ props.item.time }}</div></td>
               <td class="font-weight-bold">{{ props.item.mag }}</td>
               <td>{{ props.item.magType }}</td>
@@ -35,6 +48,7 @@
         <table v-if="mapSelectedEvent != null" class="list-view__map-table">
           <thead>
             <tr>
+              <th></th>
               <th>Time</th>
               <th>M</th>
               <th>MT</th>
@@ -51,6 +65,19 @@
           </thead>
           <tbody>
             <tr @click="handleRowClick({ id: mapSelectedEvent.public_id })">
+              <td v-if="$store.getters.getEventActivity[mapSelectedEvent.public_id] != null">
+                <v-menu offset-x open-on-hover>
+                  <template v-slot:activator="{ on }">
+                    <v-icon v-on="on" color="primary">mdi-account</v-icon>
+                  </template>
+                  <v-card>
+                    <v-card-text>
+                      <div v-for="(msg, index) in $store.getters.getEventActivity[mapSelectedEvent.public_id]" :key="index">{{ msg }}</div>
+                    </v-card-text>
+                  </v-card>
+                </v-menu>
+              </td>
+              <td v-else></td>
               <td>{{ mapSelectedEvent._po.time._pretty }}</td>
               <td>{{ mapSelectedEvent._pm ? mapSelectedEvent._pm.mag._pretty : '--' }}</td>
               <td>{{ mapSelectedEvent._pm ? mapSelectedEvent._pm.type : '--' }}</td>
@@ -81,6 +108,7 @@ export default {
     return {
       activeTab: 0,
       tableHeader: [
+        { text: ' ', value: 'activity' },
         { text: 'Time', value: 'time' },
         { text: 'M', value: 'mag' },
         { text: 'MT', value: 'magType' },
@@ -112,6 +140,7 @@ export default {
   },
 
   mounted () {
+    this.$store.dispatch('setAuthorStatus', { eventid: 'null', action: 'browsing' })
     let dirty = false
     let query = Object.assign(Object.assign({}, this.$store.state.form), this.$route.query)
     for (let [k, v] of Object.entries(query)) {
@@ -178,6 +207,11 @@ export default {
     },
     hideDiscardedEvents: function (newValue, oldValue) {
       this.activeTab == 0 ? this.updateTable() : this.plotEvents()
+    },
+    '$store.getters.getEventActivity': function (newValue, oldValue) {
+      let data = this.getTableData()
+      this.pagination.totalItems = data.length
+      this.tableData = data
     }
   },
 
@@ -284,7 +318,9 @@ export default {
     },
 
     getTableData () {
+      let activity = this.$store.getters.getEventActivity
       return this.filteredEvents.map(e => ({
+        activity: activity[e.public_id] != null ? activity[e.public_id] : null,
         time: e._po.time._pretty,
         mag: e._pm ? e._pm.mag._pretty : '--',
         magType: e._pm ? e._pm.type : '--',

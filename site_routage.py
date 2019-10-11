@@ -1,14 +1,16 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-from flask import Flask, request, render_template, Response, abort
+from flask import Flask, g, request, session, render_template, Response, abort
 from urllib2 import urlopen, Request, HTTPError
 from obspy.geodetics import FlinnEngdahl
 from obspy.clients.fdsn import Client
 from obspy.taup import TauPyModel
 from StringIO import StringIO
 from obspy import UTCDateTime
+from datetime import datetime
 from urllib import urlencode
 from functools import wraps
+from random import randint
 from lxml import etree
 import subprocess
 import tempfile
@@ -19,10 +21,14 @@ import os
 
 app = Flask(__name__)
 app.debug = True
+app.secret_key = '\x02\xcf:\xc5\x88%K\xd2\x0fl\x8b}\xd1\xd9\xeew\xd8\x9e^0)\xa5\x1c\xb1'
+
+EVENTS_CURRENTLY_REVIEWED = {}
 
 FE = FlinnEngdahl()
 
-RESTRICTED = False
+RESTRICTED = True
+DEBUG = False
 
 FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'ayiti.unice.fr:8080')
 FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'ayiti.unice.fr:8080')
@@ -55,9 +61,6 @@ FDSNWS_BASE_URL = 'http://%s' % FDSNWS_DATASELECT_HOST
 SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'ayiti.unice.fr:4803')
 
 FDSN_EVENT_FORMAT = 'xml'
-
-DEBUG = False
-
 
 def check_auth(username, password):
     """This function is called to check if a username /
@@ -100,6 +103,67 @@ def remove_resource_prefix(resource_id):
     elif resource_id.startswith('smi:'):
         return '/'.join(resource_id.split('/')[2:])
     raise ValueError('Failed to remove prefix of resource ID: %s' % resource_id)
+
+class AuthorStatusHandler(object):
+    def __init__(self, filename):
+        self.__status = {}
+        self.__filename = filename
+        self.__clean_threshold = 300
+
+    def _load(self):
+        if os.path.exists(self.__filename):
+            with open(self.__filename, 'r') as f:
+                self.__status = json.load(f)
+        return self
+
+    def _save(self):
+        with open(self.__filename, 'w') as f:
+            json.dump(self.__status, f, indent=2)
+        return self
+
+    def _clean(self):
+        now = datetime.utcnow()
+        authors_to_del = []
+        for curr_author_id, curr_event_status in self.__status.iteritems():
+            t = datetime.strptime(curr_event_status['time'], '%Y-%m-%dT%H:%M:%SZ')
+            delta = now - t
+            if delta.total_seconds() > self.__clean_threshold:
+                authors_to_del.append(curr_author_id)
+        for curr_author_id in authors_to_del:
+            if curr_author_id in self.__status:
+                del self.__status[curr_author_id]
+        return self
+
+    def set_status(self, authorid, author, eventid, action):
+        if author is None:
+            author = 'unknown'
+        now = datetime.utcnow()
+        self._load()
+        if action in ['committing', 'browsing'] and authorid in self.__status:
+            del self.__status[authorid]
+        else:
+            self.__status[authorid] = {
+                'author': author,
+                'eventid': eventid,
+                'action': action,
+                'time': now.strftime('%Y-%m-%dT%H:%M:%SZ')
+            }
+        return self._clean()._save()
+
+    def get_status(self):
+        self._load()
+        now = int(datetime.now().strftime('%s'))
+        m_time = now - os.path.getmtime(self.__filename)
+        # print(m_time)
+        if m_time > self.__clean_threshold:
+            self._clean()._save()
+        return self.__status
+
+AUTHOR_STATUS = AuthorStatusHandler('author_status.json')
+
+def gen_id():
+    hexa = ['%x'% x for x in range(0, 16)]
+    return ''.join([hexa[randint(0, 15)] for x in range(0, 16)])
 
 def apply_xslt(document, xslt_path):
     xslt = etree.parse(xslt_path)
@@ -311,7 +375,22 @@ def get_event_full_description(eventid):
 @app.route('/')
 @requires_auth
 def index():
+    if 'id' not in session:
+        session['id'] = gen_id()
     return render_template('app.html')
+
+@app.route('/set_author', methods=['GET'])
+@requires_auth
+def set_session_author():
+    session['author'] = request.args['author']
+    return Response('true', mimetype="application/json")
+
+@app.route('/author_status', methods=['GET'])
+def get_author_status():
+    if 'eventid' in request.args and 'action' in request.args:
+        AUTHOR_STATUS.set_status(session['id'], session.get('author'), request.args['eventid'], request.args['action'])
+        return Response('true', mimetype='application/json')
+    return Response(json.dumps(AUTHOR_STATUS.get_status()), mimetype='application/json')
 
 @app.route('/ttt', methods=['POST'])
 @requires_auth

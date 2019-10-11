@@ -106,6 +106,42 @@
           </v-card>
         </v-dialog>
 
+        <v-dialog
+          v-model="$store.state.alertEventLockedDialog"
+          persistent
+          width="400">
+          <v-card color="warning">
+            <v-card-title>
+              <h3>Someone might be processing this event</h3>
+            </v-card-title>
+            <v-card-text v-if="$store.state.alertEventLocked != null">
+              <div v-for="(msg, index) in $store.state.alertEventLocked" :key="index">
+                {{ msg }}
+              </div>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn small @click="$store.state.alertEventLockedDialog = false">OK</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
+        <v-speed-dial v-model="onlineUsers" fixed bottom right>
+          <template v-slot:activator>
+            <v-btn v-model="onlineUsers" small fab color="blue">
+              <v-icon>mdi-account</v-icon>
+              <v-icon>mdi-close</v-icon>
+            </v-btn>
+          </template>
+          <div
+            class="app__author-status elevation-2"
+            :class="{ 'app__author-status--warning': $store.state.alertEventLocked != null && $store.state.currentEvent.public_id == status.eventid }"
+            v-for="(status, authorid) in $store.state.authorStatus"
+            v-if="status.author != $store.state.author">
+            The user <span class="font-weight-bold">{{ status.author }}</span> is {{ status.action }} the event <span class="font-weight-bold">{{ status.eventid }}</span>
+          </div>
+        </v-speed-dial>
+
         <div class="notification-container">
           <v-alert
             v-for="notification in $store.state.notificationList"
@@ -135,6 +171,7 @@ export default {
 
   data () {
     return {
+      onlineUsers: false,
       toolbarMenu: false,
       author: this.$store.state.author,
       remember: false,
@@ -308,5 +345,16 @@ export default {
 .notification-container__content-wrapper {
   max-height: 200px;
   overflow-y: auto;
+}
+
+.app__author-status {
+  width: 250px;
+  padding: 10px;
+  margin: 0px 200px 10px 10px;
+  background-color: #bde1f0;
+  border-radius: 4px;
+}
+.app__author-status--warning {
+  background-color: #e8c88b;
 }
 </style>

@@ -1,16 +1,8 @@
-export const INITIALIZE = (state) => {
-  let end = new Date(new Date().getTime() + 86400e3)
-  let start = new Date(end - 86400e3 * 8)
-  state.form.start = start.toISOString().slice(0, 10)
-  state.form.end = end.toISOString().slice(0, 10)
+import utils from '@/utils/utils'
 
-  let storedSettings = localStorage.getItem('settings')
-  state.settings = Object.assign(state.settings, storedSettings != null ? JSON.parse(storedSettings) : {})
-
-  state.author = localStorage.getItem('author')
-  if (state.author == null) {
-    state.authorDialog = true
-  }
+export const INIT_FORM = (state, data) => {
+  state.form.start = data.start.toISOString().slice(0, 10)
+  state.form.end = data.end.toISOString().slice(0, 10)
 }
 
 export const SET_AUTHOR = (state, data) => {
@@ -21,6 +13,49 @@ export const SET_AUTHOR = (state, data) => {
     localStorage.removeItem('author')
   }
   state.authorDialog = false
+  utils.ajax({
+    method: 'GET',
+    url: `${state.root}set_author`,
+    type: 'json',
+    args: { author: state.author }
+  }).then(data => {
+    console.log('[store.mutation::SET_AUTHOR] response', data)
+  })
+}
+
+export const SET_AUTHOR_STATUS = (state, data) => {
+  let dirty = false
+  for (let [k, v] of Object.entries(data)) {
+    if (state.authorStatus[k] == null) {
+      dirty = true
+      break
+    } else {
+      for (let [k2, v2] of Object.entries(v)) {
+        if (state.authorStatus[k][k2] != v2) {
+          dirty = true
+          break
+        }
+      }
+      if (dirty) {
+        break
+      }
+    }
+  }
+  if (!dirty) {
+    for (let [k, v] of Object.entries(state.authorStatus)) {
+      if (data[k] == null) {
+        dirty = true
+        break
+      }
+    }
+  }
+  if (dirty) {
+    state.authorStatus = data
+  }
+}
+
+export const SET_AUTHOR_DIALOG = (state, data) => {
+  state.authorDialog = data
 }
 
 export const SET_EVENT_LIST = (state, data) => {
@@ -46,6 +81,11 @@ export const SET_CURRENT_EVENT = (state, data) => {
     state.currentOrigin = data._po
     state.currentEvent = data
   }
+}
+
+export const ALERT_EVENT_LOCKED = (state, data) => {
+  state.alertEventLocked = data
+  state.alertEventLockedDialog = true
 }
 
 export const SET_CURRENT_ORIGIN = (state, data) => {

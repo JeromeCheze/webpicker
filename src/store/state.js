@@ -19,6 +19,10 @@ export default {
 
   notificationList: [],
 
+  authorStatus: {},
+  alertEventLocked: null,
+  alertEventLockedDialog: false,
+
   eventList: [],
 
   currentEvent: null,

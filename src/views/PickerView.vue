@@ -248,6 +248,10 @@ export default {
   },
 
   mounted () {
+    this.$store.dispatch('setAuthorStatus', {
+      eventid: this.$store.state.currentEvent.public_id,
+      action: 'picking'
+    })
     this.picksDirty = false
     if (!this.keyDownBinded) {
       this.keyDownBinded = true
@@ -508,13 +512,22 @@ export default {
         caO.longitude == cuO.longitude.value &&
         caO.depth == cuO.depth.value
       ) {
-        console.log('[PickerView::getTTT] Origin is unchanged, do not recompute theoretical travel times.')
-        this.ttt = this.$store.state.tttCache
-        if (callback != null) {
-          callback.call()
+        for (let [netSta, dist] of Object.entries(stationDistanceMap)) {
+          if (this.ttt[netSta] != null) {
+            // As origin in unchanged it is not needed to recompute ttt for station already computed
+            delete stationDistanceMap[netSta]
+          }
         }
-        return
+        if (Object.keys(stationDistanceMap).length == 0) {
+          console.log('[PickerView::getTTT] Origin is unchanged, do not recompute theoretical travel times.')
+          this.ttt = this.$store.state.tttCache
+          if (callback != null) {
+            callback.call()
+          }
+          return
+        }
       }
+      console.log('[PickerView::getTTT] compute theoretical travel time', stationDistanceMap);
       this.$store.state.pickerLastOrigin = {
         latitude: cuO.latitude.value,
         longitude: cuO.longitude.value,
@@ -863,7 +876,7 @@ export default {
               this.disableLoadAdditionalStation = false
             }
           )
-        })
+        }, true)
       })
     },
 

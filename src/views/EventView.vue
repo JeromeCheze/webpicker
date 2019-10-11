@@ -149,6 +149,7 @@ export default {
   // },
 
   mounted () {
+    this.$store.dispatch('setAuthorStatus', { eventid: this.code, action: 'reviewing' })
     if (this.event == null || this.event.public_id != this.code) {
       this.initEvent()
     } else {

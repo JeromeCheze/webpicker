@@ -9,3 +9,21 @@ export const getId = (state) => (prefix) => {
     (Math.random()*1000).toFixed(0)
   ].join('-')
 }
+
+export const getEventActivity = (state) => {
+  let now = new Date().getTime()
+  let activity = {}
+  for (let [uid, authorStatus] of Object.entries(state.authorStatus)) {
+    if (authorStatus.author == state.author) {
+      continue
+    }
+    let t = new Date(authorStatus.time).getTime()
+    let delta = Math.floor((now - t) / 1e3)
+    let msg = `User ${authorStatus.author} was ${authorStatus.action} this event ${delta}s ago.`
+    if (activity[authorStatus.eventid] == null) {
+      activity[authorStatus.eventid] = []
+    }
+    activity[authorStatus.eventid].push(msg)
+  }
+  return activity
+}

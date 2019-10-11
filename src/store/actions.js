@@ -1,14 +1,59 @@
 import utils from '@/utils/utils'
 
-export const initialize = ({ commit }) => {
-  commit('INITIALIZE')
+export const initialize = ({ commit, dispatch }) => {
+  let end = new Date(new Date().getTime() + 86400e3)
+  let start = new Date(end - 86400e3 * 8)
+  commit('INIT_FORM', { start, end })
+  let storedSettings = localStorage.getItem('settings')
+  commit('SET_SETTINGS', storedSettings != null ? JSON.parse(storedSettings) : {})
+  let author = localStorage.getItem('author')
+  if (author != null) {
+    commit('SET_AUTHOR', { author, remember: true })
+  } else {
+    commit('SET_AUTHOR_DIALOG', true)
+  }
+  dispatch('updateAuthorStatus')
+}
+
+export const updateAuthorStatus = ({ commit, getters, dispatch }) => {
+  return new Promise(function(resolve, reject) {
+    utils.ajax({
+      method: 'GET',
+      url: getters.getLink('author_status'),
+      type: 'json'
+    }).then(data => {
+      commit('SET_AUTHOR_STATUS', data)
+      setTimeout(() => {
+        dispatch('updateAuthorStatus')
+      }, 5000)
+      resolve()
+    })
+  });
+}
+
+export const setAuthorStatus = ({ getters }, data) => {
+  return new Promise(function(resolve, reject) {
+    utils.ajax({
+      method: 'GET',
+      url: getters.getLink('author_status'),
+      args: { eventid: data.eventid, action: data.action },
+      type: 'json'
+    }).then(data => {
+      console.log('[store.action::setAuthorStatus] response', data);
+      resolve()
+    })
+  });
 }
 
 export const eventList = ({ commit }, data) => {
   commit('SET_EVENT_LIST', data)
 }
 
-export const setCurrentEvent = ({ commit }, data) => {
+export const setCurrentEvent = ({ commit, getters }, data) => {
+  let activity = getters.getEventActivity
+  if (activity[data.public_id] != null) {
+    commit('ALERT_EVENT_LOCKED', activity[data.public_id])
+  }
   commit('SET_CURRENT_EVENT', data)
 }
 
@@ -49,6 +94,6 @@ export const pickerData = ({ state, commit, getters }, data) => {
   commit('PICKER_DATA', o)
 }
 
-export const setAuthor = ({ commit }, data) => {
+export const setAuthor = ({ commit, getters }, data) => {
   commit('SET_AUTHOR', data)
 }

@@ -182,6 +182,7 @@ export default {
     },
 
     handleRelocateClick () {
+      this.$store.dispatch('setAuthorStatus', { eventid: this.event.public_id, action: 'relocating' })
       this.$store.dispatch('setLoading', { value: true, text: 'Relocate, please wait...' })
       // console.log(this.currentOrigin);
       let e = utils.composeEvent({
@@ -242,6 +243,7 @@ export default {
 
     handleComputeMagnitudeClick () {
       this.magnitudePopover = false
+      this.$store.dispatch('setAuthorStatus', { eventid: this.event.public_id, action: 'computing magnitudes' })
       this.$store.dispatch('setLoading', { value: true, text: 'Compute magnitudes, please wait...' })
       let discardedStation = this.stationMagnitude.filter(x => x.value == false).map(x => x.key)
       let e = utils.composeEvent({
@@ -298,6 +300,7 @@ export default {
     },
 
     handleCommitClick () {
+      this.$store.dispatch('setAuthorStatus', { eventid: this.event.public_id, action: 'committing' })
       this.$store.dispatch('setLoading', { value: true, text: 'Commit in progress...' })
       let e = this.event,
           o = this.origin
