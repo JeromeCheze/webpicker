@@ -27,3 +27,10 @@ export const getEventActivity = (state) => {
   }
   return activity
 }
+
+export const getCurrentEventId = (state) => {
+  if (state.currentEvent != null) {
+    return state.currentEvent.public_id
+  }
+  return null
+}

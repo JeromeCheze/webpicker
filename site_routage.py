@@ -139,15 +139,21 @@ class AuthorStatusHandler(object):
             author = 'unknown'
         now = datetime.utcnow()
         self._load()
-        if action in ['committing', 'browsing'] and authorid in self.__status:
-            del self.__status[authorid]
-        else:
-            self.__status[authorid] = {
-                'author': author,
-                'eventid': eventid,
-                'action': action,
-                'time': now.strftime('%Y-%m-%dT%H:%M:%SZ')
-            }
+        # if action in ['committing', 'browsing'] and authorid in self.__status:
+        #     del self.__status[authorid]
+        # else:
+        #     self.__status[authorid] = {
+        #         'author': author,
+        #         'eventid': eventid,
+        #         'action': action,
+        #         'time': now.strftime('%Y-%m-%dT%H:%M:%SZ')
+        #     }
+        self.__status[authorid] = {
+            'author': author,
+            'eventid': eventid,
+            'action': action,
+            'time': now.strftime('%Y-%m-%dT%H:%M:%SZ')
+        }
         return self._clean()._save()
 
     def get_status(self):

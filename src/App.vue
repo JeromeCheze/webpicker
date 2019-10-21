@@ -126,7 +126,7 @@
           </v-card>
         </v-dialog>
 
-        <v-speed-dial v-model="onlineUsers" fixed bottom right>
+        <v-speed-dial v-model="onlineUsers" fixed bottom right transition="slide-y-reverse-transition">
           <template v-slot:activator>
             <v-btn v-model="onlineUsers" small fab color="blue">
               <v-icon>mdi-account</v-icon>
@@ -135,18 +135,25 @@
           </template>
           <div
             class="app__author-status elevation-2"
-            :class="{ 'app__author-status--warning': $store.state.alertEventLocked != null && $store.state.currentEvent.public_id == status.eventid }"
+            :class="{ 'app__author-status--warning': $store.getters.getCurrentEventId == status.eventid }"
             v-for="(status, authorid) in $store.state.authorStatus"
-            v-if="status.author != $store.state.author">
-            The user <span class="font-weight-bold">{{ status.author }}</span> is {{ status.action }} the event <span class="font-weight-bold">{{ status.eventid }}</span>
+            v-if="status.author != $store.state.author"
+            :key="authorid">
+            <div v-if="status.action == 'browsing'">
+              The user <span class="font-weight-bold">{{ status.author }}</span> is online</span>
+            </div>
+            <div v-else>
+              The user <span class="font-weight-bold">{{ status.author }}</span> is {{ status.action }} the event <span class="font-weight-bold">{{ status.eventid }}</span>
+            </div>
           </div>
         </v-speed-dial>
 
         <div class="notification-container">
           <v-alert
-            v-for="notification in $store.state.notificationList"
+            v-for="(notification, index) in $store.state.notificationList"
             :value="notification.value"
             :type="notification.color"
+            :key="index"
             transition="scale-transition">
             <div class="notification-container__content-wrapper">
               {{ notification.text }}
@@ -355,6 +362,6 @@ export default {
   border-radius: 4px;
 }
 .app__author-status--warning {
-  background-color: #e8c88b;
+  background-color: #ffc961;
 }
 </style>
