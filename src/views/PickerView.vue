@@ -506,6 +506,7 @@ export default {
 
     getTTT (stationDistanceMap, callback) {
       let [caO, cuO] = [this.$store.state.pickerLastOrigin, this.origin]
+      this.ttt = this.$store.state.tttCache
       if (
         caO != null &&
         caO.latitude == cuO.latitude.value &&
@@ -520,7 +521,6 @@ export default {
         }
         if (Object.keys(stationDistanceMap).length == 0) {
           console.log('[PickerView::getTTT] Origin is unchanged, do not recompute theoretical travel times.')
-          this.ttt = this.$store.state.tttCache
           if (callback != null) {
             callback.call()
           }
