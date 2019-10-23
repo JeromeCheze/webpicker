@@ -318,13 +318,18 @@ export default {
         type: 'json'
       }).then(data => {
         console.log('[EventTools::handleCommitClick] commit result', data);
-        this.$store.dispatch('setLoading', { value: false })
         if (data.return_code == 0) {
           // o._not_committed = false
+          setTimeout(() => {
+            this.commitPopover = false
+            // delay event reload to make sure that seiscomp had enough time
+            // to process it through spread and everything is written in database
+            this.$emit('need-init')
+          }, 1000)
           this.commitPopover = false
-          this.$emit('need-init')
-          // this.handleSelectEvent(this.currentEvent.public_id)
+          // this.$emit('need-init')
         } else {
+          this.$store.dispatch('setLoading', { value: false })
           alert(data.message)
         }
       })
