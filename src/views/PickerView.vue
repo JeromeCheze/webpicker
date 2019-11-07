@@ -805,6 +805,9 @@ export default {
                     return a < b ? 1 : a > b ? -1 : 0
                   })
                   fdsnidList.push(sensorChannels[0].fdsnid)
+                  for (let horizontal of this.getHorizontalIds(sensorChannels[0].fdsnid)) {
+                    fdsnidList.push(horizontal)
+                  }
                   let degDistance = ((pos.distanceTo([staObj.lat, staObj.lon]) / 1000.) * 360) / (2 * Math.PI * 6371)
                   this.stationDistance[netsta] = stationDistance[netsta] = degDistance
                   this.stationAzimuth[netsta] = utils.coordinates2azimuth([pos.lat, pos.lng], [staObj.lat, staObj.lon])
@@ -825,8 +828,8 @@ export default {
       })
     },
 
-    getChannel (seedid) {
-      let [n, s, l, c] = seedid.split('.')
+    getChannel (fdsnid) {
+      let [n, s, l, c] = fdsnid.replace('.--.', '..').split('.')
       if (this.inventory[n] != null &&
           this.inventory[n][s] != null &&
           this.inventory[n][s].location[l] != null &&
@@ -837,8 +840,8 @@ export default {
       return null
     },
 
-    getChannelScale (seedid) {
-      let cha = this.getChannel(seedid)
+    getChannelScale (fdsnid) {
+      let cha = this.getChannel(fdsnid)
       return cha != null ? cha.scale : 1
     },
 
