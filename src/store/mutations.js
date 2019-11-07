@@ -1,4 +1,4 @@
-import utils from '@/utils/utils'
+import * as utils from '@/utils/utils'
 
 export const INIT_FORM = (state, data) => {
   state.form.start = data.start.toISOString().slice(0, 10)
@@ -169,4 +169,12 @@ export const PICKER_DATA = (state, data) => {
   }
   e.pick = Object.values(picks)
   state.currentOrigin = data
+}
+
+export const SET_TTT_CACHE = (state, data) => {
+  state.tttCache = data
+}
+
+export const SET_PICKER_LAST_ORIGIN = (state, data) => {
+  state.pickerLastOrigin = data
 }

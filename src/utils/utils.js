@@ -1,4 +1,4 @@
-const CONVERSION_RULES = {
+export const CONVERSION_RULES = {
   // keep list for all these nodes :
   '/event_parameters/event': true,
   '/event_parameters/event/amplitude': true,
@@ -42,7 +42,7 @@ const CONVERSION_RULES = {
   '/event_parameters/event/station_magnitude/mag/value': parseFloat
 }
 
-const RESOURCE_ID_KEYS = [
+export const RESOURCE_ID_KEYS = [
   '/event_parameters/event/public_id',
   '/event_parameters/event/preferred_origin_id',
   '/event_parameters/event/preferred_magnitude_id',
@@ -62,13 +62,13 @@ const RESOURCE_ID_KEYS = [
   '/event_parameters/event/amplitude/pick_id',
 ]
 
-const RESIDUAL_COLOR_SCALE = [
+export const RESIDUAL_COLOR_SCALE = [
   [-1, [0, 0, 255]],
   [0, [255, 255, 255]],
   [1, [255, 0, 0]]
 ]
 
-function applyScale(v, cs) {
+export const applyScale = (v, cs) => {
   if (v <= cs[0][0]) {
     return cs[0][1]
   }
@@ -85,11 +85,24 @@ function applyScale(v, cs) {
   return result
 }
 
-function toRGB(rgb) {
+export const toRGB = (rgb) => {
   return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`
 }
 
-function ajax(opt, xhr) {
+export const pushInObject = (obj, key, value) => {
+  if (obj[key] == null) {
+    obj[key] = new Array()
+  }
+  obj[key].push(value)
+}
+
+export const pushUnique = (list, value) => {
+  if (list.indexOf(value) < 0) {
+    list.push(value)
+  }
+}
+
+export const ajax = (opt, xhr) => {
   if (xhr == null) {
     xhr = new XMLHttpRequest()
   }
@@ -119,11 +132,11 @@ function ajax(opt, xhr) {
   });
 }
 
-function toSnakeCase(x) {
+export const toSnakeCase = (x) => {
   return x.replace(/([A-Z]+)/g, '_$1').toLowerCase()
 }
 
-function removeResourcePrefix(id) {
+export const removeResourcePrefix = (id) => {
   if (id.indexOf('smi:org.gfz-potsdam.de/geofon/') == 0) {
     return id.replace('smi:org.gfz-potsdam.de/geofon/', '')
   } else if (id.indexOf('smi:') == 0) {
@@ -133,7 +146,7 @@ function removeResourcePrefix(id) {
   return id
 }
 
-function xmlNodeToJson(x, path, rules) {
+export const xmlNodeToJson = (x, path, rules) => {
   path = `${path}/${toSnakeCase(x.tagName)}`
   let obj = {}
   for (let a of x.attributes) {
@@ -172,7 +185,7 @@ function xmlNodeToJson(x, path, rules) {
   return obj
 }
 
-function parseQuakeML(qml) {
+export const parseQuakeML = (qml) => {
   let events = xmlNodeToJson(
     qml.getElementsByTagName('eventParameters')[0],
     '',
@@ -184,7 +197,11 @@ function parseQuakeML(qml) {
   return events
 }
 
-function dict(k_list, v_list) {
+export const blurActiveElement = () => {
+  document.activeElement.blur()
+}
+
+export const dict = (k_list, v_list) => {
   let result = {}
   for (let [i, k] of k_list.entries()) {
     result[k] = v_list[i]
@@ -192,7 +209,7 @@ function dict(k_list, v_list) {
   return result
 }
 
-function toSeedId (wfid) {
+export const toSeedId = (wfid) => {
   if (wfid.value) {
     delete wfid.value
   }
@@ -200,7 +217,7 @@ function toSeedId (wfid) {
   return [wfid.network_code, wfid.station_code, loc, wfid.channel_code].join('.')
 }
 
-function processEventData(e) {
+export const processEventData = (e) => {
   // e._id = e.public_id.split('/').slice(-1)[0]
   for (let o of e.origin) {
     o.time._value = new Date(Date.parse(o.time.value))
@@ -286,7 +303,7 @@ function processEventData(e) {
   }
 }
 
-function parseInventory(raw_inv) {
+export const parseInventory = (raw_inv) => {
   let cols = [
     'network', 'station', 'location', 'channel',
     'lat', 'lon', 'alt', 'depth',
@@ -330,7 +347,7 @@ function parseInventory(raw_inv) {
   return result
 }
 
-function cloneAndClean(o, path) {
+export const cloneAndClean = (o, path) => {
   let result
   if (o instanceof Array) {
     result = []
@@ -351,7 +368,7 @@ function cloneAndClean(o, path) {
   return result
 }
 
-function composeEvent(o) {
+export const composeEvent = (o) => {
   let opt = Object.assign({ base: {}, origins: [], po: null, magnitudes: [], pm: null, discardedStation: [] }, o)
   let root = '/event_parameters/event'
   let result = cloneAndClean(opt.base, root)
@@ -393,7 +410,7 @@ function composeEvent(o) {
   return result
 }
 
-function coordinates2azimuth(latlon1, latlon2) {
+export const coordinates2azimuth = (latlon1, latlon2) => {
   let [lat1, lon1, lat2, lon2] = latlon1.concat(latlon2)
   let x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1)
   let y = Math.sin(lon2 - lon1) * Math.cos(lat2)
@@ -401,11 +418,11 @@ function coordinates2azimuth(latlon1, latlon2) {
   return result >= 0 ? result : result + 360
 }
 
-function az2baz(az) {
+export const az2baz = (az) => {
   return (az + 180) % 360
 }
 
-function shortcutString (ev) {
+export const shortcutString = (ev) => {
   let k = []
   let keyCode = ev.keyCode || ev.which || ev.charCode
   if (ev.metaKey) k.push('meta')
@@ -425,23 +442,4 @@ function shortcutString (ev) {
     k = k.replace('arrow', '')
   }
   return k
-}
-
-export default {
-  CONVERSION_RULES,
-  RESIDUAL_COLOR_SCALE,
-  applyScale,
-  toRGB,
-  ajax,
-  dict,
-  toSeedId,
-  processEventData,
-  xmlNodeToJson,
-  parseQuakeML,
-  parseInventory,
-  cloneAndClean,
-  composeEvent,
-  coordinates2azimuth,
-  az2baz,
-  shortcutString
 }

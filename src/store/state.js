@@ -29,7 +29,7 @@ export default {
   currentOrigin: null,
   inventory: {},
 
-  waveformCache: {},
+  traceCache: {},
   tttCache: {},
   pickerLastOrigin: null,
 

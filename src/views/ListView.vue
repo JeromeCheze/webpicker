@@ -99,7 +99,7 @@
 </template>
 
 <script>
-import utils from '@/utils/utils'
+import * as utils from '@/utils/utils'
 import L from 'leaflet'
 
 export default {

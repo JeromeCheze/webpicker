@@ -51,7 +51,7 @@
 
 <script>
 import SelectArea from '@/utils/selectArea.js'
-import utils from '@/utils/utils'
+import * as utils from '@/utils/utils'
 import L from 'leaflet'
 
 export default {

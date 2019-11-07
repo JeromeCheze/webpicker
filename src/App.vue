@@ -168,7 +168,7 @@
 
 <script>
 import settings from './settings.json'
-import utils from './utils/utils.js'
+import * as utils from '@/utils/utils'
 
 const STORAGE_KEY = 'settings'
 

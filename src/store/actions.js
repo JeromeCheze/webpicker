@@ -1,4 +1,4 @@
-import utils from '@/utils/utils'
+import * as utils from '@/utils/utils'
 
 export const initialize = ({ commit, dispatch }) => {
   let end = new Date(new Date().getTime() + 86400e3)
@@ -96,4 +96,12 @@ export const pickerData = ({ state, commit, getters }, data) => {
 
 export const setAuthor = ({ commit, getters }, data) => {
   commit('SET_AUTHOR', data)
+}
+
+export const setTTTCache = ({ commit }, data) => {
+  commit('SET_TTT_CACHE', data)
+}
+
+export const setPickerLastOrigin = ({ commit }, data) => {
+  commit('SET_PICKER_LAST_ORIGIN', data)
 }

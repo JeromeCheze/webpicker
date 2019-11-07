@@ -7,6 +7,7 @@
         :items="tools.phaseOptions"
         hide-details
         clearable
+        title="Select phase"
       ></v-overflow-btn>
       <v-divider vertical class="mr-2"></v-divider>
 
@@ -20,13 +21,14 @@
         :items="tools.filterList"
         hide-details
         clearable
+        title="Select filter"
       ></v-overflow-btn>
       <v-divider vertical class="mr-2"></v-divider>
 
       <v-btn-toggle v-model="tools.alignment">
-        <v-btn flat :value="'O'">O</v-btn>
-        <v-btn flat :value="'P'">P</v-btn>
-        <v-btn flat :value="'S'">S</v-btn>
+        <v-btn flat :value="'O'" title="Align by origin time">O</v-btn>
+        <v-btn flat :value="'P'" title="Align by theoretical P wave">P</v-btn>
+        <v-btn flat :value="'S'" title="Align by theoretical S wave">S</v-btn>
       </v-btn-toggle>
       <v-divider vertical class="mx-2"></v-divider>
 
@@ -36,15 +38,38 @@
       <v-divider vertical class="mx-2"></v-divider>
 
       <v-btn-toggle v-model="tools.sortBy">
-        <v-btn flat :value="'distance'"><v-icon>mdi-map-marker-distance</v-icon></v-btn>
-        <v-btn flat :value="'name'"><v-icon>mdi-sort-alphabetical</v-icon></v-btn>
+        <v-btn flat :value="'distance'" title="Sort by distance"><v-icon>mdi-map-marker-distance</v-icon></v-btn>
+        <v-btn flat :value="'name'" title="Sort by name"><v-icon>mdi-sort-alphabetical</v-icon></v-btn>
       </v-btn-toggle>
       <v-divider vertical class="mx-2"></v-divider>
 
       <number-field v-model="tools.stationRadius" label="Radius" hide-details :style="{ maxWidth: '60px' }"></number-field>
-      <v-btn icon @click="loadAdditionalStation" :disabled="disableLoadAdditionalStation">
+      <v-btn icon @click="loadRadiusStation" :disabled="disableLoadAdditionalStation" title="Load station radius">
         <v-icon>mdi-less-than-or-equal</v-icon>
       </v-btn>
+      <v-divider vertical></v-divider>
+
+      <v-menu offset-y bottom left :close-on-content-click="false" v-model="additionalWaveformsChannelsMenu">
+        <template v-slot:activator="{ on }">
+          <v-btn v-on="on" icon title="Add component" :disabled="additionalWaveformsChannels.length == 0">
+            <v-icon>mdi-playlist-plus</v-icon>
+          </v-btn>
+        </template>
+        <v-list>
+          <v-list-tile @click="" v-for="channel in additionalWaveformsChannels" :key="channel.label">
+            <v-list-tile-action>
+              <v-checkbox v-model="channel.value"></v-checkbox>
+            </v-list-tile-action>
+            <v-list-tile-content @click="channel.value = !channel.value">{{ channel.label }}</v-list-tile-content>
+          </v-list-tile>
+          <v-list-tile>
+            <v-list-tile-action></v-list-tile-action>
+            <v-list-tile-content>
+              <v-btn @click="handleAdditionalWaveformSubmit">Ok</v-btn>
+            </v-list-tile-content>
+          </v-list-tile>
+        </v-list>
+      </v-menu>
       <v-divider vertical></v-divider>
 
       <v-overflow-btn
@@ -52,6 +77,7 @@
         label="Rotation"
         :items="tools.rotationOptions"
         hide-details
+        title="Select rotation"
       ></v-overflow-btn>
     </v-toolbar>
     <div class="picker-view__container--picker"></div>
@@ -61,7 +87,7 @@
 
 <script>
 import Waveform from '@/lib/waveform'
-import utils from '@/utils/utils'
+import * as utils from '@/utils/utils'
 import mseed from '@/lib/mseed'
 import Fili from 'fili'
 import L from 'leaflet'
@@ -99,11 +125,16 @@ export default {
       disableLoadAdditionalStation: true,
       xhr: [],
 
+      // additional waveforms by station selected by user
+      additionalWaveformsChannelsMenu: false,
+      additionalWaveformsChannels: [],
+      additionalWaveforms: {},
+
       // cache variables
       picks: {},
-      ttt: null,
-      waveformCache: {},
-      stationInfoMap: {},
+      waveform: {},
+      stationDistance: {},
+      stationAzimuth: {},
 
       // instances
       list: null,
@@ -187,25 +218,36 @@ export default {
     },
     settings () {
       return this.$store.state.settings
+    },
+    ttt: {
+      get: function () {
+        return this.$store.state.tttCache
+      },
+      set: function (ttt) {
+        this.$store.dispatch('setTTTCache', ttt)
+      }
+    },
+    trace () {
+      return this.$store.state.traceCache
     }
   },
 
   watch: {
     'tools.phase': function (val) {
-      this.blurActiveElement()
+      utils.blurActiveElement()
       if (this.picker != null) {
         this.picker.setPickerPhase(val)
       }
     },
     'tools.sameScale': function (val) {
-      this.blurActiveElement()
+      utils.blurActiveElement()
       if (this.list != null) {
         this.picker.opt.equalScale = val
         this.picker.draw()
       }
     },
     'tools.filter': function (val) {
-      this.blurActiveElement()
+      utils.blurActiveElement()
       if (val && this.picker != null && this.list != null) {
         this.applyFilter()
         // this.list.setFilterState(true)
@@ -215,7 +257,7 @@ export default {
       }
     },
     'tools.alignment': function (val) {
-      this.blurActiveElement()
+      utils.blurActiveElement()
       if (this.picker != null && this.list != null) {
         this.list.setTimeAlignment(val)
         this.list.draw()
@@ -224,13 +266,13 @@ export default {
       }
     },
     'tools.focusComponent': function (val, oldVal) {
-      this.blurActiveElement()
+      utils.blurActiveElement()
       if (this.picker != null && val != oldVal) {
         this.picker.setFocusWaveform(val)
       }
     },
     'tools.sortBy': function (val) {
-      this.blurActiveElement()
+      utils.blurActiveElement()
       if (this.list != null) {
         if (val == 'name') {
           this.list.sortWaveformsBy(x => x.id)
@@ -240,7 +282,7 @@ export default {
       }
     },
     'tools.rotation': function () {
-      this.blurActiveElement()
+      utils.blurActiveElement()
       if (this.picker != null) {
         this.handleWaveformClick(this.picker.waveforms[0].opt, true)
       }
@@ -257,40 +299,12 @@ export default {
       this.keyDownBinded = true
       document.body.addEventListener('keydown', this.handleKeyDown)
     }
-    let stationDistanceMap = {}
-    for (let a of this.origin.arrival) {
-      let netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
-      stationDistanceMap[netsta] = a.distance
-    }
-    this.getTTT(stationDistanceMap, () => {
-      this.$store.dispatch('setLoading', { value: false })
-      let [mainWfidList, horizontalWfidList] = this.processArrival()
-      let nbChannels = mainWfidList.length + horizontalWfidList.length
-      if (nbChannels > 0) {
-        this.$store.dispatch('setLoading', { value: true, text: `Loading waveforms... (${nbChannels} channels)` })
-        this.downloadWaveforms(
-          mainWfidList,
-          st => this.plotWaveforms(st),
-          () => {
-            this.$store.dispatch('setLoading', { value: false })
-            this.$store.dispatch('notify', { color: 'info', text: 'Waveform list is loaded.' })
-            // this.$notify.info({ message: 'Waveform list is loaded.' })
-            // console.log('Waveform list is loaded.');
-            this.disableLoadAdditionalStation = false
-          }
-        )
-        this.downloadWaveforms(
-          horizontalWfidList,
-          st => this.handleHorizontalWaveforms(st),
-          () => {
-            this.$store.dispatch('notify', { color: 'info', text: 'All waveforms loading is complete.' })
-            // this.$notify.info({ message: 'All waveforms loading is complete.' })
-            // console.log('All waveforms loading is complete.');
-          }
-        )
-      } else {
+
+    let fdsnidList = this.processArrival()
+    this.getTTT().then(() => {
+      this.downloadWaveforms(fdsnidList, wfList => this.processWaveforms(wfList)).then(() => {
         this.disableLoadAdditionalStation = false
-      }
+      })
     })
   },
 
@@ -313,16 +327,13 @@ export default {
     }
     let arrivals = []
     for (let [seedid, picks] of Object.entries(this.picks)) {
-      let staKey = seedid.split('.').slice(0, 2).join('.')
       let [net, sta, loc, cha] = seedid.split('.')
-      if (loc == '') {
-        loc = null
-      }
+      let netsta = `${net}.${sta}`
       for (let p of picks) {
         let pTime = new Date(p.time)
         arrivals.push({
-          azimuth: this.stationInfoMap[staKey].azimuth,
-          distance: this.stationInfoMap[staKey].distance,
+          azimuth: this.stationAzimuth[netsta],
+          distance: this.stationDistance[netsta],
           phase: p.phase,
           pick_id: p.id,
           time_residual: p.residual,
@@ -345,7 +356,7 @@ export default {
             waveform_id: {
               network_code: net,
               station_code: sta,
-              location_code: loc,
+              location_code: loc == '' ? null : loc,
               channel_code: cha
             }
           }
@@ -356,22 +367,56 @@ export default {
   },
 
   methods: {
-    blurActiveElement () {
-      document.activeElement.blur()
+
+    processArrival () {
+      let fdsnidList = []
+      this.origin.arrival.sort((a, b) => {
+        a = a.distance
+        b = b.distance
+        return a == b ? 0 : a < b ? -1 : 1
+      })
+      this.picks = {}
+      for (let [i, a] of this.origin.arrival.entries()) {
+        let fdsnid = a._pick._fdsnid
+        let netsta = fdsnid.split('.').slice(0, 2).join('.')
+        this.stationDistance[netsta] = a.distance
+        this.stationAzimuth[netsta] = a.azimuth
+        utils.pushInObject(this.picks, a._pick._seedid, {
+          id: a.pick_id,
+          phase: a.phase,
+          mode: a._pick.evaluation_mode,
+          polarity: a._pick.polarity,
+          time: a._pick.time._value.getTime(),
+          lower_uncertainty: a._pick.time.lower_uncertainty,
+          upper_uncertainty: a._pick.time.upper_uncertainty,
+          residual: a.time_residual,
+          weight: a.time_weight,
+          takeoff: a.takeoff_angle
+        })
+        let zComponent = `${fdsnid.slice(0, -1)}Z`
+        let wfidList = [zComponent].concat(this.getHorizontalIds(zComponent)).concat(this.getAuxiliaryIds(zComponent))
+        for (let fdsnid of wfidList) {
+          utils.pushUnique(fdsnidList, fdsnid)
+        }
+      }
+      return fdsnidList
     },
 
-    redraw () {
-      if (this.picker != null) {
-        this.setPickerWaveforms(this.picker.opt.waveforms)
-      }
-      if (this.list != null) {
-        this.setListWaveforms(this.list.opt.waveforms)
+    handleAdditionalWaveformSubmit () {
+      this.additionalWaveformsChannelsMenu = false
+      let additionalWaveformsChannelsList = this.additionalWaveformsChannels.filter(x => x.value == true).map(x => x.label)
+      if (additionalWaveformsChannelsList.length > 0) {
+        let netsta = additionalWaveformsChannelsList[0].split('.').slice(0, 2).join('.')
+        this.additionalWaveforms[netsta] = additionalWaveformsChannelsList.map(x => x.replace('..', '.--.'))
+        this.downloadWaveforms(
+          additionalWaveformsChannelsList,
+          wfList => this.handleWaveformClick(this.pickerOpt.waveforms[0], true)
+        )
       }
     },
 
     handleKeyDown (ev) {
       let k = utils.shortcutString(ev)
-      // console.log(k);
       let keybindings = Object.keys(this.settings).filter(x => x.indexOf('pickerKeybinding') == 0)
       let bindedAction = []
       for (let key of keybindings) {
@@ -382,31 +427,6 @@ export default {
       for (let action of bindedAction) {
         this.shortcutAction[action].call(this, ev)
       }
-    },
-
-    reset () {
-      this.disableLoadAdditionalStation = true
-      this.listOpt.waveforms = []
-      if (this.picker != null) {
-        this.picker.destroy()
-        this.picker = null
-      }
-      if (this.list != null) {
-        this.list.destroy()
-        this.list = null
-      }
-      this.tools.rotation = 'ZNE',
-      this.tools.lastFilter = this.tools.filterList[0].name
-      this.tools.phase = null,
-      this.tools.sameScale = false,
-      this.tools.filter = null,
-      this.tools.alignment = 'O',
-      this.tools.sortBy = 'distance'
-
-      this.waveformCache = {}
-      this.stationInfoMap = {}
-      this.picks = null
-      this.ttt = null
     },
 
     applyFilter (wfList) {
@@ -451,11 +471,11 @@ export default {
       if (horizontals.length == 2) {
         [nWf, eWf] = horizontals
       } else {
-        console.error('Cannot rotate to RT: no horizontal waveforms.')
+        console.error('[PickerView::ne2rt] Cannot rotate to RT: no horizontal waveforms.')
         return []
       }
       if (nWf.step != eWf.step) {
-        console.error('Cannot rotate to RT: different sampling rates for horizontal components !')
+        console.error('[PickerView::ne2rt] Cannot rotate to RT: different sampling rates for horizontal components !')
         return []
       }
       let baseId = nWf.id.slice(0, -1)
@@ -504,62 +524,63 @@ export default {
       return wfList
     },
 
-    getTTT (stationDistanceMap, callback) {
-      let [caO, cuO] = [this.$store.state.pickerLastOrigin, this.origin]
-      this.ttt = this.$store.state.tttCache
-      if (
-        caO != null &&
-        caO.latitude == cuO.latitude.value &&
-        caO.longitude == cuO.longitude.value &&
-        caO.depth == cuO.depth.value
-      ) {
-        for (let [netSta, dist] of Object.entries(stationDistanceMap)) {
-          if (this.ttt[netSta] != null) {
-            // As origin in unchanged it is not needed to recompute ttt for station already computed
-            delete stationDistanceMap[netSta]
+    getTTT (stationDistanceMap) {
+      return new Promise((resolve, reject) => {
+        let stationDistance = Object.assign({}, this.stationDistance)
+
+        // cached origin
+        let caO = this.$store.state.pickerLastOrigin
+
+        // current origin
+        let cuO = {
+          latitude: this.origin.latitude.value,
+          longitude: this.origin.longitude.value,
+          depth: this.origin.depth.value
+        }
+        this.$store.state.pickerLastOrigin = cuO
+
+        if (
+          caO != null &&
+          caO.latitude == cuO.latitude &&
+          caO.longitude == cuO.longitude &&
+          caO.depth == cuO.depth
+        ) {
+          // current origin == cached origin
+          for (let [netsta, dist] of Object.entries(this.stationDistance)) {
+            if (this.ttt[netsta] != null) {
+              // As origin in unchanged it is not needed to recompute ttt for station already computed
+              delete stationDistance[netsta]
+            }
+          }
+          if (Object.keys(stationDistance).length == 0) {
+            console.log('[PickerView::getTTT] Origin is unchanged, do not recompute theoretical travel times.')
+            resolve()
+            return
           }
         }
-        if (Object.keys(stationDistanceMap).length == 0) {
-          console.log('[PickerView::getTTT] Origin is unchanged, do not recompute theoretical travel times.')
-          if (callback != null) {
-            callback.call()
+        this.$store.dispatch('setLoading', { value: true, text: `Loading theoretical travel times...` })
+        console.log('[PickerView::getTTT] compute theoretical travel time', stationDistance)
+        const xhr = new XMLHttpRequest()
+        this.xhr.push(xhr)
+        utils.ajax({
+          method: 'POST',
+          url: this.$store.getters.getLink('ttt'),
+          dataMimeType: 'application/json',
+          data: JSON.stringify({ depth: cuO.depth / 1000, station: stationDistance }),
+          type: 'json'
+        }, xhr).then(ttt => {
+          this.xhr.splice(this.xhr.indexOf(xhr), 1)
+
+          let t0 = this.origin.time._value.getTime()
+          for (let staObj of Object.values(ttt)) {
+            for (let [phase, phaseTTT] of Object.entries(staObj.ttt)) {
+              staObj.ttt[phase] = t0 + phaseTTT * 1e3
+            }
           }
-          return
-        }
-      }
-      console.log('[PickerView::getTTT] compute theoretical travel time', stationDistanceMap);
-      this.$store.state.pickerLastOrigin = {
-        latitude: cuO.latitude.value,
-        longitude: cuO.longitude.value,
-        depth: cuO.depth.value
-      }
-      this.$store.dispatch('setLoading', { value: true, text: 'Loading theoretical travel time...' })
-      let data = {
-        depth: cuO.depth.value / 1000,
-        station: stationDistanceMap
-      }
-      const xhr = new XMLHttpRequest()
-      this.xhr.push(xhr)
-      utils.ajax({
-        method: 'POST',
-        url: this.$store.getters.getLink('ttt'),
-        dataMimeType: 'application/json',
-        data: JSON.stringify(data),
-        type: 'json'
-      }, xhr).then(ttt => {
-        this.$store.dispatch('setLoading', { value: false })
-        this.xhr.splice(this.xhr.indexOf(xhr), 1)
-        this.$store.state.tttCache = ttt
-        this.ttt = ttt
-        let t0 = this.origin.time._value.getTime()
-        for (let sta of Object.values(this.ttt)) {
-          for (let [k, ttt] of Object.entries(sta.ttt)) {
-            sta.ttt[k] = t0 + ttt * 1000
-          }
-        }
-        if (callback != null) {
-          callback.call()
-        }
+          this.ttt = Object.assign({}, ttt, this.ttt)
+          this.$store.dispatch('setLoading', { value: false })
+          resolve()
+        })
       })
     },
 
@@ -576,139 +597,110 @@ export default {
       ]
     },
 
-    processArrival () {
-      let mainWfidList = []
-      let horizontalWfidList = []
-      this.origin.arrival.sort((a, b) => {
-        a = a.distance
-        b = b.distance
-        return a == b ? 0 : a < b ? -1 : 1
-      })
-      this.picks = {}
-      for (let [i, a] of this.origin.arrival.entries()) {
-        let seedid = a._pick._seedid
-        let netsta = seedid.split('.').slice(0, 2).join('.')
-        this.stationInfoMap[netsta] = { azimuth: a.azimuth, distance: a.distance }
-        if (this.picks[seedid] == null) {
-          this.picks[seedid] = []
+    getCachedTraces (fdsnidList) {
+      let traceList = []
+      let notCached = []
+      let [start, end] = this.getTimeWindow()
+      let timeCacheKey = `${start.slice(0, 16)}_${end.slice(0, 16)}`
+      for (let fdsnid of fdsnidList.map(x => x)) {
+        let cacheKey = `${fdsnid}|${timeCacheKey}`
+        if (this.trace[cacheKey] == null) {
+          notCached.push(fdsnid)
+        } else {
+          traceList.push(this.trace[cacheKey])
+          fdsnidList.splice(fdsnidList.indexOf(fdsnid), 1)
         }
-        this.picks[seedid].push({
-          id: a.pick_id,
-          phase: a.phase,
-          mode: a._pick.evaluation_mode,
-          polarity: a._pick.polarity,
-          time: a._pick.time._value.getTime(),
-          lower_uncertainty: a._pick.time.lower_uncertainty,
-          upper_uncertainty: a._pick.time.upper_uncertainty,
-          residual: a.time_residual,
-          weight: a.time_weight,
-          takeoff: a.takeoff_angle
-        })
-        let zComponent = `${a._pick._fdsnid.slice(0, -1)}Z`
-        if (mainWfidList.indexOf(zComponent) < 0) {
-          mainWfidList.push(zComponent)
-        }
-        for (let fdsnid of this.getHorizontalIds(zComponent).concat(this.getAuxiliaryIds(zComponent))) {
-          if (i < 3) {
-            // download horizontal components in main download for the 3 first arrivals
-            if (mainWfidList.indexOf(fdsnid) < 0) {
-              mainWfidList.push(fdsnid)
-            }
+      }
+      console.log('[PickerView::getCachedTraces]', { traceList, notCached, timeCacheKey });
+      return [traceList, notCached, timeCacheKey]
+    },
+
+    getDownloadChunks (fdsnidList) {
+      // sort fdsnidList to retrieve in priority first 10 channels and Z component
+      let primary = [], secondary = []
+      for (let i = 0; i < fdsnidList.length; i++) {
+        if (i < 10) {
+          primary.push(fdsnidList[i])
+        } else {
+          if (fdsnidList[i].slice(-1) == 'Z') {
+            primary.push(fdsnidList[i])
           } else {
-            if (horizontalWfidList.indexOf(fdsnid) < 0) {
-              horizontalWfidList.push(fdsnid)
-            }
+            secondary.push(fdsnidList[i])
           }
         }
       }
-      return [mainWfidList, horizontalWfidList]
-    },
+      fdsnidList = primary.concat(secondary)
 
-    handleHorizontalWaveforms (traceList) {
-      for (let tr of traceList) {
-        let wf = this.getWaveformObject(tr)
-        this.waveformCache[tr.id.replace('..', '.--.')] = wf
-      }
-    },
-
-    downloadWaveforms (wfidList, callback, complete) {
-      if (wfidList.length == 0) {
-        return
-      }
-      let cache = this.$store.state.waveformCache
-      let [start, end] = this.getTimeWindow()
-      let cacheKey = `${start.slice(0, 16)}_${end.slice(0, 16)}`
-      let traceList = []
-      let notCached = []
-      for (let fdsnid of wfidList.map(x => x)) {
-        if (cache[fdsnid] == null || cache[fdsnid][cacheKey] == null) {
-          notCached.push(fdsnid)
-        } else {
-          traceList.push(cache[fdsnid][cacheKey])
-          wfidList.splice(wfidList.indexOf(fdsnid), 1)
-        }
-      }
       let chunks = []
-      for (let i = 0; i < notCached.length; i += 10) {
-        chunks.push(notCached.slice(i, i + 10))
+      for (let i = 0; i < fdsnidList.length; i += 10) {
+        chunks.push(fdsnidList.slice(i, i + 10))
       }
-      let downloader = (i, chunks) => {
-        let chunk = chunks[i++]
-        let query = chunk.map(wfid => `${wfid.replace(/\./g, ' ')} ${start} ${end}`)
+      return chunks
+    },
+
+    traceDownloader (fdsnidList) {
+      return new Promise((resolve, reject) => {
+        console.log('[PickerView::traceDownloader]', fdsnidList)
+        let [start, end] = this.getTimeWindow()
         const xhr = new XMLHttpRequest()
         this.xhr.push(xhr)
         utils.ajax({
           method: 'POST',
           url: this.$store.getters.getLink('fdsnws/dataselect/1/query'),
           dataMimeType: 'text/plain',
-          data: query.join('\r\n'),
+          data: fdsnidList.map(fdsnid => `${fdsnid.replace(/\./g, ' ')} ${start} ${end}`).join('\r\n'),
           type: 'arraybuffer'
         }, xhr).then(arr => {
           this.xhr.splice(this.xhr.indexOf(xhr), 1)
-          let dv = new DataView(arr)
-          let st = new mseed.Stream(dv)
-          for (let tr of st.trace) {
-            let fdsnid = tr.id.replace('..', '.--.')
-            wfidList.splice(wfidList.indexOf(fdsnid), 1)
-            if (cache[fdsnid] == null) {
-              cache[fdsnid] = {}
-            }
-            cache[fdsnid][cacheKey] = tr
-            traceList.push(tr)
-          }
-          if (callback != null && traceList.length > 0) {
-            callback.call(null, traceList)
-            traceList = []
-          }
-          if (i < chunks.length) {
-            downloader(i, chunks)
-          } else {
-            if (wfidList.length > 0) {
-              let content = wfidList.join(', ')
-              // this.$notify.error({
-              //   duration: 0,
-              //   dangerouslyUseHTMLString: true,
-              //   message: `These channels couldn't be retrieved:<ul>${content}</ul>`
-              // })
-              this.$store.dispatch('notify', { color: 'error', text: `These channels couldn't be retrieved: ${content}` })
-              // console.log(`These channels couldn't be retrieved:\n${content}`);
-            }
-            if (complete != null) {
-              complete.call()
-            }
-          }
+          let st = new mseed.Stream(new DataView(arr))
+          resolve(st.trace)
         })
-      }
-      if (chunks.length == 0) {
-        if (callback != null) {
-          callback.call(null, traceList)
+      })
+    },
+
+    downloadWaveforms (fdsnidList, callback) {
+      return new Promise((resolve, reject) => {
+        if (fdsnidList.length == 0) {
+          resolve()
         }
-        if (complete != null) {
-          complete.call()
+        console.log('[PickerView::downloadWaveforms]', fdsnidList)
+
+        let [traceList, notCached, timeCacheKey] = this.getCachedTraces(fdsnidList)
+        if (traceList.length > 0 && callback != null) {
+          callback.call(null, traceList.map(tr => this.getWaveformObject(tr)))
         }
-      } else {
-        downloader(0, chunks)
-      }
+        let chunks = this.getDownloadChunks(notCached)
+        if (chunks.length == 0) {
+          resolve()
+        } else {
+          let i = 0;
+          const postDownload = traceList => {
+            for (let tr of traceList) {
+              let fdsnid = tr.id.replace('..', '.--.')
+              fdsnidList.splice(fdsnidList.indexOf(fdsnid), 1)
+              let cacheKey = `${fdsnid}|${timeCacheKey}`
+              this.trace[cacheKey] = tr
+            }
+            if (callback != null && traceList.length > 0) {
+              callback.call(null, traceList.map(tr => this.getWaveformObject(tr)))
+            }
+            if (i < chunks.length) {
+              this.traceDownloader(chunks[i++]).then(traceList => postDownload(traceList))
+            } else {
+              if (fdsnidList.length > 0) {
+                let content = fdsnidList.join(', ')
+                this.$store.dispatch('notify', { color: 'error', text: `These channels couldn't be retrieved: ${content}` })
+                console.log(`[PickerView::downloadWaveforms] These channels couldn't be retrieved`, fdsnidList)
+              }
+              this.$store.dispatch('setLoading', { value: false })
+              this.$store.dispatch('notify', { color: 'info', text: 'Waveforms loaded.' })
+              resolve()
+            }
+          }
+          this.$store.dispatch('setLoading', { value: true, text: `Loading waveforms... (${fdsnidList.length} channels)` })
+          this.traceDownloader(chunks[i++]).then(traceList => postDownload(traceList))
+        }
+      });
     },
 
     getHorizontalIds (verticalId) {
@@ -748,30 +740,6 @@ export default {
       this.list.draw()
     },
 
-    getHorizontalWaveforms (wf) {
-      let result = []
-      let horizontalIds = this.getHorizontalIds(wf.id)
-      for (let fdsnid of horizontalIds) {
-        let cached = this.waveformCache[fdsnid]
-        if (cached != null) {
-          result.push(cached)
-        }
-      }
-      return result
-    },
-
-    getAuxiliaryWaveforms (wf) {
-      let result = []
-      let auxiliaryIds = this.getAuxiliaryIds(wf.id)
-      for (let fdsnid of auxiliaryIds) {
-        let cached = this.waveformCache[fdsnid]
-        if (cached != null) {
-          result.push(cached)
-        }
-      }
-      return result
-    },
-
     getColorSettings () {
       let colorSettingKey = Object.keys(this.settings).filter(x => x.indexOf('pickerColor') == 0)
       let result = {}
@@ -782,101 +750,78 @@ export default {
       return result
     },
 
-    loadAdditionalStation () {
-      let alreadyLoadedStation = this.list != null ? this.list.waveforms.map(x => x.opt.id.split('.').slice(0, 2).join('.')) : []
-      let strTime = this.origin.time._value.toISOString().slice(0, 19)
-      this.$store.dispatch('setLoading', { value: true, text: 'Loading inventory...' })
-      utils.ajax({
-        method: 'GET',
-        url: this.$store.getters.getLink('fdsnws/station/1/query'),
-        args: {
-          starttime: strTime, endtime: strTime,
-          level: 'channel', format: 'text',
-          latitude: this.origin.latitude.value,
-          longitude: this.origin.longitude.value,
-          minradius: 0, maxradius: this.tools.stationRadius
-        }
-      }).then(data => {
-        let inv = utils.parseInventory(data)
-        console.log('[PickerView::loadAdditionalStation] additional station result', inv);
-        this.$store.dispatch('mergeInventory', inv)
-        let wfidList = []
-        let stationDistanceMap = {}
+    getRadiusInventory () {
+      return new Promise((resolve, reject) => {
+        let strTime = this.origin.time._value.toISOString().slice(0, 19)
+        this.$store.dispatch('setLoading', { value: true, text: 'Loading inventory...' })
+        utils.ajax({
+          method: 'GET',
+          url: this.$store.getters.getLink('fdsnws/station/1/query'),
+          args: {
+            starttime: strTime, endtime: strTime,
+            level: 'channel', format: 'text',
+            latitude: this.origin.latitude.value,
+            longitude: this.origin.longitude.value,
+            minradius: 0, maxradius: this.tools.stationRadius
+          }
+        }).then(data => {
+          this.$store.dispatch('setLoading', { value: false })
+          let inv = utils.parseInventory(data)
+          console.log('[PickerView::getRadiusInventory] additional station result', inv);
+          this.$store.dispatch('mergeInventory', inv)
+          resolve(inv)
+        })
+      })
+    },
+
+    loadRadiusStation () {
+      this.getRadiusInventory().then(inv => {
+        let alreadyLoadedStation = this.list != null ? this.list.waveforms.map(x => x.opt.id.split('.').slice(0, 2).join('.')) : []
+        let fdsnidList = []
+        let stationDistance = {}
         let pos = L.latLng([this.origin.latitude.value, this.origin.longitude.value])
         for (let [net, netObj] of Object.entries(inv)) {
           for (let [sta, staObj] of Object.entries(netObj)) {
             let netsta = `${net}.${sta}`
-            if (alreadyLoadedStation.indexOf(netsta) >= 0) {
-              continue
-            }
-            let stationWf = null
-            for (let [loc, locObj] of Object.entries(staObj.location)) {
-              let availableChannel = {}
-              for (let [cha, chaObj] of Object.entries(locObj)) {
-                if (cha.slice(-1) != "Z") {
-                  continue
+            if (alreadyLoadedStation.indexOf(netsta) < 0) {
+              // browse inventory and ignore already loaded station
+              let availableChannel = []
+              for (let [loc, locObj] of Object.entries(staObj.location)) {
+                for (let [cha, chaObj] of Object.entries(locObj)) {
+                  if (cha.slice(-1) == "Z") {
+                    let fdsnid = [net, sta, loc == '' ? '--' : loc, cha].join('.')
+                    availableChannel.push({ fdsnid, sample_rate: chaObj[0].sample_rate })
+                  }
                 }
-                if (availableChannel[cha[1]] == null) {
-                  availableChannel[cha[1]] = []
+              }
+              // select the higher sampling rate of velocimeter in priority
+              let sensorTypeOrder = ['H', 'N']
+              for (let sensorType of sensorTypeOrder) {
+                let sensorChannels = availableChannel.filter(x => x.fdsnid.slice(-2)[0] == sensorType)
+                if (sensorChannels.length > 0) {
+                  sensorChannels.sort((a, b) => {
+                    a = a.sample_rate
+                    b = b.sample_rate
+                    return a < b ? 1 : a > b ? -1 : 0
+                  })
+                  fdsnidList.push(sensorChannels[0].fdsnid)
+                  let degDistance = ((pos.distanceTo([staObj.lat, staObj.lon]) / 1000.) * 360) / (2 * Math.PI * 6371)
+                  this.stationDistance[netsta] = stationDistance[netsta] = degDistance
+                  this.stationAzimuth[netsta] = utils.coordinates2azimuth([pos.lat, pos.lng], [staObj.lat, staObj.lon])
+                  break
                 }
-                availableChannel[cha[1]].push({ channel: cha, sample_rate: chaObj[0].sample_rate })
-              }
-              let keys = Object.keys(availableChannel)
-              if (keys.length == 0) {
-                console.warn(`No vertical component found for stream ${net}.${sta}.${loc}`)
-                continue
-              }
-              let order = ['N', 'H']
-              keys.sort((a, b) => {
-                a = order.indexOf(a)
-                b = order.indexOf(b)
-                return a > b ? -1 : a < b ? 1 : 0
-              })
-              availableChannel[keys[0]].sort((a, b) => {
-                a = a.sample_rate
-                b = b.sample_rate
-                return a < b ? 1 : a > b ? -1 : 0
-              })
-              stationWf = [net, sta, loc, availableChannel[keys[0]][0].channel].join('.').replace('..', '.--.')
-              break
-            }
-            if (stationWf != null) {
-              let degDistance = ((pos.distanceTo([staObj.lat, staObj.lon]) / 1000.) * 360) / (2 * Math.PI * 6371)
-              this.stationInfoMap[netsta] = {
-                distance: degDistance,
-                azimuth: utils.coordinates2azimuth([pos.lat, pos.lng], [staObj.lat, staObj.lon])
-              }
-              stationDistanceMap[netsta] = degDistance
-              wfidList.push(stationWf)
-              for (let wfid of this.getHorizontalIds(stationWf).concat(this.getAuxiliaryIds(stationWf))) {
-                wfidList.push(wfid)
               }
             }
           }
         }
-        // console.log(wfidList);
-        if (wfidList.length == 0) {
-          this.$store.dispatch('setLoading', { value: false })
-          // this.$notify.info({ message: 'No additional station found in this range.' })
+        console.log('[PickerView::loadRadiusStation] fdsnidList', fdsnidList);
+        if (fdsnidList.length == 0) {
           this.$store.dispatch('notify', { color: 'info', text: 'No additional station found in this range.' })
-          // console.log('No additional station found in this range.');
           return
         }
-        this.getTTT(stationDistanceMap, () => {
-          this.downloadWaveforms(
-            wfidList,
-            st => {
-              this.$store.dispatch('setLoading', { value: false })
-              this.plotWaveforms(st)
-            },
-            () => {
-              // this.$notify.info({ message: 'Loading additional station is complete.' })
-              this.$store.dispatch('notify', { color: 'info', text: 'Loading additional station is complete.' })
-              // console.log('Loading additional station is complete.');
-              this.disableLoadAdditionalStation = false
-            }
-          )
-        }, true)
+        this.getTTT(stationDistance).then(() => {
+          this.downloadWaveforms(fdsnidList, wfList => this.processWaveforms(wfList))
+        })
       })
     },
 
@@ -897,25 +842,45 @@ export default {
       return cha != null ? cha.scale : 1
     },
 
-    getWaveformObject (tr) {
-      if (this.picks[tr.id] == null) {
-        this.picks[tr.id] = []
+    setAdditionalWaveformsChannels (wfList) {
+      let additionalWaveformsChannels = []
+      let seedidList = wfList.map(x => x.id)
+      let netsta = seedidList[0].split('.').slice(0, 2).join('.')
+      // get all picks from this station
+      let seedidPicks = Object.entries(this.picks).filter(x => {
+        let pnetsta = x[0].split('.').slice(0, 2).join('.')
+        return pnetsta == netsta && x[1].length > 0
+      }).map(x => x[0])
+      // check if all streams that contain picks are in wfList
+      for (let seedid of seedidPicks) {
+        if (seedidList.indexOf(seedid) < 0) {
+          // if not, add it in wfList and in additionalWaveforms
+          seedidList.push(seedid)
+          let fdsnid = seedid.replace('..', '.--.')
+          if (this.waveform[fdsnid] != null) {
+            wfList.push(this.waveform[fdsnid])
+            utils.pushInObject(this.additionalWaveforms, netsta, fdsnid)
+          }
+        }
       }
-      let netsta = tr.id.split('.').slice(0, 2).join('.')
-      return {
-        start: tr.timeseries[0].starttime,
-        step: 1000 / tr.sample_rate,
-        values: tr.getData(),
-        scale: this.getChannelScale(tr.id),
-        id: tr.id,
-        distance: this.stationInfoMap[netsta].distance,
-        azimuth: this.stationInfoMap[netsta].azimuth,
-        ttt: Object.assign({ O: this.origin.time._value.getTime() }, this.ttt[netsta].ttt),
-        picks: this.picks[tr.id]
+      let [net, sta] = netsta.split('.')
+      for (let [loc, locObj] of Object.entries(this.inventory[net][sta].location)) {
+        for (let cha of Object.keys(locObj)) {
+          let seedid = [net, sta, loc, cha].join('.')
+          if (seedidList.indexOf(seedid) < 0) {
+            additionalWaveformsChannels.push({ label: seedid, value: false })
+          }
+        }
       }
+      this.additionalWaveformsChannels = additionalWaveformsChannels
     },
 
     setPickerWaveforms (wfList) {
+      console.log('[PickerView::setPickerWaveforms]', wfList)
+      if (this.tools.rotation != 'ZRT') {
+        this.setAdditionalWaveformsChannels(wfList)
+        console.log('[PickerView::setPickerWaveforms] after setAdditionalWaveformsChannels', wfList)
+      }
       let view = Object.assign({}, this.defaultView)
       let filterState = false
       let phase = null
@@ -960,12 +925,52 @@ export default {
       })
       this.listOpt.waveforms = wfList
       this.list = new Waveform(this.listOpt)
+
+      // HERE: indirectly create/update picker instance
       if (selectedWfId == null) {
         this.list.selectNext()
       } else {
         let wf = this.list.waveforms.find(wf => wf.opt.id == selectedWfId)
         this.list.selectWaveform(wf) // this will trigger an event that call 'handleWaveformClick'
       }
+    },
+
+    getHorizontalWaveforms (wf) {
+      let result = []
+      let horizontalIds = this.getHorizontalIds(wf.id)
+      for (let fdsnid of horizontalIds) {
+        let cached = this.waveform[fdsnid]
+        if (cached != null) {
+          result.push(cached)
+        }
+      }
+      return result
+    },
+
+    getAuxiliaryWaveforms (wf) {
+      let result = []
+      let auxiliaryIds = this.getAuxiliaryIds(wf.id)
+      for (let fdsnid of auxiliaryIds) {
+        let cached = this.waveform[fdsnid]
+        if (cached != null) {
+          result.push(cached)
+        }
+      }
+      return result
+    },
+
+    getAdditionalWaveforms (wf) {
+      let result = []
+      let netsta = wf.id.split('.').slice(0, 2).join('.')
+      if (this.additionalWaveforms[netsta] != null) {
+        for (let fdsnid of this.additionalWaveforms[netsta]) {
+          let cached = this.waveform[fdsnid]
+          if (cached != null) {
+            result.push(cached)
+          }
+        }
+      }
+      return result
     },
 
     handleWaveformClick (wf, force=false) {
@@ -976,7 +981,10 @@ export default {
       }
       let wfList = []
       if (this.tools.rotation == 'ZNE') {
-        wfList = [wf].concat(this.getHorizontalWaveforms(wf)).concat(this.getAuxiliaryWaveforms(wf))
+        wfList = [wf]
+          .concat(this.getHorizontalWaveforms(wf))
+          .concat(this.getAuxiliaryWaveforms(wf))
+          .concat(this.getAdditionalWaveforms(wf))
       } else if (this.tools.rotation == 'ZRT') {
         wfList = [wf].concat(this.ne2rt(wf))
       }
@@ -984,25 +992,54 @@ export default {
       this.setPickerWaveforms(wfList)
     },
 
-    plotWaveforms (traceList) {
-      let wfList = []
-      if (this.list != null) {
-        wfList = this.listOpt.waveforms
+    getWaveformObject (tr) {
+      if (this.picks[tr.id] == null) {
+        this.picks[tr.id] = []
       }
-      for (let tr of traceList) {
-        if (tr.id.slice(-1) != 'Z') {
-          let wf = this.getWaveformObject(tr)
-          this.waveformCache[tr.id.replace('..', '.--.')] = wf
-        } else {
-          wfList.push(this.getWaveformObject(tr))
-        }
+      let netsta = tr.id.split('.').slice(0, 2).join('.')
+      let wf = {
+        start: tr.timeseries[0].starttime,
+        step: 1000 / tr.sample_rate,
+        values: tr.getData(),
+        scale: this.getChannelScale(tr.id),
+        id: tr.id,
+        distance: this.stationDistance[netsta],
+        azimuth: this.stationAzimuth[netsta],
+        ttt: Object.assign({ O: this.origin.time._value.getTime() }, this.ttt[netsta].ttt),
+        picks: this.picks[tr.id]
+      }
+      this.waveform[tr.id.replace('..', '.--.')] = wf
+      return wf
+    },
+
+    processWaveforms (wfList) {
+      if (this.list != null) {
+        wfList = wfList.concat(this.listOpt.waveforms)
+      }
+      let netstaWf = {}
+      for (let wf of wfList) {
+        let fdsnid = wf.id.replace('..', '.--.')
+        let netsta = fdsnid.split('.').slice(0, 2).join('.')
+        utils.pushInObject(netstaWf, netsta, wf)
+      }
+      wfList = []
+      let order = ['N', 'H']
+      for (let [netsta, netstaList] of Object.entries(netstaWf)) {
+        let zChannel = netstaList.filter(x => x.id.slice(-1) == 'Z')
+        zChannel.sort((a, b) => {
+          a = order.indexOf(a.id.slice(-2)[0])
+          b = order.indexOf(b.id.slice(-2)[0])
+          return a < b ? 1 : a > b ? -1 : 0
+        })
+        wfList.push(zChannel[0])
       }
       this.setListWaveforms(wfList)
-      // this.tools.filter = this.tools.filter
     }
+
   }
 }
 </script>
 
 <style>
+
 </style>

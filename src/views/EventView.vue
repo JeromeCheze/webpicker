@@ -51,7 +51,7 @@
 <script>
 import Highcharts from 'highcharts'
 import addMore from 'highcharts/highcharts-more'
-import utils from './../utils/utils.js'
+import * as utils from '@/utils/utils'
 import L from 'leaflet'
 import 'leaflet-ellipse'
 
