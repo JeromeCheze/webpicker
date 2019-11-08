@@ -12,6 +12,8 @@
     { "name": "LP 10", "type": "lowpass", "fc": 10, "order": 4 },
     { "name": "LP 25", "type": "lowpass", "fc": 25, "order": 4 }
   ],
+  "pickerProgressBar.size": 3,
+  "pickerProgressBar.color": "#ffffff",
   "darkPickerColor.background": "rgba(37, 37, 37, 1)",
   "darkPickerColor.backgroundEven": "rgba(45, 45, 45, 1)",
   "darkPickerColor.line": "#57c3ff",

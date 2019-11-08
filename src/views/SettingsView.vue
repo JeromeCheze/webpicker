@@ -3,12 +3,12 @@
     <h1>Settings</h1>
     <div class="my-3">
       Picker color mode
-      <v-btn @click="handleDarkModeClick" dark small>dark</v-btn>
       <v-btn @click="handleLightModeClick" light small>light</v-btn>
+      <v-btn @click="handleDarkModeClick" dark small>dark</v-btn>
     </div>
-    <div v-for="(form, mainKey) in formStruct" class="my-3">
+    <div v-for="(form, mainKey) in formStruct" class="my-3" :key="mainKey">
       <h3>{{ form.label }}</h3>
-      <div class="setting-view__field" v-for="(field, subKey) in form.fields">
+      <div class="setting-view__field" v-for="(field, subKey) in form.fields" :key="subKey">
         <div class="setting-view__field--input">
           <keybinding-field
             v-if="field.component == 'keybinding-field'"
@@ -112,8 +112,6 @@ import * as utils from '@/utils/utils'
 import formStruct from '@/utils/settingsFormStruct'
 
 export default {
-
-  props: ['value'],
 
   data () {
     for (let [mainKey, form] of Object.entries(formStruct)) {
@@ -240,7 +238,7 @@ export default {
       field.value = field.default
     },
 
-    handleSaveSettings () {
+    getSettingsFromForm () {
       let result = {}
       for (let [mainKey, form] of Object.entries(this.formStruct)) {
         for (let [subKey, field] of Object.entries(form.fields)) {
@@ -249,7 +247,11 @@ export default {
         }
       }
       result['picker.filters'] = this.filterList
-      this.$store.dispatch('setSettings', result)
+      return result
+    },
+
+    handleSaveSettings () {
+      this.$store.dispatch('setSettings', this.getSettingsFromForm())
     }
 
   }
@@ -259,6 +261,7 @@ export default {
 <style>
 .setting-view__field {
   display: inline-block;
+  vertical-align: top;
   padding-right: 20px;
   width: 30%;
 }

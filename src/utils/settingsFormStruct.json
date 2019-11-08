@@ -117,6 +117,24 @@
       }
     }
   },
+  "pickerProgressBar": {
+    "label": "Picker progress bar",
+    "fields": {
+      "color": {
+        "component": "color-picker",
+        "props": {
+          "label": "Color",
+          "format": "hex"
+        }
+      },
+      "size": {
+        "component": "number-field",
+        "props": {
+          "label": "Size [px]"
+        }
+      }
+    }
+  },
   "pickerSize": {
     "label": "Picker sizes",
     "fields": {

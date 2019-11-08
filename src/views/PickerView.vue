@@ -1,5 +1,10 @@
 <template>
   <div>
+    <progress-bar
+      v-model="loading"
+      :size="settings['pickerProgressBar.size']"
+      :color="settings['pickerProgressBar.color']"
+    ></progress-bar>
     <v-toolbar dense :style="{ zIndex: 10 }">
       <v-overflow-btn
         v-model="tools.phase"
@@ -96,6 +101,7 @@ export default {
 
   data () {
     return {
+      loading: null,
       // toolbar variables
       tools: {
         rotationOptions: [ 'ZNE', 'ZRT' ],
@@ -290,6 +296,10 @@ export default {
   },
 
   mounted () {
+    if (this.origin == null) {
+      console.error('[PickerView::mounted] No event found');
+      return
+    }
     this.$store.dispatch('setAuthorStatus', {
       eventid: this.$store.state.currentEvent.public_id,
       action: 'picking'
@@ -557,6 +567,8 @@ export default {
             resolve()
             return
           }
+        } else {
+          this.ttt = {}
         }
         this.$store.dispatch('setLoading', { value: true, text: `Loading theoretical travel times...` })
         console.log('[PickerView::getTTT] compute theoretical travel time', stationDistance)
@@ -577,7 +589,7 @@ export default {
               staObj.ttt[phase] = t0 + phaseTTT * 1e3
             }
           }
-          this.ttt = Object.assign({}, ttt, this.ttt)
+          this.ttt = Object.assign({}, this.ttt, ttt)
           this.$store.dispatch('setLoading', { value: false })
           resolve()
         })
@@ -684,15 +696,17 @@ export default {
             if (callback != null && traceList.length > 0) {
               callback.call(null, traceList.map(tr => this.getWaveformObject(tr)))
             }
+            this.$store.dispatch('setLoading', { value: false })
             if (i < chunks.length) {
               this.traceDownloader(chunks[i++]).then(traceList => postDownload(traceList))
+              this.loading = i * 100 / chunks.length
             } else {
+              this.loading = null
               if (fdsnidList.length > 0) {
                 let content = fdsnidList.join(', ')
                 this.$store.dispatch('notify', { color: 'error', text: `These channels couldn't be retrieved: ${content}` })
                 console.log(`[PickerView::downloadWaveforms] These channels couldn't be retrieved`, fdsnidList)
               }
-              this.$store.dispatch('setLoading', { value: false })
               this.$store.dispatch('notify', { color: 'info', text: 'Waveforms loaded.' })
               resolve()
             }

@@ -2,7 +2,7 @@
   <div>
     <div class="color-picker__box-color" :style="{ background: value }" @click="active = !active"></div>
     <div :style="{ display: 'inline-block' }">
-      <v-menu offset-y v-model="active">
+      <v-menu offset-y v-model="active" :close-on-content-click="false">
         <template v-slot:activator="{ on }">
           <v-text-field v-on="on" :value="value" @input="$emit('input', $event)" :label="label"></v-text-field>
         </template>
