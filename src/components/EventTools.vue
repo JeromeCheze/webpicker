@@ -22,7 +22,8 @@
         <v-card-title>
           <h4>Station magnitude configuration</h4>
         </v-card-title>
-        <v-card-text :max-height="400">
+        <v-divider></v-divider>
+        <v-card-text style="height: 300px; overflow-y: auto;">
           <p>Define which station could be used for magnitude computation.</p>
           <div v-for="(item, index) in stationMagnitude" :key="index">
             <label class="event-tools__station-mag-checkbox">
@@ -30,6 +31,7 @@
             </label>
           </div>
         </v-card-text>
+        <v-divider></v-divider>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn
