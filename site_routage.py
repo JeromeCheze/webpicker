@@ -65,6 +65,18 @@ SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'ayiti.unice.fr:4803')
 
 FDSN_EVENT_FORMAT = 'xml'
 
+
+def dump_seiscomp3_config():
+    fd, conf_filename = tempfile.mkstemp()
+    scxmldump = subprocess.Popen([SEISCOMP_PROGRAM, 'exec', 'scxmldump', '-C', '-d', SEISCOMP_DB_URI], stdout=subprocess.PIPE)
+    config, _ = scxmldump.communicate()
+    f = os.fdopen(fd, 'w')
+    f.write(config)
+    f.close()
+    os.rename(conf_filename, SC3ML_CONFIG_FILENAME)
+
+dump_seiscomp3_config()
+
 def check_auth(username, password):
     """This function is called to check if a username /
     password combination is valid.
@@ -161,14 +173,15 @@ class AuthorStatusHandler(object):
 
     def get_status(self):
         self._load()
-        now = int(datetime.now().strftime('%s'))
-        m_time = now - os.path.getmtime(self.__filename)
-        # print(m_time)
-        if m_time > self.__clean_threshold:
-            self._clean()._save()
+        if os.path.exists(self.__filename):
+            now = int(datetime.now().strftime('%s'))
+            m_time = now - os.path.getmtime(self.__filename)
+            # print(m_time)
+            if m_time > self.__clean_threshold:
+                self._clean()._save()
         return self.__status
 
-AUTHOR_STATUS = AuthorStatusHandler('author_status.json')
+AUTHOR_STATUS = AuthorStatusHandler('/var/www/webpicker/author_status.json')
 
 def gen_id():
     hexa = ['%x'% x for x in range(0, 16)]
@@ -420,6 +433,11 @@ def get_author_status():
         AUTHOR_STATUS.set_status(session['id'], session.get('author'), request.args['eventid'], request.args['action'])
         return Response('true', mimetype='application/json')
     return Response(json.dumps(AUTHOR_STATUS.get_status()), mimetype='application/json')
+
+@app.route('/update_scp3_config')
+def update_scp3_config():
+    dump_seiscomp3_config()
+    return 'OK'
 
 @app.route('/ttt', methods=['POST'])
 @requires_auth
