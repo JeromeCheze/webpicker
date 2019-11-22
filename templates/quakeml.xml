@@ -1,0 +1,156 @@
+{%- macro waveform_id(obj) %}
+<waveformID
+  networkCode="{{ obj.m_waveformid_networkcode }}"
+  stationCode="{{ obj.m_waveformid_stationcode }}"
+{%- if obj.m_waveformid_locationcode != '' %}
+  locationCode="{{ obj.m_waveformid_locationcode }}"
+{%- endif %}
+  channelCode="{{ obj.m_waveformid_channelcode }}"/>
+{%- endmacro %}
+
+{%- macro if_not_null(tag, value) %}
+{%- if value %}
+  <{{ tag }}>{{ value }}</{{ tag }}>
+{%- endif %}
+{%- endmacro %}
+
+{%- macro creation_info(obj) %}
+  <creationInfo>
+    {{ if_not_null('agencyID', obj.m_creationinfo_agencyid) }}
+    {{ if_not_null('agencyURI', obj.m_creationinfo_agencyuri) }}
+    {{ if_not_null('author', obj.m_creationinfo_author) }}
+    {{ if_not_null('authorURI', obj.m_creationinfo_authoruri) }}
+  {%- if obj.m_creationinfo_creationtime_iso %}
+    <creationTime>{{ obj.m_creationinfo_creationtime_iso }}Z</creationTime>
+  {%- endif %}
+    {{ if_not_null('version', obj.m_creationinfo_version) }}
+  </creationInfo>
+{%- endmacro %}
+
+<q:quakeml xmlns:q="http://quakeml.org/xmlns/quakeml/1.2" xmlns="http://quakeml.org/xmlns/bed/1.2">
+  <eventParameters publicID="smi:org.gfz-potsdam.de/geofon/NA">
+  {%- for event in events %}
+    <event publicID="smi:org.gfz-potsdam.de/geofon/{{ event.m_publicid }}">
+
+    {%- for amplitude in event.amplitude %}
+      <amplitude publicID="smi:org.gfz-potsdam.de/geofon/{{ amplitude.m_publicid }}">
+        <type>{{ amplitude.m_type }}</type>
+        <genericAmplitude>
+          <value>{{ amplitude.m_amplitude_value }}</value>
+        </genericAmplitude>
+        <timeWindow>
+          <reference>{{ amplitude.m_timewindow_reference_iso }}Z</reference>
+          <begin>{{ amplitude.m_timewindow_begin }}</begin>
+          <end>{{ amplitude.m_timewindow_end }}</end>
+        </timeWindow>
+        <snr>{{ amplitude.m_snr }}</snr>
+        <pickID>smi:org.gfz-potsdam.de/geofon/{{ amplitude.m_pickid }}</pickID>
+        {{ waveform_id(amplitude) }}
+        {{ creation_info(amplitude) }}
+      </amplitude>
+    {%- endfor %}
+
+    {%- for station_magnitude in event.station_magnitudes %}
+    <stationMagnitude publicID="smi:org.gfz-potsdam.de/geofon/{{ station_magnitude.m_publicid }}">
+      <originID>{{ station_magnitude.m_originid }}</originID>
+      <mag>
+        <value>{{ station_magnitude.m_magnitude_value }}</value>
+      </mag>
+      <type>{{ station_magnitude.m_type }}</type>
+      <amplitudeID>smi:org.gfz-potsdam.de/geofon/{{ station_magnitude.m_amplitudeid }}</amplitudeID>
+      {{ waveform_id(station_magnitude) }}
+      {{ creation_info(station_magnitude) }}
+    </stationMagnitude>
+    {%- endfor %}
+
+    {%- for magnitude in event.magnitude %}
+    <magnitude publicID="smi:org.gfz-potsdam.de/geofon/{{ magnitude.m_publicid }}">
+      <originID>smi:org.gfz-potsdam.de/geofon/{{ magnitude.m_originid }}</originID>
+      <mag>
+        <value>{{ magnitude.m_magnitude_value }}</value>
+      </mag>
+      <type>{{ magnitude.m_type }}</type>
+      <methodID>smi:org.gfz-potsdam.de/geofon/{{ magnitude.m_methodid }}</methodID>
+      <stationCount>{{ magnitude.m_stationcount }}</stationCount>
+      {{ creation_info(magnitude) }}
+    </magnitude>
+    {%- endfor %}
+
+    {%- for pick in event.pick %}
+    <pick publicID="smi:org.gfz-potsdam.de/geofon/{{ pick.m_publicid }}">
+      <time>
+        <value>{{ pick.m_time_value_iso }}Z</value>
+      </time>
+      {{ waveform_id(pick) }}
+      <filterID>smi:org.gfz-potsdam.de/geofon/{{ pick.m_filterid }}</filterID>
+      <methodID>smi:org.gfz-potsdam.de/geofon/{{ pick.m_methodid }}</methodID>
+      <phaseHint>{{ pick.m_phasehint_code }}</phaseHint>
+      <evaluationMode>{{ pick.m_evaluationmode }}</evaluationMode>
+      {{ creation_info(pick) }}
+    </pick>
+    {%- endfor %}
+
+    {%- for origin in event.origin %}
+    <origin publicID="smi:org.gfz-potsdam.de/geofon/{{ origin.m_publicid }}">
+      <time>
+        <value>{{ origin.m_time_value_iso }}Z</value>
+        {{ if_not_null('uncertainty', origin.m_time_uncertainty) }}
+      </time>
+      <latitude>
+        <value>{{ origin.m_latitude_value }}</value>
+        {{ if_not_null('uncertainty', origin.m_latitude_uncertainty) }}
+      </latitude>
+      <longitude>
+        <value>{{ origin.m_longitude_value }}</value>
+        {{ if_not_null('uncertainty', origin.m_longitude_uncertainty) }}
+      </longitude>
+      <depth>
+        <value>{{ origin.m_depth_value }}</value>
+        {{ if_not_null('uncertainty', origin.m_depth_uncertainty) }}
+      </depth>
+      <methodID>smi:org.gfz-potsdam.de/geofon/{{ origin.m_methodid }}</methodID>
+      <earthModelID>smi:org.gfz-potsdam.de/geofon/{{ origin.m_earthmodelid }}</earthModelID>
+      <quality>
+        <associatedPhaseCount>{{ origin.m_quality_associatedphasecount }}</associatedPhaseCount>
+        <usedPhaseCount>{{ origin.m_quality_usedphasecount }}</usedPhaseCount>
+        <associatedStationCount>{{ origin.m_quality_associatedstationcount }}</associatedStationCount>
+        <usedStationCount>{{ origin.m_quality_usedstationcount }}</usedStationCount>
+        <depthPhaseCount>{{ origin.m_quality_depthphasecount }}</depthPhaseCount>
+        <standardError>{{ origin.m_quality_standarderror }}</standardError>
+        <azimuthalGap>{{ origin.m_quality_azimuthalgap }}</azimuthalGap>
+        <maximumDistance>{{ origin.m_quality_maximumdistance }}</maximumDistance>
+        <minimumDistance>{{ origin.m_quality_minimumdistance }}</minimumDistance>
+        <medianDistance>{{ origin.m_quality_mediandistance }}</medianDistance>
+      </quality>
+      <evaluationMode>{{ origin.m_evaluationmode }}</evaluationMode>
+      {{ creation_info(origin) }}
+
+    {%- for arrival in origin.arrival %}
+      <arrival publicID="smi:org.gfz-potsdam.de/geofon/NA">
+        <timeWeight>{{ arrival.m_weight }}</timeWeight>
+        <pickID>smi:org.gfz-potsdam.de/geofon/{{ arrival.m_pickid }}</pickID>
+        <phase>{{ arrival.m_phase_code }}</phase>
+        <azimuth>{{ arrival.m_azimuth }}</azimuth>
+        <distance>{{ arrival.m_distance }}</distance>
+        <timeResidual>{{ arrival.m_timeresidual }}</timeResidual>
+      </arrival>
+    {%- endfor %}
+
+    </origin>
+    {%- endfor %}
+
+    <preferredOriginID>smi:org.gfz-potsdam.de/geofon/{{ event.m_preferredoriginid }}</preferredOriginID>
+  {%- if event.m_preferredmagnitudeid %}
+    <preferredMagnitudeID>smi:org.gfz-potsdam.de/geofon/{{ event.m_preferredmagnitudeid }}</preferredMagnitudeID>
+  {%- endif %}
+    {{ creation_info(event) }}
+      <description>
+        <text>{{ event.region }}</text>
+        <type>region name</type>
+      </description>
+      {{ if_not_null('type', event.m_type) }}
+      {{ if_not_null('typeCertainty', event.m_typecertainty) }}
+    </event>
+  {%- endfor %}
+  </eventParameters>
+</q:quakeml>

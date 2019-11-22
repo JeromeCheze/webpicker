@@ -2,3 +2,4 @@ node_modules/
 dist/
 templates/app.html
 author_status.json
+*.pyc

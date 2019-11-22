@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from flask import Flask, g, request, session, render_template, Response, abort
 from urllib2 import urlopen, Request, HTTPError
+from seiscomp3_db_query import SeisComP3DBQuery
 from obspy.geodetics import FlinnEngdahl
 from obspy.clients.fdsn import Client
 from obspy.taup import TauPyModel
@@ -46,6 +47,8 @@ SEISCOMP_PROGRAM = os.path.join(SEISCOMP_ROOT, 'bin/seiscomp')
 SCP3ML_DISPATCH_VERSION = os.getenv('SCP3ML_DISPATCH_VERSION', '0.11')
 SCP3ML_BINARY_VERSION = os.getenv('SCP3ML_BINARY_VERSION', '0.11')
 SEISCOMP_DB_URI = os.getenv('SEISCOMP_DB_URI', 'postgresql://sc3reader:@babel.unice.fr/seiscomp3_ayiti')
+
+SCP3_DB_QUERY = SeisComP3DBQuery(SEISCOMP_DB_URI)
 
 XSL_SC3ML_TO_QML1_2 = {
   '0.7': os.path.join(SEISCOMP_ROOT, 'share/xml/0.7/sc3ml_0.7__quakeml_1.2.xsl'),
@@ -364,19 +367,39 @@ def get_first_arrival_P(arrivals, distance):
             return a
     return None
 
-def get_event_full_description(eventid):
-    cmd = [
-        SEISCOMP_PROGRAM, 'exec', 'scxmldump',
-        '-d', SEISCOMP_DB_URI,
-        '-E', request.args['eventid'],
-        '-mPAM'
-    ]
-    # print(' '.join(cmd))
-    scxmldump = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    result, error_message = scxmldump.communicate()
-    dom = etree.fromstring(result)
-    newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML_TO_QML1_2[SCP3ML_BINARY_VERSION])
-    return etree.tostring(newdom)
+def parse_station_post_request(raw_data):
+    args = { 'channel': [] }
+    for row in raw_data.splitlines():
+        if row == '':
+            continue
+        if '=' in row:
+            key, val = row.split('=')
+            args[key] = val
+        else:
+            net, sta, loc, cha, start, end = row.split()
+            args['channel'].append({
+                'network': net,
+                'station': sta,
+                'location': '' if loc == '--' else loc,
+                'channel': cha,
+                'starttime': start,
+                'endtime': end,
+            })
+    return args
+
+# def get_event_full_description(eventid):
+#     cmd = [
+#         SEISCOMP_PROGRAM, 'exec', 'scxmldump',
+#         '-d', SEISCOMP_DB_URI,
+#         '-E', request.args['eventid'],
+#         '-mPAM'
+#     ]
+#     # print(' '.join(cmd))
+#     scxmldump = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#     result, error_message = scxmldump.communicate()
+#     dom = etree.fromstring(result)
+#     newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML_TO_QML1_2[SCP3ML_BINARY_VERSION])
+#     return etree.tostring(newdom)
 
 @app.route('/')
 @requires_auth
@@ -455,13 +478,26 @@ def fdsnws(service, path):
         host = ''
         if service == 'event':
             host = FDSNWS_EVENT
-            # handle non standard argument, request is not forwarded to FDSNWS
-            if('eventid' in request.args and
-               'fulldescription' in request.args and
-               SEISCOMP_DB_URI is not None):
-                return Response(get_event_full_description(request.args['eventid']), mimetype='application/xml')
+            if SEISCOMP_DB_URI is not None:
+                with SCP3_DB_QUERY:
+                    return Response(
+                        render_template(
+                            'quakeml.xml',
+                            events=SCP3_DB_QUERY.get_events(request.args)
+                        ),
+                        mimetype='application/xml'
+                    )
+
         elif service == 'station':
             host = FDSNWS_STATION
+            if request.method == 'POST' and SEISCOMP_DB_URI is not None:
+                args = parse_station_post_request(request.data)
+                if args['format'] == 'text' and args['level'] == 'channel':
+                    with SCP3_DB_QUERY:
+                        return Response(
+                            SCP3_DB_QUERY.get_inventory(args['channel']),
+                            mimetype='text/plain'
+                        )
         elif service == 'dataselect':
             host = FDSNWS_DATASELECT
         req = '%s%s' % (host, path)
