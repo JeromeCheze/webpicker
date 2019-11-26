@@ -50,9 +50,9 @@
       </amplitude>
     {%- endfor %}
 
-    {%- for station_magnitude in event.station_magnitudes %}
+    {%- for station_magnitude in event.station_magnitude %}
     <stationMagnitude publicID="smi:org.gfz-potsdam.de/geofon/{{ station_magnitude.m_publicid }}">
-      <originID>{{ station_magnitude.m_originid }}</originID>
+      <originID>smi:org.gfz-potsdam.de/geofon/{{ station_magnitude.m_originid }}</originID>
       <mag>
         <value>{{ station_magnitude.m_magnitude_value }}</value>
       </mag>
@@ -72,6 +72,15 @@
       <type>{{ magnitude.m_type }}</type>
       <methodID>smi:org.gfz-potsdam.de/geofon/{{ magnitude.m_methodid }}</methodID>
       <stationCount>{{ magnitude.m_stationcount }}</stationCount>
+    {%- for station_magnitude_contribution in magnitude.station_magnitude_contribution %}
+      <stationMagnitudeContribution>
+        <stationMagnitudeID>smi:org.gfz-potsdam.de/geofon/{{ station_magnitude_contribution.m_stationmagnitudeid }}</stationMagnitudeID>
+        <residual>{{ station_magnitude_contribution.m_residual }}</residual>
+      {%- if station_magnitude_contribution.m_weight %}
+        <weight>{{ station_magnitude_contribution.m_weight }}</weight>
+      {%- endif %}
+      </stationMagnitudeContribution>
+    {%- endfor %}
       {{ creation_info(magnitude) }}
     </magnitude>
     {%- endfor %}
@@ -105,7 +114,7 @@
         {{ if_not_null('uncertainty', origin.m_longitude_uncertainty) }}
       </longitude>
       <depth>
-        <value>{{ origin.m_depth_value }}</value>
+        <value>{{ origin.m_depth_value * 1000 }}</value>
         {{ if_not_null('uncertainty', origin.m_depth_uncertainty) }}
       </depth>
       <methodID>smi:org.gfz-potsdam.de/geofon/{{ origin.m_methodid }}</methodID>

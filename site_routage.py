@@ -31,9 +31,9 @@ FE = FlinnEngdahl()
 RESTRICTED = True
 DEBUG = False
 
-FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'ayiti.unice.fr:8080')
-FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'ayiti.unice.fr:8080')
-FDSNWS_DATASELECT_HOST = os.getenv('FDSNWS_DATASELECT_HOST', 'ayiti.unice.fr:8000')
+FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'scytale.unice.fr:8888')
+FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'thufir.unice.fr:8080')
+FDSNWS_DATASELECT_HOST = os.getenv('FDSNWS_DATASELECT_HOST', 'encelade.unice.fr:8000')
 
 FDSNWS_EVENT = 'http://%s/fdsnws/event' % FDSNWS_EVENT_HOST
 FDSNWS_STATION = 'http://%s/fdsnws/station' % FDSNWS_STATION_HOST
@@ -46,7 +46,7 @@ SEISCOMP_ROOT = os.getenv('SEISCOMP_ROOT', '/home/cheze/seiscomp3/')
 SEISCOMP_PROGRAM = os.path.join(SEISCOMP_ROOT, 'bin/seiscomp')
 SCP3ML_DISPATCH_VERSION = os.getenv('SCP3ML_DISPATCH_VERSION', '0.11')
 SCP3ML_BINARY_VERSION = os.getenv('SCP3ML_BINARY_VERSION', '0.11')
-SEISCOMP_DB_URI = os.getenv('SEISCOMP_DB_URI', 'postgresql://sc3reader:@babel.unice.fr/seiscomp3_ayiti')
+SEISCOMP_DB_URI = os.getenv('SEISCOMP_DB_URI', 'postgresql://sc3reader:@babel.unice.fr/seiscomp3_dev')
 
 SCP3_DB_QUERY = SeisComP3DBQuery(SEISCOMP_DB_URI)
 
@@ -61,7 +61,7 @@ XSL_SC3ML_TO_QML1_2 = {
 FDSNWS_BASE_URL = 'http://%s' % FDSNWS_DATASELECT_HOST
 
 # used for scdispatch :
-SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'ayiti.unice.fr:4803')
+SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'thufir.unice.fr:4803')
 
 FDSN_EVENT_FORMAT = 'xml'
 
@@ -496,15 +496,15 @@ def fdsnws(service, path):
         host = ''
         if service == 'event':
             host = FDSNWS_EVENT
-            if SEISCOMP_DB_URI is not None:
-                with SCP3_DB_QUERY:
-                    return Response(
-                        render_template(
-                            'quakeml.xml',
-                            events=SCP3_DB_QUERY.get_events(request.args)
-                        ),
-                        mimetype='application/xml'
-                    )
+            # if SEISCOMP_DB_URI is not None:
+            #     with SCP3_DB_QUERY:
+            #         return Response(
+            #             render_template(
+            #                 'quakeml.xml',
+            #                 events=SCP3_DB_QUERY.get_events(request.args)
+            #             ),
+            #             mimetype='application/xml'
+            #         )
 
         elif service == 'station':
             host = FDSNWS_STATION

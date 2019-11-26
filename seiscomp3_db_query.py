@@ -121,15 +121,20 @@ class SeisComP3DBQuery():
         ) AS o ON o.o_oid = _parent_oid
         WHERE m_publicid = %s'''
 
-    # station magnitudes expects a tuple of magnitude OID
+    # expects a tuple of magnitude OID
+    STATION_MAGNITUDE_CONTRIBUTION_QUERY = '''\
+       SELECT *
+       FROM stationmagnitudecontribution
+       WHERE _parent_oid IN %s'''
+
+    # station magnitudes expects a tuple of station_magnitude publicID
     STATION_MAGNITUDES_QUERY = '''\
         SELECT *
         FROM stationmagnitude
         JOIN publicobject ON stationmagnitude._oid = publicobject._oid
-        JOIN stationmagnitudecontribution ON m_stationmagnitudeid = m_publicid
-        WHERE stationmagnitudecontribution._parent_oid IN %s'''
+        WHERE m_publicid IN %s'''
 
-    # amplitudes expects a tuple of station_magnitude publicID
+    # amplitudes expects a tuple of amplitude publicID
     AMPLITUDES_QUERY = '''\
         SELECT *
         FROM amplitude
@@ -228,7 +233,7 @@ class SeisComP3DBQuery():
         return self._fetchall(*self._build_events_query(args))
 
     def _query_origins(self, event, args):
-        origin_by_oid = {}
+        origins_by_oid = {}
         po = None
         origins = []
         if args.get('includeallorigins', 'false').lower() == 'true':
@@ -241,8 +246,8 @@ class SeisComP3DBQuery():
             origin['arrival'] = []
             origin['m_time_value_iso'] = (origin['m_time_value'] + timedelta(microseconds=origin['m_time_value_ms'])).strftime(SeisComP3DBQuery.TIME_3_FMT)
             origin['m_creationinfo_creationtime_iso'] = (origin['m_creationinfo_creationtime'] + timedelta(microseconds=origin['m_creationinfo_creationtime_ms'])).strftime(SeisComP3DBQuery.TIME_3_FMT)
-            origin_by_oid[origin['_oid']] = origin
-        return origin_by_oid, po
+            origins_by_oid[origin['_oid']] = origin
+        return origins_by_oid, po
 
     def _query_arrivals(self, origin_oid_list):
         return self._fetchall(SeisComP3DBQuery.ARRIVALS_QUERY, (tuple(origin_oid_list),))
@@ -255,6 +260,7 @@ class SeisComP3DBQuery():
         return picks
 
     def _query_magnitudes(self, origin_oid_list, args, pmid):
+        magnitude_by_oid = {}
         magnitudes = []
         if args.get('includeallmagnitudes', 'false').lower() == 'true':
             magnitudes = self._fetchall(SeisComP3DBQuery.ALL_MAGNITUDES_QUERY, (tuple(origin_oid_list),))
@@ -262,13 +268,19 @@ class SeisComP3DBQuery():
             magnitudes = self._fetchall(SeisComP3DBQuery.PREFERRED_MAGNITUDE_QUERY, (pmid,))
         for magnitude in magnitudes:
             magnitude['m_creationinfo_creationtime_iso'] = (magnitude['m_creationinfo_creationtime'] + timedelta(microseconds=magnitude['m_creationinfo_creationtime_ms'])).strftime(SeisComP3DBQuery.TIME_3_FMT)
-        return magnitudes
+            magnitude['station_magnitude_contribution'] = []
+            magnitude_by_oid[magnitude['_oid']] = magnitude
+        return magnitude_by_oid
 
-    def _query_station_magnitudes(self, magnitue_oid_list):
-        station_magnitudes = self._fetchall(SeisComP3DBQuery.STATION_MAGNITUDES_QUERY, (tuple(magnitue_oid_list),))
+    def _query_station_magnitudes(self, station_magnitude_id_list, origins_by_oid):
+        station_magnitudes = self._fetchall(SeisComP3DBQuery.STATION_MAGNITUDES_QUERY, (tuple(station_magnitude_id_list),))
         for station_magnitude in station_magnitudes:
             station_magnitude['m_creationinfo_creationtime_iso'] = (station_magnitude['m_creationinfo_creationtime'] + timedelta(microseconds=station_magnitude['m_creationinfo_creationtime_ms'])).strftime(SeisComP3DBQuery.TIME_3_FMT)
+            station_magnitude['m_originid'] = origins_by_oid[station_magnitude['_parent_oid']]['m_publicid']
         return station_magnitudes
+
+    def _query_station_magnitude_contribution(self, magnitue_oid_list):
+        return self._fetchall(SeisComP3DBQuery.STATION_MAGNITUDE_CONTRIBUTION_QUERY, (tuple(magnitue_oid_list),))
 
     def _query_amplitudes(self, amplitude_id_list):
         amplitudes = self._fetchall(SeisComP3DBQuery.AMPLITUDES_QUERY, (tuple(amplitude_id_list),))
@@ -291,9 +303,13 @@ class SeisComP3DBQuery():
                     pick_id_list.append(arrival['m_pickid'])
                     origins_by_oid[arrival['_parent_oid']]['arrival'].append(arrival)
                 event['pick'] = self._query_picks(pick_id_list)
-            event['magnitude'] = self._query_magnitudes(origins_by_oid.keys(), args, event['m_preferredmagnitudeid'])
+            magnitudes_by_oid = self._query_magnitudes(origins_by_oid.keys(), args, event['m_preferredmagnitudeid'])
+            event['magnitude'] = magnitudes_by_oid.values()
             if args.get('includestationmagnitudes', 'false').lower() == 'true':
-                event['station_magnitude'] = self._query_station_magnitudes([x['_oid'] for x in event['magnitude']])
+                station_magnitude_contributions = self._query_station_magnitude_contribution([x['_oid'] for x in event['magnitude']])
+                for station_magnitude_contribution in station_magnitude_contributions:
+                    magnitudes_by_oid[station_magnitude_contribution['_parent_oid']]['station_magnitude_contribution'].append(station_magnitude_contribution)
+                event['station_magnitude'] = self._query_station_magnitudes([x['m_stationmagnitudeid'] for x in station_magnitude_contributions], origins_by_oid)
                 event['amplitude'] = self._query_amplitudes([x['m_amplitudeid'] for x in event['station_magnitude']])
             else:
                 event['station_magnitude'] = []
@@ -343,9 +359,9 @@ class SeisComP3DBQuery():
 
 if __name__ == '__main__':
     import json
-    with SeisComP3DBQuery('postgresql://sc3reader:@babel.unice.fr/seiscomp3') as scp3dbquery:
+    with SeisComP3DBQuery('postgresql://sc3reader:@babel.unice.fr/seiscomp3_dev') as scp3dbquery:
         event = scp3dbquery.get_events({
-            'eventid': 'oca2019wcnm',
+            'eventid': 'oca2019wcnn',
             #'start': '2019-11-13',
             #'minlat': '41',
             #'maxlat': '45',
