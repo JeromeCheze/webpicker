@@ -87,7 +87,7 @@
               <td>{{ mapSelectedEvent._po.depth._pretty }}</td>
               <td>{{ mapSelectedEvent._po.evaluation_mode == 'manual' ? 'M' : 'A' }}</td>
               <td>{{ mapSelectedEvent.type ? mapSelectedEvent.type : '' }}</td>
-              <td>{{ mapSelectedEvent.description[0].text }}</td>
+              <td>{{ mapSelectedEvent._region }}</td>
               <td>{{ mapSelectedEvent._po.creation_info.author }}</td>
               <td>{{ mapSelectedEvent.public_id }}</td>
             </tr>
@@ -332,7 +332,7 @@ export default {
         mode: e._po.evaluation_mode == 'manual' ? 'M' : 'A',
         modeColor: e._po.evaluation_mode == 'manual' ? 'green' : 'red',
         author: e._po.creation_info.author,
-        region: e.description != null ? e.description[0].text.toUpperCase() : '',
+        region: e._region,
         id: e.public_id
       }))
     }

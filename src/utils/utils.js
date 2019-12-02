@@ -263,6 +263,14 @@ export const processEventData = (e) => {
     e.magnitude = []
   }
   e._po = e.origin.find(x => x.public_id == e.preferred_origin_id)
+  if (e._po.region) {
+    e._region = e._po.region
+  } else if (e.description) {
+    e._region = e.description[0].text
+  } else {
+    e._region = ''
+  }
+  e._region = e._region.toUpperCase()
   if (e.preferred_magnitude_id) {
     e._pm = e.magnitude.find(x => x.public_id == e.preferred_magnitude_id)
   } else {
