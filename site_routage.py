@@ -28,15 +28,17 @@ EVENTS_CURRENTLY_REVIEWED = {}
 
 FE = FlinnEngdahl()
 
-RESTRICTED = True
+RESTRICTED = False
 DEBUG = False
 
-FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'encelade.unice.fr:8000')
-FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'encelade.unice.fr:8000')
+FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'scytale.unice.fr:8888')
+FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'thufir.unice.fr:8080')
+FDSNWS_SC3_STATION_HOST = os.getenv('FDSNWS_SC3_STATION_HOST', 'thufir.unice.fr:8080')
 FDSNWS_DATASELECT_HOST = os.getenv('FDSNWS_DATASELECT_HOST', 'encelade.unice.fr:8000')
 
 FDSNWS_EVENT = 'http://%s/fdsnws/event' % FDSNWS_EVENT_HOST
 FDSNWS_STATION = 'http://%s/fdsnws/station' % FDSNWS_STATION_HOST
+FDSNWS_SC3_STATION = 'http://%s/fdsnws/station' % FDSNWS_SC3_STATION_HOST
 FDSNWS_DATASELECT = 'http://%s/fdsnws/dataselect' % FDSNWS_DATASELECT_HOST
 
 # Generated with scxmldump -C
@@ -233,7 +235,7 @@ def get_inventory(jquake):
             wfid['network_code'], wfid['station_code'],
             loc, wfid['channel_code'], t, t
         ))
-    r = Request('%s/1/query' % FDSNWS_STATION, data='\n'.join(data), headers={'Content-Type': 'text/plain'})
+    r = Request('%s/1/query' % FDSNWS_SC3_STATION, data='\n'.join(data), headers={'Content-Type': 'text/plain'})
     inv = urlopen(r).read()
     _, inv_filename = tempfile.mkstemp(suffix=".xml")
     with open(inv_filename, 'w') as f:
