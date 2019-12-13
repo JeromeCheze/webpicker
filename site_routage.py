@@ -28,12 +28,14 @@ EVENTS_CURRENTLY_REVIEWED = {}
 
 FE = FlinnEngdahl()
 
-RESTRICTED = False
 DEBUG = False
 
-FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'scytale.unice.fr:8888')
-FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'thufir.unice.fr:8080')
-FDSNWS_SC3_STATION_HOST = os.getenv('FDSNWS_SC3_STATION_HOST', 'thufir.unice.fr:8080')
+RESTRICTED = os.getenv('WEBPICKER_RESTRICT_ACCESS', 'false') == 'true'
+USERNAME = os.getenv('WEBPICKER_USERNAME', 's2rhai')
+PASSWORD = os.getenv('WEBPICKER_PASSWORD', '52rh@!')
+FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'encelade.unice.fr:8000')
+FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'encelade.unice.fr:8000')
+FDSNWS_SC3_STATION_HOST = os.getenv('FDSNWS_SC3_STATION_HOST', 'encelade.unice.fr:8080')
 FDSNWS_DATASELECT_HOST = os.getenv('FDSNWS_DATASELECT_HOST', 'encelade.unice.fr:8000')
 
 FDSNWS_EVENT = 'http://%s/fdsnws/event' % FDSNWS_EVENT_HOST
@@ -50,7 +52,7 @@ SCP3ML_DISPATCH_VERSION = os.getenv('SCP3ML_DISPATCH_VERSION', '0.11')
 SCP3ML_BINARY_VERSION = os.getenv('SCP3ML_BINARY_VERSION', '0.11')
 SEISCOMP_DB_URI = os.getenv('SEISCOMP_DB_URI', 'postgresql://sc3reader:@babel.unice.fr/seiscomp3')
 
-SCP3_DB_QUERY = SeisComP3DBQuery(SEISCOMP_DB_URI)
+# SCP3_DB_QUERY = SeisComP3DBQuery(SEISCOMP_DB_URI)
 
 XSL_SC3ML_TO_QML1_2 = {
   '0.7': os.path.join(SEISCOMP_ROOT, 'share/xml/0.7/sc3ml_0.7__quakeml_1.2.xsl'),
@@ -540,14 +542,14 @@ def fdsnws(service, path):
 
         elif service == 'station':
             host = FDSNWS_STATION
-            if request.method == 'POST' and SEISCOMP_DB_URI is not None:
-                args = parse_station_post_request(request.data)
-                if args['format'] == 'text' and args['level'] == 'channel':
-                    with SCP3_DB_QUERY:
-                        return Response(
-                            SCP3_DB_QUERY.get_inventory(args['channel']),
-                            mimetype='text/plain'
-                        )
+            # if request.method == 'POST' and SEISCOMP_DB_URI is not None:
+            #     args = parse_station_post_request(request.data)
+            #     if args['format'] == 'text' and args['level'] == 'channel':
+            #         with SCP3_DB_QUERY:
+            #             return Response(
+            #                 SCP3_DB_QUERY.get_inventory(args['channel']),
+            #                 mimetype='text/plain'
+            #             )
         elif service == 'dataselect':
             host = FDSNWS_DATASELECT
         req = '%s%s' % (host, path)
