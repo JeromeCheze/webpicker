@@ -31,8 +31,8 @@ FE = FlinnEngdahl()
 RESTRICTED = True
 DEBUG = False
 
-FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'scytale.unice.fr:8888')
-FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'thufir.unice.fr:8080')
+FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'encelade.unice.fr:8000')
+FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'encelade.unice.fr:8000')
 FDSNWS_DATASELECT_HOST = os.getenv('FDSNWS_DATASELECT_HOST', 'encelade.unice.fr:8000')
 
 FDSNWS_EVENT = 'http://%s/fdsnws/event' % FDSNWS_EVENT_HOST
@@ -46,7 +46,7 @@ SEISCOMP_ROOT = os.getenv('SEISCOMP_ROOT', '/home/cheze/seiscomp3/')
 SEISCOMP_PROGRAM = os.path.join(SEISCOMP_ROOT, 'bin/seiscomp')
 SCP3ML_DISPATCH_VERSION = os.getenv('SCP3ML_DISPATCH_VERSION', '0.11')
 SCP3ML_BINARY_VERSION = os.getenv('SCP3ML_BINARY_VERSION', '0.11')
-SEISCOMP_DB_URI = os.getenv('SEISCOMP_DB_URI', 'postgresql://sc3reader:@babel.unice.fr/seiscomp3_dev')
+SEISCOMP_DB_URI = os.getenv('SEISCOMP_DB_URI', 'postgresql://sc3reader:@babel.unice.fr/seiscomp3')
 
 SCP3_DB_QUERY = SeisComP3DBQuery(SEISCOMP_DB_URI)
 
@@ -61,10 +61,12 @@ XSL_SC3ML_TO_QML1_2 = {
 FDSNWS_BASE_URL = 'http://%s' % FDSNWS_DATASELECT_HOST
 
 # used for scdispatch :
-SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'thufir.unice.fr:4803')
+SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'encelade.unice.fr:4803')
 
 FDSN_EVENT_FORMAT = 'xml'
 
+with open(os.path.join(os.path.dirname(__file__), 'iasp91_table.json'), 'r') as f:
+    IASP91_TABLE = json.load(f)
 
 def dump_seiscomp3_config():
     fd, conf_filename = tempfile.mkstemp()
@@ -181,7 +183,7 @@ class AuthorStatusHandler(object):
                 self._clean()._save()
         return self.__status
 
-AUTHOR_STATUS = AuthorStatusHandler('/var/www/webpicker/author_status.json')
+AUTHOR_STATUS = AuthorStatusHandler('author_status.json')
 
 def gen_id():
     hexa = ['%x'% x for x in range(0, 16)]
@@ -400,6 +402,43 @@ def parse_station_post_request(raw_data):
             })
     return args
 
+def get_travel_times(depth, distance):
+    result = {
+        'P': None,
+        'S': None
+    }
+    if(depth >= IASP91_TABLE['depth_min']
+       and depth <= IASP91_TABLE['depth_max']
+       and distance >= IASP91_TABLE['distance_min']
+       and distance <= IASP91_TABLE['distance_max']):
+        depth_step = float(IASP91_TABLE['depth_max'] - IASP91_TABLE['depth_min']) / len(IASP91_TABLE['table'])
+        dist_step = float(IASP91_TABLE['distance_max'] - IASP91_TABLE['distance_min']) / len(IASP91_TABLE['table'][0])
+        depth_index = int((depth - IASP91_TABLE['depth_min']) / depth_step)
+        dist_index = int((distance - IASP91_TABLE['distance_min']) / dist_step)
+        depth_index_next = min(depth_index + 1, len(IASP91_TABLE['table']) - 1)
+        dist_index_next = min(dist_index + 1, len(IASP91_TABLE['table'][0]) - 1)
+        depth_ratio = (depth - depth_index * depth_step) / depth_step
+        dist_ratio = (distance - dist_index * dist_step) / dist_step
+        result['P'] = (depth_ratio * (IASP91_TABLE['table'][depth_index][dist_index][0][1] * dist_ratio
+                                      + IASP91_TABLE['table'][depth_index][dist_index_next][0][1] * (1 - dist_ratio))
+                       + (1 - depth_ratio) * (IASP91_TABLE['table'][depth_index_next][dist_index][0][1] * dist_ratio
+                                              + IASP91_TABLE['table'][depth_index_next][dist_index_next][0][1] * (1 - dist_ratio)))
+        result['S'] = (depth_ratio * (IASP91_TABLE['table'][depth_index][dist_index][1][1] * dist_ratio
+                                      + IASP91_TABLE['table'][depth_index][dist_index_next][1][1] * (1 - dist_ratio))
+                       + (1 - depth_ratio) * (IASP91_TABLE['table'][depth_index_next][dist_index][1][1] * dist_ratio
+                                              + IASP91_TABLE['table'][depth_index_next][dist_index_next][1][1] * (1 - dist_ratio)))
+    else:
+        phase_list = ['P', 'p', 'Pn', 'Pg', 'Pdiff', 'S', 's']
+        model = TauPyModel(model="iasp91")
+        arrivals = model.get_travel_times(depth, distance, phase_list)
+        p_arrivals = [a.time for a in arrivals if 'P' in a.name.upper()]
+        if len(p_arrivals) > 0:
+            result['P'] = min(p_arrivals)
+        s_arrivals = [a.time for a in arrivals if a.name.upper() == 'S']
+        if len(s_arrivals) > 0:
+            result['S'] = min(s_arrivals)
+    return result
+
 # def get_event_full_description(eventid):
 #     cmd = [
 #         SEISCOMP_PROGRAM, 'exec', 'scxmldump',
@@ -442,19 +481,10 @@ def update_scp3_config():
 @app.route('/ttt', methods=['POST'])
 @requires_auth
 def get_ttt():
-    phase_list = ['P', 'p', 'Pn', 'Pg', 'Pdiff', 'S', 's']
-    model = TauPyModel(model="iasp91")
     data = request.get_json()
     result = {}
     for sta, distance in data['station'].iteritems():
-        arrivals = model.get_travel_times(data['depth'], distance, phase_list)
-        result[sta] = { 'distance': distance, 'ttt': {} }
-        p_arrival = get_first_arrival_P(arrivals, distance)
-        if p_arrival is not None:
-            result[sta]['ttt']['P'] = p_arrival.time
-        s_arrivals = [a.time for a in arrivals if a.name.upper() == 'S']
-        if len(s_arrivals) > 0:
-            result[sta]['ttt']['S'] = min(s_arrivals)
+        result[sta] = { 'distance': distance, 'ttt': get_travel_times(data['depth'], distance) }
     return Response(json.dumps(result), mimetype='application/json')
 
 @app.route('/region', methods=['GET'])
