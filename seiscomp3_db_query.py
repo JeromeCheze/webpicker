@@ -40,7 +40,7 @@ class SeisComP3DBQuery():
         JOIN sensorlocation ON stream._parent_oid = sensorlocation._oid
         JOIN station ON sensorlocation._parent_oid = station._oid
         JOIN network ON station._parent_oid = network._oid
-        JOIN (
+        FULL JOIN (
           SELECT *
           FROM sensor
           JOIN publicobject ON sensor._oid = publicobject._oid
@@ -256,7 +256,10 @@ class SeisComP3DBQuery():
         picks = self._fetchall(SeisComP3DBQuery.PICKS_QUERY, (tuple(pick_id_list),))
         for pick in picks:
             pick['m_time_value_iso'] = (pick['m_time_value'] + timedelta(microseconds=pick['m_time_value_ms'])).strftime(SeisComP3DBQuery.TIME_3_FMT)
-            pick['m_creationinfo_creationtime_iso'] = (pick['m_creationinfo_creationtime'] + timedelta(microseconds=pick['m_creationinfo_creationtime_ms'])).strftime(SeisComP3DBQuery.TIME_3_FMT)
+            if pick['m_creationinfo_creationtime'] is not None and pick['m_creationinfo_creationtime_ms'] is not None:
+                pick['m_creationinfo_creationtime_iso'] = (pick['m_creationinfo_creationtime'] + timedelta(microseconds=pick['m_creationinfo_creationtime_ms'])).strftime(SeisComP3DBQuery.TIME_3_FMT)
+            else:
+                pick['m_creationinfo_creationtime_iso'] = None
         return picks
 
     def _query_magnitudes(self, origin_oid_list, args, pmid):
@@ -273,6 +276,8 @@ class SeisComP3DBQuery():
         return magnitude_by_oid
 
     def _query_station_magnitudes(self, station_magnitude_id_list, origins_by_oid):
+        if len(station_magnitude_id_list) == 0:
+            return []
         station_magnitudes = self._fetchall(SeisComP3DBQuery.STATION_MAGNITUDES_QUERY, (tuple(station_magnitude_id_list),))
         for station_magnitude in station_magnitudes:
             station_magnitude['m_creationinfo_creationtime_iso'] = (station_magnitude['m_creationinfo_creationtime'] + timedelta(microseconds=station_magnitude['m_creationinfo_creationtime_ms'])).strftime(SeisComP3DBQuery.TIME_3_FMT)
@@ -283,6 +288,8 @@ class SeisComP3DBQuery():
         return self._fetchall(SeisComP3DBQuery.STATION_MAGNITUDE_CONTRIBUTION_QUERY, (tuple(magnitue_oid_list),))
 
     def _query_amplitudes(self, amplitude_id_list):
+        if len(amplitude_id_list) == 0:
+            return []
         amplitudes = self._fetchall(SeisComP3DBQuery.AMPLITUDES_QUERY, (tuple(amplitude_id_list),))
         for amplitude in amplitudes:
             amplitude['m_timewindow_reference_iso'] = (amplitude['m_timewindow_reference'] + timedelta(microseconds=amplitude['m_timewindow_reference_ms'])).strftime(SeisComP3DBQuery.TIME_3_FMT)

@@ -158,6 +158,7 @@ export default {
           args[k] = v
         }
       }
+      args.format = 'xml'
       utils.ajax({
         method: 'GET',
         url: this.$store.getters.getLink('fdsnws/event/1/query'),
