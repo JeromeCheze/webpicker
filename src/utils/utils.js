@@ -389,7 +389,7 @@ export const composeEvent = (o) => {
     for (let a of o.arrival) {
       let netSta = a._pick._seedid.split('.').slice(0, 2).join('.')
       // add only picks of non discarded stations
-      if (opt.discardedStation != null && opt.discardedStation.indexOf(netSta) < 0) {
+      if (opt.discardedStation == null || (opt.discardedStation != null && opt.discardedStation.indexOf(netSta) < 0)) {
         result.pick.push(cloneAndClean(a._pick, `${root}/pick`))
       }
     }
