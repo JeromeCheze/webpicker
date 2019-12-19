@@ -261,8 +261,8 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
             wfid = p['waveform_id']
             location = wfid[loc] if loc in wfid else '--'
             t = UTCDateTime(p['time']['value'])
-            t1 = (t - 95).isoformat()
-            t2 = (t + 107).isoformat()
+            t1 = (t - 100).isoformat()
+            t2 = (t + 130).isoformat()
             req.append(' '.join([wfid[net], wfid[sta], location, wfid[cha], t1, t2]))
     cl = Client(base_url=FDSNWS_BASE_URL)
     st = cl.get_waveforms_bulk('\r\n'.join(req))
@@ -303,7 +303,7 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
         '--ep', scamp_result
     ]
     if DEBUG:
-        sys.stderr.write('scamg cmd: %s\n' % scmag_cmd)
+        sys.stderr.write('scmag cmd: %s\n' % ' '.join(scmag_cmd))
     scmag = subprocess.Popen(scmag_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     result, error_message2 = scmag.communicate()
     error_message += error_message2

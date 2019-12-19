@@ -377,7 +377,7 @@ export const cloneAndClean = (o, path) => {
 }
 
 export const composeEvent = (o) => {
-  let opt = Object.assign({ base: {}, origins: [], po: null, magnitudes: [], pm: null, discardedStation: [] }, o)
+  let opt = Object.assign({ base: {}, origins: [], po: null, magnitudes: [], pm: null, discardedStation: null }, o)
   let root = '/event_parameters/event'
   let result = cloneAndClean(opt.base, root)
   result.pick = []
@@ -389,7 +389,7 @@ export const composeEvent = (o) => {
     for (let a of o.arrival) {
       let netSta = a._pick._seedid.split('.').slice(0, 2).join('.')
       // add only picks of non discarded stations
-      if (opt.discardedStation.indexOf(netSta) < 0) {
+      if (opt.discardedStation != null && opt.discardedStation.indexOf(netSta) < 0) {
         result.pick.push(cloneAndClean(a._pick, `${root}/pick`))
       }
     }
@@ -399,6 +399,11 @@ export const composeEvent = (o) => {
       if (pickFound == null) {
         // remove arrival of discarded station
         cloneOrigin.arrival.splice(i, 1)
+        continue
+      }
+      if (opt.discardedStation != null) {
+        // force usage of the station for magnitude computation
+        cloneOrigin.arrival[i].time_weight = 1
       }
     }
     originList.push(cloneOrigin)
