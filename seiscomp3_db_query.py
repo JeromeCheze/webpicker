@@ -285,6 +285,8 @@ class SeisComP3DBQuery():
         return station_magnitudes
 
     def _query_station_magnitude_contribution(self, magnitue_oid_list):
+        if len(magnitue_oid_list) == 0:
+            return []
         return self._fetchall(SeisComP3DBQuery.STATION_MAGNITUDE_CONTRIBUTION_QUERY, (tuple(magnitue_oid_list),))
 
     def _query_amplitudes(self, amplitude_id_list):
