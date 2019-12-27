@@ -144,7 +144,12 @@ export default {
           'snow avalanche',
           'debris avalanche',
           'hydroacoustic event',
-          'ice quak'
+          'ice quak',
+          'slide',
+          'landslide',
+          'rockslide',
+          'meteorite',
+          'volcanic eruption'
         ]
       }
     }
