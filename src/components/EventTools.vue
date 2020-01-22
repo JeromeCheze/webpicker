@@ -8,7 +8,7 @@
       <v-select label="Locator" v-model="locator" :items="locatorOptions"></v-select>
     </div>
     <div class="event-tools__select-wrapper">
-      <v-select label="Profile" v-model="profile" :items="profileOptions"></v-select>
+      <v-select label="Profile" v-model="profile" :items="profileOptions[locator]"></v-select>
     </div>
     <v-menu v-model="magnitudePopover" top left offset-y :close-on-content-click="false" :max-width="300">
       <template v-slot:activator="{ on }">
@@ -81,12 +81,14 @@ export default {
 
   data () {
     let locatorOptions = [ 'LOCSAT' ]
-    let profileOptions = [ 'iasp91', 'tab' ]
+    let profileOptions = {
+      LOCSAT: [ 'iasp91', 'tab' ],
+    }
     return {
       magnitudePopover: false,
       stationMagnitude: [],
       locator: locatorOptions[0],
-      profile: profileOptions[0],
+      profile: profileOptions[locatorOptions[0]][0],
       locatorOptions,
       profileOptions,
       commitPopover: false,
