@@ -186,8 +186,13 @@ export const xmlNodeToJson = (x, path, rules) => {
 }
 
 export const parseQuakeML = (qml) => {
+  let eventParametersTags = qml.getElementsByTagName('eventParameters')
+  if (eventParametersTags.length === 0) {
+    console.log('QuakeML is empty, no event parameters found.')
+    return []
+  }
   let events = xmlNodeToJson(
-    qml.getElementsByTagName('eventParameters')[0],
+    eventParametersTags[0],
     '',
     CONVERSION_RULES
   ).event
