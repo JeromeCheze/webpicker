@@ -57,6 +57,7 @@ SCP3_DB_QUERY = SeisComP3DBQuery(SEISCOMP_DB_URI)
 
 XSL_SC3ML_TO_QML1_2 = {
   '0.7': os.path.join(SEISCOMP_ROOT, 'share/xml/0.7/sc3ml_0.7__quakeml_1.2.xsl'),
+  '0.8': os.path.join(SEISCOMP_ROOT, 'share/xml/0.8/sc3ml_0.8__quakeml_1.2.xsl'),
   '0.9': os.path.join(SEISCOMP_ROOT, 'share/xml/0.9/sc3ml_0.9__quakeml_1.2.xsl'),
   '0.10': os.path.join(SEISCOMP_ROOT, 'share/xml/0.10/sc3ml_0.10__quakeml_1.2.xsl'),
   '0.11': os.path.join(SEISCOMP_ROOT, 'share/xml/0.11/sc3ml_0.11__quakeml_1.2.xsl')
@@ -188,7 +189,7 @@ class AuthorStatusHandler(object):
                 self._clean()._save()
         return self.__status
 
-AUTHOR_STATUS = AuthorStatusHandler('author_status.json')
+AUTHOR_STATUS = AuthorStatusHandler('/var/www/webpicker/author_status.json')
 
 def gen_id():
     hexa = ['%x'% x for x in range(0, 16)]
@@ -326,9 +327,12 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
 def relocate_with_screloc(jquake, locator, profile):
     inventory = get_inventory(jquake)
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
-    # print(sc3ml)
+
+    if DEBUG:
+        sys.stderr.write('initial sc3ml file from jquake: %s\n' % sc3ml)
+
     write_sc3ml(jquake, sc3ml, SCP3ML_BINARY_VERSION)
-    screloc = subprocess.Popen([
+    screloc_cmd = [
         SEISCOMP_PROGRAM, 'exec', 'screloc',
         '--inventory-db', inventory,
         '--locator', locator,
@@ -338,21 +342,37 @@ def relocate_with_screloc(jquake, locator, profile):
         '--use-weight', '1',
         '--ep',  sc3ml,
         '--replace'
-    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    result, error_message = screloc.communicate()
-    # _, screloc_result = tempfile.mkstemp(suffix=".sc3ml")
-    # print(screloc_result)
-    # with open(screloc_result, 'w') as f:
-    #     f.write(result)
+    ]
+
+    if DEBUG:
+        sys.stderr.write('%s\n' % ' '.join(screloc_cmd))
+
+    screloc = subprocess.Popen(screloc_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    raw_result, error_message = screloc.communicate()
+
+    # because relocation using NonLinLoc dump a lot of text before the sc3ml result
+    start_xml_index = raw_result.index('<?xml')
+    result = raw_result[start_xml_index:]
+
+    if DEBUG:
+        _, screloc_result = tempfile.mkstemp(suffix=".sc3ml")
+        sys.stderr.write('screloc result: %s\n' % screloc_result)
+        with open(screloc_result, 'w') as f:
+            f.write(result)
+
     dom = etree.fromstring(result)
     update_sc3ml_origin_reference(dom)
     newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML_TO_QML1_2[SCP3ML_BINARY_VERSION])
-    os.remove(sc3ml)
-    os.remove(inventory)
-    # _, qml_result = tempfile.mkstemp(suffix=".sc3ml")
-    # print(qml_result)
-    # with open(qml_result, 'w') as f:
-    #     f.write(etree.tostring(newdom))
+
+    if DEBUG:
+        _, qml_result = tempfile.mkstemp(suffix=".sc3ml")
+        sys.stderr.write('qml result: %s\n' % qml_result)
+        with open(qml_result, 'w') as f:
+            f.write(etree.tostring(newdom))
+    else:
+        os.remove(sc3ml)
+        os.remove(inventory)
+
     return {
         'message': error_message,
         'quakeml': etree.tostring(newdom)
