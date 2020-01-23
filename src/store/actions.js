@@ -3,7 +3,12 @@ import * as utils from '@/utils/utils'
 export const initialize = ({ commit, dispatch }) => {
   let end = new Date(new Date().getTime() + 86400e3)
   let start = new Date(end - 86400e3 * 8)
-  commit('INIT_FORM', { start, end })
+  let savedFormValues = JSON.parse(localStorage.getItem('form') || "{}")
+  let formValues = Object.assign({
+    start: start.toISOString().slice(0, 10),
+    end: end.toISOString().slice(0, 10)
+  }, savedFormValues)
+  commit('INIT_FORM', formValues)
   let storedSettings = localStorage.getItem('settings')
   commit('SET_SETTINGS', storedSettings != null ? JSON.parse(storedSettings) : {})
   let author = localStorage.getItem('author')

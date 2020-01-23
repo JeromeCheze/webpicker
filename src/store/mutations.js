@@ -1,8 +1,9 @@
 import * as utils from '@/utils/utils'
 
 export const INIT_FORM = (state, data) => {
-  state.form.start = data.start.toISOString().slice(0, 10)
-  state.form.end = data.end.toISOString().slice(0, 10)
+  for (let [k, v] of Object.entries(data)) {
+    state.form[k] = v
+  }
 }
 
 export const SET_AUTHOR = (state, data) => {

@@ -33,6 +33,11 @@
             <v-flex xs12 md6 class="pa-3"><number-field v-model="form.maxlon" label="Longitude max [°]"></number-field></v-flex>
           </v-layout>
           <v-layout wrap>
+            <v-flex xs12 class="px-4">
+              <v-checkbox v-model="rememberGeoConstraints" label="Remember geographical constraints"/>
+            </v-flex>
+          </v-layout>
+          <v-layout wrap>
             <v-flex xs12 md6 class="pa-3"><number-field v-model="form.mindepth" label="Depth min [km]"></number-field></v-flex>
             <v-flex xs12 md6 class="pa-3"><number-field v-model="form.maxdepth" label="Depth max [km]"></number-field></v-flex>
           </v-layout>
@@ -59,6 +64,7 @@ export default {
     return {
       map: null,
       area: null,
+      rememberGeoConstraints: localStorage.getItem('form') != null,
       startMenu: false,
       endMenu: false,
       form: Object.assign({}, this.$store.state.form)
@@ -134,6 +140,14 @@ export default {
       }
       if (query.maxmag == null) {
         delete query.maxmag
+      }
+      if (this.rememberGeoConstraints) {
+        localStorage.setItem('form', JSON.stringify({
+          minlat: query.minlat, maxlat: query.maxlat,
+          minlon: query.minlon, maxlon: query.maxlon
+        }))
+      } else {
+        localStorage.removeItem('form')
       }
       this.$store.dispatch('eventList', [])
       this.$router.push({ name: 'List', query })
