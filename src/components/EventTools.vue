@@ -309,8 +309,6 @@ export default {
     },
 
     handleCommitClick () {
-      this.$store.dispatch('setAuthorStatus', { eventid: this.event.public_id, action: 'committing' })
-      this.$store.dispatch('setLoading', { value: true, text: 'Commit in progress...' })
       let e = this.event,
           o = this.origin
       e.type = this.commitForm.eventType
@@ -318,7 +316,14 @@ export default {
       e.preferred_origin_id = o.public_id
       o.evaluation_status = this.commitForm.originEvaluationStatus
       let cloneEvent = utils.cloneAndClean(e, '/event_parameters/event')
-      console.log('[EventTools::handleCommitClick] commit', cloneEvent);
+      console.log('[EventTools::handleCommitClick] commit', cloneEvent)
+      if (cloneEvent.preferred_magnitude_id == null) {
+        if (!confirm('You are about to commit an event with no magnitude. Do you really want to proceed ?')) {
+          return
+        }
+      }
+      this.$store.dispatch('setAuthorStatus', { eventid: this.event.public_id, action: 'committing' })
+      this.$store.dispatch('setLoading', { value: true, text: 'Commit in progress...' })
       utils.ajax({
         method: 'POST',
         url: this.$store.getters.getLink('commit'),
