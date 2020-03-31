@@ -3,9 +3,10 @@ export const getLink = (state) => (path) => {
 }
 
 export const getId = (state) => (prefix) => {
-  return [
+  let now = new Date().toISOString()
+  return prefix == 'Event' ? now.replace(/[-:]/g, '').replace(/[T\.]/g, '_').slice(0, 19) : [
     prefix,
-    new Date().toISOString().replace(/[\-:]/g, '').replace('T', '.').substr(0, 18),
+    now.replace(/[\-:]/g, '').replace('T', '.').substr(0, 18),
     (Math.random()*1000).toFixed(0)
   ].join('-')
 }
