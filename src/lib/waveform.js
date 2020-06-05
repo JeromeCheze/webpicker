@@ -558,6 +558,7 @@ export default class Waveform {
     });
     for (let wf of this.waveforms) {
       traceContainer.appendChild(wf.el)
+      wf.el.querySelector('.distance').innerHTML = `${wf.opt.distance.toFixed(2)}°`
     }
   }
 

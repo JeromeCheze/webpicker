@@ -48,10 +48,12 @@
       </v-btn-toggle>
       <v-divider vertical class="mx-2"></v-divider>
 
-      <number-field v-model="tools.stationRadius" label="Radius" hide-details :style="{ maxWidth: '60px' }"></number-field>
-      <v-btn icon @click="loadRadiusStation" :disabled="disableLoadAdditionalStation" title="Load station radius">
-        <v-icon>mdi-less-than-or-equal</v-icon>
-      </v-btn>
+      <station-radius-selector
+        v-model="tools.stationRadius"
+        :disabled="disableLoadAdditionalStation"
+        @changeLocation="handleChangeLocation"
+        @submit="loadRadiusStation"
+      ></station-radius-selector>
       <v-divider vertical></v-divider>
 
       <v-menu offset-y bottom left :close-on-content-click="false" v-model="additionalWaveformsChannelsMenu">
@@ -279,13 +281,7 @@ export default {
     },
     'tools.sortBy': function (val) {
       utils.blurActiveElement()
-      if (this.list != null) {
-        if (val == 'name') {
-          this.list.sortWaveformsBy(x => x.id)
-        } else if (val == 'distance') {
-          this.list.sortWaveformsBy(x => x.distance)
-        }
-      }
+      this.sortWaveforms()
     },
     'tools.rotation': function () {
       utils.blurActiveElement()
@@ -764,7 +760,7 @@ export default {
       return result
     },
 
-    getRadiusInventory () {
+    getRadiusInventory (center) {
       return new Promise((resolve, reject) => {
         let strTime = this.origin.time._value.toISOString().slice(0, 19)
         this.$store.dispatch('setLoading', { value: true, text: 'Loading inventory...' })
@@ -774,8 +770,8 @@ export default {
           args: {
             starttime: strTime, endtime: strTime,
             level: 'channel', format: 'text',
-            latitude: this.origin.latitude.value,
-            longitude: this.origin.longitude.value,
+            latitude: center.latitude,
+            longitude: center.longitude,
             minradius: 0, maxradius: this.tools.stationRadius
           }
         }).then(data => {
@@ -788,8 +784,41 @@ export default {
       })
     },
 
-    loadRadiusStation () {
-      this.getRadiusInventory().then(inv => {
+    handleChangeLocation (data) {
+      console.log('[PickerView::handleChangeLocation]', data)
+      let pos = L.latLng(data.latitude, data.longitude)
+      let event = this.$store.state.currentEvent
+      let tmp1 = JSON.parse(JSON.stringify(this.origin))
+      tmp1.public_id = this.$store.getters.getId('Origin')
+      tmp1.creation_info.author = this.$store.state.author
+      tmp1.latitude.value = pos.lat
+      tmp1.longitude.value = pos.lng
+      let tmp2 = { origin: [tmp1], pick: event.pick }
+      console.log(tmp2)
+      utils.processEventData(tmp2)
+      let cloned = tmp2.origin[0]
+      cloned._is_dirty = true
+      cloned._not_committed = true
+      event.origin.push(cloned)
+      event.preferred_magnitude_id = null
+      event._pm = null
+      this.$store.dispatch('setCurrentOrigin', cloned)
+      for (let netsta of Object.keys(this.stationDistance)) {
+        let [net, sta] = netsta.split('.')
+        let staPos = [this.inventory[net][sta].lat, this.inventory[net][sta].lon]
+        this.stationDistance[netsta] = utils.m2deg(pos.distanceTo(staPos))
+        this.stationAzimuth[netsta] = utils.coordinates2azimuth([pos.lat, pos.lng], staPos)
+      }
+      for (let wf of Object.values(this.waveform)) {
+        let netsta = wf.id.split('.').slice(0, 2).join('.')
+        wf.distance = this.stationDistance[netsta]
+        wf.azimuth = this.stationAzimuth[netsta]
+      }
+      this.sortWaveforms()
+    },
+
+    loadRadiusStation (center) {
+      this.getRadiusInventory(center).then(inv => {
         let alreadyLoadedStation = this.list != null ? this.list.waveforms.map(x => x.opt.id.split('.').slice(0, 2).join('.')) : []
         let fdsnidList = []
         let stationDistance = {}
@@ -822,7 +851,7 @@ export default {
                   for (let horizontal of this.getHorizontalIds(sensorChannels[0].fdsnid)) {
                     fdsnidList.push(horizontal)
                   }
-                  let degDistance = ((pos.distanceTo([staObj.lat, staObj.lon]) / 1000.) * 360) / (2 * Math.PI * 6371)
+                  let degDistance = utils.m2deg(pos.distanceTo([staObj.lat, staObj.lon]))
                   this.stationDistance[netsta] = stationDistance[netsta] = degDistance
                   this.stationAzimuth[netsta] = utils.coordinates2azimuth([pos.lat, pos.lng], [staObj.lat, staObj.lon])
                   break
@@ -1051,6 +1080,16 @@ export default {
         wfList.push(zChannel[0])
       }
       this.setListWaveforms(wfList)
+    },
+
+    sortWaveforms () {
+      if (this.list != null) {
+        if (this.tools.sortBy == 'name') {
+          this.list.sortWaveformsBy(x => x.id)
+        } else if (this.tools.sortBy == 'distance') {
+          this.list.sortWaveformsBy(x => x.distance)
+        }
+      }
     }
 
   }

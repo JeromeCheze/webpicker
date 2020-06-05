@@ -305,21 +305,8 @@ export default {
     },
 
     initMap () {
-      let map = L.map(this.$el.querySelector('.event-view__map-canvas'), {trackResize: false, attributionControl: false})
-      let worldtopomap = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
-        attribution: '&copy; Esri, HERE, DeLorme, TomTom, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, <br>Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), swisstopo, MapmyIndia, © OpenStreetMap contributors, and the GIS User Community'
-      })
-      let satmap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: '&copy; Esri, DigitalGlobe, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, <br>USGS, AEX, Getmapping, Aerogrid, IGN, IGP, swisstopo, and the GIS User Community'
-      })
-      let baseLayers = {
-        Terrain: worldtopomap,
-        Satellite: satmap
-      }
-      L.control.layers(baseLayers).addTo(map);
-      L.control.scale({ imperial: false }).addTo(map)
-      worldtopomap.addTo(map)
-      this.map = map
+      let container = this.$el.querySelector('.event-view__map-canvas')
+      this.map = utils.initMap(container)
     },
 
     getStationCoordinates (seedid) {
