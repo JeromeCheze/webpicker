@@ -50,6 +50,12 @@
     <pick publicID="{{ pick.public_id | remove_resource_prefix }}">
       <time>
         <value>{{ pick.time.value }}</value>
+      {%- if pick.time.lower_uncertainty %}
+        <lowerUncertainty>{{ pick.time.lower_uncertainty }}</lowerUncertainty>
+      {%- endif %}
+      {%- if pick.time.upper_uncertainty %}
+        <upperUncertainty>{{ pick.time.upper_uncertainty }}</upperUncertainty>
+      {%- endif %}
       </time>
       {{ waveform_id(pick.waveform_id) }}
     {%- if pick.filter_id %}
