@@ -6,6 +6,8 @@
     <v-tabs v-model="activeTab" right>
       <v-tab><v-icon>mdi-view-list</v-icon></v-tab>
       <v-tab><v-icon>mdi-map</v-icon></v-tab>
+    </v-tabs>
+    <v-tabs-items touchless v-model="activeTab">
       <v-tab-item>
         <v-data-table :headers="tableHeader" :items="tableData" :pagination.sync="pagination">
           <template v-slot:items="props">
@@ -42,7 +44,7 @@
       <v-tab-item>
         <div class="list-view__map-canvas"></div>
       </v-tab-item>
-    </v-tabs>
+    </v-tabs-items>
     <v-bottom-sheet v-model="bottomSheet">
       <v-card class="pa-3">
         <table v-if="mapSelectedEvent != null" class="list-view__map-table">
