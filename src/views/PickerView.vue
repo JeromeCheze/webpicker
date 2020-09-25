@@ -30,19 +30,19 @@
       ></v-overflow-btn>
       <v-divider vertical class="mr-2"></v-divider>
 
-      <v-btn-toggle v-model="tools.alignment">
+      <v-btn-toggle v-model="tools.alignment" mandatory>
         <v-btn flat :value="'O'" title="Align by origin time">O</v-btn>
         <v-btn flat :value="'P'" title="Align by theoretical P wave">P</v-btn>
         <v-btn flat :value="'S'" title="Align by theoretical S wave">S</v-btn>
       </v-btn-toggle>
       <v-divider vertical class="mx-2"></v-divider>
 
-      <v-btn-toggle v-model="tools.focusComponent">
+      <v-btn-toggle v-model="tools.focusComponent" mandatory>
         <v-btn flat v-for="(comp, index) in tools.focusComponentOption" :key="index">{{ comp }}</v-btn>
       </v-btn-toggle>
       <v-divider vertical class="mx-2"></v-divider>
 
-      <v-btn-toggle v-model="tools.sortBy">
+      <v-btn-toggle v-model="tools.sortBy" mandatory>
         <v-btn flat :value="'distance'" title="Sort by distance"><v-icon>mdi-map-marker-distance</v-icon></v-btn>
         <v-btn flat :value="'name'" title="Sort by name"><v-icon>mdi-sort-alphabetical</v-icon></v-btn>
       </v-btn-toggle>
@@ -308,7 +308,7 @@ export default {
 
     let fdsnidList = this.processArrival()
     this.getTTT().then(() => {
-      this.downloadWaveforms(fdsnidList, wfList => this.processWaveforms(wfList)).then(() => {
+      this.downloadWaveforms(fdsnidList, wfList => this.setListWaveforms(wfList)).then(() => {
         this.disableLoadAdditionalStation = false
       })
     })
@@ -741,13 +741,19 @@ export default {
 
     handleUpdatePick (ev) {
       this.picksDirty = true
-      // console.log(ev);
       if (ev.action == 'add') {
         for (let p of ev.picks) {
           p.id = this.$store.getters.getId('Pick')
         }
       }
-      this.list.draw()
+      const zWfid = `${ev.wfid.slice(0, -1)}Z`
+      for (const wf of this.list.waveforms) {
+        if (wf.opt.id === zWfid) {
+          console.log(`[PickerView::handleUpdatePick]`, wf)
+          this.list.drawPicks(wf)
+          break
+        }
+      }
     },
 
     getColorSettings () {
@@ -866,7 +872,7 @@ export default {
           return
         }
         this.getTTT(stationDistance).then(() => {
-          this.downloadWaveforms(fdsnidList, wfList => this.processWaveforms(wfList))
+          this.downloadWaveforms(fdsnidList, wfList => this.setListWaveforms(wfList))
         })
       })
     },
@@ -952,32 +958,22 @@ export default {
     },
 
     setListWaveforms (wfList) {
-      let selectedWfId = null
-      this.listOpt.size = { height: this.settings['pickerSize.listWaveformHeight'] }
-      this.listOpt.color = this.getColorSettings()
-      Object.assign(this.listOpt.view, { refTime: this.tools.alignment }, this.defaultView)
-      if (this.list != null) {
-        if (this.list.event.selectedWf != null) {
-          selectedWfId = this.list.event.selectedWf.opt.id
-        }
-        Object.assign(this.listOpt.view, this.list.view)
-        this.list.destroy()
-      }
-      let sortKey = this.tools.sortBy == 'name' ? 'id' : 'distance'
-      wfList.sort((a, b) => {
-        a = a[sortKey]
-        b = b[sortKey]
-        return a == b ? 0 : a < b ? -1 : 1
-      })
-      this.listOpt.waveforms = wfList
-      this.list = new Waveform(this.listOpt)
-
-      // HERE: indirectly create/update picker instance
-      if (selectedWfId == null) {
-        this.list.selectNext()
+      console.log(`[PickerView::setListWaveforms]`, wfList)
+      if (this.list == null) {
+        this.listOpt.size = { height: this.settings['pickerSize.listWaveformHeight'] }
+        this.listOpt.color = this.getColorSettings()
+        Object.assign(this.listOpt.view, { refTime: this.tools.alignment }, this.defaultView)
+        wfList.sort((a, b) => {
+          a = a.distance
+          b = b.distance
+          return a < b ? -1 : a > b ? 1 : 0
+        })
+        this.listOpt.waveforms = wfList
+        this.list = new Waveform(this.listOpt)
+        this.list.selectNext() // this will trigger an event that call 'handleWaveformClick'
       } else {
-        let wf = this.list.waveforms.find(wf => wf.opt.id == selectedWfId)
-        this.list.selectWaveform(wf) // this will trigger an event that call 'handleWaveformClick'
+        this.list.addWaveforms(wfList)
+        this.sortWaveforms()
       }
     },
 
@@ -1056,30 +1052,6 @@ export default {
       }
       this.waveform[tr.id.replace('..', '.--.')] = wf
       return wf
-    },
-
-    processWaveforms (wfList) {
-      if (this.list != null) {
-        wfList = wfList.concat(this.listOpt.waveforms)
-      }
-      let netstaWf = {}
-      for (let wf of wfList) {
-        let fdsnid = wf.id.replace('..', '.--.')
-        let netsta = fdsnid.split('.').slice(0, 2).join('.')
-        utils.pushInObject(netstaWf, netsta, wf)
-      }
-      wfList = []
-      let order = ['N', 'H']
-      for (let [netsta, netstaList] of Object.entries(netstaWf)) {
-        let zChannel = netstaList.filter(x => x.id.slice(-1) == 'Z')
-        zChannel.sort((a, b) => {
-          a = order.indexOf(a.id.slice(-2)[0])
-          b = order.indexOf(b.id.slice(-2)[0])
-          return a < b ? 1 : a > b ? -1 : 0
-        })
-        wfList.push(zChannel[0])
-      }
-      this.setListWaveforms(wfList)
     },
 
     sortWaveforms () {
