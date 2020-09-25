@@ -136,11 +136,10 @@
           <div
             class="app__author-status elevation-2"
             :class="{ 'app__author-status--warning': $store.getters.getCurrentEventId == status.eventid }"
-            v-for="(status, authorid) in $store.state.authorStatus"
-            v-if="status.author != $store.state.author"
-            :key="authorid">
+            v-for="(status, index) in connectedUsers"
+            :key="index">
             <div v-if="status.action == 'browsing'">
-              The user <span class="font-weight-bold">{{ status.author }}</span> is online</span>
+              The user <span class="font-weight-bold">{{ status.author }}</span> is online
             </div>
             <div v-else>
               The user <span class="font-weight-bold">{{ status.author }}</span> is {{ status.action }} the event <span class="font-weight-bold">{{ status.eventid }}</span>
@@ -218,6 +217,10 @@ export default {
         valid = false
       }
       return valid
+    },
+
+    connectedUsers () {
+      return Object.values(this.$store.state.authorStatus).filter(x => x.author != this.$store.state.author)
     }
 
   },

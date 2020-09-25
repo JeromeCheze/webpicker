@@ -34,24 +34,25 @@ USE_SCP3_DB_QUERY = os.getenv('USE_SCP3_DB_QUERY', 'false') == 'true'
 RESTRICTED = os.getenv('WEBPICKER_RESTRICT_ACCESS', 'false') == 'true'
 USERNAME = os.getenv('WEBPICKER_USERNAME', 's2rhai')
 PASSWORD = os.getenv('WEBPICKER_PASSWORD', '52rh@!')
-FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'ayiti.unice.fr:8080')
-FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'ayiti.unice.fr:8080')
-FDSNWS_SC3_STATION_HOST = os.getenv('FDSNWS_SC3_STATION_HOST', 'ayiti.unice.fr:8080')
-FDSNWS_DATASELECT_HOST = os.getenv('FDSNWS_DATASELECT_HOST', 'ayiti.unice.fr:8000')
+FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'thufir.unice.fr:8000')
+FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'thufir.unice.fr:8080')
+FDSNWS_SC3_STATION_HOST = os.getenv('FDSNWS_SC3_STATION_HOST', 'thufir.unice.fr:8080')
+FDSNWS_DATASELECT_HOST = os.getenv('FDSNWS_DATASELECT_HOST', 'thufir.unice.fr:8000')
 
+FDSNWS_ROOT = 'http://%s' % FDSNWS_EVENT_HOST
 FDSNWS_EVENT = 'http://%s/fdsnws/event' % FDSNWS_EVENT_HOST
 FDSNWS_STATION = 'http://%s/fdsnws/station' % FDSNWS_STATION_HOST
 FDSNWS_SC3_STATION = 'http://%s/fdsnws/station' % FDSNWS_SC3_STATION_HOST
 FDSNWS_DATASELECT = 'http://%s/fdsnws/dataselect' % FDSNWS_DATASELECT_HOST
 
 # Generated with scxmldump -C
-SC3ML_CONFIG_FILENAME = os.getenv('SC3ML_CONFIG_FILENAME', '/home/cheze/Documents/VRAC/thufir_config.xml')
+SC3ML_CONFIG_FILENAME = os.getenv('SC3ML_CONFIG_FILENAME', '/home/cheze/repositories/webpicker/config.xml')
 
 SEISCOMP_ROOT = os.getenv('SEISCOMP_ROOT', '/home/cheze/seiscomp3/')
 SEISCOMP_PROGRAM = os.path.join(SEISCOMP_ROOT, 'bin/seiscomp')
 SCP3ML_DISPATCH_VERSION = os.getenv('SCP3ML_DISPATCH_VERSION', '0.11')
 SCP3ML_BINARY_VERSION = os.getenv('SCP3ML_BINARY_VERSION', '0.11')
-SEISCOMP_DB_URI = os.getenv('SEISCOMP_DB_URI', 'postgresql://sc3reader:@babel.unice.fr/seiscomp3_ayiti')
+SEISCOMP_DB_URI = os.getenv('SEISCOMP_DB_URI', 'postgresql://sc3reader:@babel.unice.fr/seiscomp3_dev')
 
 SCP3_DB_QUERY = SeisComP3DBQuery(SEISCOMP_DB_URI)
 
@@ -67,7 +68,7 @@ XSL_SC3ML_TO_QML1_2 = {
 FDSNWS_BASE_URL = 'http://%s' % FDSNWS_DATASELECT_HOST
 
 # used for scdispatch :
-SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'ayiti.unice.fr:4803')
+SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'thufir.unice.fr:4805')
 
 FDSN_EVENT_FORMAT = 'xml'
 
@@ -76,7 +77,7 @@ with open(os.path.join(os.path.dirname(__file__), 'iasp91_table.json'), 'r') as 
 
 def dump_seiscomp3_config():
     fd, conf_filename = tempfile.mkstemp()
-    scxmldump = subprocess.Popen([SEISCOMP_PROGRAM, 'exec', 'scxmldump', '-C', '-d', SEISCOMP_DB_URI], stdout=subprocess.PIPE)
+    scxmldump = subprocess.Popen([SEISCOMP_PROGRAM, 'exec', 'scxmldump', '-f', '-C', '-d', SEISCOMP_DB_URI], stdout=subprocess.PIPE)
     config, _ = scxmldump.communicate()
     f = os.fdopen(fd, 'w')
     f.write(config)
@@ -131,7 +132,7 @@ class AuthorStatusHandler(object):
     def __init__(self, filename):
         self.__status = {}
         self.__filename = filename
-        self.__clean_threshold = 300
+        self.__clean_threshold = 120
 
     def _load(self):
         if os.path.exists(self.__filename):
@@ -378,6 +379,24 @@ def relocate_with_screloc(jquake, locator, profile):
         'quakeml': etree.tostring(newdom)
     }
 
+def commit_with_scdb(jquake):
+    _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
+    print(sc3ml)
+    write_sc3ml(jquake, sc3ml, SCP3ML_DISPATCH_VERSION)
+    scdb = subprocess.Popen([
+        SEISCOMP_PROGRAM, 'exec', 'scdb',
+        '-d', SEISCOMP_DB_URI,
+        '-i', sc3ml,
+        '--debug'
+    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = scdb.communicate()
+    # os.remove(sc3ml)
+    msg = '\n'.join(['STDOUT', stdout, '', 'STDERR', stderr])
+    return {
+        'message': msg,
+        'return_code': scdb.returncode
+    }
+
 def commit_with_scdispatch(jquake):
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
     # print(sc3ml)
@@ -389,7 +408,7 @@ def commit_with_scdispatch(jquake):
         '-i', sc3ml,
         '--debug'
     ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    result, error_message = scdispatch.communicate()
+    _, error_message = scdispatch.communicate()
     os.remove(sc3ml)
     return {
         'message': error_message,
@@ -397,7 +416,6 @@ def commit_with_scdispatch(jquake):
     }
 
 def get_first_arrival_P(arrivals, distance):
-    result = None
     for a in arrivals:
         if a.name.upper() == 'P':
             return a
@@ -538,6 +556,7 @@ def relocate():
 def commit():
     jquake = request.get_json()
     result = commit_with_scdispatch(jquake)
+    # result = commit_with_scdb(jquake)
     return Response(json.dumps(result), mimetype='application/json')
 
 @app.route('/fdsnws/', defaults={'service': '', 'path': ''})
@@ -558,7 +577,7 @@ def fdsnws(service, path):
                             'quakeml.xml',
                             events=SCP3_DB_QUERY.get_events(request.args)
                         ),
-                        mimetype='application/xml'
+                        mimetype='text/xml'
                     )
 
         elif service == 'station':
@@ -585,7 +604,7 @@ def fdsnws(service, path):
                 r = Request(req, data=request.data, headers={'Content-Type': request.headers['Content-Type']})
                 response = urlopen(r)
 
-        except HTTPError, err:
+        except HTTPError as err:
             abort(err.code)
         result = response.read()
         if service == 'event' and FDSN_EVENT_FORMAT == 'sc3ml':
@@ -595,4 +614,4 @@ def fdsnws(service, path):
         return urlopen(FDSNWS_ROOT).read()
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8001)
+    app.run(host='0.0.0.0', port=8002)
