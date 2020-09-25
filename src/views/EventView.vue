@@ -1,7 +1,10 @@
 <template>
   <v-card v-if="event != null && origin != null" class="pt-3 px-3 pb-5">
 
-    <event-tools @need-update="updateAll" @need-init="initEvent"></event-tools>
+    <event-tools
+      @need-update="updateAll"
+      @need-init="initEvent"
+      :selected-station-magnitude="selectedStationMagnitude"></event-tools>
 
     <event-description @need-update="updateAll"></event-description>
 
@@ -13,8 +16,10 @@
         <v-tabs v-model="activeChartTab" @change="handleChartChange" right>
           <v-tab>Time residual</v-tab>
           <v-tab>Travel time</v-tab>
+          <v-tab>Magnitude</v-tab>
           <v-tab-item class="event-view__chart--time-residual"></v-tab-item>
           <v-tab-item class="event-view__chart--travel-time"></v-tab-item>
+          <v-tab-item class="event-view__chart--magnitudes"></v-tab-item>
         </v-tabs>
       </v-flex>
     </v-layout>
@@ -112,6 +117,8 @@ export default {
         sortBy: 'distance',
         totalItems: null
       },
+
+      selectedStationMagnitude: [],
 
       activeChartTab: 0,
       chart: {
@@ -256,6 +263,25 @@ export default {
       this.updateAll()
     },
 
+    setSelectedStationMagnitude (selectedWfid) {
+      let tmp = {}
+      if (selectedWfid.length === 0) {
+        for (let a of this.origin.arrival) {
+          let netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
+          tmp[netsta] = null
+        }
+      } else {
+        for (let wfid of selectedWfid) {
+          let netsta = wfid.split('.').slice(0, 2).join('.')
+          tmp[netsta] = null
+        }
+      }
+      this.selectedStationMagnitude = Object.keys(tmp)
+      this.initChartsData()
+      this.initChartMagnitude()
+
+    },
+
     handleSelectionChange (selectedRows) {
       if (this.updating) return
       this.setSelectedArrival(selectedRows.map(x => x.id))
@@ -289,10 +315,12 @@ export default {
       this.updateArrivalTableData()
       this.eventMap()
       this.initChartsData()
-      if (this.activeChartTab == 0) {
+      if (this.activeChartTab === 0) {
         this.initChartTimeResidual()
-      } else if (this.activeChartTab == 1) {
+      } else if (this.activeChartTab === 1) {
         this.initChartTravelTime()
+      } else if (this.activeChartTab === 2) {
+        this.initChartMagnitude()
       }
       this.arrivalTableSelected = []
       for (let row of this.arrivalTableData) {
@@ -401,7 +429,11 @@ export default {
       // console.log('initChartsData');
       this.chart.timeResidual = { p: [], s: [] }
       this.chart.travelTime = { p: [], s: [] }
+      this.chart.magnitudes = {}
+      let tmp = {}
       for (let a of this.origin.arrival) {
+        let netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
+        tmp[netsta] = null
         let serie = (a.phase == 'P' ? 'p' : 's')
         let color = (
           a.time_weight < .5 ? 'gray' :
@@ -412,8 +444,31 @@ export default {
           x: a.distance, y: a.time_residual, name: a._pick._seedid, color: color, id: a.pick_id, manual: a._pick.evaluation_mode == 'manual'
         })
         this.chart.travelTime[serie].push({
-          x: a.distance, y: a._traveltime.getTime()/1000., name: a._pick._seedid, color: color, id: a.pick_id, manual: a._pick.evaluation_mode == 'manual'
+          x: a.distance, y: a._traveltime.getTime() / 1000., name: a._pick._seedid, color: color, id: a.pick_id, manual: a._pick.evaluation_mode == 'manual'
         })
+      }
+      if (this.selectedStationMagnitude.length === 0) {
+        this.selectedStationMagnitude = Object.keys(tmp)
+      }
+      const colors = Highcharts.getOptions().colors
+      let colorIndex = 0
+      for (let mag of this.event.magnitude) {
+        if (mag.origin_id != this.origin.public_id || mag.station_magnitude_contribution == null) {
+          continue
+        }
+        if (this.chart.magnitudes[mag.type] == null) {
+          this.chart.magnitudes[mag.type] = []
+        }
+        for (let smc of mag.station_magnitude_contribution) {
+          let arrival = this.origin.arrival.find(a => a._pick._seedid === smc._station_magnitude._seedid)
+          let netsta = smc._station_magnitude._seedid.split('.').slice(0, 2).join('.')
+          let color = 'gray'
+          if (this.selectedStationMagnitude.indexOf(netsta) >= 0) {
+            color = new Highcharts.Color(colors[colorIndex]).setOpacity(Math.max(0.2, smc.weight)).get()
+          }
+          this.chart.magnitudes[mag.type].push({ x: arrival.distance, y: smc._station_magnitude.mag.value, id: smc._station_magnitude._seedid, color, type: mag.type, weight: smc.weight })
+        }
+        colorIndex++
       }
     },
 
@@ -449,13 +504,13 @@ export default {
       let self = this
       Highcharts.chart({
         chart: { renderTo: container, type: 'scatter', zoomType: 'xy', events: {
-          selection: function(ev) {return handleChartSelection.call(this, ev, self.shiftPressed)},
+          selection: function (ev) { return handleChartSelection.call(this, ev, self.shiftPressed) },
           selectedpoints: selectedPickIDs => this.setSelectedArrival(selectedPickIDs)
         } },
         title: { text: 'Travel time/Distance' },
         xAxis: { title: { text: 'Distance [°]' }, min: 0 },
         yAxis: { title: { text: 'Travel time [s]' }, min: 0 },
-        tooltip: { formatter: function() {
+        tooltip: { formatter: function () {
           return `<b>${this.point.name}</b><br>Distance: ${this.x.toFixed(2)}°<br>Time: ${this.y.toFixed(2)} s`
         } },
         plotOptions: { series: { animation: false } },
@@ -466,16 +521,37 @@ export default {
       })
     },
 
+    initChartMagnitude () {
+      let container = this.$el.querySelector('.event-view__chart--magnitudes')
+      let self = this
+      Highcharts.chart({
+        chart: { renderTo: container, type: 'scatter', zoomType: 'xy', events: {
+          selection: function (ev) { return handleChartSelection.call(this, ev, false) },
+          selectedpoints: selectedWfid => this.setSelectedStationMagnitude(selectedWfid)
+        } },
+        title: { text: 'Station magnitudes' },
+        xAxis: { title: { text: 'Distance [°]' }, min: 0 },
+        yAxis: { title: { text: 'Magnitude' } },
+        tooltip: { formatter: function () {
+          return `<b>${this.point.id}</b><br>Distance: ${this.x.toFixed(2)}°<br>Magnitude: ${this.y.toFixed(2)} ${this.point.type}<br>Weight: ${this.point.weight.toFixed(2)}`
+        } },
+        plotOptions: { series: { animation: false } },
+        series: Object.entries(this.chart.magnitudes).map(([k, v]) => ({ name: k, data: v }))
+      })
+    },
+
     handleRowClick (row) {
       let netsta = `${row.network}.${row.station}`
       this.layers[netsta].openPopup()
     },
 
     handleChartChange (tab) {
-      if (tab == 0) {
+      if (tab === 0) {
         this.initChartTimeResidual()
-      } else if (tab == 1) {
+      } else if (tab === 1) {
         this.initChartTravelTime()
+      } else if (tab === 2) {
+        this.initChartMagnitude()
       }
     }
 

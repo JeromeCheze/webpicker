@@ -79,6 +79,8 @@ import * as utils from '@/utils/utils'
 
 export default {
 
+  props: ['selectedStationMagnitude'],
+
   data () {
     let locatorOptions = [ 'LOCSAT' ]
     let profileOptions = {
@@ -170,17 +172,18 @@ export default {
 
     initStationMagnitude () {
       let tmp = {}
-      let prev = {}
-      for (let sm of this.stationMagnitude) {
-        prev[sm.key] = sm.value
-      }
+      // let prev = {}
+      // for (let sm of this.stationMagnitude) {
+      //   prev[sm.key] = sm.value
+      // }
       for (let a of this.origin.arrival) {
-        let netSta = a._pick._seedid.split('.').slice(0, 2).join('.')
-        tmp[netSta] = null
+        let netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
+        tmp[netsta] = null
       }
       let sm = []
-      for (let netSta of Object.keys(tmp)) {
-        sm.push({ key: netSta, value: prev[netSta] != null ? prev[netSta] : true })
+      for (let netsta of Object.keys(tmp)) {
+        // sm.push({ key: netSta, value: prev[netSta] != null ? prev[netSta] : true })
+        sm.push({ key: netsta, value: this.selectedStationMagnitude.indexOf(netsta) >= 0 })
       }
       sm.sort((a, b) => {
         a = a.key
