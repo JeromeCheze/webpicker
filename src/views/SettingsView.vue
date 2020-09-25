@@ -50,6 +50,8 @@
             <td>
               <v-btn @click="editFilter(i)" icon small><v-icon>mdi-pencil</v-icon></v-btn>
               <v-btn @click="deleteFilter(i)" icon small><v-icon>mdi-delete</v-icon></v-btn>
+              <v-btn @click="moveFilterUp(i)" icon small v-if="i > 0"><v-icon>mdi-chevron-up</v-icon></v-btn>
+              <v-btn @click="moveFilterDown(i)" icon small v-if="i < (filterList.length - 1)"><v-icon>mdi-chevron-down</v-icon></v-btn>
             </td>
           </tr>
         </tbody>
@@ -190,6 +192,16 @@ export default {
 
     deleteFilter (i) {
       this.filterList.splice(i, 1)
+    },
+
+    moveFilterUp (i) {
+      const f = this.filterList.splice(i, 1)[0]
+      this.filterList.splice(i - 1, 0, f)
+    },
+
+    moveFilterDown (i) {
+      const f = this.filterList.splice(i, 1)[0]
+      this.filterList.splice(i + 1, 0, f)
     },
 
     handleFilterFormSubmit () {
