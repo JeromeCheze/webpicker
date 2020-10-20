@@ -27,6 +27,21 @@ export const updateAuthorStatus = ({ commit, getters, dispatch }) => {
       url: getters.getLink('author_status'),
       type: 'json'
     }).then(data => {
+      if (data.__message__ != null) {
+        let msgMap = data.__message__
+        let ackMsg = getters.getAcknowledgedMsgIds
+        let eventIds = getters.getEventListIds
+        delete data.__message__
+        for (let [msgId, msg] of Object.entries(msgMap)) {
+	  if (ackMsg.indexOf(msgId) < 0) {
+            commit('ADD_NOTIFICATION', { color: 'info', text: `author ${msg.author} just ${msg.action} event ${msg.eventid}`})
+	    commit('ACKNOWLEDGE_MESSAGE', msgId)
+            if (msg.action === 'commit' && eventIds.indexOf(msg.eventid) >= 0) {
+              commit('SET_EVENT_LIST_DIRTY', true)
+	    }
+	  }
+	}
+      }
       commit('SET_AUTHOR_STATUS', data)
       setTimeout(() => {
         dispatch('updateAuthorStatus')

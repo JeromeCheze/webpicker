@@ -24,6 +24,14 @@ export const SET_AUTHOR = (state, data) => {
   })
 }
 
+export const ACKNOWLEDGE_MESSAGE = (state, data) => {
+  state.acknowledgedMsgIds.push(data)
+}
+
+export const SET_EVENT_LIST_DIRTY = (state, data) => {
+  state.eventListDirty = data
+}
+
 export const SET_AUTHOR_STATUS = (state, data) => {
   let dirty = false
   for (let [k, v] of Object.entries(data)) {

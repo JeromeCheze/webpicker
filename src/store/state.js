@@ -22,8 +22,10 @@ export default {
   authorStatus: {},
   alertEventLocked: null,
   alertEventLockedDialog: false,
+  acknowledgedMsgIds: [],
 
   eventList: [],
+  eventListDirty: false,
 
   currentEvent: null,
   currentOrigin: null,

@@ -151,29 +151,10 @@ export default {
         break
       }
     }
-    if (dirty && this.$store.state.eventList.length <= 1) {
+    if (dirty && this.$store.state.eventList.length <= 1 || this.$store.state.eventListDirty) {
       this.$store.dispatch('setFormValues', this.$route.query)
       this.$store.dispatch('setLoading', { value: true, text: 'Loading events...' })
-      let args = {}
-      for (let [k, v] of Object.entries(this.$store.state.form)) {
-        if (v != null) {
-          args[k] = v
-        }
-      }
-      args.format = 'xml'
-      utils.ajax({
-        method: 'GET',
-        url: this.$store.getters.getLink('fdsnws/event/1/query'),
-        args: args,
-        type: 'document'
-      }).then(qml => {
-        let events = utils.parseQuakeML(qml)
-        this.$store.dispatch('eventList', events)
-        let data = this.getTableData()
-        this.pagination.totalItems = data.length
-        this.tableData = data
-        this.$store.dispatch('setLoading', { value: false })
-      })
+      this.loadEvents()
     } else {
       let data = this.getTableData()
       this.pagination.totalItems = data.length
@@ -208,17 +189,48 @@ export default {
         }, 500)
       }
     },
+
     hideDiscardedEvents: function (newValue, oldValue) {
       this.activeTab == 0 ? this.updateTable() : this.plotEvents()
     },
+
     '$store.getters.getEventActivity': function (newValue, oldValue) {
       let data = this.getTableData()
       this.pagination.totalItems = data.length
       this.tableData = data
+    },
+
+    '$store.state.eventListDirty': function (newValue, oldValue) {
+      if (newValue) {
+        this.loadEvents()
+      }
     }
   },
 
   methods: {
+
+    loadEvents () {
+      let args = {}
+      for (let [k, v] of Object.entries(this.$store.state.form)) {
+        if (v != null) {
+          args[k] = v
+        }
+      }
+      args.format = 'xml'
+      utils.ajax({
+        method: 'GET',
+        url: this.$store.getters.getLink('fdsnws/event/1/query'),
+        args: args,
+        type: 'document'
+      }).then(qml => {
+        let events = utils.parseQuakeML(qml)
+        this.$store.dispatch('eventList', events)
+        let data = this.getTableData()
+        this.pagination.totalItems = data.length
+        this.tableData = data
+        this.$store.dispatch('setLoading', { value: false })
+      })
+    },
 
     filterEvents (events) {
       let result = events

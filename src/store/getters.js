@@ -35,3 +35,11 @@ export const getCurrentEventId = (state) => {
   }
   return null
 }
+
+export const getAcknowledgedMsgIds = (state) => {
+  return state.acknowledgedMsgIds
+}
+
+export const getEventListIds = (state) => {
+  return state.eventList.map(x => x.public_id)
+}

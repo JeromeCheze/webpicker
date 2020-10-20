@@ -148,15 +148,36 @@ class AuthorStatusHandler(object):
     def _clean(self):
         now = datetime.utcnow()
         authors_to_del = []
+        msg_to_del = []
         for curr_author_id, curr_event_status in self.__status.iteritems():
-            t = datetime.strptime(curr_event_status['time'], '%Y-%m-%dT%H:%M:%SZ')
-            delta = now - t
-            if delta.total_seconds() > self.__clean_threshold:
-                authors_to_del.append(curr_author_id)
+            if curr_author_id == '__message__':
+                for msg_id, msg in curr_event_status.iteritems():
+                    t = datetime.strptime(msg['time'], '%Y-%m-%dT%H:%M:%SZ')
+                    delta = now - t
+                    if delta.total_seconds() > self.__clean_threshold:
+                        msg_to_del.append(msg_id)
+            else:
+                t = datetime.strptime(curr_event_status['time'], '%Y-%m-%dT%H:%M:%SZ')
+                delta = now - t
+                if delta.total_seconds() > self.__clean_threshold:
+                    authors_to_del.append(curr_author_id)
         for curr_author_id in authors_to_del:
             if curr_author_id in self.__status:
                 del self.__status[curr_author_id]
+        if len(msg_to_del) > 0:
+            for msg_id in msg_to_del:
+                del self.__status['__message__'][msg_id]
         return self
+
+    def message_to_all(self, msg_id, msg):
+        self._load()
+        msg_key = '__message__'
+        if msg_key not in self.__status:
+            self.__status[msg_key] = dict()
+        now = datetime.utcnow()
+        msg['time'] = now.strftime('%Y-%m-%dT%H:%M:%SZ')
+        self.__status[msg_key][msg_id] = msg
+        return self._clean()._save()
 
     def set_status(self, authorid, author, eventid, action):
         if author is None:
@@ -555,6 +576,11 @@ def relocate():
 @requires_auth
 def commit():
     jquake = request.get_json()
+    AUTHOR_STATUS.message_to_all(gen_id(), {
+        'action': 'commit',
+        'eventid': jquake[0]['public_id'].split('/')[-1],
+        'author': session.get('author')
+    })
     result = commit_with_scdispatch(jquake)
     # result = commit_with_scdb(jquake)
     return Response(json.dumps(result), mimetype='application/json')
