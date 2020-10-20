@@ -543,6 +543,7 @@ export default class Waveform {
       }
       this.event.hoverWf.opt.picks.push(newPick)
       // this.event.clickPos = null
+      this.event.selectedPicks = []
       this.event.clickPos = this.time2pos(ref, t)
       // this.draw()
       this.clearCanvas(this.event.hoverWf.ctx2)
