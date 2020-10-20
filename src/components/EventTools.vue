@@ -307,6 +307,7 @@ export default {
           }
           this.event.preferred_magnitude_id = e.magnitude[0].public_id
           this.event._pm = e.magnitude[0]
+          this.$emit('need-update')
         }
       })
     },
