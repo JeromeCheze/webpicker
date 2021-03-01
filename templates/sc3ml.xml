@@ -64,6 +64,9 @@
     {%- if pick.method_id %}
       <methodID>{{ pick.method_id | remove_resource_prefix }}</methodID>
     {%- endif %}
+    {%- if pick.polarity %}
+      <polarity>{{ pick.polarity }}</polarity>
+    {%- endif %}
       <phaseHint>{{ pick.phase_hint }}</phaseHint>
       <evaluationMode>{{ pick.evaluation_mode }}</evaluationMode>
     {%- if pick.evaluation_status %}
