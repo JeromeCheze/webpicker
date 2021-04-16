@@ -45,7 +45,7 @@
       <template v-slot:activator="{ on }">
         <v-btn
           v-on="on"
-          :color="origin._not_committed ? 'orange' : 'white'"
+          :color="commitButtonColor"
           small>COMMIT</v-btn>
       </template>
       <v-card class="pa-3">
@@ -165,6 +165,15 @@ export default {
     },
     origin () {
       return this.$store.state.currentOrigin
+    },
+    focalMechanism () {
+      return this.$store.state.currentFocalMechanism
+    },
+    commitButtonColor () {
+      if (this.origin._not_committed || this.focalMechanism != null && this.focalMechanism._not_committed) {
+        return 'orange'
+      }
+      return 'white'
     }
   },
 
@@ -314,11 +323,15 @@ export default {
 
     handleCommitClick () {
       let e = this.event,
-          o = this.origin
+          o = this.origin,
+          fm = this.focalMechanism
       e.type = this.commitForm.eventType
       e.type_certainty = this.commitForm.eventTypeCertainty
       e.preferred_origin_id = o.public_id
       o.evaluation_status = this.commitForm.originEvaluationStatus
+      if (fm != null) {
+        e.preferred_focal_mechanism = fm.public_id
+      }
       let cloneEvent = utils.cloneAndClean(e, '/event_parameters/event')
       console.log('[EventTools::handleCommitClick] commit', cloneEvent)
       if (cloneEvent.preferred_magnitude_id == null) {

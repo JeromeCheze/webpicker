@@ -17,9 +17,13 @@
           <v-tab>Time residual</v-tab>
           <v-tab>Travel time</v-tab>
           <v-tab>Magnitude</v-tab>
+          <v-tab>First motion</v-tab>
           <v-tab-item class="event-view__chart--time-residual"></v-tab-item>
           <v-tab-item class="event-view__chart--travel-time"></v-tab-item>
           <v-tab-item class="event-view__chart--magnitudes"></v-tab-item>
+          <v-tab-item class="event-view__chart--first-motion">
+            <first-motion :active="firstMotionActive"></first-motion>
+          </v-tab-item>
         </v-tabs>
       </v-flex>
     </v-layout>
@@ -121,6 +125,7 @@ export default {
       selectedStationMagnitude: [],
 
       activeChartTab: 0,
+      firstMotionActive: false,
       chart: {
         timeResidual: null,
         travelTime: null
@@ -297,7 +302,7 @@ export default {
         network: a._pick.waveform_id.network_code,
         station: a._pick.waveform_id.station_code,
         loccha: a._pick._fdsnid.split('.').slice(-2).join('.'),
-        takeoffAngle: a.takeoff_angle,
+        takeoffAngle: a.takeoff_angle != null ? a.takeoff_angle.toFixed(2) : '',
         polarity: a._pick.polarity != null ? a._pick.polarity : '',
         residual: a.time_residual,
         distance: a.distance,
@@ -461,6 +466,10 @@ export default {
         }
         for (let smc of mag.station_magnitude_contribution) {
           let arrival = this.origin.arrival.find(a => a._pick._seedid === smc._station_magnitude._seedid)
+          if (arrival == null) {
+            console.warn(`Failed to retreive corresponding arrival for station magnitude of channel ${smc._station_magnitude._seedid}`)
+            continue
+          }
           let netsta = smc._station_magnitude._seedid.split('.').slice(0, 2).join('.')
           let color = 'gray'
           if (this.selectedStationMagnitude.indexOf(netsta) >= 0) {
@@ -552,6 +561,8 @@ export default {
         this.initChartTravelTime()
       } else if (tab === 2) {
         this.initChartMagnitude()
+      } else if (tab === 3) {
+        this.firstMotionActive = true
       }
     }
 

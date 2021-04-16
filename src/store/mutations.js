@@ -90,6 +90,7 @@ export const SET_CURRENT_EVENT = (state, data) => {
     state.currentOrigin = data._po
     state.currentEvent = data
   }
+  state.currentFocalMechanism = data._pfm
 }
 
 export const ALERT_EVENT_LOCKED = (state, data) => {
@@ -99,6 +100,10 @@ export const ALERT_EVENT_LOCKED = (state, data) => {
 
 export const SET_CURRENT_ORIGIN = (state, data) => {
   state.currentOrigin = data
+}
+
+export const SET_CURRENT_FOCAL_MECHANISM = (state, data) => {
+  state.currentFocalMechanism = data
 }
 
 export const SET_LOADING = (state, data) => {

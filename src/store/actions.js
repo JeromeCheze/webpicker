@@ -81,6 +81,10 @@ export const setCurrentOrigin = ({ commit }, data) => {
   commit('SET_CURRENT_ORIGIN', data)
 }
 
+export const setCurrentFocalMechanism = ({ commit }, data) => {
+  commit('SET_CURRENT_FOCAL_MECHANISM', data)
+}
+
 export const setLoading = ({ commit }, data) => {
   commit('SET_LOADING', data)
 }

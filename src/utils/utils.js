@@ -13,6 +13,7 @@ export const CONVERSION_RULES = {
   '/event_parameters/event/magnitude': true,
   '/event_parameters/event/pick': true,
   '/event_parameters/event/description': true,
+  '/event_parameters/event/focal_mechanism': true,
   // conversion function :
   '/event_parameters/event/origin/latitude/value': parseFloat,
   '/event_parameters/event/origin/latitude/uncertainty': parseFloat,
@@ -43,7 +44,10 @@ export const CONVERSION_RULES = {
   '/event_parameters/event/amplitude/snr': parseFloat,
   '/event_parameters/event/amplitude/time_window/begin': parseFloat,
   '/event_parameters/event/amplitude/time_window/end': parseFloat,
-  '/event_parameters/event/station_magnitude/mag/value': parseFloat
+  '/event_parameters/event/station_magnitude/mag/value': parseFloat,
+  '/event_parameters/event/focal_mechanism/nodal_planes/nodal_plane1/strike/value': parseInt,
+  '/event_parameters/event/focal_mechanism/nodal_planes/nodal_plane1/dip/value': parseInt,
+  '/event_parameters/event/focal_mechanism/nodal_planes/nodal_plane1/rake/value': parseInt
 }
 
 export const RESOURCE_ID_KEYS = [
@@ -64,6 +68,7 @@ export const RESOURCE_ID_KEYS = [
   '/event_parameters/event/station_magnitude/amplitude_id',
   '/event_parameters/event/amplitude/public_id',
   '/event_parameters/event/amplitude/pick_id',
+  '/event_parameters/event/focal_mechanism/public_id'
 ]
 
 export const RESIDUAL_COLOR_SCALE = [
@@ -320,6 +325,9 @@ export const processEventData = (e) => {
       }
     }
   }
+  if (e.preferred_focal_mechanism_id != null && e.focal_mechanism != null) {
+    e._pfm = e.focal_mechanism.find(x => x.public_id == e.preferred_focal_mechanism_id)
+  }
 }
 
 export const parseInventory = (raw_inv) => {
@@ -388,7 +396,7 @@ export const cloneAndClean = (o, path) => {
 }
 
 export const composeEvent = (o) => {
-  let opt = Object.assign({ base: {}, origins: [], po: null, magnitudes: [], pm: null, discardedStation: null }, o)
+  let opt = Object.assign({ base: {}, origins: [], po: null, magnitudes: [], focalMechanisms: [], pm: null, pfm: null, discardedStation: null }, o)
   let root = '/event_parameters/event'
   let result = cloneAndClean(opt.base, root)
   result.pick = []
@@ -421,6 +429,7 @@ export const composeEvent = (o) => {
   }
   result.origin = originList
   result.magnitude = cloneAndClean(opt.magnitudes, `${root}/magnitude`)
+  result.focal_mechanism = cloneAndClean(opt.focalMechanisms, `${root}/focal_mechanism`)
   if (opt.po != null) {
     result.preferred_origin_id = cloneAndClean(opt.po.public_id, `${root}/preferred_origin_id`)
   } else {
@@ -430,6 +439,9 @@ export const composeEvent = (o) => {
     result.preferred_magnitude_id = cloneAndClean(opt.pm.public_id, `${root}/preferred_magnitude_id`)
   } else {
     delete result.preferred_magnitude_id
+  }
+  if (opt.pfm != null) {
+    result.preferred_focal_mechanism_id = cloneAndClean(opt.pfm.public_id, `${root}/preferred_focal_mechanism_id`)
   }
   return result
 }

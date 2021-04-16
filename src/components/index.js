@@ -6,6 +6,7 @@ import ColorPicker from './ColorPicker'
 import KeybindingField from './KeybindingField'
 import ProgressBar from './ProgressBar'
 import StationRadiusSelector from './StationRadiusSelector'
+import FirstMotion from './FirstMotion'
 
 Vue.component('NumberField', NumberField)
 Vue.component('EventTools', EventTools)
@@ -14,3 +15,4 @@ Vue.component('ColorPicker', ColorPicker)
 Vue.component('KeybindingField', KeybindingField)
 Vue.component('ProgressBar', ProgressBar)
 Vue.component('StationRadiusSelector', StationRadiusSelector)
+Vue.component('FirstMotion', FirstMotion)

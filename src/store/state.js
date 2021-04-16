@@ -29,6 +29,7 @@ export default {
 
   currentEvent: null,
   currentOrigin: null,
+  currentFocalMechanism: null,
   inventory: {},
 
   traceCache: {},

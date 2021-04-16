@@ -84,7 +84,7 @@ def dump_seiscomp3_config():
     f.close()
     os.rename(conf_filename, SC3ML_CONFIG_FILENAME)
 
-dump_seiscomp3_config()
+# dump_seiscomp3_config()
 
 def check_auth(username, password):
     """This function is called to check if a username /
@@ -503,6 +503,12 @@ def get_travel_times(depth, distance):
             result['S'] = min(s_arrivals)
     return result
 
+def takeoffangle(depth, distance):
+    model = TauPyModel(model="iasp91")
+    arrivals = model.get_travel_times(depth, distance)
+    arrivals.sort(key=lambda x: x.time)
+    return arrivals[0].takeoff_angle
+
 # def get_event_full_description(eventid):
 #     cmd = [
 #         SEISCOMP_PROGRAM, 'exec', 'scxmldump',
@@ -549,6 +555,15 @@ def get_ttt():
     result = {}
     for sta, distance in data['station'].iteritems():
         result[sta] = { 'distance': distance, 'ttt': get_travel_times(data['depth'], distance) }
+    return Response(json.dumps(result), mimetype='application/json')
+
+@app.route('/takeoffangle', methods=['POST'])
+@requires_auth
+def get_takeoffangle():
+    data = request.get_json()
+    result = {}
+    for sta, distance in data['station'].iteritems():
+        result[sta] = takeoffangle(data['depth'], distance)
     return Response(json.dumps(result), mimetype='application/json')
 
 @app.route('/region', methods=['GET'])
