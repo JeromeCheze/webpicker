@@ -140,9 +140,10 @@ export default {
         if (dist < 5) {
           const t = ctx.measureText(k)
           ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
-          ctx.fillRect(v[0] + 5, v[1] - 12 - 7, t.width + 4, 12 + 4)
+          let xPos = v[0] > this.hiresbbe.center ? v[0] - t.width - 5 : v[0] + 5
+          ctx.fillRect(xPos, v[1] - 12 - 7, t.width + 4, 12 + 4)
           ctx.fillStyle = 'black'
-          ctx.fillText(k, v[0] + 7, v[1] - 5)
+          ctx.fillText(k, xPos, v[1] - 5)
         }
       }
     },
