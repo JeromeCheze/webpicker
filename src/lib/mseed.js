@@ -80,13 +80,18 @@ Trace.prototype = {
     for (var i = 1; i < this.timeseries.length; i++) {
       var gap_length = (this.timeseries[i].starttime - this.timeseries[i-1].endtime)/1000;
       var nb_samples = Math.floor(gap_length * this.sample_rate);
+      var begin = 0
+      if (nb_samples < 0) {
+        console.log(this.id+' : Warning: found overlap of '+gap_length+' seconds ('+nb_samples+') | dump duplicate data')
+        begin = -1 * nb_samples
+      }
       if (nb_samples > 0) {
         var d = new Date();
         d.setTime(this.timeseries[i-1].endtime);
         console.log(this.id+' : Warning: found gap of '+gap_length+' seconds ('+nb_samples+') | gap begin at '+d.toISOString());
         for (var n = 0; n < nb_samples; n++) data.push(null);
       }
-      data = data.concat(this.timeseries[i].data);
+      data = data.concat(this.timeseries[i].data.slice(begin));
     }
     return data
   },
