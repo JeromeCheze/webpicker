@@ -273,7 +273,7 @@
     {%- endif %}
     {%- if event.preferred_focal_mechanism_id %}
       <preferredFocalMechanismID>{{ event.preferred_focal_mechanism_id | remove_resource_prefix }}</preferredFocalMechanismID>
-    {%- else %}
+    {%- endif %}
     {%- if event.type %}
       <type>{{ event.type | sc3ml_type }}</type>
     {%- endif %}
