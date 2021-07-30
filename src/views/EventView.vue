@@ -17,7 +17,7 @@
           <v-tab>Time residual</v-tab>
           <v-tab>Travel time</v-tab>
           <v-tab>Magnitude</v-tab>
-          <v-tab>First motion</v-tab>
+          <v-tab>First motion (beta)</v-tab>
           <v-tab-item class="event-view__chart--time-residual"></v-tab-item>
           <v-tab-item class="event-view__chart--travel-time"></v-tab-item>
           <v-tab-item class="event-view__chart--magnitudes"></v-tab-item>
@@ -490,7 +490,7 @@ export default {
       let container = this.$el.querySelector('.event-view__chart--time-residual')
       let self = this
       Highcharts.chart({
-        chart: { renderTo: container, type: 'scatter', zoomType: 'xy', events: {
+        chart: { backgroundColor: 'rgba(255,255,255,0)', renderTo: container, type: 'scatter', zoomType: 'xy', events: {
           selection: function(ev) {return handleChartSelection.call(this, ev, self.shiftPressed)},
           selectedpoints: selectedPickIDs => this.setSelectedArrival(selectedPickIDs)
         } },
@@ -512,7 +512,7 @@ export default {
       let container = this.$el.querySelector('.event-view__chart--travel-time')
       let self = this
       Highcharts.chart({
-        chart: { renderTo: container, type: 'scatter', zoomType: 'xy', events: {
+        chart: { backgroundColor: 'rgba(255,255,255,0)', renderTo: container, type: 'scatter', zoomType: 'xy', events: {
           selection: function (ev) { return handleChartSelection.call(this, ev, self.shiftPressed) },
           selectedpoints: selectedPickIDs => this.setSelectedArrival(selectedPickIDs)
         } },
@@ -534,7 +534,7 @@ export default {
       let container = this.$el.querySelector('.event-view__chart--magnitudes')
       let self = this
       Highcharts.chart({
-        chart: { renderTo: container, type: 'scatter', zoomType: 'xy', events: {
+        chart: { backgroundColor: 'rgba(255,255,255,0)', renderTo: container, type: 'scatter', zoomType: 'xy', events: {
           selection: function (ev) { return handleChartSelection.call(this, ev, false) },
           selectedpoints: selectedWfid => this.setSelectedStationMagnitude(selectedWfid)
         } },

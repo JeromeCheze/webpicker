@@ -1,5 +1,5 @@
 <template>
-  <v-app>
+  <v-app :dark="$store.state.settings.themeDark">
 
     <v-toolbar app dense :style="{ zIndex: 1000 }">
       <v-toolbar-title>WebPicker</v-toolbar-title>

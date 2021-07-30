@@ -360,6 +360,9 @@ export default {
 .selected-event-row {
   background-color: #e7f9ff !important;
 }
+.application.theme--dark .selected-event-row {
+  background-color: #197492 !important;
+}
 .list-view__map-canvas {
   height: 80vh;
   z-index: 1;
@@ -368,4 +371,5 @@ export default {
 .list-view__map-table tr:hover {background-color: #d1edf5; cursor: pointer;}
 .list-view__map-table th, td {padding: 4px; text-align: center;}
 .list-view__map-table th {font-weight: bold; background: #efefef;}
+.application.theme--dark .list-view__map-table th {background-color: #5e5e5e;}
 </style>

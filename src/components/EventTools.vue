@@ -2,6 +2,7 @@
   <v-footer :value="true" fixed :height="70" :style="{ borderTop: '1px solid #ddd' }">
     <v-btn
       :color="origin._is_dirty ? 'orange' : 'white'"
+      light
       @click="handleRelocateClick"
       small>RELOCATE</v-btn>
     <div class="event-tools__select-wrapper">
@@ -14,6 +15,7 @@
       <template v-slot:activator="{ on }">
         <v-btn
           v-on="on" small @click="initStationMagnitude"
+          light
           :color="event.preferred_magnitude_id == null ? 'orange' : 'white'">
           MAGNITUDE
         </v-btn>
@@ -36,6 +38,7 @@
           <v-spacer></v-spacer>
           <v-btn
             color="white"
+            light
             @click="handleComputeMagnitudeClick"
             small>COMPUTE</v-btn>
         </v-card-actions>
@@ -46,6 +49,7 @@
         <v-btn
           v-on="on"
           :color="commitButtonColor"
+          light
           small>COMMIT</v-btn>
       </template>
       <v-card class="pa-3">

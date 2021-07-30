@@ -22,6 +22,7 @@
         small
         @click="handleValidate"
         :color="isDirty ? 'orange' : 'white'"
+        light
       >VALIDATE</v-btn><br>
       <v-btn small @click="handleReset">RESET</v-btn>
       <v-btn
