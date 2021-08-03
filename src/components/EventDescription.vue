@@ -220,6 +220,10 @@ export default {
 
     handleSetPreferredMagnitude (m) {
       let e = this.event
+      if (m.origin_id != e.preferred_origin_id) {
+        alert('[ERROR]\nIt is not possible to define a magnitude from another origin as preferred.\nOperation aborted.')
+        return
+      }
       e.preferred_magnitude_id = m.public_id
       e._pm = m
       this.origin._not_committed  = true
