@@ -237,6 +237,8 @@ export default {
           this.event.preferred_magnitude_id = null
           this.event._pm = null
           this.$store.dispatch('setCurrentOrigin', o)
+          this.event.preferred_origin_id = o.public_id
+          this.event._po = o
           this.$emit('need-update')
           utils.ajax({
             method: 'GET',
