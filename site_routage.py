@@ -588,6 +588,7 @@ def commit():
 @app.route('/fdsnws/', defaults={'service': '', 'path': ''})
 @app.route('/fdsnws/<service>/', defaults={'path': ''})
 @app.route('/fdsnws/<service>/<path:path>', methods=['GET', 'POST'])
+@requires_auth
 def fdsnws(service, path):
     if path != '':
         path = '/%s' % path
