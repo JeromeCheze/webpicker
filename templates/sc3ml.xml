@@ -245,7 +245,7 @@
 
 {%- if event.focal_mechanism %}
   {%- for focal_mechanism in event.focal_mechanism %}
-    <focalMechanism>
+    <focalMechanism publicID="{{ focal_mechanism.public_id | remove_resource_prefix }}">
       <nodalPlanes>
         <nodalPlane1>
           <strike>

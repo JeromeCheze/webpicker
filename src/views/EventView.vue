@@ -209,6 +209,7 @@ export default {
           includeallorigins: 'true',
           includeallmagnitudes: 'true',
           includearrivals: 'true',
+          includefocalmechanism: 'true',
           includestationmagnitudes: 'true'
 
           // Non-standard argument handled by site_routage.

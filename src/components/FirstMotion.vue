@@ -47,11 +47,6 @@ export default {
   props: ['active'],
   data () {
     let [strike, dip, rake] = [0, 90, 180]
-    if (this.focalMechanism != null) {
-      strike = this.focalMechanism.nodal_planes.nodal_plane1.strike.value
-      dip = this.focalMechanism.nodal_planes.nodal_plane1.dip.value
-      rake = this.focalMechanism.nodal_planes.nodal_plane1.rake.value
-    }
     return {
       initialized: false,
       oldStrike: strike,
@@ -121,6 +116,7 @@ export default {
       this.oldDip = this.dip
       this.oldRake = this.rake
       this.event.focal_mechanism = [fmObject]
+      this.event.preferred_focal_mechanism_id = fmObject.public_id
       this.$store.dispatch('setCurrentFocalMechanism', fmObject)
     },
     handleDelete () {
@@ -285,6 +281,15 @@ export default {
     },
 
     init () {
+      if (this.focalMechanism != null) {
+        this.strike = this.focalMechanism.nodal_planes.nodal_plane1.strike.value
+        this.dip = this.focalMechanism.nodal_planes.nodal_plane1.dip.value
+        this.rake = this.focalMechanism.nodal_planes.nodal_plane1.rake.value
+        const [s, d, r] = [this.strike, this.dip, this.rake]
+        this.oldStrike = s
+        this.oldDip = d
+        this.oldRake = r
+      }
       let stationDistance = {}
       for (let a of this.polarizedArrivals) {
         let fdsnid = a._pick._fdsnid
@@ -328,3 +333,4 @@ export default {
   text-align: right;
 }
 </style>
+
