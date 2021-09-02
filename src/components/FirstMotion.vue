@@ -128,6 +128,8 @@ export default {
       this.hiresbbe.drawFocal(s, d, r, COLOR)
       this.$store.dispatch('setCurrentFocalMechanism', { _not_committed: true })
       this.event.focal_mechanism = []
+      this.event.preferred_focal_mechanism_id = null
+      this.event._pfm = null
     },
     handleStationPopup (x, y) {
       let ctx = this.popupCtx
