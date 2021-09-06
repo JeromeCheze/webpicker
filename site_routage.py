@@ -246,7 +246,7 @@ def sc3ml_to_qml(sc3ml_str, sc3ml_version):
 
 def write_sc3ml(jquake, filename, version):
     with open(filename, 'w') as f:
-        f.write(render_template('sc3ml.xml', version=version, jquake=jquake))
+        f.write(render_template('sc3ml.xml', version=version, jquake=jquake).encode('utf-8'))
 
 def get_inventory(jquake):
     data = [
