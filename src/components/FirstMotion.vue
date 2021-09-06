@@ -266,7 +266,7 @@ export default {
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
       const stationPos = {}
       for (let a of this.polarizedArrivals) {
-        let dist = radius * (a.takeoff_angle > 90 ? 180 - a.takeoff_angle : a.takeoff_angle) / 90
+        let dist = radius * (a.takeoff_angle.value > 90 ? 180 - a.takeoff_angle.value : a.takeoff_angle.value) / 90
         let xPos = center - dist * Math.cos(Math.PI * (a.azimuth - 90) / 180)
         let yPos = center - dist * Math.sin(Math.PI * (a.azimuth - 90) / 180)
         let key = a._pick._seedid.split('.').slice(0, 2).join('_')
@@ -308,7 +308,7 @@ export default {
           for (let a of this.polarizedArrivals) {
             let fdsnid = a._pick._fdsnid
             let netsta = fdsnid.split('.').slice(0, 2).join('.')
-            a.takeoff_angle = toa[netsta]
+            a.takeoff_angle = { value: toa[netsta] }
           }
           this.createBeachBall()
         })

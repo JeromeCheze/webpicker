@@ -303,7 +303,7 @@ export default {
         network: a._pick.waveform_id.network_code,
         station: a._pick.waveform_id.station_code,
         loccha: a._pick._fdsnid.split('.').slice(-2).join('.'),
-        takeoffAngle: a.takeoff_angle != null ? a.takeoff_angle.toFixed(2) : '',
+        takeoffAngle: a.takeoff_angle != null ? a.takeoff_angle.value.toFixed(2) : '',
         polarity: a._pick.polarity != null ? a._pick.polarity : '',
         residual: a.time_residual,
         distance: a.distance,

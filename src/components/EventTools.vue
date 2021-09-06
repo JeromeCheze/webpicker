@@ -86,9 +86,10 @@ export default {
   props: ['selectedStationMagnitude'],
 
   data () {
-    let locatorOptions = [ 'LOCSAT' ]
+    let locatorOptions = [ 'LOCSAT', 'Hypo71' ]
     let profileOptions = {
       LOCSAT: [ 'iasp91', 'tab' ],
+      Hypo71: [ 'ModelA', 'tectonic', 'volcanic' ]
     }
     return {
       magnitudePopover: false,

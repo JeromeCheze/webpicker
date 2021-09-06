@@ -35,6 +35,7 @@ export const CONVERSION_RULES = {
   '/event_parameters/event/origin/arrival/time_weight': parseFloat,
   '/event_parameters/event/origin/arrival/distance': parseFloat,
   '/event_parameters/event/origin/arrival/azimuth': parseFloat,
+  '/event_parameters/event/origin/arrival/takeoff_angle/value': parseFloat,
   '/event_parameters/event/magnitude/mag/value': parseFloat,
   '/event_parameters/event/magnitude/mag/uncertainty': parseFloat,
   '/event_parameters/event/magnitude/stationCount': parseInt,
