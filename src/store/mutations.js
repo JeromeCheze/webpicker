@@ -21,6 +21,10 @@ export const SET_AUTHOR = (state, data) => {
     args: { author: state.author }
   }).then(data => {
     console.log('[store.mutation::SET_AUTHOR] response', data)
+    LOG(state, `[store.mutation::SET_AUTHOR] response: ${JSON.stringify(data)}`)
+  }).catch(data => {
+    console.log('[store.mutation::SET_AUTHOR] request failed', data)
+    LOG(state, `[store.mutation::SET_AUTHOR] request failed: ${data}`)
   })
 }
 
@@ -191,4 +195,9 @@ export const SET_TTT_CACHE = (state, data) => {
 
 export const SET_PICKER_LAST_ORIGIN = (state, data) => {
   state.pickerLastOrigin = data
+}
+
+export const LOG = (state, data) => {
+  const now = new Date()
+  state.log.push(`${now.toISOString()} | ${data}`)
 }

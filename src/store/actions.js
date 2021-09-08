@@ -33,25 +33,27 @@ export const updateAuthorStatus = ({ commit, getters, dispatch }) => {
         let eventIds = getters.getEventListIds
         delete data.__message__
         for (let [msgId, msg] of Object.entries(msgMap)) {
-	  if (ackMsg.indexOf(msgId) < 0) {
+          if (ackMsg.indexOf(msgId) < 0) {
             commit('ADD_NOTIFICATION', { color: 'info', text: `author ${msg.author} just ${msg.action} event ${msg.eventid}`})
-	    commit('ACKNOWLEDGE_MESSAGE', msgId)
+            commit('ACKNOWLEDGE_MESSAGE', msgId)
             if (msg.action === 'commit' && eventIds.indexOf(msg.eventid) >= 0) {
               commit('SET_EVENT_LIST_DIRTY', true)
-	    }
-	  }
-	}
+            }
+          }
+        }
       }
       commit('SET_AUTHOR_STATUS', data)
       setTimeout(() => {
         dispatch('updateAuthorStatus')
       }, 5000)
       resolve()
+    }).catch(data => {
+      commit('LOG', `[store.action::updateAuthorStatus] request failed: ${data}`)
     })
   });
 }
 
-export const setAuthorStatus = ({ getters }, data) => {
+export const setAuthorStatus = ({ commit, getters }, data) => {
   return new Promise(function(resolve, reject) {
     utils.ajax({
       method: 'GET',
@@ -61,6 +63,8 @@ export const setAuthorStatus = ({ getters }, data) => {
     }).then(data => {
       console.log('[store.action::setAuthorStatus] response', data);
       resolve()
+    }).catch(data => {
+      commit('LOG', `[store.action::setAuthorStatus] request failed: ${data}`)
     })
   });
 }
@@ -128,4 +132,8 @@ export const setTTTCache = ({ commit }, data) => {
 
 export const setPickerLastOrigin = ({ commit }, data) => {
   commit('SET_PICKER_LAST_ORIGIN', data)
+}
+
+export const log = ({ commit }, data) => {
+  commit('LOG', data)
 }

@@ -200,6 +200,7 @@ export default {
 
     initEvent () {
       this.$store.dispatch('setLoading', { value: true, text: 'Loading event description...' })
+      this.$store.dispatch('log', `[EventView::initEvent] send event full description request`)
       utils.ajax({
         method: 'GET',
         url: this.$store.getters.getLink('fdsnws/event/1/query'),
@@ -221,7 +222,8 @@ export default {
         type: 'document'
       }).then(qml => {
         let e = utils.parseQuakeML(qml)[0]
-        console.log('[EventView::initEvent] full description event', e);
+        console.log('[EventView::initEvent] full description event', e)
+        this.$store.dispatch('log', `[EventView::initEvent] full description event received`)
         let chList = []
         for (let o of e.origin) {
           for (let a of o.arrival) {
@@ -233,6 +235,7 @@ export default {
         }
         let t = e._po.time.value.slice(0, 19)
         this.$store.dispatch('setLoading', { value: true, text: 'Loading inventory...' })
+        this.$store.dispatch('log', `[EventView::initEvent] send loading inventory request`)
         utils.ajax({
           method: 'POST',
           url: this.$store.getters.getLink('fdsnws/station/1/query'),
@@ -249,7 +252,11 @@ export default {
             this.updateAll()
             this.$store.dispatch('setLoading', { value: false })
           })
+        }).catch(data => {
+          this.$store.dispatch('log', `[EventView::initEvent] send loading inventory request failed: ${data}`)
         })
+      }).catch(data => {
+        this.$store.dispatch('log', `[EventView::initEvent] send event full description request failed: ${data}`)
       })
     },
 

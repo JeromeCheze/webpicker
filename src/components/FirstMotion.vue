@@ -298,6 +298,7 @@ export default {
         let netsta = fdsnid.split('.').slice(0, 2).join('.')
         stationDistance[netsta] = a.distance
       }
+      this.$store.dispatch('log', `[FirstMotion::init] send takeoffangle request`)
       utils.ajax({
         method: 'POST',
           url: this.$store.getters.getLink('takeoffangle'),
@@ -311,6 +312,8 @@ export default {
             a.takeoff_angle = { value: toa[netsta] }
           }
           this.createBeachBall()
+        }).catch(data => {
+          this.$store.dispatch('log', `[FirstMotion::init] send takeoffangle request failed: ${data}`)
         })
     }
   }

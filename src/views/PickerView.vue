@@ -560,6 +560,7 @@ export default {
           }
           if (Object.keys(stationDistance).length == 0) {
             console.log('[PickerView::getTTT] Origin is unchanged, do not recompute theoretical travel times.')
+            this.$store.dispatch('log', `[PickerView::getTTT] Origin is unchanged, do not recompute theoretical travel times.`)
             resolve()
             return
           }
@@ -568,6 +569,7 @@ export default {
         }
         this.$store.dispatch('setLoading', { value: true, text: `Loading theoretical travel times...` })
         console.log('[PickerView::getTTT] compute theoretical travel time', stationDistance)
+        this.$store.dispatch('log', `[PickerView::getTTT] compute theoretical travel time`)
         const xhr = new XMLHttpRequest()
         this.xhr.push(xhr)
         utils.ajax({
@@ -588,6 +590,8 @@ export default {
           this.ttt = Object.assign({}, this.ttt, ttt)
           this.$store.dispatch('setLoading', { value: false })
           resolve()
+        }).catch(data => {
+          this.$store.dispatch('log', `[PickerView::getTTT] compute theoretical travel time request failed: ${data}`)
         })
       })
     },
@@ -619,7 +623,8 @@ export default {
           fdsnidList.splice(fdsnidList.indexOf(fdsnid), 1)
         }
       }
-      console.log('[PickerView::getCachedTraces]', { traceList, notCached, timeCacheKey });
+      console.log('[PickerView::getCachedTraces]', { traceList, notCached, timeCacheKey })
+      this.$store.dispatch('log', `[PickerView::getCachedTraces]`)
       return [traceList, notCached, timeCacheKey]
     },
 
@@ -649,6 +654,7 @@ export default {
     traceDownloader (fdsnidList) {
       return new Promise((resolve, reject) => {
         console.log('[PickerView::traceDownloader]', fdsnidList)
+        this.$store.dispatch('log', `[PickerView::traceDownloader]: ${JSON.stringify(fdsnidList)}`)
         let [start, end] = this.getTimeWindow()
         const xhr = new XMLHttpRequest()
         this.xhr.push(xhr)
@@ -662,6 +668,8 @@ export default {
           this.xhr.splice(this.xhr.indexOf(xhr), 1)
           let st = new mseed.Stream(new DataView(arr))
           resolve(st.trace)
+        }).catch(data => {
+          this.$store.dispatch('log', `[PickerView::traceDownloader] failed to download data: ${data}`)
         })
       })
     },
@@ -672,6 +680,7 @@ export default {
           resolve()
         }
         console.log('[PickerView::downloadWaveforms]', fdsnidList)
+        this.$store.dispatch('log', `[PickerView::downloadWaveforms]: ${JSON.stringify(fdsnidList)}`)
 
         let [traceList, notCached, timeCacheKey] = this.getCachedTraces(fdsnidList)
         if (traceList.length > 0 && callback != null) {
@@ -702,6 +711,7 @@ export default {
                 let content = fdsnidList.join(', ')
                 this.$store.dispatch('notify', { color: 'error', text: `These channels couldn't be retrieved: ${content}` })
                 console.log(`[PickerView::downloadWaveforms] These channels couldn't be retrieved`, fdsnidList)
+                thius.$store.dispatch('log', `[PickerView::downloadWaveforms] These channels couldn't be retrieved: ${JSON.stringify(fdsnidList)}`)
               }
               this.$store.dispatch('notify', { color: 'info', text: 'Waveforms loaded.' })
               resolve()
@@ -750,6 +760,7 @@ export default {
       for (const wf of this.list.waveforms) {
         if (wf.opt.id === zWfid) {
           console.log(`[PickerView::handleUpdatePick]`, wf)
+          this.$store.dispatch('log', `[PickerView::handleUpdatePick]`)
           this.list.drawPicks(wf)
           break
         }
@@ -783,15 +794,19 @@ export default {
         }).then(data => {
           this.$store.dispatch('setLoading', { value: false })
           let inv = utils.parseInventory(data)
-          console.log('[PickerView::getRadiusInventory] additional station result', inv);
+          console.log('[PickerView::getRadiusInventory] additional station result', inv)
+          this.$store.dispatch('log', `[PickerView::getRadiusInventory] additional station result: ${JSON.stringify(inv, null, 2)}`)
           this.$store.dispatch('mergeInventory', inv)
           resolve(inv)
         })
+      }).catch(data => {
+        this.$store.dispatch('log', `[PickerView::getRadiusInventory] additional station request failed: ${data}`)
       })
     },
 
     handleChangeLocation (data) {
       console.log('[PickerView::handleChangeLocation]', data)
+      this.$store.dispatch('log', `[PickerView::handleChangeLocation]: ${JSON.stringify(data)}`)
       let pos = L.latLng(data.latitude, data.longitude)
       let event = this.$store.state.currentEvent
       let tmp1 = JSON.parse(JSON.stringify(this.origin))
@@ -866,7 +881,8 @@ export default {
             }
           }
         }
-        console.log('[PickerView::loadRadiusStation] fdsnidList', fdsnidList);
+        console.log('[PickerView::loadRadiusStation] fdsnidList', fdsnidList)
+        this.$store.dispatch('log', `[PickerView::loadRadiusStation] fdsnidList: ${JSON.stringify(fdsnidList)}`)
         if (fdsnidList.length == 0) {
           this.$store.dispatch('notify', { color: 'info', text: 'No additional station found in this range.' })
           return
@@ -929,9 +945,11 @@ export default {
 
     setPickerWaveforms (wfList) {
       console.log('[PickerView::setPickerWaveforms]', wfList)
+      this.$store.dispatch('log', `[PickerView::setPickerWaveforms]`)
       if (this.tools.rotation != 'ZRT') {
         this.setAdditionalWaveformsChannels(wfList)
         console.log('[PickerView::setPickerWaveforms] after setAdditionalWaveformsChannels', wfList)
+        this.$store.dispatch('log', `[PickerView::setPickerWaveforms] after setAdditionalWaveformsChannels`)
       }
       let view = Object.assign({}, this.defaultView)
       let filterState = false
@@ -959,6 +977,7 @@ export default {
 
     setListWaveforms (wfList) {
       console.log(`[PickerView::setListWaveforms]`, wfList)
+      this.$store.dispatch('log', `[PickerView::setListWaveforms]`)
       if (this.list == null) {
         this.listOpt.size = { height: this.settings['pickerSize.listWaveformHeight'] }
         this.listOpt.color = this.getColorSettings()

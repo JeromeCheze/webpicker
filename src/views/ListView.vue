@@ -217,6 +217,7 @@ export default {
         }
       }
       args.format = 'xml'
+      this.$store.dispatch('log', `[ListView::initEvent] send loading catalog request`)
       utils.ajax({
         method: 'GET',
         url: this.$store.getters.getLink('fdsnws/event/1/query'),
@@ -229,6 +230,8 @@ export default {
         this.pagination.totalItems = data.length
         this.tableData = data
         this.$store.dispatch('setLoading', { value: false })
+      }).catch(data => {
+        this.$store.dispatch('log', `[ListView::initEvent] send loading catalog request failed: ${data}`)
       })
     },
 

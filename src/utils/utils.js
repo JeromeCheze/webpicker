@@ -130,12 +130,12 @@ export const ajax = (opt, xhr) => {
     )
     xhr.open(opt.method, opt.url+opt.args)
     xhr.responseType = opt.type
-    xhr.onerror = () => reject(xhr.statusText)
+    xhr.onerror = () => reject(xhr.status)
     xhr.onload = () => {
       if (xhr.status === 200) {
         resolve(xhr.response)
       } else {
-        reject()
+        reject(xhr.status)
       }
     }
     if (opt.method == 'POST' && opt.dataMimeType != null) {

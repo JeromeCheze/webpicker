@@ -214,6 +214,7 @@ export default {
       let e = utils.composeEvent({
         base: this.event, origins: [ this.origin ], po: this.origin
       })
+      this.$store.dispatch('log', `[EventTools::handleRelocateClick] send relocate request`)
       utils.ajax({
         method: 'POST',
         url: this.$store.getters.getLink('relocate'),
@@ -234,6 +235,8 @@ export default {
           // console.log(qml);
           let e = utils.parseQuakeML(qml)[0]
           console.log('[EventTools::handleRelocateClick] relocate result', e);
+          this.$store.dispatch('log', `[EventTools::handleRelocateClick] relocate result`);
+
           let o = e.origin[0]
           o.creation_info.agency_id = this.event.creation_info.agency_id
           o.creation_info.author = this.$store.state.author
@@ -252,6 +255,7 @@ export default {
           this.event._pm = null
           this.$store.dispatch('setCurrentOrigin', o)
           this.$emit('need-update')
+          this.$store.dispatch('log', `[EventTools::handleRelocateClick] send region name request`)
           utils.ajax({
             method: 'GET',
             url: this.$store.getters.getLink('region'),
@@ -261,9 +265,14 @@ export default {
             },
             type: 'json'
           }).then(data => {
+            this.$store.dispatch('log', `[EventTools::handleRelocateClick] send region name request response: ${data}`)
             this.event.description = [{ type: 'region name', text: data }]
+          }).catch(data => {
+            this.$store.dispatch('log', `[EventTools::handleRelocateClick] send region name request failed: ${data}`)
           })
         }
+      }).catch(data => {
+        this.$store.dispatch('log', `[EventTools::handleRelocateClick] send relocate request failed : ${data}`)
       })
     },
 
@@ -277,6 +286,7 @@ export default {
       })
       delete e.amplitude
       delete e.station_magnitude
+      console.log('[EventTools::handleComputeMagnitudeClick] send compute magnitude request')
       utils.ajax({
         method: 'POST',
         url: this.$store.getters.getLink('compute_magnitudes'),
@@ -293,7 +303,8 @@ export default {
           let qml = parser.parseFromString(data.quakeml, 'application/xml')
           // console.log(qml);
           let e = utils.parseQuakeML(qml)[0]
-          console.log('[EventTools::handleComputeMagnitudeClick] compute magnitude result', e);
+          console.log('[EventTools::handleComputeMagnitudeClick] compute magnitude result', e)
+          this.$store.dispatch('log', `[EventTools::handleComputeMagnitudeClick] compute magnitude result`)
           if (e.magnitude.length == 0) {
             alert('No magnitude computed.\n'+data.message)
             return
@@ -323,6 +334,8 @@ export default {
           this.event._pm = e.magnitude[0]
           this.$emit('need-update')
         }
+      }).catch(data => {
+        this.$store.dispatch('log', `[EventTools::handleComputeMagnitudeClick] send compute magnitude request failed: ${data}`)
       })
     },
 
@@ -338,12 +351,13 @@ export default {
         e.preferred_focal_mechanism = fm.public_id
       }
       let cloneEvent = utils.cloneAndClean(e, '/event_parameters/event')
-      console.log('[EventTools::handleCommitClick] commit', cloneEvent)
       if (cloneEvent.preferred_magnitude_id == null) {
         if (!confirm('You are about to commit an event with no magnitude. Do you really want to proceed ?')) {
           return
         }
       }
+      console.log('[EventTools::handleCommitClick] commit', cloneEvent)
+      this.$store.dispatch('log', `[EventTools::handleCommitClick] commit`)
       this.$store.dispatch('setAuthorStatus', { eventid: this.event.public_id, action: 'committing' })
       this.$store.dispatch('setLoading', { value: true, text: 'Commit in progress...' })
       utils.ajax({
@@ -353,8 +367,9 @@ export default {
         data: JSON.stringify([ cloneEvent ]),
         type: 'json'
       }).then(data => {
-        console.log('[EventTools::handleCommitClick] commit result', data);
+        console.log('[EventTools::handleCommitClick] commit result', data)
         if (data.return_code == 0) {
+          this.$store.dispatch('log', `[EventTools::handleCommitClick] commit successful`)
           // o._not_committed = false
           setTimeout(() => {
             this.commitPopover = false
@@ -368,6 +383,10 @@ export default {
           this.$store.dispatch('setLoading', { value: false })
           alert(data.message)
         }
+      }).catch(data => {
+        this.$store.dispatch('log', `[EventTools::handleCommitClick] send commit request failed: ${data}`)
+        alert('Ooops, something went wrong 😕 but don\'t worry it happens sometimes, please try to commit again 😉\n\n(if it occurs again, please contact the admin)')
+        this.$store.dispatch('setLoading', { value: false })
       })
     }
 

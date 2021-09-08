@@ -31,6 +31,9 @@
             <v-list-tile :to="{ name: 'Settings' }">
               <v-icon left>mdi-settings</v-icon> Settings
             </v-list-tile>
+            <v-list-tile @click="logDialog = true">
+              <v-icon left>mdi-console</v-icon> Logs
+            </v-list-tile>
           </v-list>
         </v-menu>
       </v-toolbar-items>
@@ -160,6 +163,24 @@
           </v-alert>
         </div>
 
+        <v-dialog
+          scrollable
+          v-model="logDialog"
+          max-width="900px">
+          <v-card>
+            <v-card-title>
+              <span class="headline">Logs</span>
+            </v-card-title>
+            <v-card-text style="height: 500px;font-size:11px;">
+              <pre>{{ $store.state.log.join('\n') }}</pre>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn @click="logDialog = false">Close</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
       </v-container>
     </v-content>
   </v-app>
@@ -186,7 +207,8 @@ export default {
       newEventTime: null,
       newEventLatitude: null,
       newEventLongitude: null,
-      newEventDepth: null
+      newEventDepth: null,
+      logDialog: false
     }
   },
 

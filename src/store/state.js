@@ -5,7 +5,7 @@ let start = new Date(end.getTime() - 86400e3 * 8)
 
 export default {
 
-  root: '/webpicker/',
+  root: location.href.split('#')[0],
 
   author: null,
   authorDialog: false,
@@ -47,6 +47,8 @@ export default {
     maxdepth: 750,
     minmag: null,
     maxmag: null
-  }
+  },
+
+  log: []
 
 }
