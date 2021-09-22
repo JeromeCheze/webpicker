@@ -684,7 +684,7 @@ export default {
 
         let [traceList, notCached, timeCacheKey] = this.getCachedTraces(fdsnidList)
         if (traceList.length > 0 && callback != null) {
-          callback.call(null, traceList.map(tr => this.getWaveformObject(tr)))
+          callback.call(null, traceList.map(tr => this.getWaveformObject(tr)).filter(tr => tr != null))
         }
         let chunks = this.getDownloadChunks(notCached)
         if (chunks.length == 0) {
@@ -699,7 +699,7 @@ export default {
               this.trace[cacheKey] = tr
             }
             if (callback != null && traceList.length > 0) {
-              callback.call(null, traceList.map(tr => this.getWaveformObject(tr)))
+              callback.call(null, traceList.map(tr => this.getWaveformObject(tr)).filter(tr => tr != null))
             }
             this.$store.dispatch('setLoading', { value: false })
             if (i < chunks.length) {
@@ -711,7 +711,7 @@ export default {
                 let content = fdsnidList.join(', ')
                 this.$store.dispatch('notify', { color: 'error', text: `These channels couldn't be retrieved: ${content}` })
                 console.log(`[PickerView::downloadWaveforms] These channels couldn't be retrieved`, fdsnidList)
-                thius.$store.dispatch('log', `[PickerView::downloadWaveforms] These channels couldn't be retrieved: ${JSON.stringify(fdsnidList)}`)
+                this.$store.dispatch('log', `[PickerView::downloadWaveforms] These channels couldn't be retrieved: ${JSON.stringify(fdsnidList)}`)
               }
               this.$store.dispatch('notify', { color: 'info', text: 'Waveforms loaded.' })
               resolve()
@@ -795,7 +795,7 @@ export default {
           this.$store.dispatch('setLoading', { value: false })
           let inv = utils.parseInventory(data)
           console.log('[PickerView::getRadiusInventory] additional station result', inv)
-          this.$store.dispatch('log', `[PickerView::getRadiusInventory] additional station result: ${JSON.stringify(inv, null, 2)}`)
+          this.$store.dispatch('log', `[PickerView::getRadiusInventory] additional station result`)
           this.$store.dispatch('mergeInventory', inv)
           resolve(inv)
         })
@@ -1058,19 +1058,23 @@ export default {
         this.picks[tr.id] = []
       }
       let netsta = tr.id.split('.').slice(0, 2).join('.')
-      let wf = {
-        start: tr.timeseries[0].starttime,
-        step: 1000 / tr.sample_rate,
-        values: tr.getData(),
-        scale: this.getChannelScale(tr.id),
-        id: tr.id,
-        distance: this.stationDistance[netsta],
-        azimuth: this.stationAzimuth[netsta],
-        ttt: Object.assign({ O: this.origin.time._value.getTime() }, this.ttt[netsta].ttt),
-        picks: this.picks[tr.id]
+      if (this.ttt[netsta] != null) {
+        let wf = {
+          start: tr.timeseries[0].starttime,
+          step: 1000 / tr.sample_rate,
+          values: tr.getData(),
+          scale: this.getChannelScale(tr.id),
+          id: tr.id,
+          distance: this.stationDistance[netsta],
+          azimuth: this.stationAzimuth[netsta],
+          ttt: Object.assign({ O: this.origin.time._value.getTime() }, this.ttt[netsta].ttt),
+          picks: this.picks[tr.id]
+        }
+        this.waveform[tr.id.replace('..', '.--.')] = wf
+        return wf
       }
-      this.waveform[tr.id.replace('..', '.--.')] = wf
-      return wf
+      console.warn(`[PickerView::getWaveformObject] Can't find TTT for ${netsta}, discard waveform`)
+      this.$store.dispatch('log', `[PickerView::getWaveformObject] Can't find TTT for ${netsta}, discard waveform`)
     },
 
     sortWaveforms () {
