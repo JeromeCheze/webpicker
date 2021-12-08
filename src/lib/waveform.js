@@ -250,8 +250,8 @@ export default class Waveform {
   }
 
   addWaveforms (wfList) {
-    console.log(`[${this.opt.mode}::addWaveforms]`, wfList)
     const traceContainer = this.mainElement.children[0]
+    traceContainer.innerHTML = ''
     let dirty = false
     for (let wfOpt of wfList) {
       if (wfOpt.picks == null) {
@@ -1024,7 +1024,8 @@ export default class Waveform {
       for (let [netsta, netstaList] of Object.entries(netstaWf)) {
         let zChannel = netstaList.filter(wf => wf.opt.id.slice(-1) === 'Z')
         if (zChannel.length === 0) {
-          continue
+          console.log(`No vertical component found for ${netsta}, use the first channel found to display in list (${netstaList[0].opt.id})`)
+          zChannel.push(netstaList[0])
         }
         zChannel.sort((a, b) => {
           a = order.indexOf(a.opt.id.slice(-2)[0])

@@ -400,7 +400,10 @@ export default {
           takeoff: a.takeoff_angle
         })
         let zComponent = `${fdsnid.slice(0, -1)}Z`
-        let wfidList = [zComponent].concat(this.getHorizontalIds(zComponent)).concat(this.getAuxiliaryIds(zComponent))
+        let wfidList = [fdsnid].concat(this.getHorizontalIds(zComponent)).concat(this.getAuxiliaryIds(zComponent))
+        if (this.getChannel(zComponent) != null) {
+          wfidList.push(zComponent)
+        }
         for (let fdsnid of wfidList) {
           utils.pushUnique(fdsnidList, fdsnid)
         }
@@ -1040,14 +1043,18 @@ export default {
           return
         }
       }
-      let wfList = []
+      let tmpWfList = []
       if (this.tools.rotation == 'ZNE') {
-        wfList = [wf]
+        tmpWfList = [wf]
           .concat(this.getHorizontalWaveforms(wf))
           .concat(this.getAuxiliaryWaveforms(wf))
           .concat(this.getAdditionalWaveforms(wf))
       } else if (this.tools.rotation == 'ZRT') {
-        wfList = [wf].concat(this.ne2rt(wf))
+        tmpWfList = [wf].concat(this.ne2rt(wf))
+      }
+      const wfList = []
+      for (const wf of tmpWfList) {
+        utils.pushUnique(wfList, wf)
       }
       this.tools.sameScale = false
       this.setPickerWaveforms(wfList)
