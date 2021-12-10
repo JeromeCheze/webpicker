@@ -30,7 +30,9 @@ export default class Waveform {
     this.loadOptions(opt)
     this.getDisplayedWaveforms(true)
     this.initStructure()
-    this.draw()
+    if (this.displayedWaveforms.length > 0) {
+      this.draw()
+    }
   }
 
   loadOptions (opt) {
@@ -165,6 +167,9 @@ export default class Waveform {
   }
 
   getWaveformContainer (wf) {
+    if (wf.el != null) {
+      return wf.el
+    }
     let wfContainer = document.createElement('div'),
         wfCanvas = document.createElement('canvas'),
         userCanvas = document.createElement('canvas'),
@@ -250,6 +255,7 @@ export default class Waveform {
   }
 
   addWaveforms (wfList) {
+    console.log(`[${this.opt.mode}::addWaveforms]`, wfList)
     const traceContainer = this.mainElement.children[0]
     traceContainer.innerHTML = ''
     let dirty = false
@@ -258,11 +264,9 @@ export default class Waveform {
         wfOpt.picks = []
       }
       wfOpt.scale = wfOpt.scale == null ? 1.0 : wfOpt.scale * 1.0
-      const wf = { opt: wfOpt }
-      this.waveforms.push(wf)
-      if (this.getDisplayedWaveforms(true).indexOf(wf) < 0) {
-        continue
-      }
+      this.waveforms.push({ opt: wfOpt })
+    }
+    for (let wf of this.getDisplayedWaveforms(true)) {
       const wfContainer = this.getWaveformContainer(wf)
       traceContainer.appendChild(wfContainer)
       const amp = this.computeWaveformStatsAndGroupData(wf)
