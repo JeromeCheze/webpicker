@@ -226,6 +226,7 @@ export default {
         this.$store.dispatch('log', `[EventView::initEvent] full description event received`)
         let chList = []
         for (let o of e.origin) {
+          o._is_dirty = false
           for (let a of o.arrival) {
             let ch = a._pick._fdsnid.split('.').slice(0, 3).concat(['*']).join(' ')
             if (chList.indexOf(ch) < 0) {

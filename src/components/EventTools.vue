@@ -75,6 +75,9 @@
         <v-btn small color="primary" @click="handleCommitClick">Commit</v-btn>
       </v-card>
     </v-menu>
+    <v-spacer></v-spacer>
+    <v-btn small @click="handleKeepUsedArrival" title="Keep used arrivals by deleting discarded (use with caution!)">Keep used</v-btn>
+    <v-btn small @click="unselectS" title="Discard S arrivals (relocation is required after)">Unselect S</v-btn>
   </v-footer>
 </template>
 
@@ -99,6 +102,7 @@ export default {
       locatorOptions,
       profileOptions,
       commitPopover: false,
+      keyDownBinded: false,
       commitForm: {
         eventType: 'earthquake',
         eventTypeCertainty: null,
@@ -182,7 +186,44 @@ export default {
     }
   },
 
+  mounted () {
+    if (!this.keyDownBinded) {
+      this.keyDownBinded = true
+      document.body.addEventListener('keydown', this.handleKeyDown)
+    }
+  },
+
+  beforeDestroy () {
+    document.body.removeEventListener('keydown', this.handleKeyDown)
+  },
+
   methods: {
+
+    handleKeyDown (ev) {
+      let k = utils.shortcutString(ev)
+      if (k === 'alt+r') {
+        this.handleRelocateClick()
+      } else if (k === 'alt+m') {
+        this.handleComputeMagnitudeClick()
+      } else if (k === 'alt+c') {
+        this.handleCommitClick()
+      }
+    },
+
+    handleKeepUsedArrival () {
+      this.origin.arrival = this.origin.arrival.filter(a => a.time_weight > 0.5)
+      this.$emit('need-update')
+    },
+
+    unselectS () {
+      for (let a of this.origin.arrival) {
+        if (a.phase === 'S') {
+          a.time_weight = 0
+        }
+      }
+      this.origin._is_dirty = true
+      this.$emit('need-update')
+    },
 
     initStationMagnitude () {
       let tmp = {}
