@@ -65,6 +65,7 @@ export const RESOURCE_ID_KEYS = [
   '/event_parameters/event/magnitude/origin_id',
   '/event_parameters/event/magnitude/station_magnitude_contribution/station_magnitude_id',
   '/event_parameters/event/pick/public_id',
+  '/event_parameters/event/pick/filter_id',
   '/event_parameters/event/station_magnitude/origin_id',
   '/event_parameters/event/station_magnitude/public_id',
   '/event_parameters/event/station_magnitude/amplitude_id',

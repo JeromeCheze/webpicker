@@ -129,7 +129,7 @@
           </v-card>
         </v-dialog>
 
-        <v-speed-dial v-model="onlineUsers" fixed bottom right transition="slide-y-reverse-transition">
+        <v-speed-dial v-model="onlineUsers" fixed bottom right transition="slide-y-reverse-transition" class="mb-5">
           <template v-slot:activator>
             <v-btn v-model="onlineUsers" small fab color="blue">
               <v-icon>mdi-account</v-icon>

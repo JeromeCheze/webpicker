@@ -348,6 +348,7 @@ export default {
           _traveltime: new Date(pTime.getTime() - this.origin.time._value),
           _pick: {
             public_id: p.id,
+            filter_id: p.filter,
             evaluation_mode: p.mode,
             phase_hint: p.phase,
             polarity: p.polarity,
@@ -390,6 +391,7 @@ export default {
         utils.pushInObject(this.picks, a._pick._seedid, {
           id: a.pick_id,
           phase: a.phase,
+          filter: a._pick.filter_id,
           mode: a._pick.evaluation_mode,
           polarity: a._pick.polarity,
           time: a._pick.time._value.getTime(),
@@ -757,6 +759,9 @@ export default {
       if (ev.action == 'add') {
         for (let p of ev.picks) {
           p.id = this.$store.getters.getId('Pick')
+          if (this.tools.filter != null) {
+            p.filter = this.tools.filter.replace(/ /g, '_')
+          }
         }
       }
       const zWfid = `${ev.wfid.slice(0, -1)}Z`
