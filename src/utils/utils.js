@@ -298,6 +298,10 @@ export const processEventData = (e) => {
   if (e.pick != null) {
     let pickMap = {}
     for (let p of e.pick) {
+      if (p.creation_info != null) {
+        p.creation_info._creation_time = new Date(Date.parse(p.creation_info.creation_time))
+        p.creation_info._pretty_creation_time = p.creation_info._creation_time.toISOString().replace('T', ' ').substr(0, 19)
+      }
       p.time._value = new Date(Date.parse(p.time.value))
       // p._id = p.public_id.split('/').slice(-1)[0]
       let wfid = p.waveform_id

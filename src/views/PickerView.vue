@@ -348,6 +348,7 @@ export default {
           _traveltime: new Date(pTime.getTime() - this.origin.time._value),
           _pick: {
             public_id: p.id,
+            creation_info: p.creation_info,
             filter_id: p.filter,
             evaluation_mode: p.mode,
             phase_hint: p.phase,
@@ -390,6 +391,7 @@ export default {
         this.stationAzimuth[netsta] = a.azimuth
         utils.pushInObject(this.picks, a._pick._seedid, {
           id: a.pick_id,
+          creation_info: a._pick.creation_info,
           phase: a.phase,
           filter: a._pick.filter_id,
           mode: a._pick.evaluation_mode,
@@ -759,6 +761,14 @@ export default {
       if (ev.action == 'add') {
         for (let p of ev.picks) {
           p.id = this.$store.getters.getId('Pick')
+          let t = new Date()
+          p.creation_info = {
+            agency_id: this.origin.creation_info.agency_id,
+            author: this.$store.state.author,
+            creation_time: t.toISOString(),
+            _creation_time: t,
+            _pretty_creation_time: t.toISOString().replace('T', ' ').substr(0, 19)
+          }
           if (this.tools.filter != null) {
             p.filter = this.tools.filter.replace(/ /g, '_')
           }
