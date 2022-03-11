@@ -455,7 +455,8 @@ export default {
       }
       let iirCalculator = new Fili.CalcCascades();
       for (let wf of wfList) {
-        let filterOpt = { Fs: 1000. / wf.opt.step, order: f.order, gain: 0, preGain: false, characteristic: 'butterworth' }
+        const fs = 1000. / wf.opt.step
+        let filterOpt = { Fs: fs, order: f.order, gain: 0, preGain: false, characteristic: 'butterworth' }
         if (f.type == 'bandpass') {
           filterOpt.Fc = Math.sqrt(f.fc[1] * f.fc[0])
           filterOpt.BW = Math.log2(f.fc[1] / f.fc[0])
@@ -465,6 +466,10 @@ export default {
         let iirFilterCoeffs = iirCalculator[f.type](filterOpt)
         let iirFilter = new Fili.IirFilter(iirFilterCoeffs)
         wf.opt.filtered = iirFilter.simulate(wf.opt.values)
+        const taperLength = 4 * fs
+        for (let i = 0; i < taperLength; i++) {
+          wf.opt.filtered[i] = wf.opt.filtered[i] != null ? wf.opt.filtered[i] * Math.pow(i / taperLength, 3) : null
+        }
       }
       this.picker.setFilterState(true)
     },
