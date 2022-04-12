@@ -45,6 +45,7 @@
         <tbody class="selectable" v-if="originSelectorMode">
           <tr
             v-for="o in event.origin"
+            :key="o.public_id"
             :class="{ preferred: o.public_id == event.preferred_origin_id }"
             @click="handleSetCurrentOrigin(o)"
             @dblclick="handleSetPreferredOrigin(o)">
@@ -97,8 +98,8 @@
         </thead>
         <tbody class="selectable" v-if="originSelectorMode">
           <tr
-            v-for="m in event.magnitude"
-            v-if="m.origin_id == origin.public_id"
+            v-for="m in originMagnitude"
+            :key="m.public_id"
             :class="{ preferred: m.public_id == event.preferred_magnitude_id }"
             @dblclick="handleSetPreferredMagnitude(m)">
             <td>{{ m.creation_info._pretty_creation_time }}</td>
@@ -158,7 +159,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="smc in magDetails.station_magnitude_contribution">
+            <tr v-for="(smc, i) in magDetails.station_magnitude_contribution" :key="i">
               <td>{{ smc._station_magnitude._seedid }}</td>
               <td>{{ smc._station_magnitude._amplitude.snr.toFixed(2) }}</td>
               <td>{{ smc._station_magnitude.type }}</td>
@@ -189,6 +190,9 @@ export default {
     },
     origin () {
       return this.$store.state.currentOrigin
+    },
+    originMagnitude () {
+      return this.event.magnitude.filter(m => m.origin_id == this.origin.public_id)
     }
   },
 
@@ -236,4 +240,5 @@ export default {
 .event-description__table th {font-weight: bold; background: #efefef;}
 .event-description__table tr.preferred td {font-weight: bold;}
 .event-description__table .selectable tr:hover {background-color: #fbfbfb; cursor: pointer;}
+.application.theme--dark .event-description__table th {background: #5e5e5e;}
 </style>

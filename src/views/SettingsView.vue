@@ -2,9 +2,13 @@
   <div>
     <h1>Settings</h1>
     <div class="my-3">
+      <v-switch v-model="themeDarkValue" label="General dark theme"></v-switch>
+    </div>
+    <div class="my-3">
       Picker color mode
       <v-btn @click="handleLightModeClick" light small>light</v-btn>
       <v-btn @click="handleDarkModeClick" dark small>dark</v-btn>
+      <v-btn @click="handleSolirizedModeClick" color="blue-grey darken-4" small>solirized</v-btn>
     </div>
     <div v-for="(form, mainKey) in formStruct" class="my-3" :key="mainKey">
       <h3>{{ form.label }}</h3>
@@ -125,6 +129,7 @@ export default {
     }
     return {
       formStruct,
+      themeDarkValue: this.$store.state.settings.themeDark,
       currentShortcut: '',
       filterDialog: false,
       filterList: JSON.parse(JSON.stringify(this.$store.state.settings['picker.filters'])),
@@ -234,11 +239,20 @@ export default {
       }
     },
 
+    handleSolirizedModeClick () {
+      for (let [k, v] of Object.entries(this.$store.state.defaultSettings)) {
+        let [mainKey, subKey] = k.split('.')
+        if (mainKey == 'solirizedPickerColor') {
+          this.formStruct['pickerColor'].fields[subKey].value = v
+        }
+      }
+    },
+
     handleLightModeClick () {
       let defaultSettings = this.$store.state.defaultSettings
       for (let [k, v] of Object.entries(defaultSettings)) {
         let [mainKey, subKey] = k.split('.')
-        if (mainKey == 'darkPickerColor') {
+        if (mainKey == 'darkPickerColor' || mainKey == 'solirizedPickerColor') {
           let key = `pickerColor.${subKey}`
           this.formStruct['pickerColor'].fields[subKey].value = defaultSettings[key]
         }
@@ -259,6 +273,7 @@ export default {
         }
       }
       result['picker.filters'] = this.filterList
+      result['themeDark'] = this.themeDarkValue
       return result
     },
 

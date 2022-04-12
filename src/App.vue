@@ -1,5 +1,5 @@
 <template>
-  <v-app>
+  <v-app :dark="$store.state.settings.themeDark">
 
     <v-toolbar app dense :style="{ zIndex: 1000 }">
       <v-toolbar-title>WebPicker</v-toolbar-title>
@@ -30,6 +30,9 @@
             </v-list-tile>
             <v-list-tile :to="{ name: 'Settings' }">
               <v-icon left>mdi-settings</v-icon> Settings
+            </v-list-tile>
+            <v-list-tile @click="logDialog = true">
+              <v-icon left>mdi-console</v-icon> Logs
             </v-list-tile>
           </v-list>
         </v-menu>
@@ -126,7 +129,7 @@
           </v-card>
         </v-dialog>
 
-        <v-speed-dial v-model="onlineUsers" fixed bottom right transition="slide-y-reverse-transition">
+        <v-speed-dial v-model="onlineUsers" fixed bottom right transition="slide-y-reverse-transition" class="mb-5">
           <template v-slot:activator>
             <v-btn v-model="onlineUsers" small fab color="blue">
               <v-icon>mdi-account</v-icon>
@@ -160,6 +163,24 @@
           </v-alert>
         </div>
 
+        <v-dialog
+          scrollable
+          v-model="logDialog"
+          max-width="900px">
+          <v-card>
+            <v-card-title>
+              <span class="headline">Logs</span>
+            </v-card-title>
+            <v-card-text style="height: 500px;font-size:11px;">
+              <pre>{{ $store.state.log.join('\n') }}</pre>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn @click="logDialog = false">Close</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
       </v-container>
     </v-content>
   </v-app>
@@ -186,7 +207,8 @@ export default {
       newEventTime: null,
       newEventLatitude: null,
       newEventLongitude: null,
-      newEventDepth: null
+      newEventDepth: null,
+      logDialog: false
     }
   },
 

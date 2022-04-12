@@ -23,6 +23,8 @@ export default class Waveform {
       selectedWf: null,
       selectedWindow: [],
       selectedPicks: [],
+      hoverPick: null,
+      hoverPickTimeout: null,
       hoverWf: null,
       phase: null,
       x: null
@@ -30,7 +32,9 @@ export default class Waveform {
     this.loadOptions(opt)
     this.getDisplayedWaveforms(true)
     this.initStructure()
-    this.draw()
+    if (this.displayedWaveforms.length > 0) {
+      this.draw()
+    }
   }
 
   loadOptions (opt) {
@@ -165,6 +169,9 @@ export default class Waveform {
   }
 
   getWaveformContainer (wf) {
+    if (wf.el != null) {
+      return wf.el
+    }
     let wfContainer = document.createElement('div'),
         wfCanvas = document.createElement('canvas'),
         userCanvas = document.createElement('canvas'),
@@ -252,17 +259,16 @@ export default class Waveform {
   addWaveforms (wfList) {
     console.log(`[${this.opt.mode}::addWaveforms]`, wfList)
     const traceContainer = this.mainElement.children[0]
+    traceContainer.innerHTML = ''
     let dirty = false
     for (let wfOpt of wfList) {
       if (wfOpt.picks == null) {
         wfOpt.picks = []
       }
       wfOpt.scale = wfOpt.scale == null ? 1.0 : wfOpt.scale * 1.0
-      const wf = { opt: wfOpt }
-      this.waveforms.push(wf)
-      if (this.getDisplayedWaveforms(true).indexOf(wf) < 0) {
-        continue
-      }
+      this.waveforms.push({ opt: wfOpt })
+    }
+    for (let wf of this.getDisplayedWaveforms(true)) {
       const wfContainer = this.getWaveformContainer(wf)
       traceContainer.appendChild(wfContainer)
       const amp = this.computeWaveformStatsAndGroupData(wf)
@@ -382,6 +388,7 @@ export default class Waveform {
 
   mouseMoveHandler (ev) {
     let pos = this.getMouseX(ev)
+    this.handleHoverPicks(pos)
     if (this.event.x != null) {
       let delta = this.event.x - pos
       if (Math.abs(delta) > 5) {
@@ -391,6 +398,27 @@ export default class Waveform {
             deltaT = Math.abs(delta) * this.view.xRatio
         this.view.offset += deltaT*sign
         this.draw()
+      }
+    }
+  }
+
+  handleHoverPicks (xPos) {
+    if (this.event.hoverPickTimeout != null) {
+      clearTimeout(this.event.hoverPickTimeout)
+      this.event.hoverPickTimeout = null
+    }
+    if (this.event.hoverWf == null) {
+      return
+    }
+    let ref = this.waveforms[0].opt.ttt[this.view.refTime]
+    for (let pick of this.event.hoverWf.opt.picks) {
+      let pickPos = this.time2pos(ref, pick.time)
+      if (Math.abs(pickPos - xPos) < 5) {
+        this.event.hoverPick = pick
+        this.event.hoverPickTimeout = setTimeout(() => {
+          this.drawPickInfo(this.event.hoverPick)
+        }, 200)
+        break
       }
     }
   }
@@ -591,6 +619,31 @@ export default class Waveform {
         this.drawPicks(wf)
       }
     }
+  }
+
+  drawPickInfo (pick) {
+    let ref = this.waveforms[0].opt.ttt[this.view.refTime]
+    let pickPos = this.time2pos(ref, pick.time)
+    let wf = this.event.hoverWf
+    let ctx = wf.ctx2
+    let txt = [
+      `creation time: ${pick.creation_info._pretty_creation_time}`,
+      `filter: ${pick.filter}`,
+      `author: ${pick.creation_info.author}`
+    ]
+    let maxWidth = Math.max.apply(null, txt.map(t => ctx.measureText(t).width))
+    ctx.save()
+    ctx.fillStyle = 'white'
+    ctx.font = '10px, sans-serif'
+    ctx.textBaseline = 'top'
+    ctx.fillRect(pickPos + 6, 5, maxWidth + 10, 10 + txt.length * 10 + (txt.length - 1) * 3)
+    ctx.fillStyle = 'black'
+    let y = 10
+    for (let t of txt) {
+      ctx.fillText(t, pickPos + 11, y)
+      y += 13
+    }
+    ctx.restore()
   }
 
   setPickerPhase (phase) {
@@ -1024,7 +1077,8 @@ export default class Waveform {
       for (let [netsta, netstaList] of Object.entries(netstaWf)) {
         let zChannel = netstaList.filter(wf => wf.opt.id.slice(-1) === 'Z')
         if (zChannel.length === 0) {
-          continue
+          console.log(`No vertical component found for ${netsta}, use the first channel found to display in list (${netstaList[0].opt.id})`)
+          zChannel.push(netstaList[0])
         }
         zChannel.sort((a, b) => {
           a = order.indexOf(a.opt.id.slice(-2)[0])

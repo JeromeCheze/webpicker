@@ -17,9 +17,13 @@
           <v-tab>Time residual</v-tab>
           <v-tab>Travel time</v-tab>
           <v-tab>Magnitude</v-tab>
+          <v-tab>First motion (beta)</v-tab>
           <v-tab-item class="event-view__chart--time-residual"></v-tab-item>
           <v-tab-item class="event-view__chart--travel-time"></v-tab-item>
           <v-tab-item class="event-view__chart--magnitudes"></v-tab-item>
+          <v-tab-item class="event-view__chart--first-motion">
+            <first-motion :active="firstMotionActive"></first-motion>
+          </v-tab-item>
         </v-tabs>
       </v-flex>
     </v-layout>
@@ -121,6 +125,7 @@ export default {
       selectedStationMagnitude: [],
 
       activeChartTab: 0,
+      firstMotionActive: false,
       chart: {
         timeResidual: null,
         travelTime: null
@@ -195,6 +200,7 @@ export default {
 
     initEvent () {
       this.$store.dispatch('setLoading', { value: true, text: 'Loading event description...' })
+      this.$store.dispatch('log', `[EventView::initEvent] send event full description request`)
       utils.ajax({
         method: 'GET',
         url: this.$store.getters.getLink('fdsnws/event/1/query'),
@@ -204,6 +210,7 @@ export default {
           includeallorigins: 'true',
           includeallmagnitudes: 'true',
           includearrivals: 'true',
+          includefocalmechanism: 'true',
           includestationmagnitudes: 'true'
 
           // Non-standard argument handled by site_routage.
@@ -215,9 +222,11 @@ export default {
         type: 'document'
       }).then(qml => {
         let e = utils.parseQuakeML(qml)[0]
-        console.log('[EventView::initEvent] full description event', e);
+        console.log('[EventView::initEvent] full description event', e)
+        this.$store.dispatch('log', `[EventView::initEvent] full description event received`)
         let chList = []
         for (let o of e.origin) {
+          o._is_dirty = false
           for (let a of o.arrival) {
             let ch = a._pick._fdsnid.split('.').slice(0, 3).concat(['*']).join(' ')
             if (chList.indexOf(ch) < 0) {
@@ -227,6 +236,7 @@ export default {
         }
         let t = e._po.time.value.slice(0, 19)
         this.$store.dispatch('setLoading', { value: true, text: 'Loading inventory...' })
+        this.$store.dispatch('log', `[EventView::initEvent] send loading inventory request`)
         utils.ajax({
           method: 'POST',
           url: this.$store.getters.getLink('fdsnws/station/1/query'),
@@ -243,7 +253,11 @@ export default {
             this.updateAll()
             this.$store.dispatch('setLoading', { value: false })
           })
+        }).catch(data => {
+          this.$store.dispatch('log', `[EventView::initEvent] send loading inventory request failed: ${data}`)
         })
+      }).catch(data => {
+        this.$store.dispatch('log', `[EventView::initEvent] send event full description request failed: ${data}`)
       })
     },
 
@@ -297,7 +311,7 @@ export default {
         network: a._pick.waveform_id.network_code,
         station: a._pick.waveform_id.station_code,
         loccha: a._pick._fdsnid.split('.').slice(-2).join('.'),
-        takeoffAngle: a.takeoff_angle,
+        takeoffAngle: a.takeoff_angle != null ? a.takeoff_angle.value.toFixed(2) : '',
         polarity: a._pick.polarity != null ? a._pick.polarity : '',
         residual: a.time_residual,
         distance: a.distance,
@@ -461,6 +475,10 @@ export default {
         }
         for (let smc of mag.station_magnitude_contribution) {
           let arrival = this.origin.arrival.find(a => a._pick._seedid === smc._station_magnitude._seedid)
+          if (arrival == null) {
+            console.warn(`Failed to retreive corresponding arrival for station magnitude of channel ${smc._station_magnitude._seedid}`)
+            continue
+          }
           let netsta = smc._station_magnitude._seedid.split('.').slice(0, 2).join('.')
           let color = 'gray'
           if (this.selectedStationMagnitude.indexOf(netsta) >= 0) {
@@ -481,7 +499,7 @@ export default {
       let container = this.$el.querySelector('.event-view__chart--time-residual')
       let self = this
       Highcharts.chart({
-        chart: { renderTo: container, type: 'scatter', zoomType: 'xy', events: {
+        chart: { backgroundColor: 'rgba(255,255,255,0)', renderTo: container, type: 'scatter', zoomType: 'xy', events: {
           selection: function(ev) {return handleChartSelection.call(this, ev, self.shiftPressed)},
           selectedpoints: selectedPickIDs => this.setSelectedArrival(selectedPickIDs)
         } },
@@ -503,7 +521,7 @@ export default {
       let container = this.$el.querySelector('.event-view__chart--travel-time')
       let self = this
       Highcharts.chart({
-        chart: { renderTo: container, type: 'scatter', zoomType: 'xy', events: {
+        chart: { backgroundColor: 'rgba(255,255,255,0)', renderTo: container, type: 'scatter', zoomType: 'xy', events: {
           selection: function (ev) { return handleChartSelection.call(this, ev, self.shiftPressed) },
           selectedpoints: selectedPickIDs => this.setSelectedArrival(selectedPickIDs)
         } },
@@ -525,7 +543,7 @@ export default {
       let container = this.$el.querySelector('.event-view__chart--magnitudes')
       let self = this
       Highcharts.chart({
-        chart: { renderTo: container, type: 'scatter', zoomType: 'xy', events: {
+        chart: { backgroundColor: 'rgba(255,255,255,0)', renderTo: container, type: 'scatter', zoomType: 'xy', events: {
           selection: function (ev) { return handleChartSelection.call(this, ev, false) },
           selectedpoints: selectedWfid => this.setSelectedStationMagnitude(selectedWfid)
         } },
@@ -552,6 +570,8 @@ export default {
         this.initChartTravelTime()
       } else if (tab === 2) {
         this.initChartMagnitude()
+      } else if (tab === 3) {
+        this.firstMotionActive = true
       }
     }
 

@@ -9,7 +9,7 @@
     </v-tabs>
     <v-tabs-items touchless v-model="activeTab">
       <v-tab-item>
-        <v-data-table :headers="tableHeader" :items="tableData" :pagination.sync="pagination">
+        <v-data-table :headers="tableHeader" :items="tableData" :pagination.sync="pagination" disable-initial-sort>
           <template v-slot:items="props">
             <tr :class="tableRowClassName(props.item)" @click="handleRowClick(props.item)">
               <td v-if="props.item.activity != null">
@@ -33,6 +33,7 @@
               <td class="text-xs-right"><div :style="{ minWidth: '60px' }">{{ props.item.lon }}</div></td>
               <td class="text-xs-right"><div :style="{ minWidth: '60px' }">{{ props.item.depth }}</div></td>
               <td><v-chip label outline small :color="props.item.modeColor">{{ props.item.mode }}</v-chip></td>
+              <td>{{ props.item.status }}</td>
               <td>{{ props.item.eventType }}</td>
               <td><div :style="{ minWidth: '250px' }">{{ props.item.region }}</div></td>
               <td>{{ props.item.author }}</td>
@@ -118,7 +119,8 @@ export default {
         { text: 'Lat', value: 'lat', align: 'right' },
         { text: 'Lon', value: 'lon', align: 'right' },
         { text: 'Depth', value: 'depth', align: 'right' },
-        { text: 'Mode', value: 'mode', sortable: false },
+        { text: 'Mode', value: 'mode', sortable: true },
+        { text: 'Status', value: 'status', sortable: true },
         { text: 'Type', value: 'eventType' },
         { text: 'Region', value: 'region', sortable: false },
         { text: 'Author', value: 'author', sortable: false },
@@ -217,6 +219,7 @@ export default {
         }
       }
       args.format = 'xml'
+      this.$store.dispatch('log', `[ListView::initEvent] send loading catalog request`)
       utils.ajax({
         method: 'GET',
         url: this.$store.getters.getLink('fdsnws/event/1/query'),
@@ -228,6 +231,9 @@ export default {
         let data = this.getTableData()
         this.pagination.totalItems = data.length
         this.tableData = data
+      }).catch(data => {
+        this.$store.dispatch('log', `[ListView::initEvent] send loading catalog request failed: ${data}`)
+      }).finally(() => {
         this.$store.dispatch('setLoading', { value: false })
       })
     },
@@ -345,6 +351,7 @@ export default {
         depth: e._po.depth._pretty,
         eventType: e.type ? e.type : '',
         mode: e._po.evaluation_mode == 'manual' ? 'M' : 'A',
+        status: e._po.evaluation_status != null ? e._po.evaluation_status : '',
         modeColor: e._po.evaluation_mode == 'manual' ? 'green' : 'red',
         author: e._po.creation_info.author,
         region: e._region,
@@ -360,6 +367,9 @@ export default {
 .selected-event-row {
   background-color: #e7f9ff !important;
 }
+.application.theme--dark .selected-event-row {
+  background-color: #197492 !important;
+}
 .list-view__map-canvas {
   height: 80vh;
   z-index: 1;
@@ -368,4 +378,5 @@ export default {
 .list-view__map-table tr:hover {background-color: #d1edf5; cursor: pointer;}
 .list-view__map-table th, td {padding: 4px; text-align: center;}
 .list-view__map-table th {font-weight: bold; background: #efefef;}
+.application.theme--dark .list-view__map-table th {background-color: #5e5e5e;}
 </style>

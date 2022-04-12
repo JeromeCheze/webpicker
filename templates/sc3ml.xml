@@ -114,9 +114,9 @@
       </longitude>
       <depth>
         <value>{{ origin.depth.value / 1000 }}</value>
-      {% if origin.depth.uncertainty %}
+      {%- if origin.depth.uncertainty %}
         <uncertainty>{{ origin.depth.uncertainty / 1000 }}</uncertainty>
-      {% endif %}
+      {%- endif %}
       </depth>
     {%- if origin.method_id %}
       <methodID>{{ origin.method_id | remove_resource_prefix }}</methodID>
@@ -171,11 +171,14 @@
         <azimuth>{{ arrival.azimuth }}</azimuth>
         <distance>{{ arrival.distance }}</distance>
         <timeResidual>{{ arrival.time_residual }}</timeResidual>
+      {%- if arrival.takeoffAngle %}
+        <takeOffAngle>{{ arrival.takeoff_angle }}</takeOffAngle>
+      {%- endif %}
         <timeUsed>{% if arrival.time_weight == 0 %}false{% else %}true{% endif %}</timeUsed>
         <weight>{{ arrival.time_weight }}</weight>
-      {% if arrival.creation_info %}
+      {%- if arrival.creation_info %}
         {{ creation_info(arrival.creation_info) }}
-      {% endif %}
+      {%- endif %}
       </arrival>
     {%- endfor %}
   {%- endif %}
@@ -240,12 +243,36 @@
 
   {%- endfor %}
 
+{%- if event.focal_mechanism %}
+  {%- for focal_mechanism in event.focal_mechanism %}
+    <focalMechanism publicID="{{ focal_mechanism.public_id | remove_resource_prefix }}">
+      <nodalPlanes>
+        <nodalPlane1>
+          <strike>
+            <value>{{ focal_mechanism.nodal_planes.nodal_plane1.strike.value }}</value>
+          </strike>
+          <dip>
+            <value>{{ focal_mechanism.nodal_planes.nodal_plane1.dip.value }}</value>
+          </dip>
+          <rake>
+            <value>{{ focal_mechanism.nodal_planes.nodal_plane1.rake.value }}</value>
+          </rake>
+        </nodalPlane1>
+      </nodalPlanes>
+      <evaluation_mode>{{ focal_mechanism.evaluation_mode }}</evaluation_mode>
+    </focalMechanism>
+  {%- endfor %}
+{%- endif %}
+
     <event publicID="{{ event.public_id | remove_resource_prefix }}">
     {%- if event.preferred_origin_id %}
       <preferredOriginID>{{ event.preferred_origin_id | remove_resource_prefix }}</preferredOriginID>
     {%- endif %}
     {%- if event.preferred_magnitude_id %}
       <preferredMagnitudeID>{{ event.preferred_magnitude_id | remove_resource_prefix }}</preferredMagnitudeID>
+    {%- endif %}
+    {%- if event.preferred_focal_mechanism_id %}
+      <preferredFocalMechanismID>{{ event.preferred_focal_mechanism_id | remove_resource_prefix }}</preferredFocalMechanismID>
     {%- endif %}
     {%- if event.type %}
       <type>{{ event.type | sc3ml_type }}</type>
@@ -271,6 +298,11 @@
     {%- for origin in event.origin %}
       <originReference>{{ origin.public_id | remove_resource_prefix }}</originReference>
     {%- endfor %}
+  {%- if event.focal_mechanism %}
+    {%- for focal_mechanism in event.focal_mechanism %}
+      <focalMechanismReference>{{ focal_mechanism.public_id | remove_resource_prefix }}</focalMechanismReference>
+    {%- endfor %}
+  {%- endif %}
     </event>
 {%- endfor %}
 

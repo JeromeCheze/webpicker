@@ -2,6 +2,7 @@
   <v-footer :value="true" fixed :height="70" :style="{ borderTop: '1px solid #ddd' }">
     <v-btn
       :color="origin._is_dirty ? 'orange' : 'white'"
+      light
       @click="handleRelocateClick"
       small>RELOCATE</v-btn>
     <div class="event-tools__select-wrapper">
@@ -14,6 +15,7 @@
       <template v-slot:activator="{ on }">
         <v-btn
           v-on="on" small @click="initStationMagnitude"
+          light
           :color="event.preferred_magnitude_id == null ? 'orange' : 'white'">
           MAGNITUDE
         </v-btn>
@@ -36,6 +38,7 @@
           <v-spacer></v-spacer>
           <v-btn
             color="white"
+            light
             @click="handleComputeMagnitudeClick"
             small>COMPUTE</v-btn>
         </v-card-actions>
@@ -45,7 +48,8 @@
       <template v-slot:activator="{ on }">
         <v-btn
           v-on="on"
-          :color="origin._not_committed ? 'orange' : 'white'"
+          :color="commitButtonColor"
+          light
           small>COMMIT</v-btn>
       </template>
       <v-card class="pa-3">
@@ -71,6 +75,9 @@
         <v-btn small color="primary" @click="handleCommitClick">Commit</v-btn>
       </v-card>
     </v-menu>
+    <v-spacer></v-spacer>
+    <v-btn small @click="handleKeepUsedArrival" title="Keep used arrivals by deleting discarded (use with caution!)">Keep used</v-btn>
+    <v-btn small @click="unselectS" title="Discard S arrivals (relocation is required after)">Unselect S</v-btn>
   </v-footer>
 </template>
 
@@ -82,9 +89,10 @@ export default {
   props: ['selectedStationMagnitude'],
 
   data () {
-    let locatorOptions = [ 'LOCSAT' ]
+    let locatorOptions = [ 'LOCSAT', 'Hypo71' ]
     let profileOptions = {
       LOCSAT: [ 'iasp91', 'tab' ],
+      Hypo71: [ 'ModelA', 'tectonic', 'volcanic' ]
     }
     return {
       magnitudePopover: false,
@@ -94,6 +102,7 @@ export default {
       locatorOptions,
       profileOptions,
       commitPopover: false,
+      keyDownBinded: false,
       commitForm: {
         eventType: 'earthquake',
         eventTypeCertainty: null,
@@ -165,10 +174,56 @@ export default {
     },
     origin () {
       return this.$store.state.currentOrigin
+    },
+    focalMechanism () {
+      return this.$store.state.currentFocalMechanism
+    },
+    commitButtonColor () {
+      if (this.origin._not_committed || this.focalMechanism != null && this.focalMechanism._not_committed) {
+        return 'orange'
+      }
+      return 'white'
     }
   },
 
+  mounted () {
+    if (!this.keyDownBinded) {
+      this.keyDownBinded = true
+      document.body.addEventListener('keydown', this.handleKeyDown)
+    }
+  },
+
+  beforeDestroy () {
+    document.body.removeEventListener('keydown', this.handleKeyDown)
+  },
+
   methods: {
+
+    handleKeyDown (ev) {
+      let k = utils.shortcutString(ev)
+      if (k === 'alt+r') {
+        this.handleRelocateClick()
+      } else if (k === 'alt+m') {
+        this.handleComputeMagnitudeClick()
+      } else if (k === 'alt+c') {
+        this.handleCommitClick()
+      }
+    },
+
+    handleKeepUsedArrival () {
+      this.origin.arrival = this.origin.arrival.filter(a => a.time_weight > 0.5)
+      this.$emit('need-update')
+    },
+
+    unselectS () {
+      for (let a of this.origin.arrival) {
+        if (a.phase === 'S') {
+          a.time_weight = 0
+        }
+      }
+      this.origin._is_dirty = true
+      this.$emit('need-update')
+    },
 
     initStationMagnitude () {
       let tmp = {}
@@ -200,6 +255,7 @@ export default {
       let e = utils.composeEvent({
         base: this.event, origins: [ this.origin ], po: this.origin
       })
+      this.$store.dispatch('log', `[EventTools::handleRelocateClick] send relocate request`)
       utils.ajax({
         method: 'POST',
         url: this.$store.getters.getLink('relocate'),
@@ -220,6 +276,8 @@ export default {
           // console.log(qml);
           let e = utils.parseQuakeML(qml)[0]
           console.log('[EventTools::handleRelocateClick] relocate result', e);
+          this.$store.dispatch('log', `[EventTools::handleRelocateClick] relocate result`);
+
           let o = e.origin[0]
           o.creation_info.agency_id = this.event.creation_info.agency_id
           o.creation_info.author = this.$store.state.author
@@ -240,6 +298,7 @@ export default {
           this.event.preferred_origin_id = o.public_id
           this.event._po = o
           this.$emit('need-update')
+          this.$store.dispatch('log', `[EventTools::handleRelocateClick] send region name request`)
           utils.ajax({
             method: 'GET',
             url: this.$store.getters.getLink('region'),
@@ -249,9 +308,14 @@ export default {
             },
             type: 'json'
           }).then(data => {
+            this.$store.dispatch('log', `[EventTools::handleRelocateClick] send region name request response: ${data}`)
             this.event.description = [{ type: 'region name', text: data }]
+          }).catch(data => {
+            this.$store.dispatch('log', `[EventTools::handleRelocateClick] send region name request failed: ${data}`)
           })
         }
+      }).catch(data => {
+        this.$store.dispatch('log', `[EventTools::handleRelocateClick] send relocate request failed : ${data}`)
       })
     },
 
@@ -265,6 +329,7 @@ export default {
       })
       delete e.amplitude
       delete e.station_magnitude
+      console.log('[EventTools::handleComputeMagnitudeClick] send compute magnitude request')
       utils.ajax({
         method: 'POST',
         url: this.$store.getters.getLink('compute_magnitudes'),
@@ -281,7 +346,8 @@ export default {
           let qml = parser.parseFromString(data.quakeml, 'application/xml')
           // console.log(qml);
           let e = utils.parseQuakeML(qml)[0]
-          console.log('[EventTools::handleComputeMagnitudeClick] compute magnitude result', e);
+          console.log('[EventTools::handleComputeMagnitudeClick] compute magnitude result', e)
+          this.$store.dispatch('log', `[EventTools::handleComputeMagnitudeClick] compute magnitude result`)
           if (e.magnitude.length == 0) {
             alert('No magnitude computed.\n'+data.message)
             return
@@ -311,23 +377,30 @@ export default {
           this.event._pm = e.magnitude[0]
           this.$emit('need-update')
         }
+      }).catch(data => {
+        this.$store.dispatch('log', `[EventTools::handleComputeMagnitudeClick] send compute magnitude request failed: ${data}`)
       })
     },
 
     handleCommitClick () {
       let e = this.event,
-          o = this.origin
+          o = this.origin,
+          fm = this.focalMechanism
       e.type = this.commitForm.eventType
       e.type_certainty = this.commitForm.eventTypeCertainty
       e.preferred_origin_id = o.public_id
       o.evaluation_status = this.commitForm.originEvaluationStatus
+      if (fm != null) {
+        e.preferred_focal_mechanism = fm.public_id
+      }
       let cloneEvent = utils.cloneAndClean(e, '/event_parameters/event')
-      console.log('[EventTools::handleCommitClick] commit', cloneEvent)
       if (cloneEvent.preferred_magnitude_id == null) {
         if (!confirm('You are about to commit an event with no magnitude. Do you really want to proceed ?')) {
           return
         }
       }
+      console.log('[EventTools::handleCommitClick] commit', cloneEvent)
+      this.$store.dispatch('log', `[EventTools::handleCommitClick] commit`)
       this.$store.dispatch('setAuthorStatus', { eventid: this.event.public_id, action: 'committing' })
       this.$store.dispatch('setLoading', { value: true, text: 'Commit in progress...' })
       utils.ajax({
@@ -337,8 +410,9 @@ export default {
         data: JSON.stringify([ cloneEvent ]),
         type: 'json'
       }).then(data => {
-        console.log('[EventTools::handleCommitClick] commit result', data);
+        console.log('[EventTools::handleCommitClick] commit result', data)
         if (data.return_code == 0) {
+          this.$store.dispatch('log', `[EventTools::handleCommitClick] commit successful`)
           // o._not_committed = false
           setTimeout(() => {
             this.commitPopover = false
@@ -352,6 +426,10 @@ export default {
           this.$store.dispatch('setLoading', { value: false })
           alert(data.message)
         }
+      }).catch(data => {
+        this.$store.dispatch('log', `[EventTools::handleCommitClick] send commit request failed: ${data}`)
+        alert('Ooops, something went wrong 😕 but don\'t worry it happens sometimes, please try to commit again 😉\n\n(if it occurs again, please contact the admin)')
+        this.$store.dispatch('setLoading', { value: false })
       })
     }
 

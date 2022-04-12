@@ -21,6 +21,10 @@ export const SET_AUTHOR = (state, data) => {
     args: { author: state.author }
   }).then(data => {
     console.log('[store.mutation::SET_AUTHOR] response', data)
+    LOG(state, `[store.mutation::SET_AUTHOR] response: ${JSON.stringify(data)}`)
+  }).catch(data => {
+    console.log('[store.mutation::SET_AUTHOR] request failed', data)
+    LOG(state, `[store.mutation::SET_AUTHOR] request failed: ${data}`)
   })
 }
 
@@ -90,6 +94,7 @@ export const SET_CURRENT_EVENT = (state, data) => {
     state.currentOrigin = data._po
     state.currentEvent = data
   }
+  state.currentFocalMechanism = data._pfm
 }
 
 export const ALERT_EVENT_LOCKED = (state, data) => {
@@ -99,6 +104,10 @@ export const ALERT_EVENT_LOCKED = (state, data) => {
 
 export const SET_CURRENT_ORIGIN = (state, data) => {
   state.currentOrigin = data
+}
+
+export const SET_CURRENT_FOCAL_MECHANISM = (state, data) => {
+  state.currentFocalMechanism = data
 }
 
 export const SET_LOADING = (state, data) => {
@@ -186,4 +195,9 @@ export const SET_TTT_CACHE = (state, data) => {
 
 export const SET_PICKER_LAST_ORIGIN = (state, data) => {
   state.pickerLastOrigin = data
+}
+
+export const LOG = (state, data) => {
+  const now = new Date()
+  state.log.push(`${now.toISOString()} | ${data}`)
 }

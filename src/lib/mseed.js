@@ -155,6 +155,13 @@ Stream.prototype = {
     }
   },
 
+  decodeBlkt100: function(dv, o, byteorder) {
+    return {
+      next_bloquette: dv.getUint16(o+2, byteorder),
+      actual_sample_rate: dv.getFloat32(o+4, byteorder)
+    }
+  },
+
   decodeINT16: function(dv, h, index) {
     var o = index+h.fsdh.data_begin,
         data = new Array(h.fsdh.npts);
@@ -277,7 +284,11 @@ Stream.prototype = {
       var next_bloquette = h.fsdh.first_blockette;
       while (next_bloquette > 0) {
         var blkt_code = dv.getUint16(index+next_bloquette, byteorder);
-        if (blkt_code == 1000) {
+        if (blkt_code == 100) {
+          h.blkt100 = this.decodeBlkt100(dv, index+next_bloquette, byteorder);
+          next_bloquette = h.blkt100.next_bloquette
+          console.log(`Ignore "actual" sample rate (${h.blkt100.actual_sample_rate}) and use sample rate in FSDH (${h.fsdh.sample_rate})`)
+        } else if (blkt_code == 1000) {
           h.blkt1000 = this.decodeBlkt1000(dv, index+next_bloquette, byteorder);
           byteorder = h.blkt1000.little_endian;
           next_bloquette = 0;
