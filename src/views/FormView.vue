@@ -54,20 +54,22 @@
   </v-card>
 </template>
 
-<script>
+<script lang="ts">
+import Vue from 'vue'
 import SelectArea from '@/utils/selectArea.js'
-import * as utils from '@/utils/utils'
 import L from 'leaflet'
+import { WebpickerForm } from '@/types'
+import { Dictionary } from 'highcharts'
 
-export default {
+export default Vue.extend({
   data () {
     return {
-      map: null,
-      area: null,
+      map: null as L.Map | null,
+      area: null as SelectArea | null,
       rememberGeoConstraints: localStorage.getItem('form') != null,
       startMenu: false,
       endMenu: false,
-      form: Object.assign({}, this.$store.state.form)
+      form: Object.assign({}, this.$store.state.form) as WebpickerForm
     }
   },
 
@@ -85,20 +87,20 @@ export default {
   },
 
   computed: {
-    bounds: function() {
+    bounds(): L.LatLngBoundsExpression {
       return [[this.form.minlat, this.form.minlon], [this.form.maxlat, this.form.maxlon]]
     }
   },
 
   methods: {
 
-    allowedStartDate (v) {
+    allowedStartDate (v: string) {
       let start = new Date(v).getTime()
       let end = new Date(this.form.end).getTime()
       return start < end
     },
 
-    allowedEndDate (v) {
+    allowedEndDate (v: string) {
       let start = new Date(this.form.start).getTime()
       let end = new Date(v).getTime()
       let now = new Date(new Date().toISOString().slice(0, 10)).getTime() + 86400e3
@@ -106,7 +108,10 @@ export default {
     },
 
     initMapAndArea () {
-      let container = this.$el.querySelector('#form-view__map')
+      let container: (HTMLElement | null) = this.$el.querySelector('#form-view__map')
+      if (container == null) {
+        return
+      }
       let width = container.getBoundingClientRect().width
       container.style.height = `${width}px`
       let map = L.map(container, {trackResize: false, attributionControl: false})
@@ -121,7 +126,7 @@ export default {
     },
 
     applyBoundsToForm () {
-      let b = this.area.getBounds()
+      let b = this.area!.getBounds()
       let [ne, sw] = [b.getNorthEast(), b.getSouthWest()]
       this.form.minlat = sw.lat
       this.form.minlon = sw.lng
@@ -130,11 +135,16 @@ export default {
     },
 
     applyBoundsToArea () {
-      this.area.setBounds(this.bounds)
+      this.area!.setBounds(this.bounds)
     },
 
     handleSubmit () {
-      let query = Object.assign({}, this.form)
+      const query: Dictionary<string | (string | null)[] | null | undefined> = {}
+      for (const [k, v] of Object.entries(this.form)) {
+        if (v != null) {
+          query[k] = `${v}`
+        }
+      }
       if (query.minmag == null) {
         delete query.minmag
       }
@@ -157,5 +167,5 @@ export default {
     //   this.$refs.form.resetFields()
     // }
   }
-}
+})
 </script>

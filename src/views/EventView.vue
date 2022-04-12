@@ -57,7 +57,8 @@
   </v-card>
 </template>
 
-<script>
+<script lang="ts">
+import Vue from 'vue'
 import Highcharts from 'highcharts'
 import addMore from 'highcharts/highcharts-more'
 import * as utils from '@/utils/utils'
@@ -66,14 +67,14 @@ import 'leaflet-ellipse'
 
 addMore(Highcharts)
 
-let handleChartSelection = function(ev, manualOnly=false) {
+let handleChartSelection: Highcharts.ChartSelectionCallbackFunction = function (ev, manualOnly=false) {
   let [x, y] = [ev.xAxis[0], ev.yAxis[0]]
   let selectedPickIDs = []
-  for (let s of this.series) {
-    for (let p of s.points) {
-      if (manualOnly && p.manual || !manualOnly) {
+  for (const s of this.series) {
+    for (const p of s.points) {
+      if (manualOnly && p.properties.manual || !manualOnly) {
         if (p.x >= x.min && p.x <= x.max && p.y >= y.min && p.y <= y.max) {
-          selectedPickIDs.push(p.id)
+          selectedPickIDs.push(p.properties.id)
         }
       }
     }
@@ -82,14 +83,13 @@ let handleChartSelection = function(ev, manualOnly=false) {
   return false
 }
 
-export default {
+export default Vue.extend({
 
-  props: ['code'],
-  // props: {
-  //   event: { required: true },
-  //   origin: { required: true },
-  //   inventory: { required: true }
-  // },
+  props: {
+    code: {
+      type: String
+    }
+  },
 
   data () {
     return {
@@ -455,10 +455,24 @@ export default {
           'green'
         )
         this.chart.timeResidual[serie].push({
-          x: a.distance, y: a.time_residual, name: a._pick._seedid, color: color, id: a.pick_id, manual: a._pick.evaluation_mode == 'manual'
+          x: a.distance,
+          y: a.time_residual,
+          name: a._pick._seedid,
+          color: color,
+          properties: {
+            id: a.pick_id,
+            manual: a._pick.evaluation_mode == 'manual'
+          }
         })
         this.chart.travelTime[serie].push({
-          x: a.distance, y: a._traveltime.getTime() / 1000., name: a._pick._seedid, color: color, id: a.pick_id, manual: a._pick.evaluation_mode == 'manual'
+          x: a.distance,
+          y: a._traveltime.getTime() / 1000.,
+          name: a._pick._seedid,
+          color: color,
+          properties: {
+            id: a.pick_id,
+            manual: a._pick.evaluation_mode == 'manual'
+          }
         })
       }
       if (this.selectedStationMagnitude.length === 0) {
@@ -499,10 +513,16 @@ export default {
       let container = this.$el.querySelector('.event-view__chart--time-residual')
       let self = this
       Highcharts.chart({
-        chart: { backgroundColor: 'rgba(255,255,255,0)', renderTo: container, type: 'scatter', zoomType: 'xy', events: {
-          selection: function(ev) {return handleChartSelection.call(this, ev, self.shiftPressed)},
-          selectedpoints: selectedPickIDs => this.setSelectedArrival(selectedPickIDs)
-        } },
+        chart: {
+          backgroundColor: 'rgba(255,255,255,0)',
+          renderTo: container,
+          type: 'scatter',
+          zoomType: 'xy',
+          events: {
+            selection: function(ev) {return handleChartSelection.call(this, ev, self.shiftPressed)},
+            selectedpoints: selectedPickIDs => this.setSelectedArrival(selectedPickIDs)
+          }
+        },
         title: { text: 'Time residual/Distance' },
         xAxis: { title: { text: 'Distance [°]' }, min: 0 },
         yAxis: { title: { text: 'Time residual [s]'}, min: -1 * extreme, max: extreme },
@@ -576,7 +596,7 @@ export default {
     }
 
   }
-}
+})
 </script>
 
 <style lang="css">

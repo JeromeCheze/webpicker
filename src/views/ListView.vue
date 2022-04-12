@@ -101,11 +101,13 @@
   </v-card>
 </template>
 
-<script>
+<script lang="ts">
+import Vue from 'vue'
 import * as utils from '@/utils/utils'
 import L from 'leaflet'
+import { EventViewDataTableRow, WebpickerEventParameters, WebpickerForm } from '@/types'
 
-export default {
+export default Vue.extend({
 
   data () {
     return {
@@ -134,11 +136,11 @@ export default {
         sortBy: 'time',
         totalItems: 0
       },
-      tableData: [],
-      map: null,
+      tableData: [] as EventViewDataTableRow[],
+      map: null as L.Map | null,
       bottomSheet: false,
-      mapSelectedEvent: null,
-      markerMap: {}
+      mapSelectedEvent: null as WebpickerEventParameters | null,
+      markerMap: {} as Record<string, L.Layer>
       // height: 500
     }
   },
@@ -148,7 +150,7 @@ export default {
     let dirty = false
     let query = Object.assign(Object.assign({}, this.$store.state.form), this.$route.query)
     for (let [k, v] of Object.entries(query)) {
-      if (this.$store[k] != v) {
+      if (this.$store.state.form[k] != v) {
         dirty = true
         break
       }
@@ -166,7 +168,7 @@ export default {
 
   computed: {
     filteredEvents () {
-      return this.$store.state.eventList.filter(e => {
+      return this.$store.state.eventList.filter((e: WebpickerEventParameters) => {
         return (
           !this.hideDiscardedEvents ||
           this.hideDiscardedEvents && (
@@ -212,7 +214,7 @@ export default {
   methods: {
 
     loadEvents () {
-      let args = {}
+      const args: {[index: string]: any} = {}
       for (let [k, v] of Object.entries(this.$store.state.form)) {
         if (v != null) {
           args[k] = v
@@ -238,7 +240,7 @@ export default {
       })
     },
 
-    filterEvents (events) {
+    filterEvents (events: WebpickerEventParameters[]) {
       let result = events
       if (this.hideDiscardedEvents) {
         result = events.filter(e => {
@@ -248,7 +250,7 @@ export default {
       return result
     },
 
-    getEventColor (e) {
+    getEventColor (e: WebpickerEventParameters) {
       if (['not existing', 'not reported', 'other event'].indexOf(e.type) >= 0) {
         return [ 'gray', 'gray' ]
       }
@@ -267,7 +269,11 @@ export default {
     },
 
     initMap () {
-      let map = L.map(this.$el.querySelector('.list-view__map-canvas'), {trackResize: false, attributionControl: false})
+      const container: HTMLElement | null = this.$el.querySelector('.list-view__map-canvas')
+      if (container == null) {
+        return
+      }
+      let map = L.map(container, {trackResize: false, attributionControl: false})
       this.map = map
       let worldtopomap = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
         attribution: '&copy; Esri, HERE, DeLorme, TomTom, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, <br>Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), swisstopo, MapmyIndia, © OpenStreetMap contributors, and the GIS User Community'
@@ -286,13 +292,16 @@ export default {
     },
 
     plotEvents () {
+      if (this.map == null) {
+        return
+      }
       for (let [k, v] of Object.entries(this.markerMap)) {
         v.remove()
         delete this.markerMap[k]
       }
-      let bounds = []
+      let bounds: L.LatLngBoundsExpression = []
       for (let e of this.filteredEvents) {
-        let pos = [e._po.latitude.value, e._po.longitude.value]
+        let pos: L.LatLngExpression = [e._po.latitude.value, e._po.longitude.value]
         bounds.push(pos)
         let [fillColor, color] = this.getEventColor(e)
         let m = L.circleMarker(pos, {
@@ -313,11 +322,11 @@ export default {
       }
     },
 
-    tableRowClassName (row) {
+    tableRowClassName (row: EventViewDataTableRow) {
       return this.$store.state.currentEvent != null && this.$store.state.currentEvent.public_id == row.id ? 'selected-event-row' : ''
     },
 
-    handleMarkerClick(e) {
+    handleMarkerClick(e: WebpickerEventParameters) {
       let m = this.markerMap[e.public_id]
       if (m) {
         m.openPopup()
@@ -326,7 +335,7 @@ export default {
       }
     },
 
-    handleRowClick (row) {
+    handleRowClick (row: EventViewDataTableRow) {
       if (row != null) {
         this.$router.push({ name: 'Event', params: { code: row.id } })
       }
@@ -338,9 +347,9 @@ export default {
       this.tableData = data
     },
 
-    getTableData () {
+    getTableData (): EventViewDataTableRow[] {
       let activity = this.$store.getters.getEventActivity
-      return this.filteredEvents.map(e => ({
+      return this.filteredEvents.map((e: WebpickerEventParameters) => ({
         activity: activity[e.public_id] != null ? activity[e.public_id] : null,
         time: e._po.time._pretty,
         mag: e._pm ? e._pm.mag._pretty : '--',
@@ -360,7 +369,7 @@ export default {
     }
 
   }
-}
+})
 </script>
 
 <style lang="css">

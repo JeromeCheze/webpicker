@@ -1,9 +1,10 @@
+import { State } from '@/types'
 import settings from '@/settings'
 
 let end = new Date(new Date().getTime() + 86400e3)
 let start = new Date(end.getTime() - 86400e3 * 8)
 
-export default {
+ const state: State = {
 
   root: location.href.split('#')[0],
 
@@ -52,3 +53,5 @@ export default {
   log: []
 
 }
+
+export default state

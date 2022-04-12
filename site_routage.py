@@ -20,7 +20,9 @@ import json
 import sys
 import os
 
-app = Flask(__name__)
+app = Flask(__name__,
+            static_folder = "./dist/static",
+            template_folder = "./dist")
 app.debug = True
 app.secret_key = '\x02\xcf:\xc5\x88%K\xd2\x0fl\x8b}\xd1\xd9\xeew\xd8\x9e^0)\xa5\x1c\xb1'
 

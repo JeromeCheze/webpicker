@@ -1,4 +1,6 @@
-{
+import { WebpickerSettings } from "./types";
+
+const settings: WebpickerSettings = {
   "themeDark": false,
   "picker.filters": [
     { "name": "HP 1", "type": "highpass", "fc": 1, "order": 4 },
@@ -85,3 +87,5 @@
   "pickerKeybinding.setTimeUncertainty8": "shift+8",
   "pickerKeybinding.setTimeUncertainty9": "shift+9"
 }
+
+export default settings
