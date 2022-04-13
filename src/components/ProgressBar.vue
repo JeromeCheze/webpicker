@@ -2,8 +2,9 @@
   <div class="progress-bar__main" :style="style"></div>
 </template>
 
-<script>
-export default {
+<script lang="ts">
+import Vue from 'vue'
+export default Vue.extend({
 
   props: {
 
@@ -41,7 +42,7 @@ export default {
 
   }
 
-}
+})
 </script>
 
 <style>

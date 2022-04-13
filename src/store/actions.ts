@@ -1,3 +1,4 @@
+import { WebpickerInventory } from '@/types'
 import * as utils from '@/utils/utils'
 
 export const initialize = ({ commit, dispatch }) => {
@@ -97,7 +98,7 @@ export const notify = ({ commit }, data) => {
   commit('ADD_NOTIFICATION', data)
 }
 
-export const setInventory = ({ commit }, data) => {
+export const setInventory = ({ commit }, data: WebpickerInventory) => {
   commit('SET_INVENTORY', data)
 }
 

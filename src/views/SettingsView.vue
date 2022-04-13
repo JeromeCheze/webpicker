@@ -113,11 +113,12 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import Vue from 'vue'
 import * as utils from '@/utils/utils'
 import formStruct from '@/utils/settingsFormStruct'
 
-export default {
+export default Vue.extend({
 
   data () {
     for (let [mainKey, form] of Object.entries(formStruct)) {
@@ -282,7 +283,7 @@ export default {
     }
 
   }
-}
+})
 </script>
 
 <style>

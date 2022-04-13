@@ -56,7 +56,7 @@
 
 <script lang="ts">
 import Vue from 'vue'
-import SelectArea from '@/utils/selectArea.js'
+import SelectArea from '@/utils/selectArea'
 import L from 'leaflet'
 import { WebpickerForm } from '@/types'
 import { Dictionary } from 'highcharts'

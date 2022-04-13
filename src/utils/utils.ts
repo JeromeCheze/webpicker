@@ -1,3 +1,4 @@
+import { AjaxOptions, ColorScaleObject, ComposeEventObject, StringIndexedObject, WebpickerEventParameters, WebpickerInventory, WebpickerOrigin, WebpickerPick, WebpickerWaveformId } from '@/types'
 import L from 'leaflet'
 
 const EARTH_RADIUS = 6371e3 // meters
@@ -80,7 +81,7 @@ export const RESIDUAL_COLOR_SCALE = [
   [1, [255, 0, 0]]
 ]
 
-export const applyScale = (v, cs) => {
+export const applyScale = (v: number, cs: ColorScaleObject) => {
   if (v <= cs[0][0]) {
     return cs[0][1]
   }
@@ -97,27 +98,24 @@ export const applyScale = (v, cs) => {
   return result
 }
 
-export const toRGB = (rgb) => {
+export const toRGB = (rgb: [number, number, number]) => {
   return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`
 }
 
-export const pushInObject = (obj, key, value) => {
+export const pushInObject = (obj: StringIndexedObject, key: string, value: any) => {
   if (obj[key] == null) {
     obj[key] = new Array()
   }
   obj[key].push(value)
 }
 
-export const pushUnique = (list, value) => {
+export const pushUnique = (list: object[], value: object) => {
   if (list.indexOf(value) < 0) {
     list.push(value)
   }
 }
 
-export const ajax = (opt, xhr) => {
-  if (xhr == null) {
-    xhr = new XMLHttpRequest()
-  }
+export const ajax = (opt: AjaxOptions, xhr=new XMLHttpRequest()) => {
   return new Promise((resolve, reject) => {
     opt = Object.assign({
       method: 'GET', url: null, type: 'text', args: null, data: null, dataMimeType: null
@@ -125,11 +123,11 @@ export const ajax = (opt, xhr) => {
     if (opt.url == null) {
       throw new Error('"url" option is not defined')
     }
-    opt.args = (
+    const strArgs = (
       opt.args == null ? '' :
       '?' + Object.entries(opt.args).map(x => `${x[0]}=${x[1]}`).join('&')
     )
-    xhr.open(opt.method, opt.url+opt.args)
+    xhr.open(opt.method, opt.url + strArgs)
     xhr.responseType = opt.type
     xhr.onerror = () => reject(xhr.status)
     xhr.onload = () => {
@@ -146,11 +144,11 @@ export const ajax = (opt, xhr) => {
   });
 }
 
-export const toSnakeCase = (x) => {
+export const toSnakeCase = (x: string) => {
   return x.replace(/([A-Z]+)/g, '_$1').toLowerCase()
 }
 
-export const removeResourcePrefix = (id) => {
+export const removeResourcePrefix = (id: string) => {
   if (id.indexOf('smi:org.gfz-potsdam.de/geofon/') == 0) {
     return id.replace('smi:org.gfz-potsdam.de/geofon/', '')
   } else if (id.indexOf('smi:') == 0) {
@@ -160,9 +158,10 @@ export const removeResourcePrefix = (id) => {
   return id
 }
 
-export const xmlNodeToJson = (x, path, rules) => {
+// TODO: define proper type for rules
+export const xmlNodeToJson = (x: Element, path: string, rules: any) => {
   path = `${path}/${toSnakeCase(x.tagName)}`
-  let obj = {}
+  let obj: StringIndexedObject = {}
   for (let a of x.attributes) {
     let key = toSnakeCase(a.name)
     let currentPath = `${path}/${key}`
@@ -199,7 +198,7 @@ export const xmlNodeToJson = (x, path, rules) => {
   return obj
 }
 
-export const parseQuakeML = (qml) => {
+export const parseQuakeML = (qml: Document) => {
   let eventParametersTags = qml.getElementsByTagName('eventParameters')
   if (eventParametersTags.length === 0) {
     console.log('QuakeML is empty, no event parameters found.')
@@ -217,18 +216,19 @@ export const parseQuakeML = (qml) => {
 }
 
 export const blurActiveElement = () => {
-  document.activeElement.blur()
+  const activeElement = document.activeElement as HTMLElement
+  activeElement.blur()
 }
 
-export const dict = (k_list, v_list) => {
-  let result = {}
+export const dict = (k_list: string[], v_list: string[]) => {
+  let result: StringIndexedObject = {}
   for (let [i, k] of k_list.entries()) {
     result[k] = v_list[i]
   }
   return result
 }
 
-export const toSeedId = (wfid) => {
+export const toSeedId = (wfid: WebpickerWaveformId) => {
   if (wfid.value) {
     delete wfid.value
   }
@@ -236,7 +236,7 @@ export const toSeedId = (wfid) => {
   return [wfid.network_code, wfid.station_code, loc, wfid.channel_code].join('.')
 }
 
-export const processEventData = (e) => {
+export const processEventData = (e: WebpickerEventParameters) => {
   // e._id = e.public_id.split('/').slice(-1)[0]
   for (let o of e.origin) {
     o.time._value = new Date(Date.parse(o.time.value))
@@ -271,7 +271,7 @@ export const processEventData = (e) => {
         for (let smc of m.station_magnitude_contribution) {
           smc._station_magnitude = e.station_magnitude.find(x => x.public_id == smc.station_magnitude_id)
           if (smc.residual == null) {
-            smc.residual = smc._station_magnitude.mag.value - m.mag.value
+            smc.residual = smc._station_magnitude!.mag.value - m.mag.value
           }
           smc._pretty_residual = smc.residual != null ? smc.residual.toFixed(2) : '-'
           smc._pretty_weight = smc.weight != null ? smc.weight.toFixed(2) : '-'
@@ -281,7 +281,7 @@ export const processEventData = (e) => {
   } else {
     e.magnitude = []
   }
-  e._po = e.origin.find(x => x.public_id == e.preferred_origin_id)
+  e._po = e.origin.find(x => x.public_id == e.preferred_origin_id) || null
   if (e._po != null && e._po.region) {
     e._region = e._po.region
   } else if (e.description) {
@@ -296,7 +296,7 @@ export const processEventData = (e) => {
     e.preferred_magnitude_id = null
   }
   if (e.pick != null) {
-    let pickMap = {}
+    let pickMap: Record<string, WebpickerPick> = {}
     for (let p of e.pick) {
       if (p.creation_info != null) {
         p.creation_info._creation_time = new Date(Date.parse(p.creation_info.creation_time))
@@ -325,7 +325,7 @@ export const processEventData = (e) => {
           console.warn(`Can't find the pick ${a.pick_id} referenced by an arrival, ignoring arrival.`)
           continue
         }
-        a._traveltime = new Date(a._pick.time._value - o.time._value)
+        a._traveltime = new Date(a._pick.time._value.getTime() - o.time._value.getTime())
       }
       for (let a of arrivalToIgnore) {
         o.arrival.splice(o.arrival.indexOf(a), 1)
@@ -337,14 +337,14 @@ export const processEventData = (e) => {
   }
 }
 
-export const parseInventory = (raw_inv) => {
+export const parseInventory = (raw_inv:string) => {
   let cols = [
     'network', 'station', 'location', 'channel',
     'lat', 'lon', 'alt', 'depth',
     'azimuth', 'dip', '_', 'scale', '_', 'units',
     'sample_rate', 'starttime', 'endtime'
   ]
-  let result = {}
+  let result: WebpickerInventory = {}
   let sp_inv = raw_inv.split(/[\r\n]+/g)
   for (let l of sp_inv) {
     if (l != '' && l[0] != '#') {
@@ -381,7 +381,7 @@ export const parseInventory = (raw_inv) => {
   return result
 }
 
-export const cloneAndClean = (o, path) => {
+export const cloneAndClean = (o: any, path: string): object => {
   let result
   if (o instanceof Array) {
     result = []
@@ -389,7 +389,7 @@ export const cloneAndClean = (o, path) => {
       result.push(cloneAndClean(v, path))
     }
   } else if (o instanceof Object) {
-    result = {}
+    result = {} as StringIndexedObject
     for (let [k, v] of Object.entries(o)) {
       if (k.indexOf('_') == 0 || v == null) {
         continue
@@ -402,12 +402,21 @@ export const cloneAndClean = (o, path) => {
   return result
 }
 
-export const composeEvent = (o) => {
-  let opt = Object.assign({ base: {}, origins: [], po: null, magnitudes: [], focalMechanisms: [], pm: null, pfm: null, discardedStation: null }, o)
+export const composeEvent = (o: ComposeEventObject) => {
+  let opt: ComposeEventObject = Object.assign({
+    base: {},
+    origins: [],
+    po: null,
+    magnitudes: [],
+    focalMechanisms: [],
+    pm: null,
+    pfm: null,
+    discardedStation: null
+  }, o)
   let root = '/event_parameters/event'
-  let result = cloneAndClean(opt.base, root)
+  let result: StringIndexedObject = cloneAndClean(opt.base, root)
   result.pick = []
-  let originList = []
+  let originList: WebpickerOrigin[] = []
   for (let o of opt.origins) {
     if (originList.find(x => x.public_id == o.public_id) != null) {
       continue
@@ -419,9 +428,9 @@ export const composeEvent = (o) => {
         result.pick.push(cloneAndClean(a._pick, `${root}/pick`))
       }
     }
-    let cloneOrigin = cloneAndClean(o, `${root}/origin`)
+    let cloneOrigin = cloneAndClean(o, `${root}/origin`) as WebpickerOrigin
     for (let i=cloneOrigin.arrival.length - 1; i >= 0; i--) {
-      let pickFound = result.pick.find(x => x.public_id == cloneOrigin.arrival[i].pick_id)
+      let pickFound = result.pick.find((x: WebpickerPick) => x.public_id == cloneOrigin.arrival[i].pick_id)
       if (pickFound == null) {
         // remove arrival of discarded station
         cloneOrigin.arrival.splice(i, 1)
@@ -453,7 +462,7 @@ export const composeEvent = (o) => {
   return result
 }
 
-export const coordinates2azimuth = (latlon1, latlon2) => {
+export const coordinates2azimuth = (latlon1: [number, number], latlon2: [number, number]) => {
   let [lat1, lon1, lat2, lon2] = latlon1.concat(latlon2)
   let x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1)
   let y = Math.sin(lon2 - lon1) * Math.cos(lat2)
@@ -461,13 +470,13 @@ export const coordinates2azimuth = (latlon1, latlon2) => {
   return result >= 0 ? result : result + 360
 }
 
-export const az2baz = (az) => {
+export const az2baz = (az: number) => {
   return (az + 180) % 360
 }
 
-export const shortcutString = (ev) => {
+export const shortcutString = (ev: KeyboardEvent) => {
   let k = []
-  let keyCode = ev.keyCode || ev.which || ev.charCode
+  let keyCode = ev.keyCode || ev.which || ev.charCode || ev.key.charCodeAt(0)
   if (ev.metaKey) k.push('meta')
   if (ev.ctrlKey) k.push('ctrl')
   if (ev.altKey) k.push('alt')
@@ -479,23 +488,23 @@ export const shortcutString = (ev) => {
   } else {
     k.push(ev.key)
   }
-  k = k.join('+').toLowerCase()
-  if (k.indexOf('arrow') >= 0) {
+  let kStr = k.join('+').toLowerCase()
+  if (kStr.indexOf('arrow') >= 0) {
     ev.preventDefault()
-    k = k.replace('arrow', '')
+    kStr = kStr.replace('arrow', '')
   }
-  return k
+  return kStr
 }
 
-export const deg2m = (deg) => {
+export const deg2m = (deg: number) => {
   return deg * 2 * Math.PI * EARTH_RADIUS / 360
 }
 
-export const m2deg = (m) => {
+export const m2deg = (m: number) => {
   return m * 360 / (2 * Math.PI * EARTH_RADIUS)
 }
 
-export const initMap = (container) => {
+export const initMap = (container: HTMLElement) => {
   let map = L.map(container, { trackResize: false, attributionControl: false })
   let worldtopomap = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
     attribution: '&copy; Esri, HERE, DeLorme, TomTom, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, <br>Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), swisstopo, MapmyIndia, © OpenStreetMap contributors, and the GIS User Community'

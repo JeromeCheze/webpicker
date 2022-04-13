@@ -34,7 +34,8 @@
   </v-layout>
 </template>
 
-<script>
+<script lang="ts">
+import Vue from 'vue'
 import * as utils from '@/utils/utils'
 import BeachballEngine from '@/lib/beachball'
 
@@ -43,7 +44,7 @@ const SIZE = 3
 const NBPOINT = 50
 const COLOR = '#888'
 
-export default {
+export default Vue.extend({
   props: ['active'],
   data () {
     let [strike, dip, rake] = [0, 90, 180]
@@ -317,7 +318,7 @@ export default {
         })
     }
   }
-}
+})
 </script>
 
 <style>

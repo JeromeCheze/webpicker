@@ -58,36 +58,45 @@
 </template>
 
 <script lang="ts">
+/// <reference path="../l.ellipse.d.ts" />
 import Vue from 'vue'
 import Highcharts from 'highcharts'
 import addMore from 'highcharts/highcharts-more'
 import * as utils from '@/utils/utils'
-import L from 'leaflet'
+import L, { LatLngExpression } from 'leaflet'
 import 'leaflet-ellipse'
+import { ComplexPoint, EventViewArrivalTableDataPagination, EventViewArrivalTableRow, EventViewChartSeries, MagnitudeComplexPoint, StringIndexedObject, WebpickerArrival, WebpickerEventParameters, WebpickerInventory, WebpickerOrigin } from '@/types'
 
 addMore(Highcharts)
 
-let handleChartSelection: Highcharts.ChartSelectionCallbackFunction = function (ev, manualOnly=false) {
+let handleChartSelection = function (this: Highcharts.Chart, ev: Highcharts.ChartSelectionContextObject, self: typeof EventView, magnitudeChart=false) {
   let [x, y] = [ev.xAxis[0], ev.yAxis[0]]
   let selectedPickIDs = []
   for (const s of this.series) {
-    for (const p of s.points) {
-      if (manualOnly && p.properties.manual || !manualOnly) {
+    for (let i = 0; i < s.points.length; i++) {
+      const p = s.points[i] as ComplexPoint
+      if (!magnitudeChart || (self.shiftPressed && p.manual || !self.shiftPressed)) {
         if (p.x >= x.min && p.x <= x.max && p.y >= y.min && p.y <= y.max) {
-          selectedPickIDs.push(p.properties.id)
+          selectedPickIDs.push(p.id)
         }
       }
     }
   }
-  Highcharts.fireEvent(this, 'selectedpoints', selectedPickIDs)
+  if (magnitudeChart) {
+    self.setSelectedStationMagnitude(selectedPickIDs)
+  } else {
+    self.setSelectedArrival(selectedPickIDs)
+  }
   return false
 }
 
-export default Vue.extend({
+const EventView: any = Vue.extend({
 
   props: {
     code: {
-      type: String
+      type: String,
+      required: true,
+      default: ''
     }
   },
 
@@ -95,8 +104,8 @@ export default Vue.extend({
     return {
       dirty: true,
       updating: false,
-      map: null,
-      layers: [],
+      map: null as L.Map | null,
+      layers: {} as Record<string, L.Layer>,
 
       arrivalTableHeader: [
         { text: 'Status', value: 'mode', sortable: false },
@@ -112,42 +121,47 @@ export default Vue.extend({
         { text: 'Weight', value: 'weight' },
         { text: 'Time', value: 'time' }
       ],
-      arrivalTableData: [],
-      arrivalTableSelected: [],
+      arrivalTableData: [] as EventViewArrivalTableRow[],
+      arrivalTableSelected: [] as EventViewArrivalTableRow[],
       arrivalTablePagination: {
         descending: false,
         page: 1,
         rowsPerPage: -1,
         sortBy: 'distance',
         totalItems: null
-      },
+      } as EventViewArrivalTableDataPagination,
 
-      selectedStationMagnitude: [],
+      selectedStationMagnitude: [] as string[],
 
       activeChartTab: 0,
       firstMotionActive: false,
       chart: {
-        timeResidual: null,
-        travelTime: null
+        timeResidual: null as EventViewChartSeries | null,
+        travelTime: null as EventViewChartSeries | null,
+        // magnitudes: null as Record<string, MagnitudeComplexPoint[]> | null
+        magnitudes: {} as { [s: string]: MagnitudeComplexPoint[] }
       },
       shiftPressed: false,
       keyHandlersBinded: false,
       eventHandler: {
-        'keydown': ev => this.handleKeydown(ev),
-        'keyup': ev => this.handleKeyup(ev),
+        'keydown': function (this: typeof EventView, ev: KeyboardEvent): void { this.handleKeydown(ev) },
+        'keyup': function (this: typeof EventView, ev: KeyboardEvent): void { this.handleKeyup(ev)},
       }
     }
   },
 
   computed: {
-    event () {
-      return this.$store.state.currentEvent
+    event (): WebpickerEventParameters {
+      const result = this.$store.state.currentEvent
+      return result
     },
-    origin () {
-      return this.$store.state.currentOrigin
+    origin (): WebpickerOrigin {
+      const result = this.$store.state.currentOrigin
+      return result
     },
-    inventory () {
-      return this.$store.state.inventory
+    inventory (): WebpickerInventory {
+      const result = this.$store.state.inventory
+      return result
     }
   },
 
@@ -169,30 +183,28 @@ export default Vue.extend({
     }
     if (!this.keyHandlersBinded) {
       this.keyHandlersBinded = true
-      for (let [name, handler] of Object.entries(this.eventHandler)) {
-        document.body.addEventListener(name, handler)
-      }
+      document.body.addEventListener('keydown', this.eventHandler.keydown)
+      document.body.addEventListener('keyup', this.eventHandler.keyup)
     }
   },
 
   beforeDestroy () {
     if (this.keyHandlersBinded) {
       this.keyHandlersBinded = false
-      for (let [name, handler] of Object.entries(this.eventHandler)) {
-        document.body.removeEventListener(name, handler)
-      }
+      document.body.removeEventListener('keydown', this.eventHandler.keydown)
+      document.body.removeEventListener('keyup', this.eventHandler.keyup)
     }
   },
 
   methods: {
 
-    handleKeydown (ev) {
+    handleKeydown (ev: KeyboardEvent): void {
       if (ev.key == 'Shift') {
         this.shiftPressed = true
       }
     },
 
-    handleKeyup (ev) {
+    handleKeyup (ev: KeyboardEvent): void {
       if (ev.key == 'Shift') {
         this.shiftPressed = false
       }
@@ -261,24 +273,24 @@ export default Vue.extend({
       })
     },
 
-    floatFormatter (value) {
+    floatFormatter (value: number | null) {
       return value == null ? '' : value.toFixed(2)
     },
 
-    timeFormatter (value) {
+    timeFormatter (value: Date) {
       // return value.toISOString().split('T')[1].substr(0, 12)
       return value.toISOString().split('T')[1].substr(0, 8)
     },
 
-    setSelectedArrival (selectedPickIDs) {
+    setSelectedArrival (selectedPickIDs: string[]) {
       for (let a of this.origin.arrival) {
         a.time_weight = selectedPickIDs.indexOf(a.pick_id) >= 0 ? 1 : 0
       }
       this.updateAll()
     },
 
-    setSelectedStationMagnitude (selectedWfid) {
-      let tmp = {}
+    setSelectedStationMagnitude (selectedWfid: string[]) {
+      let tmp: StringIndexedObject = {}
       if (selectedWfid.length === 0) {
         for (let a of this.origin.arrival) {
           let netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
@@ -296,14 +308,14 @@ export default Vue.extend({
 
     },
 
-    handleSelectionChange (selectedRows) {
+    handleSelectionChange (selectedRows: EventViewArrivalTableRow[]) {
       if (this.updating) return
       this.setSelectedArrival(selectedRows.map(x => x.id))
     },
 
     updateArrivalTableData () {
       this.arrivalTablePagination.totalItems = this.origin.arrival.length
-      this.arrivalTableData = this.origin.arrival.map(a => ({
+      this.arrivalTableData = this.origin.arrival.map((a: WebpickerArrival) => ({
         id: a._pick.public_id,
         mode: a._pick.evaluation_mode == 'automatic' ? 'A' : 'M',
         modeColor: a._pick.evaluation_mode == 'manual' ? 'green' : 'red',
@@ -351,7 +363,7 @@ export default Vue.extend({
       this.map = utils.initMap(container)
     },
 
-    getStationCoordinates (seedid) {
+    getStationCoordinates (seedid: string): L.LatLngTuple | null {
       let [n, s, l, c] = seedid.split('.')
       if (this.inventory[n] != null &&
           this.inventory[n][s] != null) {
@@ -365,16 +377,19 @@ export default Vue.extend({
       if (this.map == null) {
         this.initMap()
       }
+      if (this.map == null) {
+        return
+      }
       for (let l of Object.values(this.layers)) {
         l.remove()
       }
       this.layers = {}
-      let originPos = L.latLng([
+      let originPos: LatLngExpression = [
         this.origin.latitude.value,
         this.origin.longitude.value
-      ])
-      let bounds = [originPos]
-      let arrivalPerStation = {}
+      ]
+      let bounds: L.LatLngBoundsExpression = [originPos]
+      let arrivalPerStation: Record<string, WebpickerArrival> = {}
       let maxRes = 0
       for (let a of this.origin.arrival) {
         let netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
@@ -443,8 +458,7 @@ export default Vue.extend({
       // console.log('initChartsData');
       this.chart.timeResidual = { p: [], s: [] }
       this.chart.travelTime = { p: [], s: [] }
-      this.chart.magnitudes = {}
-      let tmp = {}
+      let tmp: StringIndexedObject = {}
       for (let a of this.origin.arrival) {
         let netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
         tmp[netsta] = null
@@ -459,20 +473,16 @@ export default Vue.extend({
           y: a.time_residual,
           name: a._pick._seedid,
           color: color,
-          properties: {
-            id: a.pick_id,
-            manual: a._pick.evaluation_mode == 'manual'
-          }
+          id: a.pick_id,
+          manual: a._pick.evaluation_mode == 'manual'
         })
         this.chart.travelTime[serie].push({
           x: a.distance,
-          y: a._traveltime.getTime() / 1000.,
+          y: a._traveltime!.getTime() / 1000.,
           name: a._pick._seedid,
           color: color,
-          properties: {
-            id: a.pick_id,
-            manual: a._pick.evaluation_mode == 'manual'
-          }
+          id: a.pick_id,
+          manual: a._pick.evaluation_mode == 'manual'
         })
       }
       if (this.selectedStationMagnitude.length === 0) {
@@ -488,17 +498,27 @@ export default Vue.extend({
           this.chart.magnitudes[mag.type] = []
         }
         for (let smc of mag.station_magnitude_contribution) {
-          let arrival = this.origin.arrival.find(a => a._pick._seedid === smc._station_magnitude._seedid)
-          if (arrival == null) {
-            console.warn(`Failed to retreive corresponding arrival for station magnitude of channel ${smc._station_magnitude._seedid}`)
+          if (smc._station_magnitude == null) {
             continue
           }
-          let netsta = smc._station_magnitude._seedid.split('.').slice(0, 2).join('.')
-          let color = 'gray'
-          if (this.selectedStationMagnitude.indexOf(netsta) >= 0) {
-            color = new Highcharts.Color(colors[colorIndex]).setOpacity(Math.max(0.2, smc.weight)).get()
+          let arrival = this.origin.arrival.find(a => a._pick._seedid === smc._station_magnitude!._seedid)
+          if (arrival == null) {
+            console.warn(`Failed to retreive corresponding arrival for station magnitude of channel ${smc._station_magnitude!._seedid}`)
+            continue
           }
-          this.chart.magnitudes[mag.type].push({ x: arrival.distance, y: smc._station_magnitude.mag.value, id: smc._station_magnitude._seedid, color, type: mag.type, weight: smc.weight })
+          let netsta = smc._station_magnitude._seedid!.split('.').slice(0, 2).join('.')
+          let color: Highcharts.ColorString | Highcharts.GradientColorObject | Highcharts.PatternObject = 'gray'
+          if (this.selectedStationMagnitude.indexOf(netsta) >= 0) {
+            color = new Highcharts.Color(colors![colorIndex]).setOpacity(Math.max(0.2, smc.weight)).get()
+          }
+          this.chart.magnitudes[mag.type].push({
+            x: arrival.distance,
+            y: smc._station_magnitude.mag.value,
+            id: smc._station_magnitude._seedid,
+            color,
+            type: mag.type,
+            weight: smc.weight
+          })
         }
         colorIndex++
       }
@@ -507,11 +527,14 @@ export default Vue.extend({
     initChartTimeResidual () {
       let extreme = 1 + Math.floor(
         Math.max.apply(null,
-          this.chart.timeResidual.p.concat(this.chart.timeResidual.s).map(x => Math.abs(x.y))
+          this.chart.timeResidual!.p.concat(this.chart.timeResidual!.s).map(x => Math.abs(x.y))
         )
       )
-      let container = this.$el.querySelector('.event-view__chart--time-residual')
-      let self = this
+      const container: HTMLElement | null = this.$el.querySelector('.event-view__chart--time-residual')
+      if (container == null) {
+        return
+      }
+      const self = this
       Highcharts.chart({
         chart: {
           backgroundColor: 'rgba(255,255,255,0)',
@@ -519,71 +542,81 @@ export default Vue.extend({
           type: 'scatter',
           zoomType: 'xy',
           events: {
-            selection: function(ev) {return handleChartSelection.call(this, ev, self.shiftPressed)},
-            selectedpoints: selectedPickIDs => this.setSelectedArrival(selectedPickIDs)
+            selection: function (ev) { return handleChartSelection.call(this, ev, self) }
           }
         },
         title: { text: 'Time residual/Distance' },
         xAxis: { title: { text: 'Distance [°]' }, min: 0 },
         yAxis: { title: { text: 'Time residual [s]'}, min: -1 * extreme, max: extreme },
         tooltip: { formatter: function() {
-          return `<b>${this.point.name}</b><br>Distance: ${this.x.toFixed(2)}°<br>Residual: ${this.y.toFixed(2)} s`
+          if (typeof this.x === 'number' && typeof this.y === 'number') {
+            return `<b>${this.point.name}</b><br>Distance: ${this.x.toFixed(2)}°<br>Residual: ${this.y.toFixed(2)} s`
+          }
         } },
         plotOptions: { series: { animation: false } },
         series: [
-          { name: 'P', data: this.chart.timeResidual.p },
-          { name: 'S', data: this.chart.timeResidual.s }
+          { name: 'P', type: 'scatter', data: this.chart.timeResidual!.p },
+          { name: 'S', type: 'scatter', data: this.chart.timeResidual!.s }
         ]
       })
     },
 
     initChartTravelTime () {
-      let container = this.$el.querySelector('.event-view__chart--travel-time')
+      let container: HTMLElement | null = this.$el.querySelector('.event-view__chart--travel-time')
+      if (container == null) {
+        return
+      }
       let self = this
       Highcharts.chart({
         chart: { backgroundColor: 'rgba(255,255,255,0)', renderTo: container, type: 'scatter', zoomType: 'xy', events: {
-          selection: function (ev) { return handleChartSelection.call(this, ev, self.shiftPressed) },
-          selectedpoints: selectedPickIDs => this.setSelectedArrival(selectedPickIDs)
+          selection: function (ev) { return handleChartSelection.call(this, ev, self) }
         } },
         title: { text: 'Travel time/Distance' },
         xAxis: { title: { text: 'Distance [°]' }, min: 0 },
         yAxis: { title: { text: 'Travel time [s]' }, min: 0 },
         tooltip: { formatter: function () {
-          return `<b>${this.point.name}</b><br>Distance: ${this.x.toFixed(2)}°<br>Time: ${this.y.toFixed(2)} s`
+          if (typeof this.x === 'number' && typeof this.y === 'number') {
+            return `<b>${this.point.name}</b><br>Distance: ${this.x.toFixed(2)}°<br>Time: ${this.y.toFixed(2)} s`
+          }
         } },
         plotOptions: { series: { animation: false } },
         series: [
-          { name: 'P', data: this.chart.travelTime.p },
-          { name: 'S', data: this.chart.travelTime.s }
+          { name: 'P', type: 'scatter', data: this.chart.travelTime!.p },
+          { name: 'S', type: 'scatter', data: this.chart.travelTime!.s }
         ]
       })
     },
 
     initChartMagnitude () {
-      let container = this.$el.querySelector('.event-view__chart--magnitudes')
+      let container: HTMLElement | null = this.$el.querySelector('.event-view__chart--magnitudes')
+      if (container == null) {
+        return
+      }
       let self = this
       Highcharts.chart({
         chart: { backgroundColor: 'rgba(255,255,255,0)', renderTo: container, type: 'scatter', zoomType: 'xy', events: {
-          selection: function (ev) { return handleChartSelection.call(this, ev, false) },
-          selectedpoints: selectedWfid => this.setSelectedStationMagnitude(selectedWfid)
+          selection: function (ev) { return handleChartSelection.call(this, ev, self, true) }
         } },
         title: { text: 'Station magnitudes' },
         xAxis: { title: { text: 'Distance [°]' }, min: 0 },
         yAxis: { title: { text: 'Magnitude' } },
         tooltip: { formatter: function () {
-          return `<b>${this.point.id}</b><br>Distance: ${this.x.toFixed(2)}°<br>Magnitude: ${this.y.toFixed(2)} ${this.point.type}<br>Weight: ${this.point.weight.toFixed(2)}`
+          const p: MagnitudeComplexPoint = this.point
+          if (typeof this.x === 'number' && typeof this.y === 'number') {
+            return `<b>${p.id}</b><br>Distance: ${this.x.toFixed(2)}°<br>Magnitude: ${this.y.toFixed(2)} ${p.type}<br>Weight: ${p.weight!.toFixed(2)}`
+          }
         } },
         plotOptions: { series: { animation: false } },
-        series: Object.entries(this.chart.magnitudes).map(([k, v]) => ({ name: k, data: v }))
+        series: Object.entries(this.chart.magnitudes).map(([k, v]) => ({ name: k, type: 'scatter', data: v }))
       })
     },
 
-    handleRowClick (row) {
+    handleRowClick (row: EventViewArrivalTableRow) {
       let netsta = `${row.network}.${row.station}`
       this.layers[netsta].openPopup()
     },
 
-    handleChartChange (tab) {
+    handleChartChange (tab: number) {
       if (tab === 0) {
         this.initChartTimeResidual()
       } else if (tab === 1) {
@@ -597,6 +630,7 @@ export default Vue.extend({
 
   }
 })
+export default EventView
 </script>
 
 <style lang="css">

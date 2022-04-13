@@ -1,19 +1,21 @@
-export const getLink = (state) => (path) => {
+import { ActivityObject, State } from "@/types"
+
+export const getLink = (state: State) => (path: string) => {
   return `${state.root}${path}`
 }
 
-export const getId = (state) => (prefix) => {
+export const getId = (state: State) => (prefix: string) => {
   let now = new Date().toISOString()
   return prefix == 'Event' ? now.replace(/[-:]/g, '').replace(/[T\.]/g, '_').slice(0, 19) : [
     prefix,
-    now.replace(/[\-:]/g, '').replace('T', '.').substr(0, 18),
+    now.replace(/[\-:]/g, '').replace('T', '.').slice(0, 18),
     (Math.random()*1000).toFixed(0)
   ].join('-')
 }
 
-export const getEventActivity = (state) => {
+export const getEventActivity = (state: State) => {
   let now = new Date().getTime()
-  let activity = {}
+  let activity: ActivityObject = {}
   for (let [uid, authorStatus] of Object.entries(state.authorStatus)) {
     if (authorStatus.author == state.author) {
       continue
@@ -29,17 +31,17 @@ export const getEventActivity = (state) => {
   return activity
 }
 
-export const getCurrentEventId = (state) => {
+export const getCurrentEventId = (state: State) => {
   if (state.currentEvent != null) {
     return state.currentEvent.public_id
   }
   return null
 }
 
-export const getAcknowledgedMsgIds = (state) => {
+export const getAcknowledgedMsgIds = (state: State) => {
   return state.acknowledgedMsgIds
 }
 
-export const getEventListIds = (state) => {
+export const getEventListIds = (state: State) => {
   return state.eventList.map(x => x.public_id)
 }

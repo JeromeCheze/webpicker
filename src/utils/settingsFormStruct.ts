@@ -1,4 +1,4 @@
-{
+export default {
   "pickerColor": {
     "label": "Picker colors",
     "fields": {

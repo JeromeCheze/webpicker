@@ -92,14 +92,16 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+/// <reference path="../fili.d.ts" />
+import Vue from 'vue'
 import Waveform from '@/lib/waveform'
 import * as utils from '@/utils/utils'
 import mseed from '@/lib/mseed'
 import Fili from 'fili'
 import L from 'leaflet'
 
-export default {
+export default Vue.extend({
 
   data () {
     return {
@@ -1115,7 +1117,7 @@ export default {
     }
 
   }
-}
+})
 </script>
 
 <style>

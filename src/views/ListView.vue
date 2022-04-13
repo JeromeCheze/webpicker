@@ -105,7 +105,7 @@
 import Vue from 'vue'
 import * as utils from '@/utils/utils'
 import L from 'leaflet'
-import { EventViewDataTableRow, WebpickerEventParameters, WebpickerForm } from '@/types'
+import { ListViewDataTableRow, StringIndexedObject, WebpickerEventParameters, WebpickerForm } from '@/types'
 
 export default Vue.extend({
 
@@ -136,7 +136,7 @@ export default Vue.extend({
         sortBy: 'time',
         totalItems: 0
       },
-      tableData: [] as EventViewDataTableRow[],
+      tableData: [] as ListViewDataTableRow[],
       map: null as L.Map | null,
       bottomSheet: false,
       mapSelectedEvent: null as WebpickerEventParameters | null,
@@ -214,7 +214,7 @@ export default Vue.extend({
   methods: {
 
     loadEvents () {
-      const args: {[index: string]: any} = {}
+      const args: StringIndexedObject = {}
       for (let [k, v] of Object.entries(this.$store.state.form)) {
         if (v != null) {
           args[k] = v
@@ -322,7 +322,7 @@ export default Vue.extend({
       }
     },
 
-    tableRowClassName (row: EventViewDataTableRow) {
+    tableRowClassName (row: ListViewDataTableRow) {
       return this.$store.state.currentEvent != null && this.$store.state.currentEvent.public_id == row.id ? 'selected-event-row' : ''
     },
 
@@ -335,7 +335,7 @@ export default Vue.extend({
       }
     },
 
-    handleRowClick (row: EventViewDataTableRow) {
+    handleRowClick (row: ListViewDataTableRow) {
       if (row != null) {
         this.$router.push({ name: 'Event', params: { code: row.id } })
       }
@@ -347,7 +347,7 @@ export default Vue.extend({
       this.tableData = data
     },
 
-    getTableData (): EventViewDataTableRow[] {
+    getTableData (): ListViewDataTableRow[] {
       let activity = this.$store.getters.getEventActivity
       return this.filteredEvents.map((e: WebpickerEventParameters) => ({
         activity: activity[e.public_id] != null ? activity[e.public_id] : null,

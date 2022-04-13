@@ -81,10 +81,11 @@
   </v-footer>
 </template>
 
-<script>
+<script lang="ts">
+import Vue from 'vue'
 import * as utils from '@/utils/utils'
 
-export default {
+export default Vue.extend({
 
   props: ['selectedStationMagnitude'],
 
@@ -435,7 +436,7 @@ export default {
 
   }
 
-}
+})
 </script>
 
 <style lang="css">

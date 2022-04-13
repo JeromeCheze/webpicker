@@ -32,11 +32,12 @@
   </v-dialog>
 </template>
 
-<script>
+<script lang="ts">
+import Vue from 'vue'
 import * as utils from '@/utils/utils'
 import L from 'leaflet'
 
-export default {
+export default Vue.extend({
   props: ['value', 'disabled'],
 
   data () {
@@ -144,7 +145,7 @@ export default {
       this.dialog = false
     }
   }
-}
+})
 </script>
 
 <style>
