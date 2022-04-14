@@ -1,4 +1,6 @@
-export default {
+import { SettingsFormStruct } from "@/types";
+
+const settings: SettingsFormStruct = {
   "pickerColor": {
     "label": "Picker colors",
     "fields": {
@@ -374,3 +376,5 @@ export default {
     }
   }
 }
+
+export default settings

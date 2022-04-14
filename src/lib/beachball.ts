@@ -1,5 +1,14 @@
 export default class BeachballEngine {
-  constructor (boxSize, nbPoint, pointSize, wasmURI) {
+    boxSize: number;
+    nbPoint: number;
+    pointSize: number;
+    wasmURI: string;
+    module: WebAssembly.WebAssemblyInstantiatedSource | null;
+    ctx: CanvasRenderingContext2D | null;
+    radius: number | null;
+    center: number;
+
+  constructor (boxSize: number, nbPoint: number, pointSize: number, wasmURI: string) {
     this.boxSize = boxSize
     this.nbPoint = nbPoint
     this.pointSize = pointSize
@@ -11,20 +20,20 @@ export default class BeachballEngine {
   }
 
   init () {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve: Function) => {
       const canvas = document.createElement('canvas')
       canvas.width = canvas.height = this.boxSize
       this.ctx = canvas.getContext('2d')
-      const importObject = {
+      const importObject: WebAssembly.Imports = {
         env: {
-          abort(_msg, _file, line, column) {
+          abort(_msg: string, _file: string, line: number, column: number) {
             console.error("abort called at index.ts:" + line + ":" + column);
           }
         }
       }
       WebAssembly.instantiateStreaming(fetch(this.wasmURI), importObject).then(wasmModule => {
         this.module = wasmModule
-        const { setBoxSize, init } = wasmModule.instance.exports
+        const { setBoxSize, init } = wasmModule.instance.exports as {[index: string]: Function}
         setBoxSize(this.boxSize)
         init(this.nbPoint)
         resolve()
@@ -32,11 +41,14 @@ export default class BeachballEngine {
     })
   }
 
-  drawFocal(s, d, r, c='blue') {
+  drawFocal(s: number, d: number, r: number, c='blue') {
+    if (this.ctx == null) {
+      return
+    }
     this.ctx.clearRect(0, 0, this.boxSize, this.boxSize)
-    const { setFocal, getResult } = this.module.instance.exports
+    const { setFocal, getResult } = this.module!.instance.exports as {[index: string]: Function}
     const l = setFocal(s, d, r)
-    this.radius = getResult(0)
+    this.radius = getResult(0) as number
     this.ctx.strokeStyle = 'black'
     this.ctx.fillStyle = 'white'
     this.ctx.beginPath()
@@ -57,8 +69,8 @@ export default class BeachballEngine {
     this.ctx.stroke()
   }
 
-  getFocalImage (s, d, r, c='blue') {
+  getFocalImage (s: number, d: number, r: number, c='blue') {
     this.drawFocal(s, d, r, c)
-    return this.ctx.canvas.toDataURL()
+    return this.ctx!.canvas.toDataURL()
   }
 }

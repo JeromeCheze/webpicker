@@ -1,4 +1,4 @@
-import { AuthorStatusMapObject, LoadingObject, NotificationObject, SetAuthorObject, State, StringIndexedObject, TheoreticalTravelTimeObject, WebpickerEventParameters, WebpickerFocalMechanism, WebpickerForm, WebpickerInventory, WebpickerOrigin, WebpickerSettings } from '@/types'
+import { AuthorStatus, LoadingObject, NotificationObject, SetAuthorObject, State, StringIndexedObject, TheoreticalTravelTimeObject, WebpickerEventParameters, WebpickerFocalMechanism, WebpickerForm, WebpickerInventory, WebpickerOrigin, WebpickerSettings } from '@/types'
 import * as utils from '@/utils/utils'
 
 export const INIT_FORM = (state: State, data: object) => {
@@ -37,7 +37,7 @@ export const SET_EVENT_LIST_DIRTY = (state: State, data: boolean) => {
   state.eventListDirty = data
 }
 
-export const SET_AUTHOR_STATUS = (state: State, data: AuthorStatusMapObject) => {
+export const SET_AUTHOR_STATUS = (state: State, data: AuthorStatus) => {
   let dirty = false
   for (let [k, v] of Object.entries(data)) {
     if (state.authorStatus[k] == null) {
@@ -56,7 +56,7 @@ export const SET_AUTHOR_STATUS = (state: State, data: AuthorStatusMapObject) => 
     }
   }
   if (!dirty) {
-    for (let [k, v] of Object.entries(state.authorStatus)) {
+    for (let k of Object.keys(state.authorStatus)) {
       if (data[k] == null) {
         dirty = true
         break

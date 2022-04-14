@@ -109,7 +109,7 @@ export const pushInObject = (obj: StringIndexedObject, key: string, value: any) 
   obj[key].push(value)
 }
 
-export const pushUnique = (list: object[], value: object) => {
+export const pushUnique = (list: any[], value: any) => {
   if (list.indexOf(value) < 0) {
     list.push(value)
   }

@@ -95,13 +95,14 @@
 <script lang="ts">
 /// <reference path="../fili.d.ts" />
 import Vue from 'vue'
-import Waveform from '@/lib/waveform'
+import { Waveform, WaveformItem, WaveformOptions, WaveformPick} from '@/lib/waveform'
 import * as utils from '@/utils/utils'
-import mseed from '@/lib/mseed'
+import { Stream } from '@/lib/mseed'
 import Fili from 'fili'
 import L from 'leaflet'
+import { WebpickerInventory, WebpickerOrigin, WebpickerSettings } from '@/types'
 
-export default Vue.extend({
+const PickerView = Vue.extend({
 
   data () {
     return {
@@ -133,22 +134,22 @@ export default Vue.extend({
       keyDownBinded: false,
       horizontalDownloadStatus: '',
       disableLoadAdditionalStation: true,
-      xhr: [],
+      xhr: [] as XMLHttpRequest[],
 
       // additional waveforms by station selected by user
       additionalWaveformsChannelsMenu: false,
-      additionalWaveformsChannels: [],
-      additionalWaveforms: {},
+      additionalWaveformsChannels: [] as {value: boolean, label: string}[],
+      additionalWaveforms: {} as {[netsta: string]: string[]},
 
       // cache variables
-      picks: {},
+      picks: {} as {[seedid: string]: WaveformPick[]},
       waveform: {},
-      stationDistance: {},
-      stationAzimuth: {},
+      stationDistance: {} as {[netsta: string]: number},
+      stationAzimuth: {} as {[netsta: string]: number},
 
       // instances
-      list: null,
-      picker: null,
+      list: null as Waveform | null,
+      picker: null as Waveform | null,
 
       // constructor options
       defaultView: { duration: 30000, offset: 10000 },
@@ -160,11 +161,11 @@ export default Vue.extend({
         equalScale: false,
         view: {},
         callback: {
-          updatePick: (ev) => this.handleUpdatePick(ev),
-          draw: view => this.list.setSelectedWaveformWindow(view),
-          waveformFocus: index => this.tools.focusComponent = index
+          updatePick: function (this: typeof PickerView, ev) { this.handleUpdatePick(ev) },
+          draw: function (this: typeof PickerView, view) { this.list.setSelectedWaveformWindow(view) },
+          waveformFocus: function (this: typeof PickerView, index) { this.tools.focusComponent = index }
         }
-      },
+      } as WaveformOptions,
       listOpt: {
         mode: 'list',
         container: '.picker-view__container--list',
@@ -173,60 +174,60 @@ export default Vue.extend({
         equalScale: false,
         view: {},
         callback: {
-          waveformClick: wf => this.handleWaveformClick(wf)
+          waveformClick: function (this: typeof PickerView, wf) { this.handleWaveformClick(wf) }
         }
-      },
+      } as WaveformOptions,
 
       // keybinding mapping
       shortcutAction: {
-        nextStation () { this.list.selectNext() },
-        previousStation () { this.list.selectPrev() },
-        setPolarityPositive () { this.picker.setPolarity('positive') },
-        setPolarityNegative () { this.picker.setPolarity('negative') },
-        setNoPolarity () { this.picker.setPolarity(null) },
-        leavePickingMode (ev) { ev.preventDefault() ; this.tools.phase = null },
-        setPickerPhaseP () { this.tools.phase = 'P' },
-        setPickerPhaseS () { this.tools.phase = 'S' },
-        deletePick () { this.picker.deleteSelectedPicks() },
-        alignToOrigin () { this.tools.alignment = 'O' },
-        alignToP () { this.tools.alignment = 'P' },
-        alignToS () { this.tools.alignment = 'S' },
-        toggleFilter () { this.tools.filter = this.tools.filter == null ? this.tools.lastFilter : null },
-        toggleEqualScale () { this.tools.sameScale = !this.tools.sameScale },
-        createPick (ev) { ev.preventDefault(); this.picker.createPick() },
-        movePickLineRight () { this.picker.movePickLine('right', false) },
-        moveFastPickLineRight () { this.picker.movePickLine('right', true) },
-        movePickLineLeft () { this.picker.movePickLine('left', false) },
-        moveFastPickLineLeft () { this.picker.movePickLine('left', true) },
-        xZoomIn () { this.picker != null && this.picker.xZoomIn() },
-        xZoomOut () { this.picker != null && this.picker.xZoomOut() },
-        yZoomIn () { this.picker != null && this.picker.yZoomIn() },
-        yZoomOut () { this.picker != null && this.picker.yZoomOut() },
-        setFocusComponentZ () { this.tools.focusComponent = 0 },
-        setFocusComponentN () { this.tools.focusComponent = 1 },
-        setFocusComponentE () { this.tools.focusComponent = 2 },
-        setTimeUncertainty0 () { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[0]) },
-        setTimeUncertainty1 () { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[1]) },
-        setTimeUncertainty2 () { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[2]) },
-        setTimeUncertainty3 () { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[3]) },
-        setTimeUncertainty4 () { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[4]) },
-        setTimeUncertainty5 () { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[5]) },
-        setTimeUncertainty6 () { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[6]) },
-        setTimeUncertainty7 () { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[7]) },
-        setTimeUncertainty8 () { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[8]) },
-        setTimeUncertainty9 () { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[9]) }
+        nextStation: function (this: typeof PickerView) { this.list.selectNext() },
+        previousStation: function (this: typeof PickerView) { this.list.selectPrev() },
+        setPolarityPositive: function (this: typeof PickerView) { this.picker.setPolarity('positive') },
+        setPolarityNegative: function (this: typeof PickerView) { this.picker.setPolarity('negative') },
+        setNoPolarity: function (this: typeof PickerView) { this.picker.setPolarity(null) },
+        leavePickingMode: function (this: typeof PickerView, ev: KeyboardEvent) { ev.preventDefault() ; this.tools.phase = null },
+        setPickerPhaseP: function (this: typeof PickerView) { this.tools.phase = 'P' },
+        setPickerPhaseS: function (this: typeof PickerView) { this.tools.phase = 'S' },
+        deletePick: function (this: typeof PickerView) { this.picker.deleteSelectedPicks() },
+        alignToOrigin: function (this: typeof PickerView) { this.tools.alignment = 'O' },
+        alignToP: function (this: typeof PickerView) { this.tools.alignment = 'P' },
+        alignToS: function (this: typeof PickerView) { this.tools.alignment = 'S' },
+        toggleFilter: function (this: typeof PickerView) { this.tools.filter = this.tools.filter == null ? this.tools.lastFilter : null },
+        toggleEqualScale: function (this: typeof PickerView) { this.tools.sameScale = !this.tools.sameScale },
+        createPick: function (this: typeof PickerView, ev: KeyboardEvent) { ev.preventDefault(); this.picker.createPick() },
+        movePickLineRight: function (this: typeof PickerView) { this.picker.movePickLine('right', false) },
+        moveFastPickLineRight: function (this: typeof PickerView) { this.picker.movePickLine('right', true) },
+        movePickLineLeft: function (this: typeof PickerView) { this.picker.movePickLine('left', false) },
+        moveFastPickLineLeft: function (this: typeof PickerView) { this.picker.movePickLine('left', true) },
+        xZoomIn: function (this: typeof PickerView) { this.picker != null && this.picker.xZoomIn() },
+        xZoomOut: function (this: typeof PickerView) { this.picker != null && this.picker.xZoomOut() },
+        yZoomIn: function (this: typeof PickerView) { this.picker != null && this.picker.yZoomIn() },
+        yZoomOut: function (this: typeof PickerView) { this.picker != null && this.picker.yZoomOut() },
+        setFocusComponentZ: function (this: typeof PickerView) { this.tools.focusComponent = 0 },
+        setFocusComponentN: function (this: typeof PickerView) { this.tools.focusComponent = 1 },
+        setFocusComponentE: function (this: typeof PickerView) { this.tools.focusComponent = 2 },
+        setTimeUncertainty0: function (this: typeof PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[0]) },
+        setTimeUncertainty1: function (this: typeof PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[1]) },
+        setTimeUncertainty2: function (this: typeof PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[2]) },
+        setTimeUncertainty3: function (this: typeof PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[3]) },
+        setTimeUncertainty4: function (this: typeof PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[4]) },
+        setTimeUncertainty5: function (this: typeof PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[5]) },
+        setTimeUncertainty6: function (this: typeof PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[6]) },
+        setTimeUncertainty7: function (this: typeof PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[7]) },
+        setTimeUncertainty8: function (this: typeof PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[8]) },
+        setTimeUncertainty9: function (this: typeof PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[9]) }
       }
     }
   },
 
   computed: {
-    origin () {
+    origin (): WebpickerOrigin {
       return this.$store.state.currentOrigin
     },
-    inventory () {
+    inventory (): WebpickerInventory {
       return this.$store.state.inventory
     },
-    settings () {
+    settings (): WebpickerSettings {
       return this.$store.state.settings
     },
     ttt: {
@@ -251,7 +252,7 @@ export default Vue.extend({
     },
     'tools.sameScale': function (val) {
       utils.blurActiveElement()
-      if (this.list != null) {
+      if (this.picker != null) {
         this.picker.opt.equalScale = val
         this.picker.draw()
       }
@@ -259,7 +260,7 @@ export default Vue.extend({
     'tools.filter': function (val) {
       utils.blurActiveElement()
       if (val && this.picker != null && this.list != null) {
-        this.applyFilter()
+        this.applyFilter(null)
         // this.list.setFilterState(true)
         // this.picker.setFilterState(true)
       } else {
@@ -310,7 +311,7 @@ export default Vue.extend({
 
     let fdsnidList = this.processArrival()
     this.getTTT().then(() => {
-      this.downloadWaveforms(fdsnidList, wfList => this.setListWaveforms(wfList)).then(() => {
+      this.downloadWaveforms(fdsnidList, (wfList: WaveformOptions[]) => this.setListWaveforms(wfList)).then(() => {
         this.disableLoadAdditionalStation = false
       })
     })
@@ -347,7 +348,7 @@ export default Vue.extend({
           time_residual: p.residual,
           takeoff_angle: p.takeoff,
           time_weight: p.weight,
-          _traveltime: new Date(pTime.getTime() - this.origin.time._value),
+          _traveltime: new Date(pTime.getTime() - this.origin.time._value.getTime()),
           _pick: {
             public_id: p.id,
             creation_info: p.creation_info,
@@ -379,11 +380,11 @@ export default Vue.extend({
   methods: {
 
     processArrival () {
-      let fdsnidList = []
+      let fdsnidList: string[] = []
       this.origin.arrival.sort((a, b) => {
-        a = a.distance
-        b = b.distance
-        return a == b ? 0 : a < b ? -1 : 1
+        const aa = a.distance
+        const bb = b.distance
+        return aa == bb ? 0 : aa < bb ? -1 : 1
       })
       this.picks = {}
       for (let [i, a] of this.origin.arrival.entries()) {
@@ -425,12 +426,12 @@ export default Vue.extend({
         this.additionalWaveforms[netsta] = additionalWaveformsChannelsList.map(x => x.replace('..', '.--.'))
         this.downloadWaveforms(
           additionalWaveformsChannelsList,
-          wfList => this.handleWaveformClick(this.pickerOpt.waveforms[0], true)
+          () => this.handleWaveformClick(this.pickerOpt.waveforms[0], true)
         )
       }
     },
 
-    handleKeyDown (ev) {
+    handleKeyDown (ev: KeyboardEvent) {
       let k = utils.shortcutString(ev)
       let keybindings = Object.keys(this.settings).filter(x => x.indexOf('pickerKeybinding') == 0)
       let bindedAction = []
@@ -440,11 +441,11 @@ export default Vue.extend({
         }
       }
       for (let action of bindedAction) {
-        this.shortcutAction[action].call(this, ev)
+        this.shortcutAction[action].call(this as typeof PickerView, ev)
       }
     },
 
-    applyFilter (wfList) {
+    applyFilter (wfList: WaveformItem[] | null) {
       if (!this.tools.filter) {
         return
       }
@@ -452,7 +453,7 @@ export default Vue.extend({
       let f = this.tools.filterList.find(x => x.name == this.tools.filter)
       // let f = this.tools.filter
       if (wfList == null) {
-        wfList = this.picker.waveforms
+        wfList = this.picker!.waveforms
         // wfList = this.list.waveforms.concat(this.picker.waveforms)
       }
       let iirCalculator = new Fili.CalcCascades();
@@ -544,7 +545,7 @@ export default Vue.extend({
       return wfList
     },
 
-    getTTT (stationDistanceMap) {
+    getTTT () {
       return new Promise((resolve, reject) => {
         let stationDistance = Object.assign({}, this.stationDistance)
 
@@ -680,7 +681,7 @@ export default Vue.extend({
           type: 'arraybuffer'
         }, xhr).then(arr => {
           this.xhr.splice(this.xhr.indexOf(xhr), 1)
-          let st = new mseed.Stream(new DataView(arr))
+          let st = new Stream(new DataView(arr))
           resolve(st.trace)
         }).catch(data => {
           this.$store.dispatch('log', `[PickerView::traceDownloader] failed to download data: ${data}`)
@@ -1000,7 +1001,7 @@ export default Vue.extend({
       this.picker.updatePickLine()
     },
 
-    setListWaveforms (wfList) {
+    setListWaveforms (wfList: WaveformOptions[]) {
       console.log(`[PickerView::setListWaveforms]`, wfList)
       this.$store.dispatch('log', `[PickerView::setListWaveforms]`)
       if (this.list == null) {
@@ -1008,9 +1009,9 @@ export default Vue.extend({
         this.listOpt.color = this.getColorSettings()
         Object.assign(this.listOpt.view, { refTime: this.tools.alignment }, this.defaultView)
         wfList.sort((a, b) => {
-          a = a.distance
-          b = b.distance
-          return a < b ? -1 : a > b ? 1 : 0
+          const aa = a.distance
+          const bb = b.distance
+          return aa < bb ? -1 : aa > bb ? 1 : 0
         })
         this.listOpt.waveforms = wfList
         this.list = new Waveform(this.listOpt)
@@ -1118,6 +1119,7 @@ export default Vue.extend({
 
   }
 })
+export default PickerView
 </script>
 
 <style>

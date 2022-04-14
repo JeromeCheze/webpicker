@@ -254,7 +254,7 @@ export default Vue.extend({
       if (['not existing', 'not reported', 'other event'].indexOf(e.type) >= 0) {
         return [ 'gray', 'gray' ]
       }
-      let strokeColor = e._po.evaluation_mode == 'manual' ? 'lime' : 'red'
+      let strokeColor = e._po!.evaluation_mode == 'manual' ? 'lime' : 'red'
       if (e._pm == null) {
         return [ 'blue', strokeColor ]
       } else {
@@ -351,18 +351,18 @@ export default Vue.extend({
       let activity = this.$store.getters.getEventActivity
       return this.filteredEvents.map((e: WebpickerEventParameters) => ({
         activity: activity[e.public_id] != null ? activity[e.public_id] : null,
-        time: e._po.time._pretty,
+        time: e._po!.time._pretty,
         mag: e._pm ? e._pm.mag._pretty : '--',
         magType: e._pm ? e._pm.type : '--',
-        phase: e._po.quality.used_phase_count,
-        lat: e._po.latitude._pretty,
-        lon: e._po.longitude._pretty,
-        depth: e._po.depth._pretty,
+        phase: e._po!.quality.used_phase_count,
+        lat: e._po!.latitude._pretty,
+        lon: e._po!.longitude._pretty,
+        depth: e._po!.depth._pretty,
         eventType: e.type ? e.type : '',
-        mode: e._po.evaluation_mode == 'manual' ? 'M' : 'A',
-        status: e._po.evaluation_status != null ? e._po.evaluation_status : '',
-        modeColor: e._po.evaluation_mode == 'manual' ? 'green' : 'red',
-        author: e._po.creation_info.author,
+        mode: e._po!.evaluation_mode == 'manual' ? 'M' : 'A',
+        status: e._po!.evaluation_status != null ? e._po!.evaluation_status : '',
+        modeColor: e._po!.evaluation_mode == 'manual' ? 'green' : 'red',
+        author: e._po!.creation_info.author,
         region: e._region,
         id: e.public_id
       }))

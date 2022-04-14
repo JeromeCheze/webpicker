@@ -1,13 +1,13 @@
-import { WebpickerInventory } from '@/types'
+import { AuthorStatus, GenericAction, WebpickerInventory } from '@/types'
 import * as utils from '@/utils/utils'
 
-export const initialize = ({ commit, dispatch }) => {
-  let end = new Date(new Date().getTime() + 86400e3)
+export const initialize: GenericAction = ({ commit, dispatch }) => {
+  let end = new Date(new Date().getTime() + 86400e3).getTime()
   let start = new Date(end - 86400e3 * 8)
   let savedFormValues = JSON.parse(localStorage.getItem('form') || "{}")
   let formValues = Object.assign({
     start: start.toISOString().slice(0, 10),
-    end: end.toISOString().slice(0, 10)
+    end: new Date(end).toISOString().slice(0, 10)
   }, savedFormValues)
   commit('INIT_FORM', formValues)
   let storedSettings = localStorage.getItem('settings')
@@ -21,13 +21,14 @@ export const initialize = ({ commit, dispatch }) => {
   dispatch('updateAuthorStatus')
 }
 
-export const updateAuthorStatus = ({ commit, getters, dispatch }) => {
-  return new Promise(function(resolve, reject) {
+export const updateAuthorStatus: GenericAction = ({ commit, getters, dispatch }) => {
+  return new Promise(function(resolve) {
     utils.ajax({
       method: 'GET',
       url: getters.getLink('author_status'),
       type: 'json'
-    }).then(data => {
+    }).then(response => {
+      const data = response as AuthorStatus
       if (data.__message__ != null) {
         let msgMap = data.__message__
         let ackMsg = getters.getAcknowledgedMsgIds
@@ -47,14 +48,14 @@ export const updateAuthorStatus = ({ commit, getters, dispatch }) => {
       setTimeout(() => {
         dispatch('updateAuthorStatus')
       }, 5000)
-      resolve()
+      resolve(null)
     }).catch(data => {
       commit('LOG', `[store.action::updateAuthorStatus] request failed: ${data}`)
     })
   });
 }
 
-export const setAuthorStatus = ({ commit, getters }, data) => {
+export const setAuthorStatus: GenericAction = ({ commit, getters }, data) => {
   return new Promise(function(resolve, reject) {
     utils.ajax({
       method: 'GET',
@@ -63,18 +64,18 @@ export const setAuthorStatus = ({ commit, getters }, data) => {
       type: 'json'
     }).then(data => {
       console.log('[store.action::setAuthorStatus] response', data);
-      resolve()
+      resolve(null)
     }).catch(data => {
       commit('LOG', `[store.action::setAuthorStatus] request failed: ${data}`)
     })
   });
 }
 
-export const eventList = ({ commit }, data) => {
+export const eventList: GenericAction = ({ commit }, data) => {
   commit('SET_EVENT_LIST', data)
 }
 
-export const setCurrentEvent = ({ commit, getters }, data) => {
+export const setCurrentEvent: GenericAction = ({ commit, getters }, data) => {
   let activity = getters.getEventActivity
   if (activity[data.public_id] != null) {
     commit('ALERT_EVENT_LOCKED', activity[data.public_id])
@@ -82,39 +83,39 @@ export const setCurrentEvent = ({ commit, getters }, data) => {
   commit('SET_CURRENT_EVENT', data)
 }
 
-export const setCurrentOrigin = ({ commit }, data) => {
+export const setCurrentOrigin: GenericAction = ({ commit }, data) => {
   commit('SET_CURRENT_ORIGIN', data)
 }
 
-export const setCurrentFocalMechanism = ({ commit }, data) => {
+export const setCurrentFocalMechanism: GenericAction = ({ commit }, data) => {
   commit('SET_CURRENT_FOCAL_MECHANISM', data)
 }
 
-export const setLoading = ({ commit }, data) => {
+export const setLoading: GenericAction = ({ commit }, data) => {
   commit('SET_LOADING', data)
 }
 
-export const notify = ({ commit }, data) => {
+export const notify: GenericAction = ({ commit }, data) => {
   commit('ADD_NOTIFICATION', data)
 }
 
-export const setInventory = ({ commit }, data: WebpickerInventory) => {
+export const setInventory: GenericAction = ({ commit }, data: WebpickerInventory) => {
   commit('SET_INVENTORY', data)
 }
 
-export const setSettings = ({ commit }, data) => {
+export const setSettings: GenericAction = ({ commit }, data) => {
   commit('SET_SETTINGS', data)
 }
 
-export const mergeInventory = ({ commit }, data) => {
+export const mergeInventory: GenericAction = ({ commit }, data) => {
   commit('MERGE_INVENTORY', data)
 }
 
-export const setFormValues = ({ commit }, data) => {
+export const setFormValues: GenericAction = ({ commit }, data) => {
   commit('SET_FORM_VALUES', data)
 }
 
-export const pickerData = ({ state, commit, getters }, data) => {
+export const pickerData: GenericAction = ({ state, commit, getters }, data) => {
   let o = Object.assign({}, state.currentOrigin)
   o._not_committed = true
   o._is_dirty = true
@@ -123,18 +124,18 @@ export const pickerData = ({ state, commit, getters }, data) => {
   commit('PICKER_DATA', o)
 }
 
-export const setAuthor = ({ commit, getters }, data) => {
+export const setAuthor: GenericAction = ({ commit }, data) => {
   commit('SET_AUTHOR', data)
 }
 
-export const setTTTCache = ({ commit }, data) => {
+export const setTTTCache: GenericAction = ({ commit }, data) => {
   commit('SET_TTT_CACHE', data)
 }
 
-export const setPickerLastOrigin = ({ commit }, data) => {
+export const setPickerLastOrigin: GenericAction = ({ commit }, data) => {
   commit('SET_PICKER_LAST_ORIGIN', data)
 }
 
-export const log = ({ commit }, data) => {
+export const log: GenericAction = ({ commit }, data) => {
   commit('LOG', data)
 }

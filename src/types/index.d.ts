@@ -6,6 +6,20 @@ export type ColorScaleItem = [number, number[]]
 
 export type ColorScaleObject = ColorScaleItem[]
 
+export type GenericAction = (a: ActionOpt, data: any) => void
+
+export type SettingsFormStructFieldObject = {
+  component: string;
+  props: StringIndexedObject;
+  value?: any;
+  default?: any;
+}
+export type SettingsFormStructFormObject = {
+  label: string;
+  fields: {[index: string]: SettingsFormStructFieldObject};
+}
+export type SettingsFormStruct = {[index: string]: SettingsFormStructFormObject}
+
 export type ColorValue = {
   hex: string;
   rgba: Record<string, string>;
@@ -15,8 +29,6 @@ export type EventToolsStationMagnitudeItem = {
   key: string;
   value: boolean;
 }
-
-
 
 export type AjaxOptions = {
   url: string;
@@ -32,16 +44,22 @@ export type SetAuthorObject = {
   remember: boolean;
 }
 
-export interface AuthorStatusObject extends StringIndexedObject {
+export type StatusMessageObject = {
   author: string;
-  eventid: string;
   action: string;
+  eventid: string;
   time: string;
 }
 
-export type ActivityObject = Record<string, string[]>
+export type StatusMessageMap = {
+  [uid: string]: StatusMessageObject;
+}
 
-export type AuthorStatusMapObject = Record<string, AuthorStatusObject>
+export interface AuthorStatus extends StatusMessageMap {
+  __message__?: StatusMessageMap;
+}
+
+export type ActivityObject = Record<string, string[]>
 
 export type NotificationObject = {
   color: string;
@@ -114,6 +132,8 @@ export type WebpickerCreationInfo = {
 
 export type WebpickerTimeQuantity = {
   value: string;
+  upper_uncertainty?: number;
+  lower_uncertainty?: number;
   _pretty: string;
   _value: Date;
 }
@@ -134,6 +154,7 @@ export type WebpickerPick = {
   time: WebpickerTimeQuantity;
   waveform_id: WebpickerWaveformId;
   creation_info: WebpickerCreationInfo;
+  filter_id: string;
   evaluation_mode: string;
   polarity?: string;
   _seedid: string;
@@ -335,7 +356,7 @@ export type State = {
 
   notificationList: NotificationObject[];
 
-  authorStatus: AuthorStatusMapObject;
+  authorStatus: AuthorStatus;
   alertEventLocked: string[] | null;
   alertEventLockedDialog: boolean;
   acknowledgedMsgIds: string[];

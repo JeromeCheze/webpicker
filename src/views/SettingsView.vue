@@ -117,6 +117,7 @@
 import Vue from 'vue'
 import * as utils from '@/utils/utils'
 import formStruct from '@/utils/settingsFormStruct'
+import { StringIndexedObject } from '@/types'
 
 export default Vue.extend({
 
@@ -140,8 +141,8 @@ export default Vue.extend({
         typeItems: ['lowpass', 'bandpass', 'highpass'],
         name: null,
         order: 4,
-        fc1: null,
-        fc2: null
+        fc1: null as number | null,
+        fc2: null as number | null
       }
     }
   },
@@ -182,7 +183,7 @@ export default Vue.extend({
       this.filterDialog = true
     },
 
-    editFilter (i) {
+    editFilter (i: number) {
       let f = this.filterForm
       f.name = this.filterList[i].name
       f.type = this.filterList[i].type
@@ -196,25 +197,30 @@ export default Vue.extend({
       this.filterDialog = true
     },
 
-    deleteFilter (i) {
+    deleteFilter (i: number) {
       this.filterList.splice(i, 1)
     },
 
-    moveFilterUp (i) {
+    moveFilterUp (i: number) {
       const f = this.filterList.splice(i, 1)[0]
       this.filterList.splice(i - 1, 0, f)
     },
 
-    moveFilterDown (i) {
+    moveFilterDown (i: number) {
       const f = this.filterList.splice(i, 1)[0]
       this.filterList.splice(i + 1, 0, f)
     },
 
     handleFilterFormSubmit () {
       let f = this.filterForm
-      let result = { type: f.type, name: f.name, order: f.order }
+      let result = {
+        type: f.type,
+        name: f.name,
+        order: f.order,
+        fc: null as [number, number] | number | null
+      }
       if (f.type == 'bandpass') {
-        result.fc = [f.fc1, f.fc2]
+        result.fc = [f.fc1 as number, f.fc2 as number]
       } else {
         result.fc = f.fc1
       }
@@ -226,7 +232,7 @@ export default Vue.extend({
       this.filterDialog = false
     },
 
-    handleKeyDown (ev) {
+    handleKeyDown (ev: KeyboardEvent) {
       this.currentShortcut = utils.shortcutString(ev)
       // console.log(this.currentShortcut);
     },
@@ -260,13 +266,13 @@ export default Vue.extend({
       }
     },
 
-    handleResetParameter (mainKey, subKey) {
+    handleResetParameter (mainKey: string, subKey: string) {
       let field = this.formStruct[mainKey].fields[subKey]
       field.value = field.default
     },
 
     getSettingsFromForm () {
-      let result = {}
+      let result: StringIndexedObject = {}
       for (let [mainKey, form] of Object.entries(this.formStruct)) {
         for (let [subKey, field] of Object.entries(form.fields)) {
           let key = `${mainKey}.${subKey}`
