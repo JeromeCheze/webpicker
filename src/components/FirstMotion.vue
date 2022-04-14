@@ -38,6 +38,7 @@
 import Vue from 'vue'
 import * as utils from '@/utils/utils'
 import BeachballEngine from '@/lib/beachball'
+import { WebpickerArrival, WebpickerEventParameters, WebpickerFocalMechanism, WebpickerInventory, WebpickerOrigin } from '@/types'
 
 const BOXSIZE = 340
 const SIZE = 3
@@ -57,30 +58,30 @@ export default Vue.extend({
       dip,
       rake,
       stationLayerInitialized: false,
-      bbe: null,
-      hiresbbe: null,
-      stationCtx: null,
-      popupCtx: null,
-      stationPos: {}
+      bbe: null as BeachballEngine | null,
+      hiresbbe: null as BeachballEngine | null,
+      stationCtx: null as CanvasRenderingContext2D | null,
+      popupCtx: null as CanvasRenderingContext2D | null,
+      stationPos: {} as {[index: string]: [number, number]}
     }
   },
   computed: {
-    event () {
+    event (): WebpickerEventParameters {
       return this.$store.state.currentEvent
     },
-    origin () {
+    origin (): WebpickerOrigin {
       return this.$store.state.currentOrigin
     },
-    focalMechanism () {
+    focalMechanism (): WebpickerFocalMechanism {
       return this.$store.state.currentFocalMechanism
     },
-    inventory () {
+    inventory (): WebpickerInventory {
       return this.$store.state.inventory
     },
-    polarizedArrivals () {
+    polarizedArrivals (): WebpickerArrival[] {
       return this.origin.arrival.filter(a => a.phase === 'P' && a._pick.polarity != null)
     },
-    isDirty () {
+    isDirty (): boolean {
       return this.strike != this.oldStrike || this.dip != this.oldDip || this.rake != this.oldRake
     }
   },
@@ -93,6 +94,9 @@ export default Vue.extend({
   },
   methods: {
     handleReset () {
+      if (this.bbe == null || this.hiresbbe == null) {
+        return
+      }
       let [s, d, r] = [this.oldStrike, this.oldDip, this.oldRake]
       this.strike = s
       this.dip = d
@@ -121,6 +125,9 @@ export default Vue.extend({
       this.$store.dispatch('setCurrentFocalMechanism', fmObject)
     },
     handleDelete () {
+      if (this.bbe == null || this.hiresbbe == null) {
+        return
+      }
       let [s, d, r] = [0, 90, 180]
       this.oldStrike = this.strike = s
       this.oldDip = this.dip = d
@@ -132,8 +139,11 @@ export default Vue.extend({
       this.event.preferred_focal_mechanism_id = null
       this.event._pfm = null
     },
-    handleStationPopup (x, y) {
+    handleStationPopup (x: number, y: number) {
       let ctx = this.popupCtx
+      if (ctx == null || this.hiresbbe == null) {
+        return
+      }
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
       for (let [k, v] of Object.entries(this.stationPos)) {
         let dist = Math.sqrt(Math.pow(Math.abs(x - v[0]), 2) + Math.pow(Math.abs(y - v[1]), 2))
@@ -151,26 +161,28 @@ export default Vue.extend({
       const bbe = new BeachballEngine(BOXSIZE, NBPOINT, SIZE, this.$store.getters.getLink('static/wasm/beachball.wasm'))
       const hiresbbe = new BeachballEngine(BOXSIZE, 120, 1.1, this.$store.getters.getLink('static/wasm/beachball.wasm'))
       const container = document.querySelector('.first-motion__container')
-
+      if (container == null) {
+        return
+      }
       const stationCanvas = document.createElement('canvas')
-      stationCanvas.style.zIndex = 2
+      stationCanvas.style.zIndex = '2'
       stationCanvas.width = stationCanvas.height = BOXSIZE
       container.appendChild(stationCanvas)
       this.stationCtx = stationCanvas.getContext('2d')
 
       const popupCanvas = document.createElement('canvas')
-      popupCanvas.style.zIndex = 3
+      popupCanvas.style.zIndex = '3'
       popupCanvas.width = popupCanvas.height = BOXSIZE
       container.appendChild(popupCanvas)
-      this.popupCtx = popupCanvas.getContext('2d')
+      this.popupCtx = popupCanvas.getContext('2d') as CanvasRenderingContext2D
       this.popupCtx.font = '12px sans-serif'
       this.popupCtx.textBaseline = 'bottom'
 
       this.bbe = bbe
       this.hiresbbe = hiresbbe
 
-      let lastCall = null
-      let hirestimeout = null
+      let lastCall: number | null = null
+      let hirestimeout: number | null = null
       let mouseDown = false
       const HIRESTHRESH = 200
       const updateBeachball = () => {
@@ -184,29 +196,30 @@ export default Vue.extend({
           }
           hirestimeout = setTimeout(() => {
             hiresbbe.drawFocal(s, d, r, COLOR)
-            hiresbbe.ctx.canvas.style.zIndex = 1
+            hiresbbe.ctx!.canvas.style.zIndex = '1'
           }, HIRESTHRESH)
           // console.log(t - lastCall);
           lastCall = t
           requestAnimationFrame(() => {
             // value.innerHTML = `strike: ${s} | dip: ${d} | rake: ${r}`
             bbe.drawFocal(s, d, r, COLOR)
-            hiresbbe.ctx.canvas.style.zIndex = -1
+            hiresbbe.ctx!.canvas.style.zIndex = '-1'
           })
         }
       }
 
-      let mouseX = null
-      let mouseY = null
+      let mouseX: number | null = null
+      let mouseY: number | null = null
       hiresbbe.init().then(() => {
-        let hirescanvas = hiresbbe.ctx.canvas
+        let hirescanvas = hiresbbe.ctx!.canvas
         Object.assign(hirescanvas.style, { zIndex: 1 })
         container.appendChild(hirescanvas)
         bbe.init().then(() => {
-          Object.assign(bbe.ctx.canvas.style, { zIndex: 0 })
-          container.appendChild(bbe.ctx.canvas)
+          Object.assign(bbe.ctx!.canvas.style, { zIndex: 0 })
+          container.appendChild(bbe.ctx!.canvas)
           updateBeachball()
-          container.addEventListener('mousedown', ev => {
+          container.addEventListener('mousedown', e => {
+            const ev = e as MouseEvent
             mouseDown = true
             mouseX = ev.clientX
             mouseY = ev.clientY
@@ -215,8 +228,12 @@ export default Vue.extend({
             mouseDown = false
             mouseX = mouseY = null
           })
-          container.addEventListener('mousemove', ev => {
-            const bbcr = this.stationCtx.canvas.getBoundingClientRect()
+          container.addEventListener('mousemove', e => {
+            if (mouseX == null || mouseY == null) { 
+              return
+            }
+            const ev = e as MouseEvent
+            const bbcr = this.stationCtx!.canvas.getBoundingClientRect()
             let absX = ev.clientX - bbcr.left
             let absY = ev.clientY - bbcr.top
             this.handleStationPopup(absX, absY)
@@ -262,12 +279,12 @@ export default Vue.extend({
       }, HIRESTHRESH + 100)
     },
 
-    updateStationLayer (center, radius) {
-      const ctx = this.stationCtx
+    updateStationLayer (center: number, radius: number) {
+      const ctx = this.stationCtx as CanvasRenderingContext2D
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
-      const stationPos = {}
+      const stationPos: {[index: string]: [number, number]} = {}
       for (let a of this.polarizedArrivals) {
-        let dist = radius * (a.takeoff_angle.value > 90 ? 180 - a.takeoff_angle.value : a.takeoff_angle.value) / 90
+        let dist = radius * (a.takeoff_angle!.value > 90 ? 180 - a.takeoff_angle!.value : a.takeoff_angle!.value) / 90
         let xPos = center - dist * Math.cos(Math.PI * (a.azimuth - 90) / 180)
         let yPos = center - dist * Math.sin(Math.PI * (a.azimuth - 90) / 180)
         let key = a._pick._seedid.split('.').slice(0, 2).join('_')
@@ -293,7 +310,7 @@ export default Vue.extend({
         this.oldDip = d
         this.oldRake = r
       }
-      let stationDistance = {}
+      let stationDistance: {[index: string]: number} = {}
       for (let a of this.polarizedArrivals) {
         let fdsnid = a._pick._fdsnid
         let netsta = fdsnid.split('.').slice(0, 2).join('.')
@@ -306,7 +323,7 @@ export default Vue.extend({
           dataMimeType: 'application/json',
           data: JSON.stringify({ depth: this.origin.depth.value / 1000, station: stationDistance }),
           type: 'json'
-        }).then(toa => {
+        }).then((toa: {[index: string]: number}) => {
           for (let a of this.polarizedArrivals) {
             let fdsnid = a._pick._fdsnid
             let netsta = fdsnid.split('.').slice(0, 2).join('.')

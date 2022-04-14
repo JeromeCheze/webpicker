@@ -175,6 +175,7 @@
 </template>
 
 <script lang="ts">
+import { WebpickerEventParameters, WebpickerMagnitude, WebpickerOrigin } from '@/types'
 import Vue from 'vue'
 export default Vue.extend({
 
@@ -186,13 +187,13 @@ export default Vue.extend({
   },
 
   computed: {
-    event () {
+    event (): WebpickerEventParameters {
       return this.$store.state.currentEvent
     },
-    origin () {
+    origin (): WebpickerOrigin {
       return this.$store.state.currentOrigin
     },
-    originMagnitude () {
+    originMagnitude (): WebpickerMagnitude[] {
       return this.event.magnitude.filter(m => m.origin_id == this.origin.public_id)
     }
   },
@@ -205,13 +206,13 @@ export default Vue.extend({
 
   methods: {
 
-    handleSetCurrentOrigin (o) {
+    handleSetCurrentOrigin (o: WebpickerOrigin) {
       this.magDetails = null
       this.$store.dispatch('setCurrentOrigin', o)
       this.$emit('need-update')
     },
 
-    handleSetPreferredOrigin (o) {
+    handleSetPreferredOrigin (o: WebpickerOrigin) {
       this.origin._not_committed = false
       this.event.preferred_origin_id = o.public_id
       o._not_committed = true
@@ -219,7 +220,7 @@ export default Vue.extend({
       this.$emit('need-update')
     },
 
-    handleSetPreferredMagnitude (m) {
+    handleSetPreferredMagnitude (m: WebpickerMagnitude) {
       let e = this.event
       if (m.origin_id != e.preferred_origin_id) {
         alert('[ERROR]\nIt is not possible to define a magnitude from another origin as preferred.\nOperation aborted.')

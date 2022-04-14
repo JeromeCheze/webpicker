@@ -63,7 +63,7 @@
           </v-btn>
         </template>
         <v-list>
-          <v-list-tile @click="" v-for="channel in additionalWaveformsChannels" :key="channel.label">
+          <v-list-tile @click="() => null" v-for="channel in additionalWaveformsChannels" :key="channel.label">
             <v-list-tile-action>
               <v-checkbox v-model="channel.value"></v-checkbox>
             </v-list-tile-action>
@@ -194,10 +194,10 @@ export default Vue.extend({
         toggleFilter () { this.tools.filter = this.tools.filter == null ? this.tools.lastFilter : null },
         toggleEqualScale () { this.tools.sameScale = !this.tools.sameScale },
         createPick (ev) { ev.preventDefault(); this.picker.createPick() },
-        movePickLineRight () { this.picker.movePickLine({ direction: 'right', fast: false }) },
-        moveFastPickLineRight () { this.picker.movePickLine({ direction: 'right', fast: true }) },
-        movePickLineLeft () { this.picker.movePickLine({ direction: 'left', fast: false }) },
-        moveFastPickLineLeft () { this.picker.movePickLine({ direction: 'left', fast: true }) },
+        movePickLineRight () { this.picker.movePickLine('right', false) },
+        moveFastPickLineRight () { this.picker.movePickLine('right', true) },
+        movePickLineLeft () { this.picker.movePickLine('left', false) },
+        moveFastPickLineLeft () { this.picker.movePickLine('left', true) },
         xZoomIn () { this.picker != null && this.picker.xZoomIn() },
         xZoomOut () { this.picker != null && this.picker.xZoomOut() },
         yZoomIn () { this.picker != null && this.picker.yZoomIn() },

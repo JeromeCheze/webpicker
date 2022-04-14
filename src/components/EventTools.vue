@@ -84,20 +84,26 @@
 <script lang="ts">
 import Vue from 'vue'
 import * as utils from '@/utils/utils'
+import { EventToolsStationMagnitudeItem, StringIndexedObject, WebpickerEventParameters, WebpickerFocalMechanism, WebpickerOrigin, WebpickerStationMagnitude } from '@/types'
 
 export default Vue.extend({
 
-  props: ['selectedStationMagnitude'],
+  props: {
+    selectedStationMagnitude: {
+      type: Array,
+      default: []
+    }
+  },
 
   data () {
     let locatorOptions = [ 'LOCSAT', 'Hypo71' ]
-    let profileOptions = {
+    let profileOptions: StringIndexedObject = {
       LOCSAT: [ 'iasp91', 'tab' ],
       Hypo71: [ 'ModelA', 'tectonic', 'volcanic' ]
     }
     return {
       magnitudePopover: false,
-      stationMagnitude: [],
+      stationMagnitude: [] as EventToolsStationMagnitudeItem[],
       locator: locatorOptions[0],
       profile: profileOptions[locatorOptions[0]][0],
       locatorOptions,
@@ -170,16 +176,16 @@ export default Vue.extend({
   },
 
   computed: {
-    event () {
+    event (): WebpickerEventParameters {
       return this.$store.state.currentEvent
     },
-    origin () {
+    origin (): WebpickerOrigin {
       return this.$store.state.currentOrigin
     },
-    focalMechanism () {
+    focalMechanism (): WebpickerFocalMechanism {
       return this.$store.state.currentFocalMechanism
     },
-    commitButtonColor () {
+    commitButtonColor (): string {
       if (this.origin._not_committed || this.focalMechanism != null && this.focalMechanism._not_committed) {
         return 'orange'
       }
@@ -200,7 +206,7 @@ export default Vue.extend({
 
   methods: {
 
-    handleKeyDown (ev) {
+    handleKeyDown (ev: KeyboardEvent) {
       let k = utils.shortcutString(ev)
       if (k === 'alt+r') {
         this.handleRelocateClick()
@@ -227,7 +233,7 @@ export default Vue.extend({
     },
 
     initStationMagnitude () {
-      let tmp = {}
+      let tmp: StringIndexedObject = {}
       // let prev = {}
       // for (let sm of this.stationMagnitude) {
       //   prev[sm.key] = sm.value
@@ -242,9 +248,9 @@ export default Vue.extend({
         sm.push({ key: netsta, value: this.selectedStationMagnitude.indexOf(netsta) >= 0 })
       }
       sm.sort((a, b) => {
-        a = a.key
-        b = b.key
-        return a < b ? -1 : a > b ? 1 : 0
+        const aa = a.key
+        const bb = b.key
+        return aa < bb ? -1 : aa > bb ? 1 : 0
       })
       this.stationMagnitude = sm
     },
@@ -392,7 +398,7 @@ export default Vue.extend({
       e.preferred_origin_id = o.public_id
       o.evaluation_status = this.commitForm.originEvaluationStatus
       if (fm != null) {
-        e.preferred_focal_mechanism = fm.public_id
+        e.preferred_focal_mechanism_id = fm.public_id
       }
       let cloneEvent = utils.cloneAndClean(e, '/event_parameters/event')
       if (cloneEvent.preferred_magnitude_id == null) {

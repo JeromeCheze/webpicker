@@ -6,6 +6,18 @@ export type ColorScaleItem = [number, number[]]
 
 export type ColorScaleObject = ColorScaleItem[]
 
+export type ColorValue = {
+  hex: string;
+  rgba: Record<string, string>;
+}
+
+export type EventToolsStationMagnitudeItem = {
+  key: string;
+  value: boolean;
+}
+
+
+
 export type AjaxOptions = {
   url: string;
   method: string;
@@ -94,6 +106,7 @@ export type WebpickerWaveformId = {
 
 export type WebpickerCreationInfo = {
   author: string;
+  agency_id: string;
   creation_time: string;
   _creation_time?: Date;
   _pretty_creation_time?: string;
@@ -107,9 +120,9 @@ export type WebpickerTimeQuantity = {
 
 export type WebpickerRealQuantity = {
   value: number;
-  uncertainty: number;
-  _pretty: string;
-  _pretty_uncertainty: string;
+  uncertainty?: number;
+  _pretty?: string;
+  _pretty_uncertainty?: string;
 }
 
 export type WebpickerQuality = {
@@ -143,6 +156,7 @@ export type WebpickerArrival = {
 export type WebpickerOrigin = {
   public_id: string;
   evaluation_mode: string;
+  evaluation_status?: string | null;
   creation_info: WebpickerCreationInfo;
   time: WebpickerTimeQuantity;
   quality: WebpickerQuality;
@@ -152,6 +166,7 @@ export type WebpickerOrigin = {
   evaluation_status?: string;
   arrival: WebpickerArrival[];
   _not_committed?: boolean;
+  _is_dirty?: boolean;
   region: string;
 }
 
@@ -188,30 +203,45 @@ export type WebpickerMagnitude = {
   type: string;
 }
 
+export type WebpickerNodalPlane = {
+  strike: WebpickerRealQuantity;
+  dip: WebpickerRealQuantity;
+  rake: WebpickerRealQuantity;
+}
+
+export type WebpickerNodalPlanes = {
+  nodal_plane1: WebpickerNodalPlane;
+}
+
 export type WebpickerFocalMechanism = {
   public_id: string;
+  _not_committed?: boolean;
+  nodal_planes: WebpickerNodalPlanes;
 }
 
 export type WebpickerEventParametersDescription = {
   text: string;
+  type: string;
 }
 
 export type WebpickerEventParameters = {
   origin: WebpickerOrigin[];
   public_id: string;
   type: string;
+  type_certainty?: string | null;
   preferred_origin_id: string;
   preferred_magnitude_id: string | null;
   preferred_focal_mechanism_id: string | null;
   focal_mechanism: WebpickerFocalMechanism[];
   pick: WebpickerPick[];
+  creation_info: WebpickerCreationInfo;
   amplitude: WebpickerAmplitude[];
   station_magnitude: WebpickerStationMagnitude[];
   magnitude: WebpickerMagnitude[];
   description?: WebpickerEventParametersDescription[];
   _po: WebpickerOrigin | null;
-  _pm?: WebpickerMagnitude;
-  _pfm?: WebpickerFocalMechanism;
+  _pm?: WebpickerMagnitude | null;
+  _pfm?: WebpickerFocalMechanism | null;
   _region: string;
 }
 

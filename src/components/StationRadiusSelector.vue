@@ -43,14 +43,14 @@ export default Vue.extend({
   data () {
     return {
       alterOriginLocation: false,
-      map: null,
+      map: null as L.Map | null,
       dialog: false,
       dirty: false,
-      center: null,
-      resize: null,
-      circle: null,
+      center: null as L.Marker | null,
+      resize: null as L.Marker | null,
+      circle: null as L.Circle | null,
       radius: this.value,
-      layers: []
+      layers: [] as L.Layer[]
     }
   },
 
@@ -74,12 +74,12 @@ export default Vue.extend({
           }
           this.layers = []
         }
-        let bounds = []
+        let bounds: L.LatLngExpression[] = []
         let po = this.$store.state.currentOrigin
         let inv = this.$store.state.inventory
         for (let a of po.arrival) {
           let [net, sta] = a._pick._seedid.split('.').slice(0, 2)
-          let staPos = [inv[net][sta].lat, inv[net][sta].lon]
+          let staPos: L.LatLngTuple = [inv[net][sta].lat, inv[net][sta].lon]
           let m = L.circleMarker(staPos, {
             radius: 3,
             color: a.time_weight >= 0.5 ? 'green' : 'gray',
@@ -100,44 +100,44 @@ export default Vue.extend({
           draggable: true
         }).addTo(this.map)
         this.center.on('drag', () => {
-          let newPos = this.center.getLatLng()
-          this.circle.setLatLng(newPos)
-          this.resize.setLatLng([newPos.lat + this.radius, newPos.lng])
+          let newPos = this.center!.getLatLng()
+          this.circle!.setLatLng(newPos)
+          this.resize!.setLatLng([newPos.lat + this.radius, newPos.lng])
           this.dirty = true
         })
         this.resize.on('drag', () => {
-          let dist = this.circle.getLatLng().distanceTo(this.resize.getLatLng())
+          let dist = this.circle!.getLatLng().distanceTo(this.resize!.getLatLng())
           this.radius = utils.m2deg(dist)
-          this.circle.setRadius(dist)
+          this.circle!.setRadius(dist)
         })
         this.layers.push(this.circle)
         this.layers.push(this.center)
         this.layers.push(this.resize)
         this.map.setView(pos, 7)
-        this.map.fitBounds(this.circle.getBounds().extend(bounds))
+        this.map.fitBounds(this.circle.getBounds().extend(bounds as L.LatLngBoundsExpression))
       }, 200)
     },
 
-    handleRadiusChange (r) {
+    handleRadiusChange (r: number) {
       this.radius = r
-      let pos = this.center.getLatLng()
-      this.circle.setRadius(utils.deg2m(r))
-      this.resize.setLatLng([pos.lat + r, pos.lng])
+      let pos = this.center!.getLatLng()
+      this.circle!.setRadius(utils.deg2m(r))
+      this.resize!.setLatLng([pos.lat + r, pos.lng])
     },
 
     resetCenter () {
       let po = this.$store.state.currentOrigin
       let pos = L.latLng(po.latitude.value, po.longitude.value)
-      this.circle.setLatLng(pos)
-      this.center.setLatLng(pos)
-      this.resize.setLatLng([pos.lat + this.radius, pos.lng])
+      this.circle!.setLatLng(pos)
+      this.center!.setLatLng(pos)
+      this.resize!.setLatLng([pos.lat + this.radius, pos.lng])
       this.dirty = false
       this.alterOriginLocation = false
     },
 
     submit () {
       this.$emit('input', this.radius)
-      let pos = this.center.getLatLng()
+      let pos = this.center!.getLatLng()
       if (this.alterOriginLocation) {
         this.$emit('changeLocation', { latitude: pos.lat, longitude: pos.lng })
       }

@@ -13,6 +13,7 @@
 </template>
 
 <script lang="ts">
+import { ColorValue } from '@/types'
 import Vue from 'vue'
 export default Vue.extend({
 
@@ -25,7 +26,7 @@ export default Vue.extend({
   },
 
   methods: {
-    handleInput (val) {
+    handleInput (val: ColorValue) {
       let result
       if (this.format == 'hex') {
         result = val.hex

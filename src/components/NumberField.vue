@@ -10,9 +10,16 @@
 
 <script lang="ts">
 import Vue from 'vue'
-export default Vue>extend({
+export default Vue.extend({
 
-  props: ['label', 'value'],
+  props: {
+    label: {
+      type: String
+    },
+    value: {
+      type: Number
+    }
+  },
 
   data () {
     return {
@@ -21,14 +28,14 @@ export default Vue>extend({
   },
 
   watch: {
-    value: function (newValue, oldValue) {
+    value: function (newValue) {
       this.numberValue = newValue
     }
   },
 
   methods: {
 
-    handleInput (ev) {
+    handleInput (ev: string) {
       if (ev != null && ev != '') {
         let v = parseFloat(ev.replace(',', '.'))
         if (!isNaN(v)) {

@@ -9,8 +9,9 @@ export default Vue.extend({
   props: {
 
     value: {
+      type: Number,
       required: true,
-      default: null
+      default: 0
     },
 
     size: {
@@ -28,13 +29,14 @@ export default Vue.extend({
   computed: {
 
     style () {
+      const v: number = this.value as number
       return {
         width: `${this.value != null ? this.value : 0}%`,
         display: this.value != null ? 'block' : 'none',
         height: `${this.size}px`,
         background: (
           this.value != null && this.color.toLowerCase() == '#ffffff' ?
-          `hsl(${105 * this.value / 100}, 100%, 45%)` :
+          `hsl(${105 * v / 100}, 100%, 45%)` :
           this.color
         )
       }
