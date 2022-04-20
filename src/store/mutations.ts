@@ -2,7 +2,7 @@ import { AuthorStatus, LoadingObject, NotificationObject, SetAuthorObject, State
 import * as utils from '@/utils/utils'
 
 export const INIT_FORM = (state: State, data: object) => {
-  for (let [k, v] of Object.entries(data)) {
+  for (const [k, v] of Object.entries(data)) {
     state.form[k] = v
   }
 }
@@ -39,13 +39,13 @@ export const SET_EVENT_LIST_DIRTY = (state: State, data: boolean) => {
 
 export const SET_AUTHOR_STATUS = (state: State, data: AuthorStatus) => {
   let dirty = false
-  for (let [k, v] of Object.entries(data)) {
+  for (const [k, v] of Object.entries(data)) {
     if (state.authorStatus[k] == null) {
       dirty = true
       break
     } else {
-      for (let [k2, v2] of Object.entries(v)) {
-        if (state.authorStatus[k][k2] != v2) {
+      for (const [k2, v2] of Object.entries(v)) {
+        if (state.authorStatus[k][k2] !== v2) {
           dirty = true
           break
         }
@@ -56,7 +56,7 @@ export const SET_AUTHOR_STATUS = (state: State, data: AuthorStatus) => {
     }
   }
   if (!dirty) {
-    for (let k of Object.keys(state.authorStatus)) {
+    for (const k of Object.keys(state.authorStatus)) {
       if (data[k] == null) {
         dirty = true
         break
@@ -77,23 +77,23 @@ export const SET_EVENT_LIST = (state: State, data: WebpickerEventParameters[]) =
 }
 
 export const SET_CURRENT_EVENT = (state: State, data: WebpickerEventParameters) => {
-  let oldEvent = state.eventList.find(x => x.public_id == data.public_id)
+  const oldEvent = state.eventList.find(x => x.public_id === data.public_id)
   if (oldEvent != null) {
-    let index = state.eventList.indexOf(oldEvent)
+    const index = state.eventList.indexOf(oldEvent)
     state.eventList.splice(index, 1, data)
-    let notCommitted = oldEvent.origin.find(o => o._not_committed == true)
+    const notCommitted = oldEvent.origin.find(o => o._not_committed === true)
     let foundOrigin = null
-    foundOrigin = data.origin.find(o => o.public_id == notCommitted!.public_id)
+    foundOrigin = notCommitted != null ? data.origin.find(o => o.public_id === notCommitted.public_id) : null
     if (notCommitted != null && foundOrigin == null) {
       data.origin.push(notCommitted)
       state.currentOrigin = notCommitted
     } else {
-      state.currentOrigin = data._po
+      state.currentOrigin = data._po as WebpickerOrigin
     }
     state.currentEvent = data
   } else {
     state.eventList.push(data)
-    state.currentOrigin = data._po
+    state.currentOrigin = data._po as WebpickerOrigin
     state.currentEvent = data
   }
   state.currentFocalMechanism = data._pfm
@@ -118,11 +118,11 @@ export const SET_LOADING = (state: State, data: LoadingObject) => {
 }
 
 export const ADD_NOTIFICATION = (state: State, data: NotificationObject) => {
-  let outdated = state.notificationList.filter(x => !x.value)
-  for (let notification of outdated) {
+  const outdated = state.notificationList.filter(x => !x.value)
+  for (const notification of outdated) {
     state.notificationList.splice(state.notificationList.indexOf(notification), 1)
   }
-  let notification = { text: data.text, value: true, color: data.color }
+  const notification = { text: data.text, value: true, color: data.color }
   state.notificationList.push(notification)
   setTimeout(() => {
     notification.value = false
@@ -135,12 +135,12 @@ export const SET_INVENTORY = (state: State, data: WebpickerInventory) => {
 
 export const SET_SETTINGS = (state: State, data: WebpickerSettings) => {
   state.settings = Object.assign({}, state.defaultSettings)
-  for (let [k, v] of Object.entries(data)) {
+  for (const [k, v] of Object.entries(data)) {
     state.settings[k] = v
   }
-  let stored: WebpickerSettings = {}
-  for (let [k, v] of Object.entries(state.settings)) {
-    if (v != state.defaultSettings[k]) {
+  const stored: WebpickerSettings = {}
+  for (const [k, v] of Object.entries(state.settings)) {
+    if (v !== state.defaultSettings[k]) {
       stored[k] = v
     }
   }
@@ -148,22 +148,22 @@ export const SET_SETTINGS = (state: State, data: WebpickerSettings) => {
 }
 
 export const MERGE_INVENTORY = (state: State, data: WebpickerInventory) => {
-  for (let [net, netObj] of Object.entries(data)) {
+  for (const [net, netObj] of Object.entries(data)) {
     if (state.inventory[net] == null) {
       state.inventory[net] = netObj
       continue
     }
-    for (let [sta, staObj] of Object.entries(netObj)) {
+    for (const [sta, staObj] of Object.entries(netObj)) {
       if (state.inventory[net][sta] == null) {
         state.inventory[net][sta] = staObj
         continue
       }
-      for (let [loc, locObj] of Object.entries(staObj.location)) {
+      for (const [loc, locObj] of Object.entries(staObj.location)) {
         if (state.inventory[net][sta].location[loc] == null) {
           state.inventory[net][sta].location[loc] = locObj
           continue
         }
-        for (let [cha, chaObj] of Object.entries(locObj)) {
+        for (const [cha, chaObj] of Object.entries(locObj)) {
           if (state.inventory[net][sta].location[loc][cha] == null) {
             state.inventory[net][sta].location[loc][cha] = chaObj
           }
@@ -178,12 +178,12 @@ export const SET_FORM_VALUES = (state: State, data: WebpickerForm) => {
 }
 
 export const PICKER_DATA = (state: State, data: WebpickerOrigin) => {
-  let e = state.currentEvent
+  const e = state.currentEvent
   e!.preferred_magnitude_id = null
   e!.origin.push(data)
-  let picks: StringIndexedObject = {}
-  for (let o of e!.origin) {
-    for (let a of o.arrival) {
+  const picks: StringIndexedObject = {}
+  for (const o of e!.origin) {
+    for (const a of o.arrival) {
       picks[a.pick_id] = a._pick
     }
   }

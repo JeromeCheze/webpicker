@@ -36,8 +36,8 @@ export default Vue.extend({
   methods: {
 
     handleInput (ev: string) {
-      if (ev != null && ev != '') {
-        let v = parseFloat(ev.replace(',', '.'))
+      if (ev !== null && ev !== '') {
+        const v = parseFloat(ev.replace(',', '.'))
         if (!isNaN(v)) {
           this.numberValue = ev
           this.$emit('input', v)

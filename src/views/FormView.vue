@@ -25,12 +25,12 @@
             </v-flex>
           </v-layout>
           <v-layout wrap>
-            <v-flex xs12 md6 class="pa-3"><number-field v-model="form.minlat" label="Latitude min [°]"></number-field></v-flex>
-            <v-flex xs12 md6 class="pa-3"><number-field v-model="form.maxlat" label="Latitude max [°]"></number-field></v-flex>
+            <v-flex xs12 md6 class="pa-3"><v-text-field type="number" v-model="form.minlat" label="Latitude min [°]"></v-text-field></v-flex>
+            <v-flex xs12 md6 class="pa-3"><v-text-field type="number" v-model="form.maxlat" label="Latitude max [°]"></v-text-field></v-flex>
           </v-layout>
           <v-layout wrap>
-            <v-flex xs12 md6 class="pa-3"><number-field v-model="form.minlon" label="Longitude min [°]"></number-field></v-flex>
-            <v-flex xs12 md6 class="pa-3"><number-field v-model="form.maxlon" label="Longitude max [°]"></number-field></v-flex>
+            <v-flex xs12 md6 class="pa-3"><v-text-field type="number" v-model="form.minlon" label="Longitude min [°]"></v-text-field></v-flex>
+            <v-flex xs12 md6 class="pa-3"><v-text-field type="number" v-model="form.maxlon" label="Longitude max [°]"></v-text-field></v-flex>
           </v-layout>
           <v-layout wrap>
             <v-flex xs12 class="px-4">
@@ -38,14 +38,14 @@
             </v-flex>
           </v-layout>
           <v-layout wrap>
-            <v-flex xs12 md6 class="pa-3"><number-field v-model="form.mindepth" label="Depth min [km]"></number-field></v-flex>
-            <v-flex xs12 md6 class="pa-3"><number-field v-model="form.maxdepth" label="Depth max [km]"></number-field></v-flex>
+            <v-flex xs12 md6 class="pa-3"><v-text-field type="number" v-model="form.mindepth" label="Depth min [km]"></v-text-field></v-flex>
+            <v-flex xs12 md6 class="pa-3"><v-text-field type="number" v-model="form.maxdepth" label="Depth max [km]"></v-text-field></v-flex>
           </v-layout>
           <v-layout wrap>
-            <v-flex xs12 md6 class="pa-3"><number-field v-model="form.minmag" label="Magnitude min"></number-field></v-flex>
-            <v-flex xs12 md6 class="pa-3"><number-field v-model="form.maxmag" label="Magnitude max"></number-field></v-flex>
+            <v-flex xs12 md6 class="pa-3"><v-text-field type="number" v-model="form.minmag" label="Magnitude min"></v-text-field></v-flex>
+            <v-flex xs12 md6 class="pa-3"><v-text-field type="number" v-model="form.maxmag" label="Magnitude max"></v-text-field></v-flex>
           </v-layout>
-          <div class="text-xs-right">
+          <div class="text-right">
             <v-btn @click="handleSubmit" color="primary">Submit</v-btn>
           </div>
         </v-flex>
@@ -80,14 +80,14 @@ export default Vue.extend({
   },
 
   watch: {
-    'form.minlat': function() { this.applyBoundsToArea() },
-    'form.minlon': function() { this.applyBoundsToArea() },
-    'form.maxlat': function() { this.applyBoundsToArea() },
-    'form.maxlon': function() { this.applyBoundsToArea() }
+    'form.minlat': function () { this.applyBoundsToArea() },
+    'form.minlon': function () { this.applyBoundsToArea() },
+    'form.maxlat': function () { this.applyBoundsToArea() },
+    'form.maxlon': function () { this.applyBoundsToArea() }
   },
 
   computed: {
-    bounds(): L.LatLngBoundsExpression {
+    bounds (): L.LatLngTuple[] {
       return [[this.form.minlat, this.form.minlon], [this.form.maxlat, this.form.maxlon]]
     }
   },
@@ -95,43 +95,43 @@ export default Vue.extend({
   methods: {
 
     allowedStartDate (v: string) {
-      let start = new Date(v).getTime()
-      let end = new Date(this.form.end).getTime()
+      const start = new Date(v).getTime()
+      const end = new Date(this.form.end).getTime()
       return start < end
     },
 
     allowedEndDate (v: string) {
-      let start = new Date(this.form.start).getTime()
-      let end = new Date(v).getTime()
-      let now = new Date(new Date().toISOString().slice(0, 10)).getTime() + 86400e3
+      const start = new Date(this.form.start).getTime()
+      const end = new Date(v).getTime()
+      const now = new Date(new Date().toISOString().slice(0, 10)).getTime() + 86400e3
       return end > start && end <= now
     },
 
     initMapAndArea () {
-      let container: (HTMLElement | null) = this.$el.querySelector('#form-view__map')
+      const container: (HTMLElement | null) = this.$el.querySelector('#form-view__map')
       if (container == null) {
         return
       }
-      let width = container.getBoundingClientRect().width
+      const width = container.getBoundingClientRect().width
       container.style.height = `${width}px`
-      let map = L.map(container, {trackResize: false, attributionControl: false})
-      let worldtopomap = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+      const map = L.map(container, { trackResize: false, attributionControl: false })
+      const worldtopomap = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
         attribution: '&copy; Esri, HERE, DeLorme, TomTom, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, <br>Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), swisstopo, MapmyIndia, © OpenStreetMap contributors, and the GIS User Community'
       })
       worldtopomap.addTo(map)
       L.control.scale({ imperial: false }).addTo(map)
-      this.area = new SelectArea(this.bounds).addTo(map).on('boundschange', () => this.applyBoundsToForm());
+      this.area = new SelectArea(this.bounds).addTo(map).on('boundschange', () => this.applyBoundsToForm())
       this.map = map
       map.fitBounds(this.bounds)
     },
 
     applyBoundsToForm () {
-      let b = this.area!.getBounds()
-      let [ne, sw] = [b.getNorthEast(), b.getSouthWest()]
-      this.form.minlat = sw.lat
-      this.form.minlon = sw.lng
-      this.form.maxlat = ne.lat
-      this.form.maxlon = ne.lng
+      const b = this.area!.getBounds()
+      const [ne, sw] = [b[1], b[0]]
+      this.form.minlat = sw[0]
+      this.form.minlon = sw[1]
+      this.form.maxlat = ne[0]
+      this.form.maxlon = ne[1]
     },
 
     applyBoundsToArea () {
@@ -153,8 +153,10 @@ export default Vue.extend({
       }
       if (this.rememberGeoConstraints) {
         localStorage.setItem('form', JSON.stringify({
-          minlat: query.minlat, maxlat: query.maxlat,
-          minlon: query.minlon, maxlon: query.maxlon
+          minlat: query.minlat,
+          maxlat: query.maxlat,
+          minlon: query.minlon,
+          maxlon: query.maxlon
         }))
       } else {
         localStorage.removeItem('form')

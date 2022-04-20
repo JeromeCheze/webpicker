@@ -8,7 +8,7 @@
     <v-card>
       <v-card-text class="pa-1">
         <div class="station-radius-selector__map-canvas"></div>
-        <v-toolbar dense>
+        <v-app-bar dense>
           <number-field
             @input="handleRadiusChange"
             :value="radius"
@@ -23,10 +23,10 @@
             :disabled="!dirty"
             hide-details
           ></v-checkbox>
-          <v-btn @click="resetCenter" flat :disabled="!dirty">Reset center</v-btn>
+          <v-btn @click="resetCenter" text :disabled="!dirty">Reset center</v-btn>
           <v-divider vertical></v-divider>
-          <v-btn @click="submit" color="primary" flat>Submit</v-btn>
-        </v-toolbar>
+          <v-btn @click="submit" color="primary" text>Submit</v-btn>
+        </v-app-bar>
       </v-card-text>
     </v-card>
   </v-dialog>
@@ -55,7 +55,7 @@ export default Vue.extend({
   },
 
   watch: {
-    dialog: function (value, oldValue) {
+    dialog: function (value) {
       if (value === true) {
         this.initMap()
       }
@@ -65,22 +65,22 @@ export default Vue.extend({
   methods: {
     initMap () {
       setTimeout(() => {
-        let container = document.body.querySelector('.station-radius-selector__map-canvas')
+        const container = document.body.querySelector('.station-radius-selector__map-canvas')
         if (this.map == null) {
-          this.map = utils.initMap(container)
+          this.map = utils.initMap(container as HTMLElement)
         } else {
-          for (let l of this.layers) {
+          for (const l of this.layers) {
             l.remove()
           }
           this.layers = []
         }
-        let bounds: L.LatLngExpression[] = []
-        let po = this.$store.state.currentOrigin
-        let inv = this.$store.state.inventory
-        for (let a of po.arrival) {
-          let [net, sta] = a._pick._seedid.split('.').slice(0, 2)
-          let staPos: L.LatLngTuple = [inv[net][sta].lat, inv[net][sta].lon]
-          let m = L.circleMarker(staPos, {
+        const bounds: L.LatLngExpression[] = []
+        const po = this.$store.state.currentOrigin
+        const inv = this.$store.state.inventory
+        for (const a of po.arrival) {
+          const [net, sta] = a._pick._seedid.split('.').slice(0, 2)
+          const staPos: L.LatLngTuple = [inv[net][sta].lat, inv[net][sta].lon]
+          const m = L.circleMarker(staPos, {
             radius: 3,
             color: a.time_weight >= 0.5 ? 'green' : 'gray',
             weight: 1,
@@ -89,7 +89,7 @@ export default Vue.extend({
           this.layers.push(m)
           bounds.push(m.getLatLng())
         }
-        let pos = L.latLng(po.latitude.value, po.longitude.value)
+        const pos = L.latLng(po.latitude.value, po.longitude.value)
         this.circle = L.circle(pos, { radius: utils.deg2m(this.radius) }).addTo(this.map)
         this.center = L.marker(pos, {
           icon: L.divIcon({ className: 'circle c-move', iconSize: [10, 10] }),
@@ -100,13 +100,13 @@ export default Vue.extend({
           draggable: true
         }).addTo(this.map)
         this.center.on('drag', () => {
-          let newPos = this.center!.getLatLng()
+          const newPos = this.center!.getLatLng()
           this.circle!.setLatLng(newPos)
           this.resize!.setLatLng([newPos.lat + this.radius, newPos.lng])
           this.dirty = true
         })
         this.resize.on('drag', () => {
-          let dist = this.circle!.getLatLng().distanceTo(this.resize!.getLatLng())
+          const dist = this.circle!.getLatLng().distanceTo(this.resize!.getLatLng())
           this.radius = utils.m2deg(dist)
           this.circle!.setRadius(dist)
         })
@@ -120,14 +120,14 @@ export default Vue.extend({
 
     handleRadiusChange (r: number) {
       this.radius = r
-      let pos = this.center!.getLatLng()
+      const pos = this.center!.getLatLng()
       this.circle!.setRadius(utils.deg2m(r))
       this.resize!.setLatLng([pos.lat + r, pos.lng])
     },
 
     resetCenter () {
-      let po = this.$store.state.currentOrigin
-      let pos = L.latLng(po.latitude.value, po.longitude.value)
+      const po = this.$store.state.currentOrigin
+      const pos = L.latLng(po.latitude.value, po.longitude.value)
       this.circle!.setLatLng(pos)
       this.center!.setLatLng(pos)
       this.resize!.setLatLng([pos.lat + this.radius, pos.lng])
@@ -137,7 +137,7 @@ export default Vue.extend({
 
     submit () {
       this.$emit('input', this.radius)
-      let pos = this.center!.getLatLng()
+      const pos = this.center!.getLatLng()
       if (this.alterOriginLocation) {
         this.$emit('changeLocation', { latitude: pos.lat, longitude: pos.lng })
       }

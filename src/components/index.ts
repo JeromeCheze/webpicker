@@ -1,12 +1,12 @@
 import Vue from 'vue'
-import NumberField from './NumberField'
-import EventTools from './EventTools'
-import EventDescription from './EventDescription'
-import ColorPicker from './ColorPicker'
-import KeybindingField from './KeybindingField'
-import ProgressBar from './ProgressBar'
-import StationRadiusSelector from './StationRadiusSelector'
-import FirstMotion from './FirstMotion'
+import NumberField from './NumberField.vue'
+import EventTools from './EventTools.vue'
+import EventDescription from './EventDescription.vue'
+import ColorPicker from './ColorPicker.vue'
+import KeybindingField from './KeybindingField.vue'
+import ProgressBar from './ProgressBar.vue'
+import StationRadiusSelector from './StationRadiusSelector.vue'
+import FirstMotion from './FirstMotion.vue'
 
 Vue.component('NumberField', NumberField)
 Vue.component('EventTools', EventTools)

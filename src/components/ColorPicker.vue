@@ -28,9 +28,9 @@ export default Vue.extend({
   methods: {
     handleInput (val: ColorValue) {
       let result
-      if (this.format == 'hex') {
+      if (this.format === 'hex') {
         result = val.hex
-      } else if (this.format == 'rgba') {
+      } else if (this.format === 'rgba') {
         result = `rgba(${val.rgba.r},${val.rgba.g},${val.rgba.b},${val.rgba.a})`
       }
       this.$emit('input', result)

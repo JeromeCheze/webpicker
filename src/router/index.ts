@@ -36,6 +36,10 @@ const routes: RouteConfig[] = [
     path: '/settings',
     name: 'Settings',
     component: SettingsView
+  },
+  {
+    path: '*',
+    redirect: '/form'
   }
 ]
 

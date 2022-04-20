@@ -5,7 +5,7 @@
       :size="settings['pickerProgressBar.size']"
       :color="settings['pickerProgressBar.color']"
     ></progress-bar>
-    <v-toolbar dense :style="{ zIndex: 10 }">
+    <v-app-bar dense :style="{ zIndex: 10 }">
       <v-overflow-btn
         v-model="tools.phase"
         label="Phase"
@@ -31,20 +31,20 @@
       <v-divider vertical class="mr-2"></v-divider>
 
       <v-btn-toggle v-model="tools.alignment" mandatory>
-        <v-btn flat :value="'O'" title="Align by origin time">O</v-btn>
-        <v-btn flat :value="'P'" title="Align by theoretical P wave">P</v-btn>
-        <v-btn flat :value="'S'" title="Align by theoretical S wave">S</v-btn>
+        <v-btn text :value="'O'" title="Align by origin time">O</v-btn>
+        <v-btn text :value="'P'" title="Align by theoretical P wave">P</v-btn>
+        <v-btn text :value="'S'" title="Align by theoretical S wave">S</v-btn>
       </v-btn-toggle>
       <v-divider vertical class="mx-2"></v-divider>
 
       <v-btn-toggle v-model="tools.focusComponent" mandatory>
-        <v-btn flat v-for="(comp, index) in tools.focusComponentOption" :key="index">{{ comp }}</v-btn>
+        <v-btn text v-for="(comp, index) in tools.focusComponentOption" :key="index">{{ comp }}</v-btn>
       </v-btn-toggle>
       <v-divider vertical class="mx-2"></v-divider>
 
       <v-btn-toggle v-model="tools.sortBy" mandatory>
-        <v-btn flat :value="'distance'" title="Sort by distance"><v-icon>mdi-map-marker-distance</v-icon></v-btn>
-        <v-btn flat :value="'name'" title="Sort by name"><v-icon>mdi-sort-alphabetical</v-icon></v-btn>
+        <v-btn text :value="'distance'" title="Sort by distance"><v-icon>mdi-map-marker-distance</v-icon></v-btn>
+        <v-btn text :value="'name'" title="Sort by name"><v-icon>mdi-sort-alphabetical</v-icon></v-btn>
       </v-btn-toggle>
       <v-divider vertical class="mx-2"></v-divider>
 
@@ -86,7 +86,7 @@
         hide-details
         title="Select rotation"
       ></v-overflow-btn>
-    </v-toolbar>
+    </v-app-bar>
     <div class="picker-view__container--picker"></div>
     <div class="picker-view__container--list"></div>
   </div>
@@ -95,31 +95,40 @@
 <script lang="ts">
 /// <reference path="../fili.d.ts" />
 import Vue from 'vue'
-import { Waveform, WaveformItem, WaveformOptions, WaveformPick} from '@/lib/waveform'
+import { Waveform, WaveformItem, WaveformItemOptions, WaveformOptions, WaveformPick, PickEvent, WaveformColorOptions } from '@/lib/waveform'
 import * as utils from '@/utils/utils'
-import { Stream } from '@/lib/mseed'
+import { Stream, Trace } from '@/lib/mseed'
 import Fili from 'fili'
 import L from 'leaflet'
-import { WebpickerInventory, WebpickerOrigin, WebpickerSettings } from '@/types'
+import { FiliFilterOptions, FilterDescription, StringIndexedObject, TheoreticalTravelTimeObject, WebpickerInventory, WebpickerOrigin, WebpickerSettings } from '@/types'
 
-const PickerView = Vue.extend({
+interface PickerView extends Vue {
+  handleUpdatePick: (ev: PickEvent) => void;
+  handleWaveformClick: (wf: WaveformItemOptions) => void;
+  list: Waveform;
+  picker: Waveform;
+  tools: {[index: string]: any};
+  uncertaintyList: (number | null)[];
+}
+
+export default Vue.extend({
 
   data () {
     return {
-      loading: null,
+      loading: null as number | null,
       // toolbar variables
       tools: {
-        rotationOptions: [ 'ZNE', 'ZRT' ],
+        rotationOptions: ['ZNE', 'ZRT'],
         rotation: 'ZNE',
         phaseOptions: [
           { value: 'P', text: 'P' },
           { value: 'S', text: 'S' }
         ],
         focusComponent: 0,
-        focusComponentOption: [],
+        focusComponentOption: [] as string[],
         phase: null,
         sameScale: false,
-        filter: null,
+        filter: null as string | null,
         lastFilter: 'HP 1',
         alignment: 'O',
         sortBy: 'distance',
@@ -127,7 +136,7 @@ const PickerView = Vue.extend({
         filterList: this.$store.state.settings['picker.filters']
       },
 
-      uncertaintyList: [ null, 0.05, 0.2, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 99.0 ],
+      uncertaintyList: [null, 0.05, 0.2, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 99.0],
 
       // state variables
       picksDirty: false,
@@ -143,7 +152,7 @@ const PickerView = Vue.extend({
 
       // cache variables
       picks: {} as {[seedid: string]: WaveformPick[]},
-      waveform: {},
+      waveform: {} as {[index: string]: WaveformItemOptions},
       stationDistance: {} as {[netsta: string]: number},
       stationAzimuth: {} as {[netsta: string]: number},
 
@@ -161,9 +170,9 @@ const PickerView = Vue.extend({
         equalScale: false,
         view: {},
         callback: {
-          updatePick: function (this: typeof PickerView, ev) { this.handleUpdatePick(ev) },
-          draw: function (this: typeof PickerView, view) { this.list.setSelectedWaveformWindow(view) },
-          waveformFocus: function (this: typeof PickerView, index) { this.tools.focusComponent = index }
+          updatePick: function (this: PickerView, ev) { this.handleUpdatePick(ev) },
+          draw: function (this: PickerView, view) { this.list.setSelectedWaveformWindow(view) },
+          waveformFocus: function (this: PickerView, index) { this.tools.focusComponent = index }
         }
       } as WaveformOptions,
       listOpt: {
@@ -174,49 +183,49 @@ const PickerView = Vue.extend({
         equalScale: false,
         view: {},
         callback: {
-          waveformClick: function (this: typeof PickerView, wf) { this.handleWaveformClick(wf) }
+          waveformClick: function (this: PickerView, wf) { this.handleWaveformClick(wf) }
         }
       } as WaveformOptions,
 
       // keybinding mapping
       shortcutAction: {
-        nextStation: function (this: typeof PickerView) { this.list.selectNext() },
-        previousStation: function (this: typeof PickerView) { this.list.selectPrev() },
-        setPolarityPositive: function (this: typeof PickerView) { this.picker.setPolarity('positive') },
-        setPolarityNegative: function (this: typeof PickerView) { this.picker.setPolarity('negative') },
-        setNoPolarity: function (this: typeof PickerView) { this.picker.setPolarity(null) },
-        leavePickingMode: function (this: typeof PickerView, ev: KeyboardEvent) { ev.preventDefault() ; this.tools.phase = null },
-        setPickerPhaseP: function (this: typeof PickerView) { this.tools.phase = 'P' },
-        setPickerPhaseS: function (this: typeof PickerView) { this.tools.phase = 'S' },
-        deletePick: function (this: typeof PickerView) { this.picker.deleteSelectedPicks() },
-        alignToOrigin: function (this: typeof PickerView) { this.tools.alignment = 'O' },
-        alignToP: function (this: typeof PickerView) { this.tools.alignment = 'P' },
-        alignToS: function (this: typeof PickerView) { this.tools.alignment = 'S' },
-        toggleFilter: function (this: typeof PickerView) { this.tools.filter = this.tools.filter == null ? this.tools.lastFilter : null },
-        toggleEqualScale: function (this: typeof PickerView) { this.tools.sameScale = !this.tools.sameScale },
-        createPick: function (this: typeof PickerView, ev: KeyboardEvent) { ev.preventDefault(); this.picker.createPick() },
-        movePickLineRight: function (this: typeof PickerView) { this.picker.movePickLine('right', false) },
-        moveFastPickLineRight: function (this: typeof PickerView) { this.picker.movePickLine('right', true) },
-        movePickLineLeft: function (this: typeof PickerView) { this.picker.movePickLine('left', false) },
-        moveFastPickLineLeft: function (this: typeof PickerView) { this.picker.movePickLine('left', true) },
-        xZoomIn: function (this: typeof PickerView) { this.picker != null && this.picker.xZoomIn() },
-        xZoomOut: function (this: typeof PickerView) { this.picker != null && this.picker.xZoomOut() },
-        yZoomIn: function (this: typeof PickerView) { this.picker != null && this.picker.yZoomIn() },
-        yZoomOut: function (this: typeof PickerView) { this.picker != null && this.picker.yZoomOut() },
-        setFocusComponentZ: function (this: typeof PickerView) { this.tools.focusComponent = 0 },
-        setFocusComponentN: function (this: typeof PickerView) { this.tools.focusComponent = 1 },
-        setFocusComponentE: function (this: typeof PickerView) { this.tools.focusComponent = 2 },
-        setTimeUncertainty0: function (this: typeof PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[0]) },
-        setTimeUncertainty1: function (this: typeof PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[1]) },
-        setTimeUncertainty2: function (this: typeof PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[2]) },
-        setTimeUncertainty3: function (this: typeof PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[3]) },
-        setTimeUncertainty4: function (this: typeof PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[4]) },
-        setTimeUncertainty5: function (this: typeof PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[5]) },
-        setTimeUncertainty6: function (this: typeof PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[6]) },
-        setTimeUncertainty7: function (this: typeof PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[7]) },
-        setTimeUncertainty8: function (this: typeof PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[8]) },
-        setTimeUncertainty9: function (this: typeof PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[9]) }
-      }
+        nextStation: function (this: PickerView) { this.list.selectNext() },
+        previousStation: function (this: PickerView) { this.list.selectPrev() },
+        setPolarityPositive: function (this: PickerView) { this.picker.setPolarity('positive') },
+        setPolarityNegative: function (this: PickerView) { this.picker.setPolarity('negative') },
+        setNoPolarity: function (this: PickerView) { this.picker.setPolarity(null) },
+        leavePickingMode: function (this: PickerView, ev: KeyboardEvent) { ev.preventDefault(); this.tools.phase = null },
+        setPickerPhaseP: function (this: PickerView) { this.tools.phase = 'P' },
+        setPickerPhaseS: function (this: PickerView) { this.tools.phase = 'S' },
+        deletePick: function (this: PickerView) { this.picker.deleteSelectedPicks() },
+        alignToOrigin: function (this: PickerView) { this.tools.alignment = 'O' },
+        alignToP: function (this: PickerView) { this.tools.alignment = 'P' },
+        alignToS: function (this: PickerView) { this.tools.alignment = 'S' },
+        toggleFilter: function (this: PickerView) { this.tools.filter = this.tools.filter == null ? this.tools.lastFilter : null },
+        toggleEqualScale: function (this: PickerView) { this.tools.sameScale = !this.tools.sameScale },
+        createPick: function (this: PickerView, ev: KeyboardEvent) { ev.preventDefault(); this.picker.createPick() },
+        movePickLineRight: function (this: PickerView) { this.picker.movePickLine('right', false) },
+        moveFastPickLineRight: function (this: PickerView) { this.picker.movePickLine('right', true) },
+        movePickLineLeft: function (this: PickerView) { this.picker.movePickLine('left', false) },
+        moveFastPickLineLeft: function (this: PickerView) { this.picker.movePickLine('left', true) },
+        xZoomIn: function (this: PickerView) { this.picker != null && this.picker.xZoomIn() },
+        xZoomOut: function (this: PickerView) { this.picker != null && this.picker.xZoomOut() },
+        yZoomIn: function (this: PickerView) { this.picker != null && this.picker.yZoomIn() },
+        yZoomOut: function (this: PickerView) { this.picker != null && this.picker.yZoomOut() },
+        setFocusComponentZ: function (this: PickerView) { this.tools.focusComponent = 0 },
+        setFocusComponentN: function (this: PickerView) { this.tools.focusComponent = 1 },
+        setFocusComponentE: function (this: PickerView) { this.tools.focusComponent = 2 },
+        setTimeUncertainty0: function (this: PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[0]) },
+        setTimeUncertainty1: function (this: PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[1]) },
+        setTimeUncertainty2: function (this: PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[2]) },
+        setTimeUncertainty3: function (this: PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[3]) },
+        setTimeUncertainty4: function (this: PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[4]) },
+        setTimeUncertainty5: function (this: PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[5]) },
+        setTimeUncertainty6: function (this: PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[6]) },
+        setTimeUncertainty7: function (this: PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[7]) },
+        setTimeUncertainty8: function (this: PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[8]) },
+        setTimeUncertainty9: function (this: PickerView) { this.picker != null && this.picker.setTimeUncertainty(this.uncertaintyList[9]) }
+      } as StringIndexedObject
     }
   },
 
@@ -231,10 +240,10 @@ const PickerView = Vue.extend({
       return this.$store.state.settings
     },
     ttt: {
-      get: function () {
+      get: function (): TheoreticalTravelTimeObject {
         return this.$store.state.tttCache
       },
-      set: function (ttt) {
+      set: function (ttt: TheoreticalTravelTimeObject) {
         this.$store.dispatch('setTTTCache', ttt)
       }
     },
@@ -278,7 +287,7 @@ const PickerView = Vue.extend({
     },
     'tools.focusComponent': function (val, oldVal) {
       utils.blurActiveElement()
-      if (this.picker != null && val != oldVal) {
+      if (this.picker != null && val !== oldVal) {
         this.picker.setFocusWaveform(val)
       }
     },
@@ -296,7 +305,7 @@ const PickerView = Vue.extend({
 
   mounted () {
     if (this.origin == null) {
-      console.error('[PickerView::mounted] No event found');
+      console.error('[PickerView::mounted] No event found')
       return
     }
     this.$store.dispatch('setAuthorStatus', {
@@ -309,9 +318,9 @@ const PickerView = Vue.extend({
       document.body.addEventListener('keydown', this.handleKeyDown)
     }
 
-    let fdsnidList = this.processArrival()
+    const fdsnidList = this.processArrival()
     this.getTTT().then(() => {
-      this.downloadWaveforms(fdsnidList, (wfList: WaveformOptions[]) => this.setListWaveforms(wfList)).then(() => {
+      this.downloadWaveforms(fdsnidList, (wfList: WaveformItemOptions[]) => this.setListWaveforms(wfList)).then(() => {
         this.disableLoadAdditionalStation = false
       })
     })
@@ -320,7 +329,7 @@ const PickerView = Vue.extend({
   beforeDestroy () {
     this.$store.dispatch('setLoading', { value: false })
     if (this.xhr.length > 0) {
-      for (let xhr of this.xhr) {
+      for (const xhr of this.xhr) {
         xhr.abort()
       }
     }
@@ -331,15 +340,15 @@ const PickerView = Vue.extend({
     if (this.list != null) {
       this.list.destroy()
     }
-    if (this.picks == null && this.ttt == null || this.picksDirty == false) {
+    if ((this.picks == null && this.ttt == null) || this.picksDirty === false) {
       return
     }
-    let arrivals = []
-    for (let [seedid, picks] of Object.entries(this.picks)) {
-      let [net, sta, loc, cha] = seedid.split('.')
-      let netsta = `${net}.${sta}`
-      for (let p of picks) {
-        let pTime = new Date(p.time)
+    const arrivals = []
+    for (const [seedid, picks] of Object.entries(this.picks)) {
+      const [net, sta, loc, cha] = seedid.split('.')
+      const netsta = `${net}.${sta}`
+      for (const p of picks) {
+        const pTime = new Date(p.time)
         arrivals.push({
           azimuth: this.stationAzimuth[netsta],
           distance: this.stationDistance[netsta],
@@ -367,7 +376,7 @@ const PickerView = Vue.extend({
             waveform_id: {
               network_code: net,
               station_code: sta,
-              location_code: loc == '' ? null : loc,
+              location_code: loc === '' ? null : loc,
               channel_code: cha
             }
           }
@@ -380,16 +389,16 @@ const PickerView = Vue.extend({
   methods: {
 
     processArrival () {
-      let fdsnidList: string[] = []
+      const fdsnidList: string[] = []
       this.origin.arrival.sort((a, b) => {
         const aa = a.distance
         const bb = b.distance
-        return aa == bb ? 0 : aa < bb ? -1 : 1
+        return aa === bb ? 0 : aa < bb ? -1 : 1
       })
       this.picks = {}
-      for (let [i, a] of this.origin.arrival.entries()) {
-        let fdsnid = a._pick._fdsnid
-        let netsta = fdsnid.split('.').slice(0, 2).join('.')
+      for (const a of this.origin.arrival.values()) {
+        const fdsnid = a._pick._fdsnid
+        const netsta = fdsnid.split('.').slice(0, 2).join('.')
         this.stationDistance[netsta] = a.distance
         this.stationAzimuth[netsta] = a.azimuth
         utils.pushInObject(this.picks, a._pick._seedid, {
@@ -406,12 +415,12 @@ const PickerView = Vue.extend({
           weight: a.time_weight,
           takeoff: a.takeoff_angle
         })
-        let zComponent = `${fdsnid.slice(0, -1)}Z`
-        let wfidList = [fdsnid].concat(this.getHorizontalIds(zComponent)).concat(this.getAuxiliaryIds(zComponent))
+        const zComponent = `${fdsnid.slice(0, -1)}Z`
+        const wfidList = [fdsnid].concat(this.getHorizontalIds(zComponent)).concat(this.getAuxiliaryIds(zComponent))
         if (this.getChannel(zComponent) != null) {
           wfidList.push(zComponent)
         }
-        for (let fdsnid of wfidList) {
+        for (const fdsnid of wfidList) {
           utils.pushUnique(fdsnidList, fdsnid)
         }
       }
@@ -420,9 +429,9 @@ const PickerView = Vue.extend({
 
     handleAdditionalWaveformSubmit () {
       this.additionalWaveformsChannelsMenu = false
-      let additionalWaveformsChannelsList = this.additionalWaveformsChannels.filter(x => x.value == true).map(x => x.label)
+      const additionalWaveformsChannelsList = this.additionalWaveformsChannels.filter(x => x.value === true).map(x => x.label)
       if (additionalWaveformsChannelsList.length > 0) {
-        let netsta = additionalWaveformsChannelsList[0].split('.').slice(0, 2).join('.')
+        const netsta = additionalWaveformsChannelsList[0].split('.').slice(0, 2).join('.')
         this.additionalWaveforms[netsta] = additionalWaveformsChannelsList.map(x => x.replace('..', '.--.'))
         this.downloadWaveforms(
           additionalWaveformsChannelsList,
@@ -432,16 +441,16 @@ const PickerView = Vue.extend({
     },
 
     handleKeyDown (ev: KeyboardEvent) {
-      let k = utils.shortcutString(ev)
-      let keybindings = Object.keys(this.settings).filter(x => x.indexOf('pickerKeybinding') == 0)
-      let bindedAction = []
-      for (let key of keybindings) {
-        if (this.settings[key] == k) {
+      const k = utils.shortcutString(ev)
+      const keybindings = Object.keys(this.settings).filter(x => x.indexOf('pickerKeybinding') === 0)
+      const bindedAction = []
+      for (const key of keybindings) {
+        if (this.settings[key] === k) {
           bindedAction.push(key.split('.')[1])
         }
       }
-      for (let action of bindedAction) {
-        this.shortcutAction[action].call(this as typeof PickerView, ev)
+      for (const action of bindedAction) {
+        this.shortcutAction[action].call(this as PickerView, ev)
       }
     },
 
@@ -450,31 +459,31 @@ const PickerView = Vue.extend({
         return
       }
       this.tools.lastFilter = this.tools.filter
-      let f = this.tools.filterList.find(x => x.name == this.tools.filter)
+      const f = this.tools.filterList.find((x: FilterDescription) => x.name === this.tools.filter)
       // let f = this.tools.filter
       if (wfList == null) {
         wfList = this.picker!.waveforms
         // wfList = this.list.waveforms.concat(this.picker.waveforms)
       }
-      let iirCalculator = new Fili.CalcCascades();
-      for (let wf of wfList) {
-        const fs = 1000. / wf.opt.step
-        let filterOpt = { Fs: fs, order: f.order, gain: 0, preGain: false, characteristic: 'butterworth' }
-        if (f.type == 'bandpass') {
+      const iirCalculator = new Fili.CalcCascades()
+      for (const wf of wfList) {
+        const fs = 1000.0 / wf.opt.step
+        const filterOpt: FiliFilterOptions = { Fs: fs, order: f.order, gain: 0, preGain: false, characteristic: 'butterworth' }
+        if (f.type === 'bandpass') {
           filterOpt.Fc = Math.sqrt(f.fc[1] * f.fc[0])
           filterOpt.BW = Math.log2(f.fc[1] / f.fc[0])
         } else {
           filterOpt.Fc = f.fc
         }
-        let iirFilterCoeffs = iirCalculator[f.type](filterOpt)
-        let iirFilter = new Fili.IirFilter(iirFilterCoeffs)
+        const iirFilterCoeffs = iirCalculator[f.type](filterOpt)
+        const iirFilter = new Fili.IirFilter(iirFilterCoeffs)
         wf.opt.filtered = iirFilter.simulate(wf.opt.values)
         const taperLength = 4 * fs
         for (let i = 0; i < taperLength; i++) {
-          wf.opt.filtered[i] = wf.opt.filtered[i] != null ? wf.opt.filtered[i] * Math.pow(i / taperLength, 3) : null
+          wf.opt.filtered![i] = wf.opt.filtered![i] != null ? wf.opt.filtered![i]! * Math.pow(i / taperLength, 3) : null
         }
       }
-      this.picker.setFilterState(true)
+      this.picker!.setFilterState(true)
     },
 
     resetFilter () {
@@ -486,44 +495,44 @@ const PickerView = Vue.extend({
       }
     },
 
-    ne2rt (wf) {
-      let horizontals = this.getHorizontalWaveforms(wf)
-      let [nWf, eWf] = [null, null]
-      if (horizontals.length == 2) {
-        [nWf, eWf] = horizontals
+    ne2rt (wf: WaveformItemOptions) {
+      const horizontals = this.getHorizontalWaveforms(wf)
+      let [nWf, eWf] = [null, null] as WaveformItemOptions[] | null[]
+      if (horizontals.length === 2) {
+        [nWf, eWf] = horizontals as WaveformItemOptions[]
       } else {
         console.error('[PickerView::ne2rt] Cannot rotate to RT: no horizontal waveforms.')
         return []
       }
-      if (nWf.step != eWf.step) {
+      if (nWf!.step !== eWf!.step) {
         console.error('[PickerView::ne2rt] Cannot rotate to RT: different sampling rates for horizontal components !')
         return []
       }
-      let baseId = nWf.id.slice(0, -1)
-      let baz = utils.az2baz(nWf.azimuth) * Math.PI / 180
+      const baseId = nWf.id.slice(0, -1)
+      const baz = utils.az2baz(nWf.azimuth) * Math.PI / 180
       // sync horizontals
-      let start = Math.max(nWf.start, eWf.start),
-          end = Math.min(
-            nWf.start + nWf.values.length * nWf.step,
-            eWf.start + eWf.values.length * eWf.step
-          )
-      let iN = Math.floor((nWf.start - start) / nWf.step),
-          iE = Math.floor((eWf.start - start) / eWf.step)
-      let nb_samples = Math.floor((end - start) / nWf.step)
-      let r = [],
-          t = []
-      for (let i = 0; i < nb_samples; i++) {
-        let [n, e] = [nWf.values[iN + i], eWf.values[iE + i]]
+      const start = Math.max(nWf.start, eWf.start)
+      const end = Math.min(
+        nWf.start + nWf.values.length * nWf.step,
+        eWf.start + eWf.values.length * eWf.step
+      )
+      const iN = Math.floor((nWf.start - start) / nWf.step)
+      const iE = Math.floor((eWf.start - start) / eWf.step)
+      const nbSamples = Math.floor((end - start) / nWf.step)
+      const r = []
+      const t = []
+      for (let i = 0; i < nbSamples; i++) {
+        const [n, e] = [nWf.values[iN + i], eWf.values[iE + i]]
         if (n == null || e == null) {
           r.push(null)
           t.push(null)
           continue
         }
-        r.push(- e * Math.sin(baz) - n * Math.cos(baz))
-        t.push(- e * Math.cos(baz) + n * Math.sin(baz))
+        r.push(-e * Math.sin(baz) - n * Math.cos(baz))
+        t.push(-e * Math.cos(baz) + n * Math.sin(baz))
       }
-      let wfList = []
-      let [rId, tId] = [`${baseId}R`, `${baseId}T`]
+      const wfList = []
+      const [rId, tId] = [`${baseId}R`, `${baseId}T`]
       if (this.picks[rId] == null) {
         this.picks[rId] = []
       }
@@ -531,29 +540,39 @@ const PickerView = Vue.extend({
         this.picks[tId] = []
       }
       wfList.push({
-        start: start, step: nWf.step, values: r,
+        start: start,
+        step: nWf.step,
+        values: r,
         scale: -eWf.scale * Math.sin(baz) - nWf.scale * Math.cos(baz),
-        id: rId, distance: nWf.distance, azimuth: nWf.azimuth,
-        ttt: nWf.ttt, picks: this.picks[rId]
+        id: rId,
+        distance: nWf.distance,
+        azimuth: nWf.azimuth,
+        ttt: nWf.ttt,
+        picks: this.picks[rId]
       })
       wfList.push({
-        start: start, step: nWf.step, values: t,
-        scale: - eWf.scale * Math.cos(baz) + nWf.scale * Math.sin(baz),
-        id: tId, distance: nWf.distance, azimuth: nWf.azimuth,
-        ttt: nWf.ttt, picks: this.picks[tId]
+        start: start,
+        step: nWf.step,
+        values: t,
+        scale: -eWf.scale * Math.cos(baz) + nWf.scale * Math.sin(baz),
+        id: tId,
+        distance: nWf.distance,
+        azimuth: nWf.azimuth,
+        ttt: nWf.ttt,
+        picks: this.picks[tId]
       })
       return wfList
     },
 
     getTTT () {
       return new Promise((resolve, reject) => {
-        let stationDistance = Object.assign({}, this.stationDistance)
+        const stationDistance = Object.assign({}, this.stationDistance)
 
         // cached origin
-        let caO = this.$store.state.pickerLastOrigin
+        const caO = this.$store.state.pickerLastOrigin
 
         // current origin
-        let cuO = {
+        const cuO = {
           latitude: this.origin.latitude.value,
           longitude: this.origin.longitude.value,
           depth: this.origin.depth.value
@@ -562,29 +581,29 @@ const PickerView = Vue.extend({
 
         if (
           caO != null &&
-          caO.latitude == cuO.latitude &&
-          caO.longitude == cuO.longitude &&
-          caO.depth == cuO.depth
+          caO.latitude === cuO.latitude &&
+          caO.longitude === cuO.longitude &&
+          caO.depth === cuO.depth
         ) {
           // current origin == cached origin
-          for (let [netsta, dist] of Object.entries(this.stationDistance)) {
+          for (const netsta of Object.keys(this.stationDistance)) {
             if (this.ttt[netsta] != null) {
               // As origin in unchanged it is not needed to recompute ttt for station already computed
               delete stationDistance[netsta]
             }
           }
-          if (Object.keys(stationDistance).length == 0) {
+          if (Object.keys(stationDistance).length === 0) {
             console.log('[PickerView::getTTT] Origin is unchanged, do not recompute theoretical travel times.')
-            this.$store.dispatch('log', `[PickerView::getTTT] Origin is unchanged, do not recompute theoretical travel times.`)
-            resolve()
+            this.$store.dispatch('log', '[PickerView::getTTT] Origin is unchanged, do not recompute theoretical travel times.')
+            resolve(null)
             return
           }
         } else {
           this.ttt = {}
         }
-        this.$store.dispatch('setLoading', { value: true, text: `Loading theoretical travel times...` })
+        this.$store.dispatch('setLoading', { value: true, text: 'Loading theoretical travel times...' })
         console.log('[PickerView::getTTT] compute theoretical travel time', stationDistance)
-        this.$store.dispatch('log', `[PickerView::getTTT] compute theoretical travel time`)
+        this.$store.dispatch('log', '[PickerView::getTTT] compute theoretical travel time')
         const xhr = new XMLHttpRequest()
         this.xhr.push(xhr)
         utils.ajax({
@@ -596,15 +615,15 @@ const PickerView = Vue.extend({
         }, xhr).then(ttt => {
           this.xhr.splice(this.xhr.indexOf(xhr), 1)
 
-          let t0 = this.origin.time._value.getTime()
-          for (let staObj of Object.values(ttt)) {
-            for (let [phase, phaseTTT] of Object.entries(staObj.ttt)) {
+          const t0 = this.origin.time._value.getTime()
+          for (const staObj of Object.values(ttt as TheoreticalTravelTimeObject)) {
+            for (const [phase, phaseTTT] of Object.entries(staObj.ttt)) {
               staObj.ttt[phase] = t0 + phaseTTT * 1e3
             }
           }
           this.ttt = Object.assign({}, this.ttt, ttt)
           this.$store.dispatch('setLoading', { value: false })
-          resolve()
+          resolve(null)
         }).catch(data => {
           this.$store.dispatch('log', `[PickerView::getTTT] compute theoretical travel time request failed: ${data}`)
         })
@@ -612,9 +631,9 @@ const PickerView = Vue.extend({
     },
 
     getTimeWindow () {
-      let times = this.origin.arrival.map(a => a._pick.time._value.getTime())
-      for (let sta of Object.values(this.ttt)) {
-        for (let ttt of Object.values(sta.ttt)) {
+      const times = this.origin.arrival.map(a => a._pick.time._value.getTime())
+      for (const sta of Object.values(this.ttt)) {
+        for (const ttt of Object.values(sta.ttt)) {
           times.push(ttt)
         }
       }
@@ -624,13 +643,13 @@ const PickerView = Vue.extend({
       ]
     },
 
-    getCachedTraces (fdsnidList) {
-      let traceList = []
-      let notCached = []
-      let [start, end] = this.getTimeWindow()
-      let timeCacheKey = `${start.slice(0, 16)}_${end.slice(0, 16)}`
-      for (let fdsnid of fdsnidList.map(x => x)) {
-        let cacheKey = `${fdsnid}|${timeCacheKey}`
+    getCachedTraces (fdsnidList: string[]): [Trace[], string[], string] {
+      const traceList = [] as Trace[]
+      const notCached = [] as string[]
+      const [start, end] = this.getTimeWindow()
+      const timeCacheKey = `${start.slice(0, 16)}_${end.slice(0, 16)}`
+      for (const fdsnid of fdsnidList.map(x => x)) {
+        const cacheKey = `${fdsnid}|${timeCacheKey}`
         if (this.trace[cacheKey] == null) {
           notCached.push(fdsnid)
         } else {
@@ -639,18 +658,18 @@ const PickerView = Vue.extend({
         }
       }
       console.log('[PickerView::getCachedTraces]', { traceList, notCached, timeCacheKey })
-      this.$store.dispatch('log', `[PickerView::getCachedTraces]`)
+      this.$store.dispatch('log', '[PickerView::getCachedTraces]')
       return [traceList, notCached, timeCacheKey]
     },
 
-    getDownloadChunks (fdsnidList) {
+    getDownloadChunks (fdsnidList: string[]) {
       // sort fdsnidList to retrieve in priority first 10 channels and Z component
-      let primary = [], secondary = []
+      const primary = []; const secondary = []
       for (let i = 0; i < fdsnidList.length; i++) {
         if (i < 10) {
           primary.push(fdsnidList[i])
         } else {
-          if (fdsnidList[i].slice(-1) == 'Z') {
+          if (fdsnidList[i].slice(-1) === 'Z') {
             primary.push(fdsnidList[i])
           } else {
             secondary.push(fdsnidList[i])
@@ -659,18 +678,18 @@ const PickerView = Vue.extend({
       }
       fdsnidList = primary.concat(secondary)
 
-      let chunks = []
+      const chunks = []
       for (let i = 0; i < fdsnidList.length; i += 10) {
         chunks.push(fdsnidList.slice(i, i + 10))
       }
       return chunks
     },
 
-    traceDownloader (fdsnidList) {
-      return new Promise((resolve, reject) => {
+    traceDownloader (fdsnidList: string[]) {
+      return new Promise((resolve) => {
         console.log('[PickerView::traceDownloader]', fdsnidList)
         this.$store.dispatch('log', `[PickerView::traceDownloader]: ${JSON.stringify(fdsnidList)}`)
-        let [start, end] = this.getTimeWindow()
+        const [start, end] = this.getTimeWindow()
         const xhr = new XMLHttpRequest()
         this.xhr.push(xhr)
         utils.ajax({
@@ -681,69 +700,69 @@ const PickerView = Vue.extend({
           type: 'arraybuffer'
         }, xhr).then(arr => {
           this.xhr.splice(this.xhr.indexOf(xhr), 1)
-          let st = new Stream(new DataView(arr))
-          resolve(st.trace)
+          const st = new Stream(new DataView(arr as ArrayBuffer))
+          resolve(st.traces)
         }).catch(data => {
           this.$store.dispatch('log', `[PickerView::traceDownloader] failed to download data: ${data}`)
         })
       })
     },
 
-    downloadWaveforms (fdsnidList, callback) {
-      return new Promise((resolve, reject) => {
-        if (fdsnidList.length == 0) {
-          resolve()
+    downloadWaveforms (fdsnidList: string[], resolve: (wfList: WaveformItemOptions[]) => void) {
+      return new Promise((resolve) => {
+        if (fdsnidList.length === 0) {
+          resolve(null)
         }
         console.log('[PickerView::downloadWaveforms]', fdsnidList)
         this.$store.dispatch('log', `[PickerView::downloadWaveforms]: ${JSON.stringify(fdsnidList)}`)
 
-        let [traceList, notCached, timeCacheKey] = this.getCachedTraces(fdsnidList)
-        if (traceList.length > 0 && callback != null) {
-          callback.call(null, traceList.map(tr => this.getWaveformObject(tr)).filter(tr => tr != null))
+        const [traceList, notCached, timeCacheKey] = this.getCachedTraces(fdsnidList) as [Trace[], string[], string]
+        if (traceList.length > 0 && resolve != null) {
+          resolve(traceList.map((tr: Trace) => this.getWaveformObject(tr)).filter((wf: WaveformItemOptions | null) => wf != null) as WaveformItemOptions[])
         }
-        let chunks = this.getDownloadChunks(notCached)
-        if (chunks.length == 0) {
-          resolve()
+        const chunks = this.getDownloadChunks(notCached)
+        if (chunks.length === 0) {
+          resolve(null)
         } else {
-          let i = 0;
-          const postDownload = traceList => {
-            for (let tr of traceList) {
-              let fdsnid = tr.id.replace('..', '.--.')
+          let i = 0
+          const postDownload = (traceList: Trace[]) => {
+            for (const tr of traceList) {
+              const fdsnid = tr.stats.id.replace('..', '.--.')
               fdsnidList.splice(fdsnidList.indexOf(fdsnid), 1)
-              let cacheKey = `${fdsnid}|${timeCacheKey}`
+              const cacheKey = `${fdsnid}|${timeCacheKey}`
               this.trace[cacheKey] = tr
             }
-            if (callback != null && traceList.length > 0) {
-              callback.call(null, traceList.map(tr => this.getWaveformObject(tr)).filter(tr => tr != null))
+            if (resolve != null && traceList.length > 0) {
+              resolve(traceList.map(tr => this.getWaveformObject(tr)).filter((wf: WaveformItemOptions | null) => wf != null) as WaveformItemOptions[])
             }
             this.$store.dispatch('setLoading', { value: false })
             if (i < chunks.length) {
-              this.traceDownloader(chunks[i++]).then(traceList => postDownload(traceList))
+              this.traceDownloader(chunks[i++]).then(traceList => postDownload(traceList as Trace[]))
               this.loading = i * 100 / chunks.length
             } else {
               this.loading = null
               if (fdsnidList.length > 0) {
-                let content = fdsnidList.join(', ')
+                const content = fdsnidList.join(', ')
                 this.$store.dispatch('notify', { color: 'error', text: `These channels couldn't be retrieved: ${content}` })
-                console.log(`[PickerView::downloadWaveforms] These channels couldn't be retrieved`, fdsnidList)
+                console.log('[PickerView::downloadWaveforms] These channels couldn\'t be retrieved', fdsnidList)
                 this.$store.dispatch('log', `[PickerView::downloadWaveforms] These channels couldn't be retrieved: ${JSON.stringify(fdsnidList)}`)
               }
               this.$store.dispatch('notify', { color: 'info', text: 'Waveforms loaded.' })
-              resolve()
+              resolve(null)
             }
           }
           this.$store.dispatch('setLoading', { value: true, text: `Loading waveforms... (${fdsnidList.length} channels)` })
-          this.traceDownloader(chunks[i++]).then(traceList => postDownload(traceList))
+          this.traceDownloader(chunks[i++]).then(traceList => postDownload(traceList as Trace[]))
         }
-      });
+      })
     },
 
-    getHorizontalIds (verticalId) {
-      let baseId = verticalId.replace('.--.', '..').slice(0, -1)
-      let ids = [ `${baseId}N`, `${baseId}E`, `${baseId}1`, `${baseId}2`, `${baseId}3` ]
-      let result = []
-      for (let id of ids) {
-        let cha = this.getChannel(id)
+    getHorizontalIds (verticalId: string) {
+      const baseId = verticalId.replace('.--.', '..').slice(0, -1)
+      const ids = [`${baseId}N`, `${baseId}E`, `${baseId}1`, `${baseId}2`, `${baseId}3`]
+      const result = []
+      for (const id of ids) {
+        const cha = this.getChannel(id)
         if (cha != null) {
           result.push(id.replace('..', '.--.'))
         }
@@ -751,12 +770,12 @@ const PickerView = Vue.extend({
       return result
     },
 
-    getAuxiliaryIds (verticalId) {
-      let baseId = verticalId.replace('.--.', '..').slice(0, -4)
-      let ids = [ `${baseId}.HDH` ]
-      let result = []
-      for (let id of ids) {
-        let cha = this.getChannel(id)
+    getAuxiliaryIds (verticalId: string) {
+      const baseId = verticalId.replace('.--.', '..').slice(0, -4)
+      const ids = [`${baseId}.HDH`]
+      const result = []
+      for (const id of ids) {
+        const cha = this.getChannel(id)
         if (cha != null) {
           result.push(id.replace('..', '.--.'))
         }
@@ -764,12 +783,12 @@ const PickerView = Vue.extend({
       return result
     },
 
-    handleUpdatePick (ev) {
+    handleUpdatePick (ev: PickEvent) {
       this.picksDirty = true
-      if (ev.action == 'add') {
-        for (let p of ev.picks) {
+      if (ev.action === 'add') {
+        for (const p of ev.picks) {
           p.id = this.$store.getters.getId('Pick')
-          let t = new Date()
+          const t = new Date()
           p.creation_info = {
             agency_id: this.origin.creation_info.agency_id,
             author: this.$store.state.author,
@@ -783,45 +802,48 @@ const PickerView = Vue.extend({
         }
       }
       const zWfid = `${ev.wfid.slice(0, -1)}Z`
-      for (const wf of this.list.waveforms) {
+      for (const wf of this.list!.waveforms) {
         if (wf.opt.id === zWfid) {
-          console.log(`[PickerView::handleUpdatePick]`, wf)
-          this.$store.dispatch('log', `[PickerView::handleUpdatePick]`)
-          this.list.drawPicks(wf)
+          console.log('[PickerView::handleUpdatePick]', wf)
+          this.$store.dispatch('log', '[PickerView::handleUpdatePick]')
+          this.list!.drawPicks(wf)
           break
         }
       }
     },
 
     getColorSettings () {
-      let colorSettingKey = Object.keys(this.settings).filter(x => x.indexOf('pickerColor') == 0)
-      let result = {}
-      for (let key of colorSettingKey) {
-        let optKey = key.split('.')[1]
+      const colorSettingKey = Object.keys(this.settings).filter(x => x.indexOf('pickerColor') === 0)
+      const result = {} as WaveformColorOptions
+      for (const key of colorSettingKey) {
+        const optKey = key.split('.')[1]
         result[optKey] = this.settings[key]
       }
       return result
     },
 
-    getRadiusInventory (center) {
-      return new Promise((resolve, reject) => {
-        let strTime = this.origin.time._value.toISOString().slice(0, 19)
+    getRadiusInventory (center: {latitude: number, longitude: number}) {
+      return new Promise((resolve) => {
+        const strTime = this.origin.time._value.toISOString().slice(0, 19)
         this.$store.dispatch('setLoading', { value: true, text: 'Loading inventory...' })
         utils.ajax({
           method: 'GET',
           url: this.$store.getters.getLink('fdsnws/station/1/query'),
           args: {
-            starttime: strTime, endtime: strTime,
-            level: 'channel', format: 'text',
+            starttime: strTime,
+            endtime: strTime,
+            level: 'channel',
+            format: 'text',
             latitude: center.latitude,
             longitude: center.longitude,
-            minradius: 0, maxradius: this.tools.stationRadius
+            minradius: 0,
+            maxradius: this.tools.stationRadius
           }
         }).then(data => {
           this.$store.dispatch('setLoading', { value: false })
-          let inv = utils.parseInventory(data)
+          const inv = utils.parseInventory(data as string)
           console.log('[PickerView::getRadiusInventory] additional station result', inv)
-          this.$store.dispatch('log', `[PickerView::getRadiusInventory] additional station result`)
+          this.$store.dispatch('log', '[PickerView::getRadiusInventory] additional station result')
           this.$store.dispatch('mergeInventory', inv)
           resolve(inv)
         })
@@ -830,76 +852,75 @@ const PickerView = Vue.extend({
       })
     },
 
-    handleChangeLocation (data) {
+    handleChangeLocation (data: {latitude: number, longitude: number}) {
       console.log('[PickerView::handleChangeLocation]', data)
       this.$store.dispatch('log', `[PickerView::handleChangeLocation]: ${JSON.stringify(data)}`)
-      let pos = L.latLng(data.latitude, data.longitude)
-      let event = this.$store.state.currentEvent
-      let tmp1 = JSON.parse(JSON.stringify(this.origin))
+      const pos = L.latLng(data.latitude, data.longitude)
+      const event = this.$store.state.currentEvent
+      const tmp1 = JSON.parse(JSON.stringify(this.origin))
       tmp1.public_id = this.$store.getters.getId('Origin')
       tmp1.creation_info.author = this.$store.state.author
       tmp1.latitude.value = pos.lat
       tmp1.longitude.value = pos.lng
-      let tmp2 = { origin: [tmp1], pick: event.pick }
+      const tmp2 = { origin: [tmp1], pick: event.pick, public_id: 'fakeid' }
       console.log(tmp2)
       utils.processEventData(tmp2)
-      let cloned = tmp2.origin[0]
+      const cloned = tmp2.origin[0]
       cloned._is_dirty = true
       cloned._not_committed = true
       event.origin.push(cloned)
       event.preferred_magnitude_id = null
       event._pm = null
       this.$store.dispatch('setCurrentOrigin', cloned)
-      for (let netsta of Object.keys(this.stationDistance)) {
-        let [net, sta] = netsta.split('.')
-        let staPos = [this.inventory[net][sta].lat, this.inventory[net][sta].lon]
+      for (const netsta of Object.keys(this.stationDistance)) {
+        const [net, sta] = netsta.split('.')
+        const staPos = [this.inventory[net][sta].lat, this.inventory[net][sta].lon] as L.LatLngTuple
         this.stationDistance[netsta] = utils.m2deg(pos.distanceTo(staPos))
         this.stationAzimuth[netsta] = utils.coordinates2azimuth([pos.lat, pos.lng], staPos)
       }
-      for (let wf of Object.values(this.waveform)) {
-        let netsta = wf.id.split('.').slice(0, 2).join('.')
+      for (const wf of Object.values(this.waveform)) {
+        const netsta = wf.id.split('.').slice(0, 2).join('.')
         wf.distance = this.stationDistance[netsta]
         wf.azimuth = this.stationAzimuth[netsta]
       }
       this.sortWaveforms()
     },
 
-    loadRadiusStation (center) {
+    loadRadiusStation (center: {latitude: number, longitude: number}) {
       this.getRadiusInventory(center).then(inv => {
-        let alreadyLoadedStation = this.list != null ? this.list.waveforms.map(x => x.opt.id.split('.').slice(0, 2).join('.')) : []
-        let fdsnidList = []
-        let stationDistance = {}
-        let pos = L.latLng([this.origin.latitude.value, this.origin.longitude.value])
-        for (let [net, netObj] of Object.entries(inv)) {
-          for (let [sta, staObj] of Object.entries(netObj)) {
-            let netsta = `${net}.${sta}`
+        const alreadyLoadedStation = this.list != null ? this.list.waveforms.map(x => x.opt.id.split('.').slice(0, 2).join('.')) : []
+        const fdsnidList: string [] = []
+        const pos = L.latLng([this.origin.latitude.value, this.origin.longitude.value])
+        for (const [net, netObj] of Object.entries(inv as WebpickerInventory)) {
+          for (const [sta, staObj] of Object.entries(netObj)) {
+            const netsta = `${net}.${sta}`
             if (alreadyLoadedStation.indexOf(netsta) < 0) {
               // browse inventory and ignore already loaded station
-              let availableChannel = []
-              for (let [loc, locObj] of Object.entries(staObj.location)) {
-                for (let [cha, chaObj] of Object.entries(locObj)) {
-                  if (cha.slice(-1) == "Z") {
-                    let fdsnid = [net, sta, loc == '' ? '--' : loc, cha].join('.')
+              const availableChannel = []
+              for (const [loc, locObj] of Object.entries(staObj.location)) {
+                for (const [cha, chaObj] of Object.entries(locObj)) {
+                  if (cha.slice(-1) === 'Z') {
+                    const fdsnid = [net, sta, loc === '' ? '--' : loc, cha].join('.')
                     availableChannel.push({ fdsnid, sample_rate: chaObj[0].sample_rate })
                   }
                 }
               }
               // select the higher sampling rate of velocimeter in priority
-              let sensorTypeOrder = ['H', 'N']
-              for (let sensorType of sensorTypeOrder) {
-                let sensorChannels = availableChannel.filter(x => x.fdsnid.slice(-2)[0] == sensorType)
+              const sensorTypeOrder = ['H', 'N']
+              for (const sensorType of sensorTypeOrder) {
+                const sensorChannels = availableChannel.filter(x => x.fdsnid.slice(-2)[0] === sensorType)
                 if (sensorChannels.length > 0) {
                   sensorChannels.sort((a, b) => {
-                    a = a.sample_rate
-                    b = b.sample_rate
-                    return a < b ? 1 : a > b ? -1 : 0
+                    const aa = a.sample_rate
+                    const bb = b.sample_rate
+                    return aa < bb ? 1 : aa > bb ? -1 : 0
                   })
                   fdsnidList.push(sensorChannels[0].fdsnid)
-                  for (let horizontal of this.getHorizontalIds(sensorChannels[0].fdsnid)) {
+                  for (const horizontal of this.getHorizontalIds(sensorChannels[0].fdsnid)) {
                     fdsnidList.push(horizontal)
                   }
-                  let degDistance = utils.m2deg(pos.distanceTo([staObj.lat, staObj.lon]))
-                  this.stationDistance[netsta] = stationDistance[netsta] = degDistance
+                  const degDistance = utils.m2deg(pos.distanceTo([staObj.lat, staObj.lon]))
+                  this.stationDistance[netsta] = degDistance
                   this.stationAzimuth[netsta] = utils.coordinates2azimuth([pos.lat, pos.lng], [staObj.lat, staObj.lon])
                   break
                 }
@@ -909,58 +930,58 @@ const PickerView = Vue.extend({
         }
         console.log('[PickerView::loadRadiusStation] fdsnidList', fdsnidList)
         this.$store.dispatch('log', `[PickerView::loadRadiusStation] fdsnidList: ${JSON.stringify(fdsnidList)}`)
-        if (fdsnidList.length == 0) {
+        if (fdsnidList.length === 0) {
           this.$store.dispatch('notify', { color: 'info', text: 'No additional station found in this range.' })
           return
         }
-        this.getTTT(stationDistance).then(() => {
+        this.getTTT().then(() => {
           this.downloadWaveforms(fdsnidList, wfList => this.setListWaveforms(wfList))
         })
       })
     },
 
-    getChannel (fdsnid) {
-      let [n, s, l, c] = fdsnid.replace('.--.', '..').split('.')
+    getChannel (fdsnid: string) {
+      const [n, s, l, c] = fdsnid.replace('.--.', '..').split('.')
       if (this.inventory[n] != null &&
           this.inventory[n][s] != null &&
           this.inventory[n][s].location[l] != null &&
           this.inventory[n][s].location[l][c] != null) {
-        let t0 = this.origin.time._value
+        const t0 = this.origin.time._value
         return this.inventory[n][s].location[l][c].find(c => c.starttime <= t0 && c.endtime >= t0)
       }
       return null
     },
 
-    getChannelScale (fdsnid) {
-      let cha = this.getChannel(fdsnid)
+    getChannelScale (fdsnid: string) {
+      const cha = this.getChannel(fdsnid)
       return cha != null ? cha.scale : 1
     },
 
-    setAdditionalWaveformsChannels (wfList) {
-      let additionalWaveformsChannels = []
-      let seedidList = wfList.map(x => x.id)
-      let netsta = seedidList[0].split('.').slice(0, 2).join('.')
+    setAdditionalWaveformsChannels (wfList: WaveformItemOptions[]) {
+      const additionalWaveformsChannels = []
+      const seedidList = wfList.map(x => x.id)
+      const netsta = seedidList[0].split('.').slice(0, 2).join('.')
       // get all picks from this station
-      let seedidPicks = Object.entries(this.picks).filter(x => {
-        let pnetsta = x[0].split('.').slice(0, 2).join('.')
-        return pnetsta == netsta && x[1].length > 0
+      const seedidPicks = Object.entries(this.picks).filter(x => {
+        const pnetsta = x[0].split('.').slice(0, 2).join('.')
+        return pnetsta === netsta && x[1].length > 0
       }).map(x => x[0])
       // check if all streams that contain picks are in wfList
-      for (let seedid of seedidPicks) {
+      for (const seedid of seedidPicks) {
         if (seedidList.indexOf(seedid) < 0) {
           // if not, add it in wfList and in additionalWaveforms
           seedidList.push(seedid)
-          let fdsnid = seedid.replace('..', '.--.')
+          const fdsnid = seedid.replace('..', '.--.')
           if (this.waveform[fdsnid] != null) {
             wfList.push(this.waveform[fdsnid])
             utils.pushInObject(this.additionalWaveforms, netsta, fdsnid)
           }
         }
       }
-      let [net, sta] = netsta.split('.')
-      for (let [loc, locObj] of Object.entries(this.inventory[net][sta].location)) {
-        for (let cha of Object.keys(locObj)) {
-          let seedid = [net, sta, loc, cha].join('.')
+      const [net, sta] = netsta.split('.')
+      for (const [loc, locObj] of Object.entries(this.inventory[net][sta].location)) {
+        for (const cha of Object.keys(locObj)) {
+          const seedid = [net, sta, loc, cha].join('.')
           if (seedidList.indexOf(seedid) < 0) {
             additionalWaveformsChannels.push({ label: seedid, value: false })
           }
@@ -969,15 +990,15 @@ const PickerView = Vue.extend({
       this.additionalWaveformsChannels = additionalWaveformsChannels
     },
 
-    setPickerWaveforms (wfList) {
+    setPickerWaveforms (wfList: WaveformItemOptions[]) {
       console.log('[PickerView::setPickerWaveforms]', wfList)
-      this.$store.dispatch('log', `[PickerView::setPickerWaveforms]`)
-      if (this.tools.rotation != 'ZRT') {
+      this.$store.dispatch('log', '[PickerView::setPickerWaveforms]')
+      if (this.tools.rotation !== 'ZRT') {
         this.setAdditionalWaveformsChannels(wfList)
         console.log('[PickerView::setPickerWaveforms] after setAdditionalWaveformsChannels', wfList)
-        this.$store.dispatch('log', `[PickerView::setPickerWaveforms] after setAdditionalWaveformsChannels`)
+        this.$store.dispatch('log', '[PickerView::setPickerWaveforms] after setAdditionalWaveformsChannels')
       }
-      let view = Object.assign({}, this.defaultView)
+      const view = Object.assign({}, this.defaultView)
       let filterState = false
       let phase = null
       if (this.picker != null) {
@@ -986,24 +1007,24 @@ const PickerView = Vue.extend({
         filterState = this.picker.event.useFiltered
         this.picker.destroy()
       }
-      let height = this.settings['pickerSize.pickerWaveformHeight']
+      const height = this.settings['pickerSize.pickerWaveformHeight']
       this.pickerOpt.color = this.getColorSettings()
       this.pickerOpt.size = { height, wrapperMaxHeight: wfList.length * height + 40 }
-      this.pickerOpt.equalScale = this.tools.sameScale,
+      this.pickerOpt.equalScale = this.tools.sameScale
       this.pickerOpt.view = view
       this.pickerOpt.waveforms = wfList
       this.picker = new Waveform(this.pickerOpt)
       this.applyFilter(this.picker.waveforms)
       this.picker.setFilterState(filterState)
-      this.picker.setPickerPhase(phase)
+      this.picker.setPickerPhase(phase as string)
       this.tools.focusComponentOption = wfList.map(x => x.id.slice(-1))
       this.picker.setFocusWaveform(this.tools.focusComponent)
       this.picker.updatePickLine()
     },
 
-    setListWaveforms (wfList: WaveformOptions[]) {
-      console.log(`[PickerView::setListWaveforms]`, wfList)
-      this.$store.dispatch('log', `[PickerView::setListWaveforms]`)
+    setListWaveforms (wfList: WaveformItemOptions[]) {
+      console.log('[PickerView::setListWaveforms]', wfList)
+      this.$store.dispatch('log', '[PickerView::setListWaveforms]')
       if (this.list == null) {
         this.listOpt.size = { height: this.settings['pickerSize.listWaveformHeight'] }
         this.listOpt.color = this.getColorSettings()
@@ -1022,11 +1043,11 @@ const PickerView = Vue.extend({
       }
     },
 
-    getHorizontalWaveforms (wf) {
-      let result = []
-      let horizontalIds = this.getHorizontalIds(wf.id)
-      for (let fdsnid of horizontalIds) {
-        let cached = this.waveform[fdsnid]
+    getHorizontalWaveforms (wf: WaveformItemOptions) {
+      const result = []
+      const horizontalIds = this.getHorizontalIds(wf.id)
+      for (const fdsnid of horizontalIds) {
+        const cached = this.waveform[fdsnid]
         if (cached != null) {
           result.push(cached)
         }
@@ -1034,11 +1055,11 @@ const PickerView = Vue.extend({
       return result
     },
 
-    getAuxiliaryWaveforms (wf) {
-      let result = []
-      let auxiliaryIds = this.getAuxiliaryIds(wf.id)
-      for (let fdsnid of auxiliaryIds) {
-        let cached = this.waveform[fdsnid]
+    getAuxiliaryWaveforms (wf: WaveformItemOptions) {
+      const result = []
+      const auxiliaryIds = this.getAuxiliaryIds(wf.id)
+      for (const fdsnid of auxiliaryIds) {
+        const cached = this.waveform[fdsnid]
         if (cached != null) {
           result.push(cached)
         }
@@ -1046,12 +1067,12 @@ const PickerView = Vue.extend({
       return result
     },
 
-    getAdditionalWaveforms (wf) {
-      let result = []
-      let netsta = wf.id.split('.').slice(0, 2).join('.')
+    getAdditionalWaveforms (wf: WaveformItemOptions) {
+      const result = []
+      const netsta = wf.id.split('.').slice(0, 2).join('.')
       if (this.additionalWaveforms[netsta] != null) {
-        for (let fdsnid of this.additionalWaveforms[netsta]) {
-          let cached = this.waveform[fdsnid]
+        for (const fdsnid of this.additionalWaveforms[netsta]) {
+          const cached = this.waveform[fdsnid]
           if (cached != null) {
             result.push(cached)
           }
@@ -1060,22 +1081,22 @@ const PickerView = Vue.extend({
       return result
     },
 
-    handleWaveformClick (wf, force=false) {
+    handleWaveformClick (wf: WaveformItemOptions, force = false) {
       if (this.picker != null) {
-        if (this.picker.waveforms[0].opt.id == wf.id && !force) {
+        if (this.picker.waveforms[0].opt.id === wf.id && !force) {
           return
         }
       }
-      let tmpWfList = []
-      if (this.tools.rotation == 'ZNE') {
+      let tmpWfList: WaveformItemOptions[] = []
+      if (this.tools.rotation === 'ZNE') {
         tmpWfList = [wf]
           .concat(this.getHorizontalWaveforms(wf))
           .concat(this.getAuxiliaryWaveforms(wf))
           .concat(this.getAdditionalWaveforms(wf))
-      } else if (this.tools.rotation == 'ZRT') {
+      } else if (this.tools.rotation === 'ZRT') {
         tmpWfList = [wf].concat(this.ne2rt(wf))
       }
-      const wfList = []
+      const wfList: WaveformItemOptions[] = []
       for (const wf of tmpWfList) {
         utils.pushUnique(wfList, wf)
       }
@@ -1083,35 +1104,36 @@ const PickerView = Vue.extend({
       this.setPickerWaveforms(wfList)
     },
 
-    getWaveformObject (tr) {
-      if (this.picks[tr.id] == null) {
-        this.picks[tr.id] = []
+    getWaveformObject (tr: Trace): WaveformItemOptions | null {
+      if (this.picks[tr.stats.id] == null) {
+        this.picks[tr.stats.id] = []
       }
-      let netsta = tr.id.split('.').slice(0, 2).join('.')
+      const netsta = tr.stats.id.split('.').slice(0, 2).join('.')
       if (this.ttt[netsta] != null) {
-        let wf = {
+        const wf = {
           start: tr.timeseries[0].starttime,
-          step: 1000 / tr.sample_rate,
-          values: tr.getData(),
-          scale: this.getChannelScale(tr.id),
-          id: tr.id,
+          step: 1000 / tr.stats.samplingRate,
+          values: tr.data,
+          scale: this.getChannelScale(tr.stats.id),
+          id: tr.stats.id,
           distance: this.stationDistance[netsta],
           azimuth: this.stationAzimuth[netsta],
           ttt: Object.assign({ O: this.origin.time._value.getTime() }, this.ttt[netsta].ttt),
-          picks: this.picks[tr.id]
+          picks: this.picks[tr.stats.id]
         }
-        this.waveform[tr.id.replace('..', '.--.')] = wf
+        this.waveform[tr.stats.id.replace('..', '.--.')] = wf
         return wf
       }
       console.warn(`[PickerView::getWaveformObject] Can't find TTT for ${netsta}, discard waveform`)
       this.$store.dispatch('log', `[PickerView::getWaveformObject] Can't find TTT for ${netsta}, discard waveform`)
+      return null
     },
 
     sortWaveforms () {
       if (this.list != null) {
-        if (this.tools.sortBy == 'name') {
+        if (this.tools.sortBy === 'name') {
           this.list.sortWaveformsBy(x => x.id)
-        } else if (this.tools.sortBy == 'distance') {
+        } else if (this.tools.sortBy === 'distance') {
           this.list.sortWaveformsBy(x => x.distance)
         }
       }
@@ -1119,7 +1141,6 @@ const PickerView = Vue.extend({
 
   }
 })
-export default PickerView
 </script>
 
 <style>

@@ -194,7 +194,7 @@ export default Vue.extend({
       return this.$store.state.currentOrigin
     },
     originMagnitude (): WebpickerMagnitude[] {
-      return this.event.magnitude.filter(m => m.origin_id == this.origin.public_id)
+      return this.event.magnitude!.filter(m => m.origin_id === this.origin.public_id)
     }
   },
 
@@ -221,14 +221,14 @@ export default Vue.extend({
     },
 
     handleSetPreferredMagnitude (m: WebpickerMagnitude) {
-      let e = this.event
-      if (m.origin_id != e.preferred_origin_id) {
+      const e = this.event
+      if (m.origin_id !== e.preferred_origin_id) {
         alert('[ERROR]\nIt is not possible to define a magnitude from another origin as preferred.\nOperation aborted.')
         return
       }
       e.preferred_magnitude_id = m.public_id
       e._pm = m
-      this.origin._not_committed  = true
+      this.origin._not_committed = true
     }
 
   }

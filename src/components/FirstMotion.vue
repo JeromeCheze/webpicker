@@ -48,7 +48,7 @@ const COLOR = '#888'
 export default Vue.extend({
   props: ['active'],
   data () {
-    let [strike, dip, rake] = [0, 90, 180]
+    const [strike, dip, rake] = [0, 90, 180]
     return {
       initialized: false,
       oldStrike: strike,
@@ -82,7 +82,7 @@ export default Vue.extend({
       return this.origin.arrival.filter(a => a.phase === 'P' && a._pick.polarity != null)
     },
     isDirty (): boolean {
-      return this.strike != this.oldStrike || this.dip != this.oldDip || this.rake != this.oldRake
+      return this.strike !== this.oldStrike || this.dip !== this.oldDip || this.rake !== this.oldRake
     }
   },
   watch: {
@@ -97,7 +97,7 @@ export default Vue.extend({
       if (this.bbe == null || this.hiresbbe == null) {
         return
       }
-      let [s, d, r] = [this.oldStrike, this.oldDip, this.oldRake]
+      const [s, d, r] = [this.oldStrike, this.oldDip, this.oldRake]
       this.strike = s
       this.dip = d
       this.rake = r
@@ -105,7 +105,7 @@ export default Vue.extend({
       this.hiresbbe.drawFocal(s, d, r, COLOR)
     },
     handleValidate () {
-      let fmObject = {
+      const fmObject = {
         public_id: this.$store.getters.getId('FocalMechanism'),
         evaluation_mode: 'manual',
         nodal_planes: {
@@ -128,7 +128,7 @@ export default Vue.extend({
       if (this.bbe == null || this.hiresbbe == null) {
         return
       }
-      let [s, d, r] = [0, 90, 180]
+      const [s, d, r] = [0, 90, 180]
       this.oldStrike = this.strike = s
       this.oldDip = this.dip = d
       this.oldRake = this.rake = r
@@ -140,17 +140,17 @@ export default Vue.extend({
       this.event._pfm = null
     },
     handleStationPopup (x: number, y: number) {
-      let ctx = this.popupCtx
+      const ctx = this.popupCtx
       if (ctx == null || this.hiresbbe == null) {
         return
       }
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
-      for (let [k, v] of Object.entries(this.stationPos)) {
-        let dist = Math.sqrt(Math.pow(Math.abs(x - v[0]), 2) + Math.pow(Math.abs(y - v[1]), 2))
+      for (const [k, v] of Object.entries(this.stationPos)) {
+        const dist = Math.sqrt(Math.pow(Math.abs(x - v[0]), 2) + Math.pow(Math.abs(y - v[1]), 2))
         if (dist < 5) {
           const t = ctx.measureText(k)
           ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
-          let xPos = v[0] > this.hiresbbe.center ? v[0] - t.width - 5 : v[0] + 5
+          const xPos = v[0] > this.hiresbbe.center ? v[0] - t.width - 5 : v[0] + 5
           ctx.fillRect(xPos, v[1] - 12 - 7, t.width + 4, 12 + 4)
           ctx.fillStyle = 'black'
           ctx.fillText(k, xPos, v[1] - 5)
@@ -186,10 +186,10 @@ export default Vue.extend({
       let mouseDown = false
       const HIRESTHRESH = 200
       const updateBeachball = () => {
-        let t = new Date().getTime()
-        let s = this.strike
-        let d = this.dip
-        let r = this.rake
+        const t = new Date().getTime()
+        const s = this.strike
+        const d = this.dip
+        const r = this.rake
         if (lastCall == null || (t - lastCall) > 30) {
           if (hirestimeout != null) {
             clearTimeout(hirestimeout)
@@ -211,7 +211,7 @@ export default Vue.extend({
       let mouseX: number | null = null
       let mouseY: number | null = null
       hiresbbe.init().then(() => {
-        let hirescanvas = hiresbbe.ctx!.canvas
+        const hirescanvas = hiresbbe.ctx!.canvas
         Object.assign(hirescanvas.style, { zIndex: 1 })
         container.appendChild(hirescanvas)
         bbe.init().then(() => {
@@ -229,38 +229,38 @@ export default Vue.extend({
             mouseX = mouseY = null
           })
           container.addEventListener('mousemove', e => {
-            if (mouseX == null || mouseY == null) { 
+            if (mouseX == null || mouseY == null) {
               return
             }
             const ev = e as MouseEvent
             const bbcr = this.stationCtx!.canvas.getBoundingClientRect()
-            let absX = ev.clientX - bbcr.left
-            let absY = ev.clientY - bbcr.top
+            const absX = ev.clientX - bbcr.left
+            const absY = ev.clientY - bbcr.top
             this.handleStationPopup(absX, absY)
-            if (mouseDown == false) {
+            if (mouseDown === false) {
               return
             }
             ev.preventDefault()
-            let deltaX = ev.clientX - mouseX
-            let deltaY = ev.clientY - mouseY
-            let s = this.strike
+            const deltaX = ev.clientX - mouseX
+            const deltaY = ev.clientY - mouseY
+            const s = this.strike
             if (ev.shiftKey) {
               if (Math.abs(deltaX) > 0) {
-                let newStrikeValue = s + deltaX
+                const newStrikeValue = s + deltaX
                 this.strike = newStrikeValue < 0 ? newStrikeValue + 360 : newStrikeValue > 360 ? newStrikeValue - 360 : newStrikeValue
                 mouseX = ev.clientX
               }
             } else {
-              let d = this.dip
-              let r = this.rake
+              const d = this.dip
+              const r = this.rake
               // console.log(deltaX, deltaY);
               if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
-                let newDipValue = d + (-1 * deltaX * Math.cos(s * Math.PI / 180) + Math.sin(s * Math.PI / 180) * deltaY * -1) / 2
-                let newRakeValue = r + (-1* deltaY * Math.cos(s * Math.PI / 180) + Math.sin(s * Math.PI / 180) * deltaX) / 2
+                const newDipValue = d + (-1 * deltaX * Math.cos(s * Math.PI / 180) + Math.sin(s * Math.PI / 180) * deltaY * -1) / 2
+                let newRakeValue = r + (-1 * deltaY * Math.cos(s * Math.PI / 180) + Math.sin(s * Math.PI / 180) * deltaX) / 2
                 if (newDipValue > 90) {
                   this.strike = s < 180 ? s + 180 : s - 180
                   newRakeValue = newRakeValue * -1
-                } else if (newDipValue < 0 ) {
+                } else if (newDipValue < 0) {
                   this.strike = s < 180 ? s + 180 : s - 180
                   newRakeValue = newRakeValue + 180
                 }
@@ -275,7 +275,7 @@ export default Vue.extend({
         })
       })
       setTimeout(() => {
-        this.updateStationLayer(hiresbbe.center, hiresbbe.radius)
+        this.updateStationLayer(hiresbbe.center, hiresbbe.radius as number)
       }, HIRESTHRESH + 100)
     },
 
@@ -283,11 +283,11 @@ export default Vue.extend({
       const ctx = this.stationCtx as CanvasRenderingContext2D
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
       const stationPos: {[index: string]: [number, number]} = {}
-      for (let a of this.polarizedArrivals) {
-        let dist = radius * (a.takeoff_angle!.value > 90 ? 180 - a.takeoff_angle!.value : a.takeoff_angle!.value) / 90
-        let xPos = center - dist * Math.cos(Math.PI * (a.azimuth - 90) / 180)
-        let yPos = center - dist * Math.sin(Math.PI * (a.azimuth - 90) / 180)
-        let key = a._pick._seedid.split('.').slice(0, 2).join('_')
+      for (const a of this.polarizedArrivals) {
+        const dist = radius * (a.takeoff_angle!.value > 90 ? 180 - a.takeoff_angle!.value : a.takeoff_angle!.value) / 90
+        const xPos = center - dist * Math.cos(Math.PI * (a.azimuth - 90) / 180)
+        const yPos = center - dist * Math.sin(Math.PI * (a.azimuth - 90) / 180)
+        const key = a._pick._seedid.split('.').slice(0, 2).join('_')
         stationPos[key] = [xPos, yPos]
         ctx.beginPath()
         ctx.arc(xPos, yPos, 4, 0, 2 * Math.PI)
@@ -310,29 +310,30 @@ export default Vue.extend({
         this.oldDip = d
         this.oldRake = r
       }
-      let stationDistance: {[index: string]: number} = {}
-      for (let a of this.polarizedArrivals) {
-        let fdsnid = a._pick._fdsnid
-        let netsta = fdsnid.split('.').slice(0, 2).join('.')
+      const stationDistance: {[index: string]: number} = {}
+      for (const a of this.polarizedArrivals) {
+        const fdsnid = a._pick._fdsnid
+        const netsta = fdsnid.split('.').slice(0, 2).join('.')
         stationDistance[netsta] = a.distance
       }
-      this.$store.dispatch('log', `[FirstMotion::init] send takeoffangle request`)
+      this.$store.dispatch('log', '[FirstMotion::init] send takeoffangle request')
       utils.ajax({
         method: 'POST',
-          url: this.$store.getters.getLink('takeoffangle'),
-          dataMimeType: 'application/json',
-          data: JSON.stringify({ depth: this.origin.depth.value / 1000, station: stationDistance }),
-          type: 'json'
-        }).then((toa: {[index: string]: number}) => {
-          for (let a of this.polarizedArrivals) {
-            let fdsnid = a._pick._fdsnid
-            let netsta = fdsnid.split('.').slice(0, 2).join('.')
-            a.takeoff_angle = { value: toa[netsta] }
-          }
-          this.createBeachBall()
-        }).catch(data => {
-          this.$store.dispatch('log', `[FirstMotion::init] send takeoffangle request failed: ${data}`)
-        })
+        url: this.$store.getters.getLink('takeoffangle'),
+        dataMimeType: 'application/json',
+        data: JSON.stringify({ depth: this.origin.depth.value / 1000, station: stationDistance }),
+        type: 'json'
+      }).then(response => {
+        const toa = response as {[index: string]: number}
+        for (const a of this.polarizedArrivals) {
+          const fdsnid = a._pick._fdsnid
+          const netsta = fdsnid.split('.').slice(0, 2).join('.')
+          a.takeoff_angle = { value: toa[netsta] }
+        }
+        this.createBeachBall()
+      }).catch(data => {
+        this.$store.dispatch('log', `[FirstMotion::init] send takeoffangle request failed: ${data}`)
+      })
     }
   }
 })
@@ -356,4 +357,3 @@ export default Vue.extend({
   text-align: right;
 }
 </style>
-

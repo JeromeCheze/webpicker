@@ -1,48 +1,46 @@
 <template>
   <v-app :dark="$store.state.settings.themeDark">
 
-    <v-toolbar app dense :style="{ zIndex: 1000 }">
-      <v-toolbar-title>WebPicker</v-toolbar-title>
+    <v-app-bar app dense :style="{ zIndex: 1000 }">
+      <v-app-bar-title>WebPicker</v-app-bar-title>
       <v-spacer></v-spacer>
-      <v-toolbar-items>
-        <v-btn flat :to="{ name: 'Form' }">Form</v-btn>
-        <v-btn flat :to="{ name: 'List', query: listQuery }">Event list</v-btn>
-        <v-btn
-          v-if="$store.state.currentEvent != null"
-          :to="{ name: 'Event', params: { code: $store.state.currentEvent.public_id } }"
-          flat>Event: {{ $store.state.currentEvent.public_id }}</v-btn>
-        <v-btn v-else disabled flat>No event</v-btn>
-        <v-btn
-          :disabled="$store.state.currentOrigin == null"
-          :to="{ name: 'Picker' }"
-          flat>Picker</v-btn>
-        <v-menu v-model="toolbarMenu" offset-y>
-          <template v-slot:activator="{ on }">
-            <v-btn icon v-on="on"><v-icon>mdi-dots-vertical</v-icon></v-btn>
-          </template>
-          <v-list>
-            <v-list-tile @click="handleCreateEventClick">
-              <v-icon left>mdi-creation</v-icon> Create new event
-            </v-list-tile>
-            <v-list-tile v-if="$store.state.author != null" @click="handleChangeAuthorClick">
-              <v-icon left>mdi-account-switch</v-icon> Change author
-              <span class="caption ml-2 text-lighten-1">({{ $store.state.author }})</span>
-            </v-list-tile>
-            <v-list-tile :to="{ name: 'Settings' }">
-              <v-icon left>mdi-settings</v-icon> Settings
-            </v-list-tile>
-            <v-list-tile @click="logDialog = true">
-              <v-icon left>mdi-console</v-icon> Logs
-            </v-list-tile>
-          </v-list>
-        </v-menu>
-      </v-toolbar-items>
-    </v-toolbar>
+      <v-btn text :to="{ name: 'Form' }">Form</v-btn>
+      <v-btn text :to="{ name: 'List', query: listQuery }">Event list</v-btn>
+      <v-btn
+        v-if="$store.state.currentEvent != null"
+        :to="{ name: 'Event', params: { code: $store.state.currentEvent.public_id } }"
+        text>Event: {{ $store.state.currentEvent.public_id }}</v-btn>
+      <v-btn v-else disabled text>No event</v-btn>
+      <v-btn
+        :disabled="$store.state.currentOrigin == null"
+        :to="{ name: 'Picker' }"
+        text>Picker</v-btn>
+      <v-menu v-model="toolbarMenu" offset-y>
+        <template v-slot:activator="{ on }">
+          <v-btn icon v-on="on"><v-icon>mdi-dots-vertical</v-icon></v-btn>
+        </template>
+        <v-list>
+          <v-list-tile @click="handleCreateEventClick">
+            <v-icon left>mdi-creation</v-icon> Create new event
+          </v-list-tile>
+          <v-list-tile v-if="$store.state.author != null" @click="handleChangeAuthorClick">
+            <v-icon left>mdi-account-switch</v-icon> Change author
+            <span class="caption ml-2 text-lighten-1">({{ $store.state.author }})</span>
+          </v-list-tile>
+          <v-list-tile :to="{ name: 'Settings' }">
+            <v-icon left>mdi-settings</v-icon> Settings
+          </v-list-tile>
+          <v-list-tile @click="logDialog = true">
+            <v-icon left>mdi-console</v-icon> Logs
+          </v-list-tile>
+        </v-list>
+      </v-menu>
+    </v-app-bar>
 
-    <v-content>
+    <v-main>
       <v-container fluid>
 
-        <router-view></router-view>
+        <router-view/>
 
         <v-dialog
           v-model="$store.state.authorDialog"
@@ -182,15 +180,12 @@
         </v-dialog>
 
       </v-container>
-    </v-content>
+    </v-main>
   </v-app>
 </template>
 
 <script>
-import settings from './settings.json'
 import * as utils from '@/utils/utils'
-
-const STORAGE_KEY = 'settings'
 
 export default {
 
@@ -215,8 +210,8 @@ export default {
   computed: {
 
     listQuery () {
-      let query = {}
-      for (let [k, v] of Object.entries(this.$store.state.form)) {
+      const query = {}
+      for (const [k, v] of Object.entries(this.$store.state.form)) {
         if (v != null) {
           query[k] = v
         }
@@ -242,7 +237,7 @@ export default {
     },
 
     connectedUsers () {
-      return Object.values(this.$store.state.authorStatus).filter(x => x.author != this.$store.state.author)
+      return Object.values(this.$store.state.authorStatus).filter(x => x.author !== this.$store.state.author)
     }
 
   },
@@ -266,7 +261,7 @@ export default {
     },
 
     handleCreateEventClick () {
-      let o = this.$store.state.currentOrigin
+      const o = this.$store.state.currentOrigin
       if (o) {
         this.newEventTime = o.time._pretty
         this.newEventLatitude = o.latitude.value
@@ -277,19 +272,19 @@ export default {
     },
 
     handleCreateEventFormSubmit () {
-      let eventId = this.$store.getters.getId('Event')
-      let originId = this.$store.getters.getId('Origin')
-      let creationInfo = {
+      const eventId = this.$store.getters.getId('Event')
+      const originId = this.$store.getters.getId('Origin')
+      const creationInfo = {
         agency_id: this.$store.state.agencyId,
         creation_time: new Date().toISOString(),
         author: this.$store.state.author
       }
-      let e = {
+      const e = {
         origin: [{
           _not_committed: true,
           public_id: originId,
           creation_info: creationInfo,
-          time: { value: this.newEventTime.replace(' ', 'T')+'Z' },
+          time: { value: this.newEventTime.replace(' ', 'T') + 'Z' },
           latitude: { value: this.newEventLatitude },
           longitude: { value: this.newEventLongitude },
           depth: { value: this.newEventDepth * 1e3 },
@@ -313,7 +308,7 @@ export default {
         preferred_origin_id: originId
       }
       utils.processEventData(e)
-      console.log('[App::handleCreateEventFormSubmit] create event', e);
+      console.log('[App::handleCreateEventFormSubmit] create event', e)
       this.$store.dispatch('setCurrentEvent', e)
       this.$router.push({ name: 'Event', params: { code: eventId } })
       this.newEventDialog = false

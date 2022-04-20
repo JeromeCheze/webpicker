@@ -1,10 +1,10 @@
 import { State } from '@/types'
 import settings from '@/settings'
 
-let end = new Date(new Date().getTime() + 86400e3)
-let start = new Date(end.getTime() - 86400e3 * 8)
+const end = new Date(new Date().getTime() + 86400e3)
+const start = new Date(end.getTime() - 86400e3 * 8)
 
- const state: State = {
+const state: State = {
 
   root: location.href.split('#')[0],
 
@@ -26,7 +26,7 @@ let start = new Date(end.getTime() - 86400e3 * 8)
   acknowledgedMsgIds: [],
 
   eventList: [],
-  eventListDirty: false,
+  eventListDirty: true,
 
   currentEvent: null,
   currentOrigin: null,

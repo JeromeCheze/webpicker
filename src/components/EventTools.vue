@@ -84,22 +84,22 @@
 <script lang="ts">
 import Vue from 'vue'
 import * as utils from '@/utils/utils'
-import { EventToolsStationMagnitudeItem, StringIndexedObject, WebpickerEventParameters, WebpickerFocalMechanism, WebpickerOrigin, WebpickerStationMagnitude } from '@/types'
+import { EventToolsStationMagnitudeItem, StringIndexedObject, WebpickerEventParameters, WebpickerFocalMechanism, WebpickerOrigin } from '@/types'
 
 export default Vue.extend({
 
   props: {
     selectedStationMagnitude: {
       type: Array,
-      default: []
+      default: () => []
     }
   },
 
   data () {
-    let locatorOptions = [ 'LOCSAT', 'Hypo71' ]
-    let profileOptions: StringIndexedObject = {
-      LOCSAT: [ 'iasp91', 'tab' ],
-      Hypo71: [ 'ModelA', 'tectonic', 'volcanic' ]
+    const locatorOptions = ['LOCSAT', 'Hypo71']
+    const profileOptions: StringIndexedObject = {
+      LOCSAT: ['iasp91', 'tab'],
+      Hypo71: ['ModelA', 'tectonic', 'volcanic']
     }
     return {
       magnitudePopover: false,
@@ -186,7 +186,7 @@ export default Vue.extend({
       return this.$store.state.currentFocalMechanism
     },
     commitButtonColor (): string {
-      if (this.origin._not_committed || this.focalMechanism != null && this.focalMechanism._not_committed) {
+      if (this.origin._not_committed || (this.focalMechanism != null && this.focalMechanism._not_committed)) {
         return 'orange'
       }
       return 'white'
@@ -207,7 +207,7 @@ export default Vue.extend({
   methods: {
 
     handleKeyDown (ev: KeyboardEvent) {
-      let k = utils.shortcutString(ev)
+      const k = utils.shortcutString(ev)
       if (k === 'alt+r') {
         this.handleRelocateClick()
       } else if (k === 'alt+m') {
@@ -223,7 +223,7 @@ export default Vue.extend({
     },
 
     unselectS () {
-      for (let a of this.origin.arrival) {
+      for (const a of this.origin.arrival) {
         if (a.phase === 'S') {
           a.time_weight = 0
         }
@@ -233,17 +233,17 @@ export default Vue.extend({
     },
 
     initStationMagnitude () {
-      let tmp: StringIndexedObject = {}
+      const tmp: StringIndexedObject = {}
       // let prev = {}
       // for (let sm of this.stationMagnitude) {
       //   prev[sm.key] = sm.value
       // }
-      for (let a of this.origin.arrival) {
-        let netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
+      for (const a of this.origin.arrival) {
+        const netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
         tmp[netsta] = null
       }
-      let sm = []
-      for (let netsta of Object.keys(tmp)) {
+      const sm = []
+      for (const netsta of Object.keys(tmp)) {
         // sm.push({ key: netSta, value: prev[netSta] != null ? prev[netSta] : true })
         sm.push({ key: netsta, value: this.selectedStationMagnitude.indexOf(netsta) >= 0 })
       }
@@ -259,10 +259,10 @@ export default Vue.extend({
       this.$store.dispatch('setAuthorStatus', { eventid: this.event.public_id, action: 'relocating' })
       this.$store.dispatch('setLoading', { value: true, text: 'Relocate, please wait...' })
       // console.log(this.currentOrigin);
-      let e = utils.composeEvent({
-        base: this.event, origins: [ this.origin ], po: this.origin
+      const e = utils.composeEvent({
+        base: this.event, origins: [this.origin], po: this.origin
       })
-      this.$store.dispatch('log', `[EventTools::handleRelocateClick] send relocate request`)
+      this.$store.dispatch('log', '[EventTools::handleRelocateClick] send relocate request')
       utils.ajax({
         method: 'POST',
         url: this.$store.getters.getLink('relocate'),
@@ -271,28 +271,29 @@ export default Vue.extend({
           profile: this.profile
         },
         dataMimeType: 'application/json',
-        data: JSON.stringify([ e ]),
+        data: JSON.stringify([e]),
         type: 'json'
-      }).then(data => {
+      }).then(response => {
+        const data = response as {message: string, quakeml: string}
         this.$store.dispatch('setLoading', { value: false })
-        if (data.message != '') {
+        if (data.message !== '') {
           alert(data.message)
         } else {
-          let parser = new DOMParser()
-          let qml = parser.parseFromString(data.quakeml, 'application/xml')
+          const parser = new DOMParser()
+          const qml = parser.parseFromString(data.quakeml, 'application/xml')
           // console.log(qml);
-          let e = utils.parseQuakeML(qml)[0]
-          console.log('[EventTools::handleRelocateClick] relocate result', e);
-          this.$store.dispatch('log', `[EventTools::handleRelocateClick] relocate result`);
+          const e = utils.parseQuakeML(qml)[0]
+          console.log('[EventTools::handleRelocateClick] relocate result', e)
+          this.$store.dispatch('log', '[EventTools::handleRelocateClick] relocate result')
 
-          let o = e.origin[0]
-          o.creation_info.agency_id = this.event.creation_info.agency_id
+          const o = e.origin[0]
+          o.creation_info.agency_id = this.event.creation_info!.agency_id
           o.creation_info.author = this.$store.state.author
           o.evaluation_mode = 'manual'
           o._not_committed = true
           // keep only one not committed origin
-          let notCommitted = this.event.origin.filter(x => x._not_committed)
-          for (let origin of notCommitted) {
+          const notCommitted = this.event.origin.filter(x => x._not_committed)
+          for (const origin of notCommitted) {
             this.event.origin.splice(this.event.origin.indexOf(origin), 1)
           }
           if (!this.origin._not_committed) {
@@ -305,7 +306,7 @@ export default Vue.extend({
           this.event.preferred_origin_id = o.public_id
           this.event._po = o
           this.$emit('need-update')
-          this.$store.dispatch('log', `[EventTools::handleRelocateClick] send region name request`)
+          this.$store.dispatch('log', '[EventTools::handleRelocateClick] send region name request')
           utils.ajax({
             method: 'GET',
             url: this.$store.getters.getLink('region'),
@@ -316,7 +317,7 @@ export default Vue.extend({
             type: 'json'
           }).then(data => {
             this.$store.dispatch('log', `[EventTools::handleRelocateClick] send region name request response: ${data}`)
-            this.event.description = [{ type: 'region name', text: data }]
+            this.event.description = [{ type: 'region name', text: data as string }]
           }).catch(data => {
             this.$store.dispatch('log', `[EventTools::handleRelocateClick] send region name request failed: ${data}`)
           })
@@ -330,9 +331,9 @@ export default Vue.extend({
       this.magnitudePopover = false
       this.$store.dispatch('setAuthorStatus', { eventid: this.event.public_id, action: 'computing magnitudes' })
       this.$store.dispatch('setLoading', { value: true, text: 'Compute magnitudes, please wait...' })
-      let discardedStation = this.stationMagnitude.filter(x => x.value == false).map(x => x.key)
-      let e = utils.composeEvent({
-        base: this.event, origins: [ this.origin ], po: this.origin, discardedStation
+      const discardedStation = this.stationMagnitude.filter(x => x.value === false).map(x => x.key)
+      const e = utils.composeEvent({
+        base: this.event, origins: [this.origin], po: this.origin, discardedStation
       })
       delete e.amplitude
       delete e.station_magnitude
@@ -341,42 +342,43 @@ export default Vue.extend({
         method: 'POST',
         url: this.$store.getters.getLink('compute_magnitudes'),
         dataMimeType: 'application/json',
-        data: JSON.stringify([ e ]),
+        data: JSON.stringify([e]),
         type: 'json'
-      }).then(data => {
+      }).then(response => {
+        const data = response as {message: string, quakeml: string}
         this.$store.dispatch('setLoading', { value: false })
         if (data.quakeml == null) {
           alert(data.message)
         }
         if (data.quakeml != null) {
-          let parser = new DOMParser()
-          let qml = parser.parseFromString(data.quakeml, 'application/xml')
+          const parser = new DOMParser()
+          const qml = parser.parseFromString(data.quakeml, 'application/xml')
           // console.log(qml);
-          let e = utils.parseQuakeML(qml)[0]
+          const e = utils.parseQuakeML(qml)[0]
           console.log('[EventTools::handleComputeMagnitudeClick] compute magnitude result', e)
-          this.$store.dispatch('log', `[EventTools::handleComputeMagnitudeClick] compute magnitude result`)
-          if (e.magnitude.length == 0) {
-            alert('No magnitude computed.\n'+data.message)
+          this.$store.dispatch('log', '[EventTools::handleComputeMagnitudeClick] compute magnitude result')
+          if (e.magnitude.length === 0) {
+            alert('No magnitude computed.\n' + data.message)
             return
           }
-          for (let a of e.amplitude) {
+          for (const a of e.amplitude) {
             if (this.event.amplitude == null) {
               this.event.amplitude = []
             }
             this.event.amplitude.push(a)
           }
-          for (let sm of e.station_magnitude) {
+          for (const sm of e.station_magnitude) {
             if (this.event.station_magnitude == null) {
               this.event.station_magnitude = []
             }
             this.event.station_magnitude.push(sm)
           }
-          for (let m of e.magnitude) {
+          for (const m of e.magnitude) {
             if (this.event.magnitude == null) {
               this.event.magnitude = []
             }
             m.public_id = this.$store.getters.getId('Magnitude')
-            m.creation_info.agency_id = this.event.creation_info.agency_id
+            m.creation_info.agency_id = this.event.creation_info!.agency_id
             m.origin_id = this.origin.public_id
             this.event.magnitude.push(m)
           }
@@ -390,9 +392,9 @@ export default Vue.extend({
     },
 
     handleCommitClick () {
-      let e = this.event,
-          o = this.origin,
-          fm = this.focalMechanism
+      const e = this.event
+      const o = this.origin
+      const fm = this.focalMechanism
       e.type = this.commitForm.eventType
       e.type_certainty = this.commitForm.eventTypeCertainty
       e.preferred_origin_id = o.public_id
@@ -400,26 +402,27 @@ export default Vue.extend({
       if (fm != null) {
         e.preferred_focal_mechanism_id = fm.public_id
       }
-      let cloneEvent = utils.cloneAndClean(e, '/event_parameters/event')
+      const cloneEvent = utils.cloneAndClean(e, '/event_parameters/event') as WebpickerEventParameters
       if (cloneEvent.preferred_magnitude_id == null) {
         if (!confirm('You are about to commit an event with no magnitude. Do you really want to proceed ?')) {
           return
         }
       }
       console.log('[EventTools::handleCommitClick] commit', cloneEvent)
-      this.$store.dispatch('log', `[EventTools::handleCommitClick] commit`)
+      this.$store.dispatch('log', '[EventTools::handleCommitClick] commit')
       this.$store.dispatch('setAuthorStatus', { eventid: this.event.public_id, action: 'committing' })
       this.$store.dispatch('setLoading', { value: true, text: 'Commit in progress...' })
       utils.ajax({
         method: 'POST',
         url: this.$store.getters.getLink('commit'),
         dataMimeType: 'application/json',
-        data: JSON.stringify([ cloneEvent ]),
+        data: JSON.stringify([cloneEvent]),
         type: 'json'
-      }).then(data => {
+      }).then(response => {
+        const data = response as {'return_code': number, message: string}
         console.log('[EventTools::handleCommitClick] commit result', data)
-        if (data.return_code == 0) {
-          this.$store.dispatch('log', `[EventTools::handleCommitClick] commit successful`)
+        if (data.return_code === 0) {
+          this.$store.dispatch('log', '[EventTools::handleCommitClick] commit successful')
           // o._not_committed = false
           setTimeout(() => {
             this.commitPopover = false

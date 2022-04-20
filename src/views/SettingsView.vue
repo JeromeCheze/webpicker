@@ -29,7 +29,7 @@
           <v-btn
             v-if="field.value != field.default"
             @click="handleResetParameter(mainKey, subKey)"
-            color="primary" small flat>reset</v-btn>
+            color="primary" small text>reset</v-btn>
         </div>
       </div>
     </div>
@@ -99,7 +99,7 @@
             @click="handleFilterFormSubmit"
             color="primary"
             :disabled="!isfilterFormValid"
-            small flat>Submit</v-btn>
+            small text>Submit</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -122,9 +122,9 @@ import { StringIndexedObject } from '@/types'
 export default Vue.extend({
 
   data () {
-    for (let [mainKey, form] of Object.entries(formStruct)) {
-      for (let [subKey, field] of Object.entries(form.fields)) {
-        let key = `${mainKey}.${subKey}`
+    for (const [mainKey, form] of Object.entries(formStruct)) {
+      for (const [subKey, field] of Object.entries(form.fields)) {
+        const key = `${mainKey}.${subKey}`
         field.value = this.$store.state.settings[key]
         field.default = this.$store.state.defaultSettings[key]
       }
@@ -157,8 +157,8 @@ export default Vue.extend({
 
   computed: {
     isfilterFormValid () {
-      let f = this.filterForm
-      if (f.type == 'bandpass') {
+      const f = this.filterForm
+      if (f.type === 'bandpass') {
         if (f.fc1 == null || f.fc2 == null) {
           return false
         }
@@ -177,18 +177,18 @@ export default Vue.extend({
   methods: {
 
     addFilter () {
-      let f = this.filterForm
+      const f = this.filterForm
       f.filterIndex = null
       Object.assign(f, { name: null, order: 4, type: 'lowpass', fc1: null, fc2: null })
       this.filterDialog = true
     },
 
     editFilter (i: number) {
-      let f = this.filterForm
+      const f = this.filterForm
       f.name = this.filterList[i].name
       f.type = this.filterList[i].type
       f.order = this.filterList[i].order
-      if (f.type == 'bandpass') {
+      if (f.type === 'bandpass') {
         f.fc1 = this.filterList[i].fc[0]
         f.fc2 = this.filterList[i].fc[1]
       } else {
@@ -212,14 +212,14 @@ export default Vue.extend({
     },
 
     handleFilterFormSubmit () {
-      let f = this.filterForm
-      let result = {
+      const f = this.filterForm
+      const result = {
         type: f.type,
         name: f.name,
         order: f.order,
         fc: null as [number, number] | number | null
       }
-      if (f.type == 'bandpass') {
+      if (f.type === 'bandpass') {
         result.fc = [f.fc1 as number, f.fc2 as number]
       } else {
         result.fc = f.fc1
@@ -238,49 +238,49 @@ export default Vue.extend({
     },
 
     handleDarkModeClick () {
-      for (let [k, v] of Object.entries(this.$store.state.defaultSettings)) {
-        let [mainKey, subKey] = k.split('.')
-        if (mainKey == 'darkPickerColor') {
-          this.formStruct['pickerColor'].fields[subKey].value = v
+      for (const [k, v] of Object.entries(this.$store.state.defaultSettings)) {
+        const [mainKey, subKey] = k.split('.')
+        if (mainKey === 'darkPickerColor') {
+          this.formStruct.pickerColor.fields[subKey].value = v
         }
       }
     },
 
     handleSolirizedModeClick () {
-      for (let [k, v] of Object.entries(this.$store.state.defaultSettings)) {
-        let [mainKey, subKey] = k.split('.')
-        if (mainKey == 'solirizedPickerColor') {
-          this.formStruct['pickerColor'].fields[subKey].value = v
+      for (const [k, v] of Object.entries(this.$store.state.defaultSettings)) {
+        const [mainKey, subKey] = k.split('.')
+        if (mainKey === 'solirizedPickerColor') {
+          this.formStruct.pickerColor.fields[subKey].value = v
         }
       }
     },
 
     handleLightModeClick () {
-      let defaultSettings = this.$store.state.defaultSettings
-      for (let [k, v] of Object.entries(defaultSettings)) {
-        let [mainKey, subKey] = k.split('.')
-        if (mainKey == 'darkPickerColor' || mainKey == 'solirizedPickerColor') {
-          let key = `pickerColor.${subKey}`
-          this.formStruct['pickerColor'].fields[subKey].value = defaultSettings[key]
+      const defaultSettings = this.$store.state.defaultSettings
+      for (const k of Object.keys(defaultSettings)) {
+        const [mainKey, subKey] = k.split('.')
+        if (mainKey === 'darkPickerColor' || mainKey === 'solirizedPickerColor') {
+          const key = `pickerColor.${subKey}`
+          this.formStruct.pickerColor.fields[subKey].value = defaultSettings[key]
         }
       }
     },
 
     handleResetParameter (mainKey: string, subKey: string) {
-      let field = this.formStruct[mainKey].fields[subKey]
+      const field = this.formStruct[mainKey].fields[subKey]
       field.value = field.default
     },
 
     getSettingsFromForm () {
-      let result: StringIndexedObject = {}
-      for (let [mainKey, form] of Object.entries(this.formStruct)) {
-        for (let [subKey, field] of Object.entries(form.fields)) {
-          let key = `${mainKey}.${subKey}`
+      const result: StringIndexedObject = {}
+      for (const [mainKey, form] of Object.entries(this.formStruct)) {
+        for (const [subKey, field] of Object.entries(form.fields)) {
+          const key = `${mainKey}.${subKey}`
           result[key] = field.value
         }
       }
       result['picker.filters'] = this.filterList
-      result['themeDark'] = this.themeDarkValue
+      result.themeDark = this.themeDarkValue
       return result
     },
 

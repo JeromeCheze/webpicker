@@ -1,28 +1,30 @@
-import { ActivityObject, State } from "@/types"
+import { ActivityObject, State } from '@/types'
 
 export const getLink = (state: State) => (path: string) => {
   return `${state.root}${path}`
 }
 
 export const getId = (state: State) => (prefix: string) => {
-  let now = new Date().toISOString()
-  return prefix == 'Event' ? now.replace(/[-:]/g, '').replace(/[T\.]/g, '_').slice(0, 19) : [
-    prefix,
-    now.replace(/[\-:]/g, '').replace('T', '.').slice(0, 18),
-    (Math.random()*1000).toFixed(0)
-  ].join('-')
+  const now = new Date().toISOString()
+  return prefix === 'Event'
+    ? now.replace(/[-:]/g, '').replace(/[T.]/g, '_').slice(0, 19)
+    : [
+        prefix,
+        now.replace(/[-:]/g, '').replace('T', '.').slice(0, 18),
+        (Math.random() * 1000).toFixed(0)
+      ].join('-')
 }
 
 export const getEventActivity = (state: State) => {
-  let now = new Date().getTime()
-  let activity: ActivityObject = {}
-  for (let [uid, authorStatus] of Object.entries(state.authorStatus)) {
-    if (authorStatus.author == state.author) {
+  const now = new Date().getTime()
+  const activity: ActivityObject = {}
+  for (const [uid, authorStatus] of Object.entries(state.authorStatus)) {
+    if (authorStatus.author === state.author) {
       continue
     }
-    let t = new Date(authorStatus.time).getTime()
-    let delta = Math.floor((now - t) / 1e3)
-    let msg = `User ${authorStatus.author} was ${authorStatus.action} this event ${delta}s ago.`
+    const t = new Date(authorStatus.time).getTime()
+    const delta = Math.floor((now - t) / 1e3)
+    const msg = `User ${authorStatus.author} was ${authorStatus.action} this event ${delta}s ago.`
     if (activity[authorStatus.eventid] == null) {
       activity[authorStatus.eventid] = []
     }

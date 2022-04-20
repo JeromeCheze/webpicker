@@ -9,8 +9,8 @@
     </v-tabs>
     <v-tabs-items touchless v-model="activeTab">
       <v-tab-item>
-        <v-data-table :headers="tableHeader" :items="tableData" :pagination.sync="pagination" disable-initial-sort>
-          <template v-slot:items="props">
+        <v-data-table :headers="tableHeader" :items="tableData" :items-per-page="-1" :sort-desc.sync="sortDesc" :sort-by.sync="sortBy">
+          <template v-slot:item="props">
             <tr :class="tableRowClassName(props.item)" @click="handleRowClick(props.item)">
               <td v-if="props.item.activity != null">
                 <v-menu offset-x open-on-hover>
@@ -32,7 +32,7 @@
               <td class="text-xs-right"><div :style="{ minWidth: '60px' }">{{ props.item.lat }}</div></td>
               <td class="text-xs-right"><div :style="{ minWidth: '60px' }">{{ props.item.lon }}</div></td>
               <td class="text-xs-right"><div :style="{ minWidth: '60px' }">{{ props.item.depth }}</div></td>
-              <td><v-chip label outline small :color="props.item.modeColor">{{ props.item.mode }}</v-chip></td>
+              <td><v-chip label outlined small :color="props.item.modeColor">{{ props.item.mode }}</v-chip></td>
               <td>{{ props.item.status }}</td>
               <td>{{ props.item.eventType }}</td>
               <td><div :style="{ minWidth: '250px' }">{{ props.item.region }}</div></td>
@@ -105,7 +105,7 @@
 import Vue from 'vue'
 import * as utils from '@/utils/utils'
 import L from 'leaflet'
-import { ListViewDataTableRow, StringIndexedObject, WebpickerEventParameters, WebpickerForm } from '@/types'
+import { ListViewDataTableRow, StringIndexedObject, WebpickerEventParameters } from '@/types'
 
 export default Vue.extend({
 
@@ -129,13 +129,8 @@ export default Vue.extend({
         { text: 'ID', value: 'id' }
       ],
       hideDiscardedEvents: false,
-      pagination: {
-        descending: true,
-        page: 1,
-        rowsPerPage: -1,
-        sortBy: 'time',
-        totalItems: 0
-      },
+      sortBy: 'time',
+      sortDesc: true,
       tableData: [] as ListViewDataTableRow[],
       map: null as L.Map | null,
       bottomSheet: false,
@@ -148,20 +143,19 @@ export default Vue.extend({
   mounted () {
     this.$store.dispatch('setAuthorStatus', { eventid: 'null', action: 'browsing' })
     let dirty = false
-    let query = Object.assign(Object.assign({}, this.$store.state.form), this.$route.query)
-    for (let [k, v] of Object.entries(query)) {
-      if (this.$store.state.form[k] != v) {
+    const query = Object.assign(Object.assign({}, this.$store.state.form), this.$route.query)
+    for (const [k, v] of Object.entries(query)) {
+      if (this.$store.state.form[k] !== v) {
         dirty = true
         break
       }
     }
-    if (dirty && this.$store.state.eventList.length <= 1 || this.$store.state.eventListDirty) {
+    if ((dirty && this.$store.state.eventList.length <= 1) || this.$store.state.eventListDirty) {
       this.$store.dispatch('setFormValues', this.$route.query)
       this.$store.dispatch('setLoading', { value: true, text: 'Loading events...' })
       this.loadEvents()
     } else {
-      let data = this.getTableData()
-      this.pagination.totalItems = data.length
+      const data = this.getTableData()
       this.tableData = data
     }
   },
@@ -171,9 +165,9 @@ export default Vue.extend({
       return this.$store.state.eventList.filter((e: WebpickerEventParameters) => {
         return (
           !this.hideDiscardedEvents ||
-          this.hideDiscardedEvents && (
-            e.type == null || ['not existing', 'other event'].indexOf(e.type) == -1
-          )
+          (this.hideDiscardedEvents && (
+            e.type == null || ['not existing', 'other event'].indexOf(e.type) === -1
+          ))
         )
       })
     }
@@ -181,9 +175,9 @@ export default Vue.extend({
 
   watch: {
     activeTab: function (newValue, oldValue) {
-      if (newValue == 0) {
+      if (newValue === 0) {
         this.updateTable()
-      } else if (newValue == 1) {
+      } else if (newValue === 1) {
         setTimeout(() => {
           if (this.map == null) {
             this.initMap()
@@ -195,12 +189,11 @@ export default Vue.extend({
     },
 
     hideDiscardedEvents: function (newValue, oldValue) {
-      this.activeTab == 0 ? this.updateTable() : this.plotEvents()
+      this.activeTab === 0 ? this.updateTable() : this.plotEvents()
     },
 
     '$store.getters.getEventActivity': function (newValue, oldValue) {
-      let data = this.getTableData()
-      this.pagination.totalItems = data.length
+      const data = this.getTableData()
       this.tableData = data
     },
 
@@ -215,23 +208,22 @@ export default Vue.extend({
 
     loadEvents () {
       const args: StringIndexedObject = {}
-      for (let [k, v] of Object.entries(this.$store.state.form)) {
+      for (const [k, v] of Object.entries(this.$store.state.form)) {
         if (v != null) {
           args[k] = v
         }
       }
       args.format = 'xml'
-      this.$store.dispatch('log', `[ListView::initEvent] send loading catalog request`)
+      this.$store.dispatch('log', '[ListView::initEvent] send loading catalog request')
       utils.ajax({
         method: 'GET',
         url: this.$store.getters.getLink('fdsnws/event/1/query'),
         args: args,
         type: 'document'
       }).then(qml => {
-        let events = utils.parseQuakeML(qml)
+        const events = utils.parseQuakeML(qml as Document)
         this.$store.dispatch('eventList', events)
-        let data = this.getTableData()
-        this.pagination.totalItems = data.length
+        const data = this.getTableData()
         this.tableData = data
       }).catch(data => {
         this.$store.dispatch('log', `[ListView::initEvent] send loading catalog request failed: ${data}`)
@@ -244,26 +236,26 @@ export default Vue.extend({
       let result = events
       if (this.hideDiscardedEvents) {
         result = events.filter(e => {
-          e.type == null || ['not existing', 'other'].indexOf(e.type) == -1
+          return e.type == null || ['not existing', 'other'].indexOf(e.type) === -1
         })
       }
       return result
     },
 
     getEventColor (e: WebpickerEventParameters) {
-      if (['not existing', 'not reported', 'other event'].indexOf(e.type) >= 0) {
-        return [ 'gray', 'gray' ]
+      if (['not existing', 'not reported', 'other event'].indexOf(e.type!) >= 0) {
+        return ['gray', 'gray']
       }
-      let strokeColor = e._po!.evaluation_mode == 'manual' ? 'lime' : 'red'
+      const strokeColor = e._po!.evaluation_mode === 'manual' ? 'lime' : 'red'
       if (e._pm == null) {
-        return [ 'blue', strokeColor ]
+        return ['blue', strokeColor]
       } else {
-        if (['explosion', 'quarry blast'].indexOf(e.type) >= 0) {
-          return ['yellow', strokeColor ]
-        } else if (e.type == 'earthquake') {
-          return [ 'lime', strokeColor ]
+        if (['explosion', 'quarry blast'].indexOf(e.type!) >= 0) {
+          return ['yellow', strokeColor]
+        } else if (e.type === 'earthquake') {
+          return ['lime', strokeColor]
         } else {
-          return [ 'transparent', strokeColor ]
+          return ['transparent', strokeColor]
         }
       }
     },
@@ -273,19 +265,19 @@ export default Vue.extend({
       if (container == null) {
         return
       }
-      let map = L.map(container, {trackResize: false, attributionControl: false})
+      const map = L.map(container, { trackResize: false, attributionControl: false })
       this.map = map
-      let worldtopomap = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+      const worldtopomap = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
         attribution: '&copy; Esri, HERE, DeLorme, TomTom, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, <br>Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), swisstopo, MapmyIndia, © OpenStreetMap contributors, and the GIS User Community'
       })
-      let satmap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      const satmap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: '&copy; Esri, DigitalGlobe, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, <br>USGS, AEX, Getmapping, Aerogrid, IGN, IGP, swisstopo, and the GIS User Community'
       })
-      let baseLayers = {
+      const baseLayers = {
         Terrain: worldtopomap,
         Satellite: satmap
       }
-      L.control.layers(baseLayers).addTo(map);
+      L.control.layers(baseLayers).addTo(map)
       L.control.scale({ imperial: false }).addTo(map)
       worldtopomap.addTo(map)
       this.plotEvents()
@@ -295,16 +287,16 @@ export default Vue.extend({
       if (this.map == null) {
         return
       }
-      for (let [k, v] of Object.entries(this.markerMap)) {
+      for (const [k, v] of Object.entries(this.markerMap)) {
         v.remove()
         delete this.markerMap[k]
       }
-      let bounds: L.LatLngBoundsExpression = []
-      for (let e of this.filteredEvents) {
-        let pos: L.LatLngExpression = [e._po.latitude.value, e._po.longitude.value]
+      const bounds: L.LatLngBoundsExpression = []
+      for (const e of this.filteredEvents) {
+        const pos: L.LatLngExpression = [e._po.latitude.value, e._po.longitude.value]
         bounds.push(pos)
-        let [fillColor, color] = this.getEventColor(e)
-        let m = L.circleMarker(pos, {
+        const [fillColor, color] = this.getEventColor(e)
+        const m = L.circleMarker(pos, {
           radius: e._pm == null ? 10 : 4 + e._pm.mag.value * 2,
           weight: 2,
           fillOpacity: 0.5,
@@ -323,11 +315,11 @@ export default Vue.extend({
     },
 
     tableRowClassName (row: ListViewDataTableRow) {
-      return this.$store.state.currentEvent != null && this.$store.state.currentEvent.public_id == row.id ? 'selected-event-row' : ''
+      return this.$store.state.currentEvent != null && this.$store.state.currentEvent.public_id === row.id ? 'selected-event-row' : ''
     },
 
-    handleMarkerClick(e: WebpickerEventParameters) {
-      let m = this.markerMap[e.public_id]
+    handleMarkerClick (e: WebpickerEventParameters) {
+      const m = this.markerMap[e.public_id]
       if (m) {
         m.openPopup()
         this.mapSelectedEvent = e
@@ -342,13 +334,12 @@ export default Vue.extend({
     },
 
     updateTable () {
-      let data = this.getTableData()
-      this.pagination.totalItems = data.length
+      const data = this.getTableData()
       this.tableData = data
     },
 
     getTableData (): ListViewDataTableRow[] {
-      let activity = this.$store.getters.getEventActivity
+      const activity = this.$store.getters.getEventActivity
       return this.filteredEvents.map((e: WebpickerEventParameters) => ({
         activity: activity[e.public_id] != null ? activity[e.public_id] : null,
         time: e._po!.time._pretty,
@@ -359,9 +350,9 @@ export default Vue.extend({
         lon: e._po!.longitude._pretty,
         depth: e._po!.depth._pretty,
         eventType: e.type ? e.type : '',
-        mode: e._po!.evaluation_mode == 'manual' ? 'M' : 'A',
+        mode: e._po!.evaluation_mode === 'manual' ? 'M' : 'A',
         status: e._po!.evaluation_status != null ? e._po!.evaluation_status : '',
-        modeColor: e._po!.evaluation_mode == 'manual' ? 'green' : 'red',
+        modeColor: e._po!.evaluation_mode === 'manual' ? 'green' : 'red',
         author: e._po!.creation_info.author,
         region: e._region,
         id: e.public_id

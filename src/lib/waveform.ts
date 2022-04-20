@@ -1,4 +1,4 @@
-import { WebpickerCreationInfo } from "@/types";
+import { StringIndexedObject, WebpickerCreationInfo } from '@/types'
 
 export type WaveformPick = {
   id: string | null;
@@ -10,12 +10,12 @@ export type WaveformPick = {
   takeoff?: number;
   filter?: string;
   polarity: string | null;
-  creation_info?: WebpickerCreationInfo;
-  upper_uncertainty: number | null;
-  lower_uncertainty: number | null;
+  'creation_info'?: WebpickerCreationInfo;
+  'upper_uncertainty': number | null;
+  'lower_uncertainty': number | null;
 }
 
-type PickEvent = {
+export type PickEvent = {
   action: string;
   wfid: string;
   picks: WaveformPick[];
@@ -25,10 +25,11 @@ export type WaveformItemOptions = {
   start: number;
   step: number;
   values: (number | null)[];
-  filtered: (number | null)[];
+  filtered?: (number | null)[];
   scale: number;
   id: string;
   distance: number;
+  azimuth: number;
   ttt: {
     [index: string]: number;
   };
@@ -41,7 +42,7 @@ type WaveformStats = {
   sum: number;
   count: number;
   avg: number | null;
-  sq_sum?: number;
+  sqSum?: number;
   amp: number | null;
 }
 
@@ -86,6 +87,30 @@ type WaveformEvent = {
   x: number | null;
 }
 
+export interface WaveformColorOptions extends StringIndexedObject {
+  // global
+  amplitudeValue: string;
+  background: string;
+  backgroundEven: string;
+  grid: string;
+  selected: string;
+  selectedWindow: string;
+  border: string;
+  text: string;
+  // label
+  labelBackground: string;
+  labelText: string;
+  // line
+  line: string;
+  avgLine: string;
+  lineBar: string;
+  // phases
+  theoretical: string;
+  automatic: string;
+  manual: string;
+  uncertainty: string;
+}
+
 export type WaveformOptions = {
   /* required */
   container: string | HTMLElement;
@@ -95,33 +120,11 @@ export type WaveformOptions = {
   // -- style --
   size?: {
     height: number;
-    wrapperMaxHeight: number;
-    width: number | null;
-    font: number;
+    wrapperMaxHeight?: number;
+    width?: number | null;
+    font?: number;
   };
-  color?: {
-    // global
-    amplitudeValue: string;
-    background: string;
-    backgroundEven: string;
-    grid: string;
-    selected: string;
-    selectedWindow: string;
-    border: string;
-    text: string;
-    // label
-    labelBackground: string;
-    labelText: string;
-    // line
-    line: string;
-    avgLine: string;
-    lineBar: string;
-    // phases
-    theoretical: string;
-    automatic: string;
-    manual: string;
-    uncertainty: string;
-  },
+  color?: WaveformColorOptions,
   callback?: {
     waveformClick?: null | ((wf: WaveformItemOptions) => void);
     updatePick?: null | ((pe: PickEvent) => void);
@@ -149,14 +152,14 @@ export class Waveform {
 
   constructor (opt: WaveformOptions) {
     this.xGridScales = [
-      31536000000, 15768000000,                       // >/= 6 months
-      4838400000, 2419200000, 604800000,              // >/= 7days
-      172800000, 86400000,                            // >/= 1 day
+      31536000000, 15768000000, // >/= 6 months
+      4838400000, 2419200000, 604800000, // >/= 7days
+      172800000, 86400000, // >/= 1 day
       43200000, 21600000, 14400000, 7200000, 3600000, // >/= 1 hour
-      1800000, 600000, 300000, 120000, 60000,         // >/= 1 minute
-      30000, 10000, 5000, 2000, 1000,                 // >/= 1 seconde
-      500, 200, 100,                                  // < 1 seconde
-      50, 20, 10                                      // < 100 ms
+      1800000, 600000, 300000, 120000, 60000, // >/= 1 minute
+      30000, 10000, 5000, 2000, 1000, // >/= 1 seconde
+      500, 200, 100, // < 1 seconde
+      50, 20, 10 // < 100 ms
     ]
     this.waveforms = []
     this.event = {
@@ -194,7 +197,7 @@ export class Waveform {
       /* required */
       container: null,
       mode: 'list', // 'list' or 'picker'
-      waveforms : [], /*[
+      waveforms: [], /* [
         {
           start: <js_timestamp>,
           step: <number>,
@@ -213,7 +216,7 @@ export class Waveform {
             polarity: null || 'positive' || 'negative'
           }]
         }
-      ]*/
+      ] */
       /* optional */
       // -- style --
       size: {
@@ -237,7 +240,7 @@ export class Waveform {
         labelText: 'white',
         // line
         line: '#9cb9c9',
-        avgLine: 'rgba(180,180,180,.3)', //'#a6dfea',
+        avgLine: 'rgba(180,180,180,.3)', // '#a6dfea',
         lineBar: 'black',
         // phases
         theoretical: 'blue',
@@ -262,20 +265,20 @@ export class Waveform {
     // merge default options with given options
     this.recursiveCopy(this.opt, opt)
     // retrieve a DOMElement if a selector string was given
-    if (typeof this.opt.container == 'string') {
+    if (typeof this.opt.container === 'string') {
       this.opt.container = document.querySelector(this.opt.container)
     }
     // get the width of the container if not given in option
     if (this.opt.size.width === null) {
       const pad = window.getComputedStyle(this.opt.container).padding
-      this.opt.size.width = this.opt.container.clientWidth - 2 * parseInt(pad == '' ? '0' : pad)
+      this.opt.size.width = this.opt.container.clientWidth - 2 * parseInt(pad === '' ? '0' : pad)
     }
     this.event.xOffset = this.opt.container.getBoundingClientRect().x
     let start: number | null = null
     let end: number | null = null
     for (const wf of this.opt.waveforms) {
-      const currStart = Math.min(wf.start, wf.ttt.O),
-          currEnd = Math.max(wf.start + wf.values.length * wf.step, wf.ttt.O)
+      const currStart = Math.min(wf.start, wf.ttt.O)
+      const currEnd = Math.max(wf.start + wf.values.length * wf.step, wf.ttt.O)
       if (start == null || currStart < start) {
         start = currStart
       }
@@ -327,12 +330,12 @@ export class Waveform {
     if (wf.el != null) {
       return wf.el
     }
-    const wfContainer = document.createElement('div'),
-        wfCanvas = document.createElement('canvas'),
-        userCanvas = document.createElement('canvas'),
-        selWfCanvas = document.createElement('canvas'),
-        wfLabelContainer = document.createElement('div'),
-        wfLabel = document.createElement('div')
+    const wfContainer = document.createElement('div')
+    const wfCanvas = document.createElement('canvas')
+    const userCanvas = document.createElement('canvas')
+    const selWfCanvas = document.createElement('canvas')
+    const wfLabelContainer = document.createElement('div')
+    const wfLabel = document.createElement('div')
     wfContainer.appendChild(wfCanvas)
     wfContainer.appendChild(selWfCanvas)
     wfContainer.appendChild(userCanvas)
@@ -361,13 +364,13 @@ export class Waveform {
     wf.ctx3 = selWfCanvas.getContext('2d')
     wf.el = wfContainer
     let wfHandlers = [
-      {type: 'mouseenter', el: wf.el, callback: (ev: MouseEvent) => this.handleWaveformMouseenter(ev)}
+      { type: 'mouseenter', el: wf.el, callback: (ev: MouseEvent) => this.handleWaveformMouseenter(ev) }
     ]
-    if (this.opt.mode == 'picker') {
+    if (this.opt.mode === 'picker') {
       wfHandlers = wfHandlers.concat([
-        {type: 'mousemove', el: userCanvas, callback: ev => this.handleMouseMove(ev)},
-        {type: 'dblclick', el: userCanvas, callback: ev => this.handleDblClick(ev)},
-        {type: 'click', el: userCanvas, callback: ev => this.selectPick(ev)}
+        { type: 'mousemove', el: userCanvas, callback: ev => this.handleMouseMove(ev) },
+        { type: 'dblclick', el: userCanvas, callback: ev => this.handleDblClick(ev) },
+        { type: 'click', el: userCanvas, callback: ev => this.selectPick(ev) }
       ])
     }
     this.event.handlers = this.event.handlers.concat(this.bindEventHandlers(wfHandlers))
@@ -385,17 +388,17 @@ export class Waveform {
         |                             \-> wfLabel
         \-> xAxis
     */
-    this.initStyle();
-    const mainElement = document.createElement('div'),
-        traceContainer = document.createElement('div'),
-        xAxis = document.createElement('canvas')
+    this.initStyle()
+    const mainElement = document.createElement('div')
+    const traceContainer = document.createElement('div')
+    const xAxis = document.createElement('canvas')
     xAxis.width = this.opt.size.width
     xAxis.height = 40
     mainElement.appendChild(traceContainer)
     mainElement.appendChild(xAxis)
     traceContainer.classList.add('trace-container')
     traceContainer.style.maxHeight = `${this.opt.size.wrapperMaxHeight}px`
-    traceContainer.classList.add(this.opt.mode == 'picker' ? 'wf-picker' : 'wf-list')
+    traceContainer.classList.add(this.opt.mode === 'picker' ? 'wf-picker' : 'wf-list')
     for (const wf of this.getDisplayedWaveforms()) {
       const wfContainer = this.getWaveformContainer(wf)
       traceContainer.appendChild(wfContainer)
@@ -404,10 +407,10 @@ export class Waveform {
     this.xAxis = xAxis.getContext('2d')
     this.opt.container.appendChild(mainElement)
     this.event.handlers = this.event.handlers.concat(this.bindEventHandlers([
-      {type: 'wheel', el: mainElement, callback: (ev: WheelEvent) => this.wheelHandler(ev)},
-      {type: 'mousedown', el: mainElement, callback: (ev: MouseEvent) => this.mouseDownHandler(ev)},
-      {type: 'mousemove', el: mainElement, callback: (ev: MouseEvent) => this.mouseMoveHandler(ev)},
-      {type: 'mouseup', el: mainElement, callback: (ev: MouseEvent) => this.mouseUpHandler(ev)}
+      { type: 'wheel', el: mainElement, callback: (ev: WheelEvent) => this.wheelHandler(ev) },
+      { type: 'mousedown', el: mainElement, callback: (ev: MouseEvent) => this.mouseDownHandler(ev) },
+      { type: 'mousemove', el: mainElement, callback: (ev: MouseEvent) => this.mouseMoveHandler(ev) },
+      { type: 'mouseup', el: mainElement, callback: (ev: MouseEvent) => this.mouseUpHandler(ev) }
     ]))
   }
 
@@ -459,7 +462,7 @@ export class Waveform {
 
   setTimeAlignment (ref: string) {
     this.view.refTime = ref
-    this.view.offset = ref == 'O' ? this.view.duration / 2 : 0
+    this.view.offset = ref === 'O' ? this.view.duration / 2 : 0
   }
 
   getMouseX (ev: MouseEvent) {
@@ -471,7 +474,7 @@ export class Waveform {
   }
 
   time2pos (ref: number, t: number) {
-    return Math.floor(this.opt.size.width / 2 + (t-ref-this.view.offset)/this.view.xRatio)
+    return Math.floor(this.opt.size.width / 2 + (t - ref - this.view.offset) / this.view.xRatio)
   }
 
   pos2time (ref: number, p: number) {
@@ -479,11 +482,11 @@ export class Waveform {
   }
 
   value2pos (wf: WaveformItem, v: number) {
-    return Math.floor(this.opt.size.height / 2
-                      - (v - wf.stats!.avg!)
-                        * wf.drawOpt!.yRatio
-                        * this.view.gain
-                        * wf.drawOpt!.scaleGain)
+    return Math.floor(this.opt.size.height / 2 -
+                      (v - wf.stats!.avg!) *
+                        wf.drawOpt!.yRatio *
+                        this.view.gain *
+                        wf.drawOpt!.scaleGain)
   }
 
   getXGridStepIndex () {
@@ -495,9 +498,9 @@ export class Waveform {
 
   getValues (wf: WaveformItem) {
     return (
-      this.event.useFiltered == false ?
-      wf.opt.values :
-      wf.opt.filtered != null ? wf.opt.filtered : []
+      this.event.useFiltered === false
+        ? wf.opt.values
+        : wf.opt.filtered != null ? wf.opt.filtered : []
     )
   }
 
@@ -515,9 +518,11 @@ export class Waveform {
     if (ev.shiftKey) {
       ev.preventDefault()
       let delta = (
-        Math.abs(ev.deltaY) > 1 ? ev.deltaY :
-        Math.abs(ev.deltaX) > 1 ? ev.deltaX :
-        0
+        Math.abs(ev.deltaY) > 1
+          ? ev.deltaY
+          : Math.abs(ev.deltaX) > 1
+            ? ev.deltaX
+            : 0
       )
       if (this.event.wheelDelta == null) {
         this.event.wheelDelta = 0
@@ -528,7 +533,7 @@ export class Waveform {
       }
       delta = this.event.wheelDelta
       this.event.wheelDelta = 0
-      if (ev.ctrlKey || ev.metaKey ) {
+      if (ev.ctrlKey || ev.metaKey) {
         Math.sign(delta) > 0 ? this.yZoomOut() : this.yZoomIn()
       } else {
         Math.sign(delta) > 0 ? this.xZoomOut() : this.xZoomIn()
@@ -550,9 +555,9 @@ export class Waveform {
       if (Math.abs(delta) > 5) {
         this.event.moved = true
         this.event.x = pos
-        const sign = Math.sign(delta),
-            deltaT = Math.abs(delta) * this.view.xRatio
-        this.view.offset += deltaT*sign
+        const sign = Math.sign(delta)
+        const deltaT = Math.abs(delta) * this.view.xRatio
+        this.view.offset += deltaT * sign
         this.draw()
       }
     }
@@ -592,7 +597,7 @@ export class Waveform {
   }
 
   handleWaveformMouseenter (ev: MouseEvent) {
-    const wf = this.waveforms.find(x => x.el == ev.target) as WaveformItem
+    const wf = this.waveforms.find(x => x.el === ev.target) as WaveformItem
     this.event.hoverWf = wf
     this.applyCallback('waveformFocus', this.waveforms.indexOf(wf))
   }
@@ -638,7 +643,7 @@ export class Waveform {
     this.draw()
   }
 
-  deconsteSelectedPicks () {
+  deleteSelectedPicks () {
     let change = false
     for (const p of this.event.selectedPicks) {
       const i = this.event.hoverWf!.opt.picks.indexOf(p)
@@ -649,7 +654,7 @@ export class Waveform {
     }
     if (change) {
       this.applyCallback('updatePick', {
-        action: 'deconste',
+        action: 'delete',
         wfid: this.event.hoverWf!.opt.id,
         picks: this.event.selectedPicks
       })
@@ -667,8 +672,8 @@ export class Waveform {
     this.draw()
   }
 
-  setPolarity (polarity: string) {
-    if (this.event.selectedPicks.length == 0) {
+  setPolarity (polarity: string | null) {
+    if (this.event.selectedPicks.length === 0) {
       return
     }
     for (const p of this.event.selectedPicks) {
@@ -682,11 +687,11 @@ export class Waveform {
     })
   }
 
-  setTimeUncertainty (lower: number, upper: number) {
+  setTimeUncertainty (lower: number | null, upper?: number | null) {
     if (upper == null) {
       upper = lower
     }
-    if (this.event.selectedPicks.length == 0) {
+    if (this.event.selectedPicks.length === 0) {
       return
     }
     for (const p of this.event.selectedPicks) {
@@ -702,7 +707,7 @@ export class Waveform {
   }
 
   createPick () {
-    if (this.event.phase != null && this.event.phase != '') {
+    if (this.event.phase != null && this.event.phase !== '') {
       const ref = this.waveforms[0].opt.ttt[this.view.refTime]
       const t = this.event.pickLineTime as number
       const newPick = {
@@ -718,9 +723,9 @@ export class Waveform {
       }
       // remove all picks of same phase as newPick in all waveforms (keep only one pick per phase)
       for (const wf of this.getDisplayedWaveforms()) {
-        for (const p of wf.opt.picks.filter((x: WaveformPick) => x.phase == newPick.phase)) {
+        for (const p of wf.opt.picks.filter((x: WaveformPick) => x.phase === newPick.phase)) {
           this.applyCallback('updatePick', {
-            action: 'deconste', wfid: wf.opt.id, picks: [p]
+            action: 'delete', wfid: wf.opt.id, picks: [p]
           })
           wf.opt.picks.splice(wf.opt.picks.indexOf(p), 1)
         }
@@ -739,7 +744,7 @@ export class Waveform {
   }
 
   movePickLine (direction: string, fast: boolean) {
-    const sign = direction == 'right' ? 1 : -1
+    const sign = direction === 'right' ? 1 : -1
     const shift = fast ? this.view.duration * 0.05 : this.view.xRatio
     if (this.event.pickLineTime == null) {
       this.event.pickLineTime = this.waveforms[0].opt.ttt[this.view.refTime]
@@ -749,7 +754,7 @@ export class Waveform {
   }
 
   updatePickLine () {
-    if (this.event.phase != null && this.event.phase != '') {
+    if (this.event.phase != null && this.event.phase !== '') {
       const ref = this.waveforms[0].opt.ttt[this.view.refTime]
       if (this.event.pickLineTime == null) {
         this.event.pickLineTime = ref
@@ -763,7 +768,7 @@ export class Waveform {
         ctx.textBaseline = 'top'
         ctx.fillStyle = this.opt.color.lineBar
         ctx.fillRect(pos, 0, 1, this.opt.size.height)
-        if (i == 0) {
+        if (i === 0) {
           ctx.fillText(this.event.phase, pos + 4, 3)
         }
         ctx.restore()
@@ -803,7 +808,7 @@ export class Waveform {
   }
 
   setPickerPhase (phase: string) {
-    if (this.opt.mode != 'picker') {
+    if (this.opt.mode !== 'picker') {
       return
     }
     this.event.phase = phase
@@ -814,7 +819,7 @@ export class Waveform {
     this.waveforms.sort((a, b) => {
       const aa = keyAccesor(a.opt)
       const bb = keyAccesor(b.opt)
-      return aa == bb ? 0 : aa < bb ? -1 : 1
+      return aa === bb ? 0 : aa < bb ? -1 : 1
     })
     for (const wf of this.getDisplayedWaveforms(true)) {
       traceContainer.appendChild(wf.el as HTMLElement)
@@ -850,13 +855,13 @@ export class Waveform {
     ctx.save()
     this.clearCanvas(ctx)
     ctx.fillStyle = this.opt.color.selectedWindow
-    ctx.fillRect(p1, ctx.canvas.height / 2, p2-p1, ctx.canvas.height / 2)
+    ctx.fillRect(p1, ctx.canvas.height / 2, p2 - p1, ctx.canvas.height / 2)
     ctx.restore()
     // this.drawPicks(wf)
   }
 
   selectWaveform (wf: WaveformItem) {
-    if (this.opt.mode != 'list') return
+    if (this.opt.mode !== 'list') return
     if (this.event.selectedWf != null) {
       this.event.selectedWf.el!.classList.remove('selected')
       const ctx = this.event.selectedWf.ctx2 as CanvasRenderingContext2D
@@ -909,14 +914,14 @@ export class Waveform {
     const iend = Math.min(values.length - 1, this.time2index(wf, this.getEndTime(wf)))
     wf.stats = { min: null, max: null, sum: 0.0, count: 0, avg: null, amp: null }
     wf.groupedValues = []
-    //console.log(i, iend, sppx);
+    // console.log(i, iend, sppx);
     if (sppx < 3) {
       sppx = (iend - i) + 1
       useGrouping = false
     }
     while (i <= iend) {
-      const currentGroup = values.slice(i, i + sppx),
-          currStats: WaveformStats = { sum: 0.0, sq_sum: 0.0, count: 0, min: null, max: null, avg: null, amp: null }
+      const currentGroup = values.slice(i, i + sppx)
+      const currStats: WaveformStats = { sum: 0.0, sqSum: 0.0, count: 0, min: null, max: null, avg: null, amp: null }
       for (let j = 0, l = currentGroup.length; j < l; j++) {
         const v = currentGroup[j]
         if (v == null) continue
@@ -951,7 +956,7 @@ export class Waveform {
         this.view.maxAmp = amp
       }
     }
-    this.view.xRatio = this.view.duration / this.opt.size.width; // s/px
+    this.view.xRatio = this.view.duration / this.opt.size.width // s/px
   }
 
   computeWaveformDrawOption (wf: WaveformItem) {
@@ -968,20 +973,20 @@ export class Waveform {
     if (this.getStartTime(wf) < wf.opt.start) {
       wf.drawOpt.x0 = this.time2pos(wf.opt.ttt[this.view.refTime], wf.opt.start)
     }
-    if (wf.stats.count == 0) {
+    if (wf.stats.count === 0) {
       return
     }
     let min = wf.stats.min as number
     let max = wf.stats.max as number
     let delta = max - min
-    //if (delta < 1) delta = 1;
+    // if (delta < 1) delta = 1;
     min -= delta * 0.2
     max += delta * 0.2
     delta = max - min
-    const amplitude = max == min ? 1 : max - min
+    const amplitude = max === min ? 1 : max - min
     Object.assign(wf.drawOpt, {
       min: min,
-      max : max,
+      max: max,
       yRatio: this.opt.size.height / amplitude
     })
   }
@@ -997,11 +1002,11 @@ export class Waveform {
     const ctx = wf.ctx as CanvasRenderingContext2D
     ctx.save()
     ctx.fillStyle = this.opt.color.grid
-    while (tick-start < this.view.duration) {
+    while (tick - start < this.view.duration) {
       ctx.fillRect(this.time2pos(wf.opt.ttt[this.view.refTime], tick), 0, 1, this.opt.size.height)
       tick += tickStep
     }
-    ctx.restore();
+    ctx.restore()
   }
 
   drawLine (wf: WaveformItem) {
@@ -1013,14 +1018,14 @@ export class Waveform {
     ctx.beginPath()
     const values = this.getValues(wf)
     if (wf.groupedValues == null) {
-      const istart = Math.max(0, this.time2index(wf, this.getStartTime(wf))),
-          iend = Math.min(values.length-1, this.time2index(wf, this.getEndTime(wf)))
+      const istart = Math.max(0, this.time2index(wf, this.getStartTime(wf)))
+      const iend = Math.min(values.length - 1, this.time2index(wf, this.getEndTime(wf)))
       let i = istart
       for (; i < iend; i++) {
         const y = values[i]
         if (y != null) {
           const pos = this.value2pos(wf, y)
-          if (i == istart || values[i - 1] == null) {
+          if (i === istart || values[i - 1] == null) {
             ctx.moveTo(x, pos)
           } else {
             ctx.lineTo(x, pos)
@@ -1035,7 +1040,7 @@ export class Waveform {
       for (let i = 0, l = wf.groupedValues.length; i < l; i++) {
         const y = wf.groupedValues[i]
         if (y != null) {
-          if (i == 0 || wf.groupedValues[i - 1] == null) {
+          if (i === 0 || wf.groupedValues[i - 1] == null) {
             ctx.moveTo(x, this.value2pos(wf, y[0]))
           } else {
             ctx.lineTo(x, this.value2pos(wf, y[0]))
@@ -1072,7 +1077,7 @@ export class Waveform {
     const tickStepIndex = this.getXGridStepIndex()
     const minorTick = this.xGridScales[tickStepIndex]
     let majorTick = this.xGridScales[Math.max(0, tickStepIndex - 1)]
-    if (minorTick == majorTick) {
+    if (minorTick === majorTick) {
       majorTick = minorTick * 2
     }
     this.clearCanvas(ctx)
@@ -1081,25 +1086,30 @@ export class Waveform {
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
     ctx.fillRect(0, 0, ctx.canvas.width, 1)
-    let refTime = this.view.refTime == 'O' ? this.waveforms[0].opt.ttt.O : 0
-    if (this.view.refTime != 'O' && this.opt.mode == 'picker') {
+    let refTime = this.view.refTime === 'O' ? this.waveforms[0].opt.ttt.O : 0
+    if (this.view.refTime !== 'O' && this.opt.mode === 'picker') {
       refTime = this.waveforms[0].opt.ttt[this.view.refTime]
     }
     const start = refTime + this.view.offset - this.view.duration / 2
     let tick = start - (start % minorTick) + minorTick
-    while (tick-start < this.view.duration) {
+    while (tick - start < this.view.duration) {
       const pos = this.time2pos(refTime, tick)
-      if (tick % majorTick == 0) {
+      if (tick % majorTick === 0) {
         ctx.fillRect(pos, 0, 1, 8)
         d.setTime(tick)
-        let t: string | number = tick/1000
-        if (this.view.refTime == 'O' || this.opt.mode == 'picker') {
-          t = ((tick % 86400000) == 0 ? `${d.getDate()}/${d.getMonth()+1}` :
-               (tick % 86400000) == 0 ? `${d.getDate()}/${d.getMonth()+1}` :
-               (tick % 60000) == 0 ? d.toISOString().substr(11, 5) :
-               (tick % 1000) == 0 ? d.toISOString().substr(11, 8) :
-               (tick % 100) == 0 ? d.toISOString().substr(11, 10) :
-               (tick % 10) == 0 ? d.toISOString().substr(11, 11) : '')
+        let t: string | number = tick / 1000
+        if (this.view.refTime === 'O' || this.opt.mode === 'picker') {
+          t = ((tick % 86400000) === 0
+            ? `${d.getDate()}/${d.getMonth() + 1}`
+            : (tick % 86400000) === 0
+                ? `${d.getDate()}/${d.getMonth() + 1}`
+                : (tick % 60000) === 0
+                    ? d.toISOString().substr(11, 5)
+                    : (tick % 1000) === 0
+                        ? d.toISOString().substr(11, 8)
+                        : (tick % 100) === 0
+                            ? d.toISOString().substr(11, 10)
+                            : (tick % 10) === 0 ? d.toISOString().substr(11, 11) : '')
         }
         ctx.fillText(t as string, pos, 10)
       } else {
@@ -1129,16 +1139,16 @@ export class Waveform {
     ctx.fillStyle = this.opt.color.theoretical
     for (const [p, t] of Object.entries(wf.opt.ttt)) {
       const pos = this.time2pos(wf.opt.ttt[this.view.refTime], t)
-      if (p == 'O') {
+      if (p === 'O') {
         ctx.save()
         ctx.fillStyle = 'red'
         ctx.fillRect(pos, 0, 1, this.opt.size.height)
         ctx.restore()
       } else {
         ctx.fillRect(pos, 0, 1, this.opt.size.height)
-        if (this.opt.mode == 'picker' &&
-            this.waveforms.indexOf(wf) == this.waveforms.length - 1 ||
-            this.opt.mode == 'list') {
+        if ((this.opt.mode === 'picker' &&
+             this.waveforms.indexOf(wf) === this.waveforms.length - 1) ||
+            this.opt.mode === 'list') {
           ctx.fillText(p, pos + 3, this.opt.size.height - 3)
         }
       }
@@ -1172,7 +1182,7 @@ export class Waveform {
     for (const p of pickList) {
       const pos = this.time2pos(ref, p.time)
       if (this.event.clickPos != null &&
-          wf == this.event.hoverWf &&
+          wf === this.event.hoverWf &&
           Math.abs(this.event.clickPos - pos) < 5) {
         this.event.selectedPicks.push(p)
         ctx.beginPath()
@@ -1195,12 +1205,12 @@ export class Waveform {
       ctx.fillRect(pos - 0.5, 0, 1, this.opt.size.height)
       if (p.polarity != null) {
         ctx.beginPath()
-        if (p.polarity == 'positive') {
+        if (p.polarity === 'positive') {
           ctx.moveTo(pos - 4.5, 10)
           ctx.lineTo(pos + 4.5, 10)
           ctx.lineTo(pos, 0)
           ctx.closePath()
-        } else if (p.polarity == 'negative') {
+        } else if (p.polarity === 'negative') {
           const h = this.opt.size.height
           ctx.moveTo(pos - 4.5, h - 10)
           ctx.lineTo(pos + 4.5, h - 10)
@@ -1222,7 +1232,7 @@ export class Waveform {
     ctx.restore()
   }
 
-  getDisplayedWaveforms (refresh=false) {
+  getDisplayedWaveforms (refresh = false) {
     if (!refresh) {
       return this.displayedWaveforms
     }
@@ -1279,12 +1289,11 @@ export class Waveform {
       this.plotWaveform(wf)
     }
     this.drawXAxis()
-    if (this.opt.mode == 'picker') {
+    if (this.opt.mode === 'picker') {
       const wf = this.waveforms[0]
       this.applyCallback('draw', {
         start: this.getStartTime(wf), end: this.getEndTime(wf)
       })
     }
   }
-
 }

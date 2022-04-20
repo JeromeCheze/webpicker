@@ -35,9 +35,9 @@ export default Vue.extend({
         display: this.value != null ? 'block' : 'none',
         height: `${this.size}px`,
         background: (
-          this.value != null && this.color.toLowerCase() == '#ffffff' ?
-          `hsl(${105 * v / 100}, 100%, 45%)` :
-          this.color
+          this.value != null && this.color.toLowerCase() === '#ffffff'
+            ? `hsl(${105 * v / 100}, 100%, 45%)`
+            : this.color
         )
       }
     }
