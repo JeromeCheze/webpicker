@@ -19,7 +19,7 @@
         <template v-slot:activator="{ on }">
           <v-btn icon v-on="on"><v-icon>mdi-dots-vertical</v-icon></v-btn>
         </template>
-        <v-list>
+        <v-list min-width="300">
           <v-list-item @click="handleCreateEventClick">
             <v-icon left>mdi-creation</v-icon> Create new event
           </v-list-item>
@@ -240,6 +240,12 @@ export default {
       return Object.values(this.$store.state.authorStatus).filter(x => x.author !== this.$store.state.author)
     }
 
+  },
+
+  watch: {
+    '$store.state.settings.themeDark': function (value) {
+      this.$vuetify.theme.dark = value
+    }
   },
 
   mounted () {

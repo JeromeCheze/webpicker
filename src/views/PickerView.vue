@@ -6,20 +6,23 @@
       :color="settings['pickerProgressBar.color']"
     ></progress-bar>
     <v-app-bar dense :style="{ zIndex: 10 }">
-      <v-overflow-btn
+      <v-select
         v-model="tools.phase"
         label="Phase"
         :items="tools.phaseOptions"
         hide-details
         clearable
         title="Select phase"
-      ></v-overflow-btn>
-      <v-divider vertical class="mr-2"></v-divider>
+        solo
+        dense
+        flat
+      ></v-select>
+      <v-divider vertical class="mx-2"></v-divider>
 
       <v-checkbox v-model="tools.sameScale" label="Same scale" hide-details :style="{ maxWidth: '160px' }"></v-checkbox>
-      <v-divider vertical></v-divider>
+      <v-divider vertical class="mx-2"></v-divider>
 
-      <v-overflow-btn
+      <v-select
         v-model="tools.filter"
         label="Filter"
         item-text="name"
@@ -27,24 +30,27 @@
         hide-details
         clearable
         title="Select filter"
-      ></v-overflow-btn>
-      <v-divider vertical class="mr-2"></v-divider>
+        solo
+        dense
+        flat
+      ></v-select>
+      <v-divider vertical class="mx-2"></v-divider>
 
-      <v-btn-toggle v-model="tools.alignment" mandatory>
+      <v-btn-toggle v-model="tools.alignment" mandatory dense>
         <v-btn text :value="'O'" title="Align by origin time">O</v-btn>
         <v-btn text :value="'P'" title="Align by theoretical P wave">P</v-btn>
         <v-btn text :value="'S'" title="Align by theoretical S wave">S</v-btn>
       </v-btn-toggle>
       <v-divider vertical class="mx-2"></v-divider>
 
-      <v-btn-toggle v-model="tools.focusComponent" mandatory>
+      <v-btn-toggle v-model="tools.focusComponent" mandatory dense>
         <v-btn text v-for="(comp, index) in tools.focusComponentOption" :key="index">{{ comp }}</v-btn>
       </v-btn-toggle>
       <v-divider vertical class="mx-2"></v-divider>
 
-      <v-btn-toggle v-model="tools.sortBy" mandatory>
+      <v-btn-toggle v-model="tools.sortBy" mandatory dense>
         <v-btn text :value="'distance'" title="Sort by distance"><v-icon>mdi-map-marker-distance</v-icon></v-btn>
-        <v-btn text :value="'name'" title="Sort by name"><v-icon>mdi-sort-alphabetical</v-icon></v-btn>
+        <v-btn text :value="'name'" title="Sort by name"><v-icon>mdi-sort-alphabetical-ascending</v-icon></v-btn>
       </v-btn-toggle>
       <v-divider vertical class="mx-2"></v-divider>
 
@@ -54,7 +60,7 @@
         @changeLocation="handleChangeLocation"
         @submit="loadRadiusStation"
       ></station-radius-selector>
-      <v-divider vertical></v-divider>
+      <v-divider vertical class="mx-2"></v-divider>
 
       <v-menu offset-y bottom left :close-on-content-click="false" v-model="additionalWaveformsChannelsMenu">
         <template v-slot:activator="{ on }">
@@ -63,29 +69,32 @@
           </v-btn>
         </template>
         <v-list>
-          <v-list-tile @click="() => null" v-for="channel in additionalWaveformsChannels" :key="channel.label">
-            <v-list-tile-action>
+          <v-list-item @click="() => null" v-for="channel in additionalWaveformsChannels" :key="channel.label">
+            <v-list-item-action>
               <v-checkbox v-model="channel.value"></v-checkbox>
-            </v-list-tile-action>
-            <v-list-tile-content @click="channel.value = !channel.value">{{ channel.label }}</v-list-tile-content>
-          </v-list-tile>
-          <v-list-tile>
-            <v-list-tile-action></v-list-tile-action>
-            <v-list-tile-content>
+            </v-list-item-action>
+            <v-list-item-content @click="channel.value = !channel.value">{{ channel.label }}</v-list-item-content>
+          </v-list-item>
+          <v-list-item>
+            <v-list-item-action></v-list-item-action>
+            <v-list-item-content>
               <v-btn @click="handleAdditionalWaveformSubmit">Ok</v-btn>
-            </v-list-tile-content>
-          </v-list-tile>
+            </v-list-item-content>
+          </v-list-item>
         </v-list>
       </v-menu>
-      <v-divider vertical></v-divider>
+      <v-divider vertical class="mx-2"></v-divider>
 
-      <v-overflow-btn
+      <v-select
         v-model="tools.rotation"
         label="Rotation"
         :items="tools.rotationOptions"
         hide-details
         title="Select rotation"
-      ></v-overflow-btn>
+        solo
+        dense
+        flat
+      ></v-select>
     </v-app-bar>
     <div class="picker-view__container--picker"></div>
     <div class="picker-view__container--list"></div>

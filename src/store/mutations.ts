@@ -144,6 +144,7 @@ export const SET_SETTINGS = (state: State, data: WebpickerSettings) => {
       stored[k] = v
     }
   }
+  console.log(stored)
   localStorage.setItem('settings', JSON.stringify(stored))
 }
 

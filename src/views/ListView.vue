@@ -1,8 +1,10 @@
 <template>
   <v-card>
-    <div class="px-3 py-1">
-      <v-checkbox v-model="hideDiscardedEvents" label="Hide discarded events"></v-checkbox>
-    </div>
+    <v-row>
+      <v-col cols="3" class="mx-4">
+        <v-checkbox v-model="hideDiscardedEvents" label="Hide discarded events"></v-checkbox>
+      </v-col>
+    </v-row>
     <v-tabs v-model="activeTab" right>
       <v-tab><v-icon>mdi-view-list</v-icon></v-tab>
       <v-tab><v-icon>mdi-map</v-icon></v-tab>
@@ -367,7 +369,7 @@ export default Vue.extend({
 .selected-event-row {
   background-color: #e7f9ff !important;
 }
-.application.theme--dark .selected-event-row {
+.v-application.theme--dark .selected-event-row {
   background-color: #197492 !important;
 }
 .list-view__map-canvas {
@@ -378,5 +380,5 @@ export default Vue.extend({
 .list-view__map-table tr:hover {background-color: #d1edf5; cursor: pointer;}
 .list-view__map-table th, td {padding: 4px; text-align: center;}
 .list-view__map-table th {font-weight: bold; background: #efefef;}
-.application.theme--dark .list-view__map-table th {background-color: #5e5e5e;}
+.v-application.theme--dark .list-view__map-table th {background-color: #272727;}
 </style>

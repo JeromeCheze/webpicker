@@ -43,7 +43,7 @@ export default Vue.extend({
 }
 .keybinding-field--label {
   font-size: 12px;
-  color: rgba(0,0,0,.54)
+  /* color: rgba(0,0,0,.54) */
 }
 .keybinding-field--input {
   padding: 4px;
