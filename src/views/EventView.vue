@@ -18,10 +18,10 @@
           <v-tab>Travel time</v-tab>
           <v-tab>Magnitude</v-tab>
           <v-tab>First motion (beta)</v-tab>
-          <v-tab-item class="event-view__chart--time-residual"></v-tab-item>
-          <v-tab-item class="event-view__chart--travel-time"></v-tab-item>
-          <v-tab-item class="event-view__chart--magnitudes"></v-tab-item>
-          <v-tab-item class="event-view__chart--first-motion">
+          <v-tab-item class="event-view__chart--time-residual" eager></v-tab-item>
+          <v-tab-item class="event-view__chart--travel-time" eager></v-tab-item>
+          <v-tab-item class="event-view__chart--magnitudes" eager></v-tab-item>
+          <v-tab-item class="event-view__chart--first-motion" eager>
             <first-motion :active="firstMotionActive"></first-motion>
           </v-tab-item>
         </v-tabs>

@@ -20,19 +20,19 @@
           <v-btn icon v-on="on"><v-icon>mdi-dots-vertical</v-icon></v-btn>
         </template>
         <v-list>
-          <v-list-tile @click="handleCreateEventClick">
+          <v-list-item @click="handleCreateEventClick">
             <v-icon left>mdi-creation</v-icon> Create new event
-          </v-list-tile>
-          <v-list-tile v-if="$store.state.author != null" @click="handleChangeAuthorClick">
+          </v-list-item>
+          <v-list-item v-if="$store.state.author != null" @click="handleChangeAuthorClick">
             <v-icon left>mdi-account-switch</v-icon> Change author
             <span class="caption ml-2 text-lighten-1">({{ $store.state.author }})</span>
-          </v-list-tile>
-          <v-list-tile :to="{ name: 'Settings' }">
-            <v-icon left>mdi-settings</v-icon> Settings
-          </v-list-tile>
-          <v-list-tile @click="logDialog = true">
+          </v-list-item>
+          <v-list-item :to="{ name: 'Settings' }">
+            <v-icon left>mdi-cog</v-icon> Settings
+          </v-list-item>
+          <v-list-item @click="logDialog = true">
             <v-icon left>mdi-console</v-icon> Logs
-          </v-list-tile>
+          </v-list-item>
         </v-list>
       </v-menu>
     </v-app-bar>

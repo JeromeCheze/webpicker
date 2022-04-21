@@ -1,7 +1,7 @@
 <template>
-  <v-layout row wrap>
+  <v-layout row wrap class="pa-4">
     <v-flex class="first-motion__container"></v-flex>
-    <v-flex class="text-xs-right" xs2>
+    <v-flex class="text-right" xs3>
       <table class="first-motion__table">
         <tbody>
           <tr>
@@ -23,12 +23,14 @@
         @click="handleValidate"
         :color="isDirty ? 'orange' : 'white'"
         light
+        class="ma-1"
       >VALIDATE</v-btn><br>
-      <v-btn small @click="handleReset">RESET</v-btn>
+      <v-btn small @click="handleReset" class="ma-1">RESET</v-btn>
       <v-btn
         small
         @click="handleDelete"
         v-if="focalMechanism != null && focalMechanism.nodal_planes != null"
+        class="ma-1"
       >DELETE</v-btn>
     </v-flex>
   </v-layout>
@@ -342,6 +344,7 @@ export default Vue.extend({
 <style>
 .first-motion__container {
   position: relative;
+  height: 340px;
 }
 .first-motion__container canvas {
   position: absolute;

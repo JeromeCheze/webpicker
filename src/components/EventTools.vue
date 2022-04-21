@@ -4,6 +4,7 @@
       :color="origin._is_dirty ? 'orange' : 'white'"
       light
       @click="handleRelocateClick"
+      class="ma-1"
       small>RELOCATE</v-btn>
     <div class="event-tools__select-wrapper">
       <v-select label="Locator" v-model="locator" :items="locatorOptions"></v-select>
@@ -16,6 +17,7 @@
         <v-btn
           v-on="on" small @click="initStationMagnitude"
           light
+          class="ma-1"
           :color="event.preferred_magnitude_id == null ? 'orange' : 'white'">
           MAGNITUDE
         </v-btn>
@@ -40,6 +42,7 @@
             color="white"
             light
             @click="handleComputeMagnitudeClick"
+            class="ma-1"
             small>COMPUTE</v-btn>
         </v-card-actions>
       </v-card>
@@ -50,6 +53,7 @@
           v-on="on"
           :color="commitButtonColor"
           light
+          class="ma-1"
           small>COMMIT</v-btn>
       </template>
       <v-card class="pa-3">
@@ -76,8 +80,8 @@
       </v-card>
     </v-menu>
     <v-spacer></v-spacer>
-    <v-btn small @click="handleKeepUsedArrival" title="Keep used arrivals by deleting discarded (use with caution!)">Keep used</v-btn>
-    <v-btn small @click="unselectS" title="Discard S arrivals (relocation is required after)">Unselect S</v-btn>
+    <v-btn small class="ma-1" @click="handleKeepUsedArrival" title="Keep used arrivals by deleting discarded (use with caution!)">Keep used</v-btn>
+    <v-btn small class="ma-1" @click="unselectS" title="Discard S arrivals (relocation is required after)">Unselect S</v-btn>
   </v-footer>
 </template>
 

@@ -9,7 +9,6 @@ export default Vue.extend({
   props: {
 
     value: {
-      type: Number,
       required: true,
       default: 0
     },

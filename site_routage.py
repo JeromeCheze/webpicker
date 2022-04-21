@@ -1,15 +1,13 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from flask import Flask, g, request, session, render_template, Response, abort
-from urllib2 import urlopen, Request, HTTPError
-from seiscomp3_db_query import SeisComP3DBQuery
+from urllib.request import urlopen, Request, HTTPError
 from obspy.geodetics import FlinnEngdahl
 from obspy.clients.fdsn import Client
 from obspy.taup import TauPyModel
-from StringIO import StringIO
 from obspy import UTCDateTime
 from datetime import datetime
-from urllib import urlencode
+from urllib.parse import urlencode
 from functools import wraps
 from random import randint
 from lxml import etree
@@ -32,14 +30,13 @@ FE = FlinnEngdahl()
 
 DEBUG = False
 
-USE_SCP3_DB_QUERY = os.getenv('USE_SCP3_DB_QUERY', 'false') == 'true'
 RESTRICTED = os.getenv('WEBPICKER_RESTRICT_ACCESS', 'false') == 'true'
 USERNAME = os.getenv('WEBPICKER_USERNAME', 's2rhai')
 PASSWORD = os.getenv('WEBPICKER_PASSWORD', '52rh@!')
-FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'thufir.unice.fr:8000')
-FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'thufir.unice.fr:8080')
-FDSNWS_SC3_STATION_HOST = os.getenv('FDSNWS_SC3_STATION_HOST', 'thufir.unice.fr:8080')
-FDSNWS_DATASELECT_HOST = os.getenv('FDSNWS_DATASELECT_HOST', 'thufir.unice.fr:8000')
+FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'encelade.unice.fr:8000')
+FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'encelade.unice.fr:8000')
+FDSNWS_SC3_STATION_HOST = os.getenv('FDSNWS_SC3_STATION_HOST', 'encelade.unice.fr:8080')
+FDSNWS_DATASELECT_HOST = os.getenv('FDSNWS_DATASELECT_HOST', 'encelade.unice.fr:8000')
 
 FDSNWS_ROOT = 'http://%s' % FDSNWS_EVENT_HOST
 FDSNWS_EVENT = 'http://%s/fdsnws/event' % FDSNWS_EVENT_HOST
@@ -55,8 +52,6 @@ SEISCOMP_PROGRAM = os.path.join(SEISCOMP_ROOT, 'bin/seiscomp')
 SCP3ML_DISPATCH_VERSION = os.getenv('SCP3ML_DISPATCH_VERSION', '0.11')
 SCP3ML_BINARY_VERSION = os.getenv('SCP3ML_BINARY_VERSION', '0.11')
 SEISCOMP_DB_URI = os.getenv('SEISCOMP_DB_URI', 'postgresql://sc3reader:@babel.unice.fr/seiscomp3_dev')
-
-SCP3_DB_QUERY = SeisComP3DBQuery(SEISCOMP_DB_URI)
 
 XSL_SC3ML_TO_QML1_2 = {
   '0.7': os.path.join(SEISCOMP_ROOT, 'share/xml/0.7/sc3ml_0.7__quakeml_1.2.xsl'),
@@ -151,9 +146,9 @@ class AuthorStatusHandler(object):
         now = datetime.utcnow()
         authors_to_del = []
         msg_to_del = []
-        for curr_author_id, curr_event_status in self.__status.iteritems():
+        for curr_author_id, curr_event_status in self.__status.items():
             if curr_author_id == '__message__':
-                for msg_id, msg in curr_event_status.iteritems():
+                for msg_id, msg in curr_event_status.items():
                     t = datetime.strptime(msg['time'], '%Y-%m-%dT%H:%M:%SZ')
                     delta = now - t
                     if delta.total_seconds() > self.__clean_threshold:
@@ -530,7 +525,7 @@ def takeoffangle(depth, distance):
 def index():
     if 'id' not in session:
         session['id'] = gen_id()
-    return render_template('app.html')
+    return render_template('index.html')
 
 @app.route('/set_author', methods=['GET'])
 @requires_auth
@@ -555,7 +550,7 @@ def update_scp3_config():
 def get_ttt():
     data = request.get_json()
     result = {}
-    for sta, distance in data['station'].iteritems():
+    for sta, distance in data['station'].items():
         result[sta] = { 'distance': distance, 'ttt': get_travel_times(data['depth'], distance) }
     return Response(json.dumps(result), mimetype='application/json')
 
@@ -564,7 +559,7 @@ def get_ttt():
 def get_takeoffangle():
     data = request.get_json()
     result = {}
-    for sta, distance in data['station'].iteritems():
+    for sta, distance in data['station'].items():
         result[sta] = takeoffangle(data['depth'], distance)
     return Response(json.dumps(result), mimetype='application/json')
 
@@ -614,26 +609,8 @@ def fdsnws(service, path):
         host = ''
         if service == 'event':
             host = FDSNWS_EVENT
-            if SEISCOMP_DB_URI is not None and USE_SCP3_DB_QUERY:
-                with SCP3_DB_QUERY:
-                    return Response(
-                        render_template(
-                            'quakeml.xml',
-                            events=SCP3_DB_QUERY.get_events(request.args)
-                        ),
-                        mimetype='text/xml'
-                    )
-
         elif service == 'station':
             host = FDSNWS_STATION
-            if request.method == 'POST' and SEISCOMP_DB_URI is not None and USE_SCP3_DB_QUERY:
-                args = parse_station_post_request(request.data)
-                if args['format'] == 'text' and args['level'] == 'channel':
-                    with SCP3_DB_QUERY:
-                        return Response(
-                            SCP3_DB_QUERY.get_inventory(args['channel']),
-                            mimetype='text/plain'
-                        )
         elif service == 'dataselect':
             host = FDSNWS_DATASELECT
         req = '%s%s' % (host, path)
@@ -653,7 +630,7 @@ def fdsnws(service, path):
         result = response.read()
         if service == 'event' and FDSN_EVENT_FORMAT == 'sc3ml':
             result = sc3ml_to_qml(result, '0.7')
-        return Response(result, mimetype=response.headers.type)
+        return Response(result, mimetype=response.headers.get_content_type())
     else:
         return urlopen(FDSNWS_ROOT).read()
 

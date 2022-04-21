@@ -170,9 +170,18 @@ export default Vue.extend({
         equalScale: false,
         view: {},
         callback: {
-          updatePick: function (this: PickerView, ev) { this.handleUpdatePick(ev) },
-          draw: function (this: PickerView, view) { this.list.setSelectedWaveformWindow(view) },
-          waveformFocus: function (this: PickerView, index) { this.tools.focusComponent = index }
+          updatePick: (ev: PickEvent) => {
+            const self = this as PickerView
+            self.handleUpdatePick(ev)
+          },
+          draw: (view: {start: number, end: number}) => {
+            const self = this as PickerView
+            self.list.setSelectedWaveformWindow(view)
+          },
+          waveformFocus: (index: number) => {
+            const self = this as PickerView
+            self.tools.focusComponent = index
+          }
         }
       } as WaveformOptions,
       listOpt: {
@@ -183,7 +192,10 @@ export default Vue.extend({
         equalScale: false,
         view: {},
         callback: {
-          waveformClick: function (this: PickerView, wf) { this.handleWaveformClick(wf) }
+          waveformClick: (wf: WaveformItemOptions) => {
+            const self = this as PickerView
+            self.handleWaveformClick(wf)
+          }
         }
       } as WaveformOptions,
 
@@ -708,7 +720,7 @@ export default Vue.extend({
       })
     },
 
-    downloadWaveforms (fdsnidList: string[], resolve: (wfList: WaveformItemOptions[]) => void) {
+    downloadWaveforms (fdsnidList: string[], dlCallback: (wfList: WaveformItemOptions[]) => void) {
       return new Promise((resolve) => {
         if (fdsnidList.length === 0) {
           resolve(null)
@@ -717,8 +729,8 @@ export default Vue.extend({
         this.$store.dispatch('log', `[PickerView::downloadWaveforms]: ${JSON.stringify(fdsnidList)}`)
 
         const [traceList, notCached, timeCacheKey] = this.getCachedTraces(fdsnidList) as [Trace[], string[], string]
-        if (traceList.length > 0 && resolve != null) {
-          resolve(traceList.map((tr: Trace) => this.getWaveformObject(tr)).filter((wf: WaveformItemOptions | null) => wf != null) as WaveformItemOptions[])
+        if (traceList.length > 0 && dlCallback != null) {
+          dlCallback(traceList.map((tr: Trace) => this.getWaveformObject(tr)).filter((wf: WaveformItemOptions | null) => wf != null) as WaveformItemOptions[])
         }
         const chunks = this.getDownloadChunks(notCached)
         if (chunks.length === 0) {
@@ -732,8 +744,8 @@ export default Vue.extend({
               const cacheKey = `${fdsnid}|${timeCacheKey}`
               this.trace[cacheKey] = tr
             }
-            if (resolve != null && traceList.length > 0) {
-              resolve(traceList.map(tr => this.getWaveformObject(tr)).filter((wf: WaveformItemOptions | null) => wf != null) as WaveformItemOptions[])
+            if (dlCallback != null && traceList.length > 0) {
+              dlCallback(traceList.map(tr => this.getWaveformObject(tr)).filter((wf: WaveformItemOptions | null) => wf != null) as WaveformItemOptions[])
             }
             this.$store.dispatch('setLoading', { value: false })
             if (i < chunks.length) {
