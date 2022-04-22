@@ -6,11 +6,11 @@
       @click="handleRelocateClick"
       class="ma-1"
       small>RELOCATE</v-btn>
-    <div class="event-tools__select-wrapper">
-      <v-select label="Locator" v-model="locator" :items="locatorOptions"></v-select>
+    <div class="mx-2 pt-3">
+      <v-select label="Locator" v-model="locator" :items="locatorOptions" dense/>
     </div>
-    <div class="event-tools__select-wrapper">
-      <v-select label="Profile" v-model="profile" :items="profileOptions[locator]"></v-select>
+    <div class="mx-2 pt-3">
+      <v-select label="Profile" v-model="profile" :items="profileOptions[locator]" dense/>
     </div>
     <v-menu v-model="magnitudePopover" top left offset-y :close-on-content-click="false" :max-width="300">
       <template v-slot:activator="{ on }">
@@ -453,12 +453,6 @@ export default Vue.extend({
 </script>
 
 <style lang="css">
-.event-tools__select-wrapper {
-  display: inline-block;
-  max-width: 200px;
-  margin-right: 10px;
-}
-
 .event-tools__station-mag-checkbox,
 .event-tools__station-mag-checkbox input {
   cursor: pointer;

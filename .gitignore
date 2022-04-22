@@ -6,6 +6,8 @@ __pycache__/
 
 /static
 
+author_status.json
+
 # local env files
 .env.local
 .env.*.local
