@@ -108,7 +108,8 @@ export default Vue.extend({
     'form.minlat': function () { this.applyBoundsToArea() },
     'form.minlon': function () { this.applyBoundsToArea() },
     'form.maxlat': function () { this.applyBoundsToArea() },
-    'form.maxlon': function () { this.applyBoundsToArea() }
+    'form.maxlon': function () { this.applyBoundsToArea() },
+    '$store.state.form': function () { Object.assign(this.form, this.loadForm()) }
   },
 
   computed: {
@@ -121,6 +122,7 @@ export default Vue.extend({
 
     loadForm () {
       const result = Object.assign({}, this.$store.state.form)
+      console.log(result)
       for (const key of ['minlat', 'maxlat', 'minlon', 'maxlon', 'mindepth', 'maxdepth', 'minmag', 'maxmag']) {
         if (result[key] != null) {
           result[key] = parseFloat(result[key])

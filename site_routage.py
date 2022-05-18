@@ -1,13 +1,16 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
+# !/usr/bin/env python3
 from flask import Flask, g, request, session, render_template, Response, abort
-from urllib.request import urlopen, Request, HTTPError
+# from urllib.request import urlopen, Request, HTTPError
+from urllib2 import urlopen, Request, HTTPError
 from obspy.geodetics import FlinnEngdahl
 from obspy.clients.fdsn import Client
 from obspy.taup import TauPyModel
 from obspy import UTCDateTime
 from datetime import datetime
-from urllib.parse import urlencode
+# from urllib.parse import urlencode
+from urllib import urlencode
 from functools import wraps
 from random import randint
 from lxml import etree
@@ -81,7 +84,7 @@ def dump_seiscomp3_config():
     f.close()
     os.rename(conf_filename, SC3ML_CONFIG_FILENAME)
 
-# dump_seiscomp3_config()
+dump_seiscomp3_config()
 
 def check_auth(username, password):
     """This function is called to check if a username /
@@ -630,7 +633,8 @@ def fdsnws(service, path):
         result = response.read()
         if service == 'event' and FDSN_EVENT_FORMAT == 'sc3ml':
             result = sc3ml_to_qml(result, '0.7')
-        return Response(result, mimetype=response.headers.get_content_type())
+        # return Response(result, mimetype=response.headers.get_content_type())
+        return Response(result, mimetype=response.headers.type)
     else:
         return urlopen(FDSNWS_ROOT).read()
 

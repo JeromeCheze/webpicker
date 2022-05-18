@@ -2,9 +2,11 @@ import { AuthorStatus, LoadingObject, NotificationObject, SetAuthorObject, State
 import * as utils from '@/utils/utils'
 
 export const INIT_FORM = (state: State, data: object) => {
+  const cloneForm = Object.assign({}, state.form)
   for (const [k, v] of Object.entries(data)) {
-    state.form[k] = v
+    cloneForm[k] = v
   }
+  state.form = cloneForm
 }
 
 export const SET_AUTHOR = (state: State, data: SetAuthorObject) => {
@@ -144,7 +146,6 @@ export const SET_SETTINGS = (state: State, data: WebpickerSettings) => {
       stored[k] = v
     }
   }
-  console.log(stored)
   localStorage.setItem('settings', JSON.stringify(stored))
 }
 
