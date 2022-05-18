@@ -122,7 +122,6 @@ export default Vue.extend({
 
     loadForm () {
       const result = Object.assign({}, this.$store.state.form)
-      console.log(result)
       for (const key of ['minlat', 'maxlat', 'minlon', 'maxlon', 'mindepth', 'maxdepth', 'minmag', 'maxmag']) {
         if (result[key] != null) {
           result[key] = parseFloat(result[key])
