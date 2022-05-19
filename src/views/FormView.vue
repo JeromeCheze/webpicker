@@ -109,7 +109,12 @@ export default Vue.extend({
     'form.minlon': function () { this.applyBoundsToArea() },
     'form.maxlat': function () { this.applyBoundsToArea() },
     'form.maxlon': function () { this.applyBoundsToArea() },
-    '$store.state.form': function () { Object.assign(this.form, this.loadForm()) }
+    '$store.state.form': function () {
+      Object.assign(this.form, this.loadForm())
+      if (this.map != null) {
+        this.map.fitBounds(this.bounds)
+      }
+    }
   },
 
   computed: {

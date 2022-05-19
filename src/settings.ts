@@ -21,6 +21,7 @@ const settings: WebpickerSettings = {
   'darkPickerColor.backgroundEven': 'rgba(45, 45, 45, 1)',
   'darkPickerColor.line': '#57c3ff',
   'darkPickerColor.lineBar': '#ffffff',
+  'darkPickerColor.text': '#888888',
   'darkPickerColor.selected': 'rgba(73, 89, 98, 1)',
   'solirizedPickerColor.automatic': '#dc322f',
   'solirizedPickerColor.avgLine': 'rgba(7,54,66,0.4)',
