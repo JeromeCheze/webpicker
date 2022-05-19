@@ -2,7 +2,10 @@
   <v-app :dark="$store.state.settings.themeDark">
 
     <v-app-bar app dense :style="{ zIndex: 1000 }">
-      <v-app-bar-title>WebPicker</v-app-bar-title>
+      <img src="../public/static/webpicker_icon.png" height="34" class="mx-2">
+      <v-app-bar-title>
+        <span>WebPicker</span>
+      </v-app-bar-title>
       <v-spacer></v-spacer>
       <v-btn text :to="{ name: 'Form' }">Form</v-btn>
       <v-btn text :to="{ name: 'List', query: listQuery }">Event list</v-btn>

@@ -104,7 +104,7 @@
       </v-card>
     </v-dialog>
     <v-btn
-      class="mt-5"
+      class="mt-10"
       fab fixed top right color="primary"
       title="Save settings"
       @click="handleSaveSettings">
