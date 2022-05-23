@@ -41,7 +41,7 @@
       show-select>
       <template v-slot:item="props">
         <tr @click="handleRowClick(props.item)">
-          <td><v-checkbox v-model="props.selected" primary hide-details></v-checkbox></td>
+          <td><v-checkbox v-model="props.isSelected" primary hide-details></v-checkbox></td>
           <td><v-chip label outlined small :color="props.item.modeColor">{{ props.item.mode }}</v-chip></td>
           <td>{{ props.item.phase }}</td>
           <td>{{ props.item.network }}</td>
@@ -569,7 +569,16 @@ export default Vue.extend({
             }
           }
         },
-        plotOptions: { series: { animation: false } },
+        plotOptions: {
+          series: {
+            animation: false,
+            states: {
+              inactive: {
+                enabled: false
+              }
+            }
+          }
+        },
         series: [
           { name: 'P', type: 'scatter', data: this.chart.timeResidual!.p },
           { name: 'S', type: 'scatter', data: this.chart.timeResidual!.s }
