@@ -203,7 +203,6 @@ export type WebpickerOrigin = {
   latitude: WebpickerRealQuantity;
   longitude: WebpickerRealQuantity;
   depth: WebpickerRealQuantity;
-  'evaluation_status'?: string;
   arrival: WebpickerArrival[];
   '_not_committed'?: boolean;
   '_is_dirty'?: boolean;

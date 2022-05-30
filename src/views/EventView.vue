@@ -41,7 +41,7 @@
       show-select>
       <template v-slot:item="props">
         <tr @click="handleRowClick(props.item)">
-          <td><v-checkbox v-model="props.isSelected" primary hide-details></v-checkbox></td>
+          <td><v-checkbox @change="handleRowSelection(props.item, $event)" :input-value="props.isSelected" primary hide-details :true-value="true" :false-value="false"></v-checkbox></td>
           <td><v-chip label outlined small :color="props.item.modeColor">{{ props.item.mode }}</v-chip></td>
           <td>{{ props.item.phase }}</td>
           <td>{{ props.item.network }}</td>
@@ -318,6 +318,17 @@ export default Vue.extend({
       this.selectedStationMagnitude = Object.keys(tmp)
       this.initChartsData()
       this.initChartMagnitude()
+    },
+
+    handleRowSelection (row: EventViewArrivalTableRow, value: boolean) {
+      let selected = this.arrivalTableSelected.map(x => x)
+      if (value === true) {
+        selected.push(row)
+      } else {
+        selected = selected.filter(x => x.id !== row.id)
+      }
+      this.arrivalTableSelected = selected
+      this.handleSelectionChange(selected)
     },
 
     handleSelectionChange (selectedRows: EventViewArrivalTableRow[]) {
