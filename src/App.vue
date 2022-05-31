@@ -113,8 +113,8 @@
         <v-dialog
           v-model="$store.state.alertEventLockedDialog"
           persistent
-          width="400">
-          <v-card color="warning">
+          width="500">
+          <v-card color="warning" light>
             <v-card-title>
               <h3>Someone might be processing this event</h3>
             </v-card-title>
@@ -130,11 +130,11 @@
           </v-card>
         </v-dialog>
 
-        <v-speed-dial v-model="onlineUsers" fixed bottom right transition="slide-y-reverse-transition" class="mb-5">
+        <v-speed-dial v-model="onlineUsers" fixed bottom right transition="slide-y-reverse-transition" class="mb-9">
           <template v-slot:activator>
-            <v-btn v-model="onlineUsers" small fab color="blue">
-              <v-icon>mdi-account</v-icon>
-              <v-icon>mdi-close</v-icon>
+            <v-btn v-model="onlineUsers" small fab color="blue" light>
+              <v-icon v-if="onlineUsers">mdi-close</v-icon>
+              <v-icon v-else>mdi-account</v-icon>
             </v-btn>
           </template>
           <div
@@ -374,7 +374,7 @@ export default {
 .notification-container {
   position: fixed;
   z-index: 1000;
-  bottom: 20px;
+  bottom: 80px;
   right: 20px;
   width: 300px;
 }
@@ -389,6 +389,7 @@ export default {
   margin: 0px 200px 10px 10px;
   background-color: #bde1f0;
   border-radius: 4px;
+  color: rgba(0, 0, 0, 0.8);
 }
 .app__author-status--warning {
   background-color: #ffc961;

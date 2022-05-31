@@ -80,8 +80,19 @@
       </v-card>
     </v-menu>
     <v-spacer></v-spacer>
-    <v-btn small class="ma-1" @click="handleKeepUsedArrival" title="Keep used arrivals by deleting discarded (use with caution!)">Keep used</v-btn>
-    <v-btn small class="ma-1" @click="unselectS" title="Discard S arrivals (relocation is required after)">Unselect S</v-btn>
+    <v-btn
+      small
+      class="ma-1"
+      @click="unselectS"
+      title="Discard S arrivals (relocation is required after)"
+    >Unselect S</v-btn>
+    <v-btn
+      small
+      class="ma-1"
+      @click="handleKeepUsedArrival"
+      :disabled="!origin._not_committed"
+      title="Keep used arrivals by deleting discarded (use with caution!)"
+    >Keep used</v-btn>
   </v-footer>
 </template>
 
