@@ -537,8 +537,8 @@ export default Vue.extend({
         nWf.start + nWf.values.length * nWf.step,
         eWf.start + eWf.values.length * eWf.step
       )
-      const iN = Math.floor((nWf.start - start) / nWf.step)
-      const iE = Math.floor((eWf.start - start) / eWf.step)
+      const iN = Math.floor((start - nWf.start) / nWf.step)
+      const iE = Math.floor((start - eWf.start) / eWf.step)
       const nbSamples = Math.floor((end - start) / nWf.step)
       const r = []
       const t = []
