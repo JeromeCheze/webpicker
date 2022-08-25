@@ -121,7 +121,7 @@
                   v-if="magDetails == m"
                   @click="magDetails = null" class="primary--text">hide</button>
                 <button
-                  v-else-if="m.station_magnitude_contribution != null"
+                  v-else-if="m.station_magnitude_contribution != null && event.station_magnitude != null"
                   @click="magDetails = m" class="primary--text">show</button>
                 <span v-else>-</span>
               </td>
@@ -138,7 +138,7 @@
                   v-if="magDetails == event._pm"
                   @click="magDetails = null" class="primary--text">hide</button>
                 <button
-                  v-else-if="event._pm.station_magnitude_contribution != null"
+                  v-else-if="event._pm.station_magnitude_contribution != null && event.station_magnitude != null"
                   @click="magDetails = event._pm" class="primary--text">show</button>
                 <span v-else>-</span>
               </td>

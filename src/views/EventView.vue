@@ -521,7 +521,7 @@ export default Vue.extend({
       const colors = Highcharts.getOptions().colors
       let colorIndex = 0
       for (const mag of this.event.magnitude!) {
-        if (mag.origin_id !== this.origin.public_id || mag.station_magnitude_contribution == null) {
+        if (mag.origin_id !== this.origin.public_id || mag.station_magnitude_contribution == null || this.event.station_magnitude == null) {
           continue
         }
         if (this.chart.magnitudes[mag.type] == null) {
