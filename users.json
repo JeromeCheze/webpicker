@@ -1,0 +1,9 @@
+{
+    "test": {
+        "password": "t35t",
+        "rules": {
+            "starttime": "2022-08-18",
+            "endtime": "2022-08-22"
+        }
+    }
+}

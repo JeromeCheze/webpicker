@@ -1,16 +1,18 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# !/usr/bin/env python3
-from flask import Flask, g, request, session, render_template, Response, abort
-# from urllib.request import urlopen, Request, HTTPError
-from urllib2 import urlopen, Request, HTTPError
+PYTHON3 = False
+from flask import Flask, g, request, session, render_template, Response, abort, redirect
+if PYTHON3:
+    from urllib.request import urlopen, Request, HTTPError
+    from urllib.parse import urlencode
+else:
+    from urllib2 import urlopen, Request, HTTPError
+    from urllib import urlencode
 from obspy.geodetics import FlinnEngdahl
 from obspy.clients.fdsn import Client
 from obspy.taup import TauPyModel
 from obspy import UTCDateTime
 from datetime import datetime
-# from urllib.parse import urlencode
-from urllib import urlencode
 from functools import wraps
 from random import randint
 from lxml import etree
@@ -33,9 +35,8 @@ FE = FlinnEngdahl()
 
 DEBUG = False
 
-RESTRICTED = os.getenv('WEBPICKER_RESTRICT_ACCESS', 'false') == 'true'
-USERNAME = os.getenv('WEBPICKER_USERNAME', 's2rhai')
-PASSWORD = os.getenv('WEBPICKER_PASSWORD', '52rh@!')
+RESTRICTED = os.getenv('WEBPICKER_RESTRICT_ACCESS', 'true') == 'true'
+USER_FILE = os.getenv('WEBPICKER_USER_FILE', None)
 FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'encelade.unice.fr:8000')
 FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'encelade.unice.fr:8000')
 FDSNWS_SC3_STATION_HOST = os.getenv('FDSNWS_SC3_STATION_HOST', 'encelade.unice.fr:8080')
@@ -72,6 +73,11 @@ SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'thufir.unice.fr:4805')
 
 FDSN_EVENT_FORMAT = 'xml'
 
+USERS = {}
+if RESTRICTED and USER_FILE is not None and os.path.exists(USER_FILE):
+    with open(USER_FILE, 'r') as f:
+        USERS = json.load(f)
+
 with open(os.path.join(os.path.dirname(__file__), 'iasp91_table.json'), 'r') as f:
     IASP91_TABLE = json.load(f)
 
@@ -90,7 +96,10 @@ def check_auth(username, password):
     """This function is called to check if a username /
     password combination is valid.
     """
-    return username == 's2rhai' and password == '52rh@!'
+    if username in USERS and USERS[username]['password'] == password:
+        session['logout'] = False
+        return True
+    return False
 
 def authenticate():
     """Sends a 401 response that enables basic auth"""
@@ -102,10 +111,13 @@ def authenticate():
 def requires_auth(f):
    @wraps(f)
    def decorated(*args, **kwargs):
-       auth = request.authorization
-       if RESTRICTED and (not auth or not check_auth(auth.username, auth.password)):
-           return authenticate()
-       return f(*args, **kwargs)
+        if session.get('logout', False):
+            session['logout'] = False
+            return authenticate()
+        auth = request.authorization
+        if RESTRICTED and (not auth or not check_auth(auth.username, auth.password)):
+            return authenticate()
+        return f(*args, **kwargs)
    return decorated
 
 
@@ -212,6 +224,67 @@ class AuthorStatusHandler(object):
         return self.__status
 
 AUTHOR_STATUS = AuthorStatusHandler('/var/www/webpicker/author_status.json')
+
+def get_event_time(eventid):
+    req = '%s/1/query?format=text&eventid=%s' % (FDSNWS_EVENT, eventid)
+    try:
+        response = urlopen(req).read()
+        for line in response.splitlines():
+            if line == '' or line.startswith('#'):
+                continue
+            event_time = line.split()[1]
+            return event_time
+    except:
+        return None
+
+def apply_user_rules(method, username, data):
+    rules = USERS[username]['rules']
+    if method == 'GET':
+        if 'starttime' in rules:
+            if 'starttime' in data and data['starttime'] < rules['starttime']:
+                data['starttime'] = rules['starttime']
+            elif 'start' in data and data['start'] < rules['starttime']:
+                data['start'] = rules['starttime']
+        if 'endtime' in rules:
+            if 'endtime' in data and data['endtime'] > rules['endtime']:
+                data['endtime'] = rules['endtime']
+            elif 'end' in data and data['end'] > rules['endtime']:
+                data['end'] = rules['endtime']
+        if 'eventid' in data:
+            event_time = get_event_time(data['eventid'])
+            valid = True
+            if event_time is not None:
+                if 'starttime' in rules and event_time < rules['starttime']:
+                    valid = False
+                if 'endtime' in rules and event_time > rules['endtime']:
+                    valid = False
+            if not valid:
+                data['eventid'] = '_'
+    elif method == 'POST':
+        parameters = []
+        selection = []
+        for line in data.decode('utf-8').splitlines():
+            if line == '':
+                continue
+            if '=' in line:
+                parameters.append(line)
+                continue
+            net, sta, loc, cha, start, end = line.split()
+            if 'starttime' in rules:
+                if end < rules['starttime']:
+                    continue
+                if start < rules['starttime']:
+                    start = rules['starttime']
+            if 'endtime' in rules:
+                if start > rules['endtime']:
+                    continue
+                if end > rules['endtime']:
+                    end = rules['endtime']
+            selection.append(' '.join([net, sta, loc, cha, start, end]))
+        if len(selection) == 0:
+            return None
+        parameters.extend(selection)
+        return '\r\n'.join(parameters).encode('utf-8')
 
 def gen_id():
     hexa = ['%x'% x for x in range(0, 16)]
@@ -530,6 +603,12 @@ def index():
         session['id'] = gen_id()
     return render_template('index.html')
 
+@app.route('/logout')
+@requires_auth
+def logout():
+    session['logout'] = True
+    return redirect('/')
+
 @app.route('/set_author', methods=['GET'])
 @requires_auth
 def set_session_author():
@@ -622,10 +701,17 @@ def fdsnws(service, path):
                 args = request.args.to_dict(flat=True)
                 if service == 'event' and FDSN_EVENT_FORMAT != 'xml':
                     args['format'] = FDSN_EVENT_FORMAT
+                if request.authorization:
+                    apply_user_rules('GET', request.authorization.username, args)
                 response = urlopen('%s?%s' % (req, urlencode(args)))
             elif request.method == 'POST':
                 # print(request.data)
-                r = Request(req, data=request.data, headers={'Content-Type': request.headers['Content-Type']})
+                data = request.data
+                if request.authorization:
+                    data = apply_user_rules('POST', request.authorization.username, data)
+                    if data is None:
+                        return ''
+                r = Request(req, data=data, headers={'Content-Type': request.headers['Content-Type']})
                 response = urlopen(r)
 
         except HTTPError as err:
@@ -633,8 +719,10 @@ def fdsnws(service, path):
         result = response.read()
         if service == 'event' and FDSN_EVENT_FORMAT == 'sc3ml':
             result = sc3ml_to_qml(result, '0.7')
-        # return Response(result, mimetype=response.headers.get_content_type())
-        return Response(result, mimetype=response.headers.type)
+        if PYTHON3:
+            return Response(result, mimetype=response.headers.get_content_type())
+        else:
+            return Response(result, mimetype=response.headers.type)
     else:
         return urlopen(FDSNWS_ROOT).read()
 
