@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-PYTHON3 = False
+PYTHON3 = True
 from flask import Flask, g, request, session, render_template, Response, abort, redirect
 if PYTHON3:
     from urllib.request import urlopen, Request, HTTPError
@@ -36,7 +36,7 @@ FE = FlinnEngdahl()
 DEBUG = False
 
 RESTRICTED = os.getenv('WEBPICKER_RESTRICT_ACCESS', 'true') == 'true'
-USER_FILE = os.getenv('WEBPICKER_USER_FILE', None)
+USER_FILE = os.getenv('WEBPICKER_USER_FILE', 'users.json')
 FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'encelade.unice.fr:8000')
 FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'encelade.unice.fr:8000')
 FDSNWS_SC3_STATION_HOST = os.getenv('FDSNWS_SC3_STATION_HOST', 'encelade.unice.fr:8080')
@@ -90,7 +90,7 @@ def dump_seiscomp3_config():
     f.close()
     os.rename(conf_filename, SC3ML_CONFIG_FILENAME)
 
-dump_seiscomp3_config()
+# dump_seiscomp3_config()
 
 def check_auth(username, password):
     """This function is called to check if a username /
@@ -149,7 +149,11 @@ class AuthorStatusHandler(object):
     def _load(self):
         if os.path.exists(self.__filename):
             with open(self.__filename, 'r') as f:
-                self.__status = json.load(f)
+                if PYTHON3:
+                    self.__status = json.loads(f.read())
+                else:
+                    self.__status = json.load(f)
+
         return self
 
     def _save(self):
@@ -223,16 +227,20 @@ class AuthorStatusHandler(object):
                 self._clean()._save()
         return self.__status
 
-AUTHOR_STATUS = AuthorStatusHandler('/var/www/webpicker/author_status.json')
+# AUTHOR_STATUS = AuthorStatusHandler('/var/www/webpicker/author_status.json')
+AUTHOR_STATUS = AuthorStatusHandler('author_status.json')
 
 def get_event_time(eventid):
     req = '%s/1/query?format=text&eventid=%s' % (FDSNWS_EVENT, eventid)
     try:
         response = urlopen(req).read()
+        if PYTHON3:
+            response = response.decode('utf-8')
+        print(response)
         for line in response.splitlines():
             if line == '' or line.startswith('#'):
                 continue
-            event_time = line.split()[1]
+            event_time = line.split('|')[1]
             return event_time
     except:
         return None
@@ -252,6 +260,7 @@ def apply_user_rules(method, username, data):
                 data['end'] = rules['endtime']
         if 'eventid' in data:
             event_time = get_event_time(data['eventid'])
+            print(event_time)
             valid = True
             if event_time is not None:
                 if 'starttime' in rules and event_time < rules['starttime']:

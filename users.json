@@ -1,4 +1,8 @@
 {
+    "admin": {
+        "password": "admin",
+        "rules": {}
+    },
     "test": {
         "password": "t35t",
         "rules": {

@@ -5,74 +5,74 @@ const EARTH_RADIUS = 6371e3 // meters
 
 export const CONVERSION_RULES = {
   // keep list for all these nodes :
-  '/event_parameters/event': true,
-  '/event_parameters/event/amplitude': true,
-  '/event_parameters/event/station_magnitude': true,
-  '/event_parameters/event/magnitude/station_magnitude_contribution': true,
-  '/event_parameters/event/origin': true,
-  '/event_parameters/event/origin/arrival': true,
-  '/event_parameters/event/magnitude': true,
-  '/event_parameters/event/pick': true,
-  '/event_parameters/event/description': true,
-  '/event_parameters/event/focal_mechanism': true,
+  '/event': true,
+  '/event/amplitude': true,
+  '/event/station_magnitude': true,
+  '/event/magnitude/station_magnitude_contribution': true,
+  '/event/origin': true,
+  '/event/origin/arrival': true,
+  '/event/magnitude': true,
+  '/event/pick': true,
+  '/event/description': true,
+  '/event/focal_mechanism': true,
   // conversion function :
-  '/event_parameters/event/origin/latitude/value': parseFloat,
-  '/event_parameters/event/origin/latitude/uncertainty': parseFloat,
-  '/event_parameters/event/origin/longitude/value': parseFloat,
-  '/event_parameters/event/origin/longitude/uncertainty': parseFloat,
-  '/event_parameters/event/origin/depth/value': parseFloat,
-  '/event_parameters/event/origin/depth/uncertainty': parseFloat,
-  '/event_parameters/event/origin/time/uncertainty': parseFloat,
-  '/event_parameters/event/origin/quality/standard_error': parseFloat,
-  '/event_parameters/event/origin/quality/azimuthal_gap': parseFloat,
-  '/event_parameters/event/origin/quality/associated_phase_count': parseInt,
-  '/event_parameters/event/origin/quality/associated_station_count': parseInt,
-  '/event_parameters/event/origin/quality/used_phase_count': parseInt,
-  '/event_parameters/event/origin/quality/used_station_count': parseInt,
-  '/event_parameters/event/origin/quality/minimum_distance': parseFloat,
-  '/event_parameters/event/origin/quality/maximum_distance': parseFloat,
-  '/event_parameters/event/origin/quality/median_distance': parseFloat,
-  '/event_parameters/event/origin/arrival/time_residual': parseFloat,
-  '/event_parameters/event/origin/arrival/time_weight': parseFloat,
-  '/event_parameters/event/origin/arrival/distance': parseFloat,
-  '/event_parameters/event/origin/arrival/azimuth': parseFloat,
-  '/event_parameters/event/origin/arrival/takeoff_angle/value': parseFloat,
-  '/event_parameters/event/magnitude/mag/value': parseFloat,
-  '/event_parameters/event/magnitude/mag/uncertainty': parseFloat,
-  '/event_parameters/event/magnitude/stationCount': parseInt,
-  '/event_parameters/event/magnitude/station_magnitude_contribution/weight': parseFloat,
-  '/event_parameters/event/magnitude/station_magnitude_contribution/residual': parseFloat,
-  '/event_parameters/event/amplitude/generic_amplitude': parseFloat,
-  '/event_parameters/event/amplitude/snr': parseFloat,
-  '/event_parameters/event/amplitude/time_window/begin': parseFloat,
-  '/event_parameters/event/amplitude/time_window/end': parseFloat,
-  '/event_parameters/event/station_magnitude/mag/value': parseFloat,
-  '/event_parameters/event/focal_mechanism/nodal_planes/nodal_plane1/strike/value': parseInt,
-  '/event_parameters/event/focal_mechanism/nodal_planes/nodal_plane1/dip/value': parseInt,
-  '/event_parameters/event/focal_mechanism/nodal_planes/nodal_plane1/rake/value': parseInt
+  '/event/origin/latitude/value': parseFloat,
+  '/event/origin/latitude/uncertainty': parseFloat,
+  '/event/origin/longitude/value': parseFloat,
+  '/event/origin/longitude/uncertainty': parseFloat,
+  '/event/origin/depth/value': parseFloat,
+  '/event/origin/depth/uncertainty': parseFloat,
+  '/event/origin/time/uncertainty': parseFloat,
+  '/event/origin/quality/standard_error': parseFloat,
+  '/event/origin/quality/azimuthal_gap': parseFloat,
+  '/event/origin/quality/associated_phase_count': parseInt,
+  '/event/origin/quality/associated_station_count': parseInt,
+  '/event/origin/quality/used_phase_count': parseInt,
+  '/event/origin/quality/used_station_count': parseInt,
+  '/event/origin/quality/minimum_distance': parseFloat,
+  '/event/origin/quality/maximum_distance': parseFloat,
+  '/event/origin/quality/median_distance': parseFloat,
+  '/event/origin/arrival/time_residual': parseFloat,
+  '/event/origin/arrival/time_weight': parseFloat,
+  '/event/origin/arrival/distance': parseFloat,
+  '/event/origin/arrival/azimuth': parseFloat,
+  '/event/origin/arrival/takeoff_angle/value': parseFloat,
+  '/event/magnitude/mag/value': parseFloat,
+  '/event/magnitude/mag/uncertainty': parseFloat,
+  '/event/magnitude/stationCount': parseInt,
+  '/event/magnitude/station_magnitude_contribution/weight': parseFloat,
+  '/event/magnitude/station_magnitude_contribution/residual': parseFloat,
+  '/event/amplitude/generic_amplitude': parseFloat,
+  '/event/amplitude/snr': parseFloat,
+  '/event/amplitude/time_window/begin': parseFloat,
+  '/event/amplitude/time_window/end': parseFloat,
+  '/event/station_magnitude/mag/value': parseFloat,
+  '/event/focal_mechanism/nodal_planes/nodal_plane1/strike/value': parseInt,
+  '/event/focal_mechanism/nodal_planes/nodal_plane1/dip/value': parseInt,
+  '/event/focal_mechanism/nodal_planes/nodal_plane1/rake/value': parseInt
 }
 
 export const RESOURCE_ID_KEYS = [
-  '/event_parameters/event/public_id',
-  '/event_parameters/event/preferred_origin_id',
-  '/event_parameters/event/preferred_magnitude_id',
-  '/event_parameters/event/preferred_focal_mechanism_id',
-  '/event_parameters/event/origin/public_id',
-  '/event_parameters/event/origin/earth_model_id',
-  '/event_parameters/event/origin/method_id',
-  '/event_parameters/event/origin/arrival/pick_id',
-  '/event_parameters/event/magnitude/public_id',
-  '/event_parameters/event/magnitude/method_id',
-  '/event_parameters/event/magnitude/origin_id',
-  '/event_parameters/event/magnitude/station_magnitude_contribution/station_magnitude_id',
-  '/event_parameters/event/pick/public_id',
-  '/event_parameters/event/pick/filter_id',
-  '/event_parameters/event/station_magnitude/origin_id',
-  '/event_parameters/event/station_magnitude/public_id',
-  '/event_parameters/event/station_magnitude/amplitude_id',
-  '/event_parameters/event/amplitude/public_id',
-  '/event_parameters/event/amplitude/pick_id',
-  '/event_parameters/event/focal_mechanism/public_id'
+  '/event/public_id',
+  '/event/preferred_origin_id',
+  '/event/preferred_magnitude_id',
+  '/event/preferred_focal_mechanism_id',
+  '/event/origin/public_id',
+  '/event/origin/earth_model_id',
+  '/event/origin/method_id',
+  '/event/origin/arrival/pick_id',
+  '/event/magnitude/public_id',
+  '/event/magnitude/method_id',
+  '/event/magnitude/origin_id',
+  '/event/magnitude/station_magnitude_contribution/station_magnitude_id',
+  '/event/pick/public_id',
+  '/event/pick/filter_id',
+  '/event/station_magnitude/origin_id',
+  '/event/station_magnitude/public_id',
+  '/event/station_magnitude/amplitude_id',
+  '/event/amplitude/public_id',
+  '/event/amplitude/pick_id',
+  '/event/focal_mechanism/public_id'
 ]
 
 export const RESIDUAL_COLOR_SCALE: ColorScaleObject = [
@@ -200,18 +200,17 @@ export const xmlNodeToJson = (x: Element, path: string, rules: any) => {
 }
 
 export const parseQuakeML = (qml: Document) => {
-  const eventParametersTags = qml.getElementsByTagName('eventParameters')
-  if (eventParametersTags.length === 0) {
-    console.log('QuakeML is empty, no event parameters found.')
+  // const eventTags = qml.getElementsByTagName('event')
+  const eventTags = qml.querySelectorAll('event')
+  if (eventTags.length === 0) {
+    console.log('QuakeML is empty, no event found.')
     return []
   }
-  const events = xmlNodeToJson(
-    eventParametersTags[0],
-    '',
-    CONVERSION_RULES
-  ).event
-  for (const e of events) {
-    processEventData(e)
+  const events = []
+  for (const eventTag of eventTags) {
+    const event = xmlNodeToJson(eventTag, '', CONVERSION_RULES)
+    processEventData(event)
+    events.push(event)
   }
   return events
 }
@@ -414,7 +413,7 @@ export const composeEvent = (o: ComposeEventObject) => {
     pfm: null,
     discardedStation: null
   }, o)
-  const root = '/event_parameters/event'
+  const root = '/event'
   const result: StringIndexedObject = cloneAndClean(opt.base, root)
   result.pick = []
   const originList: WebpickerOrigin[] = []

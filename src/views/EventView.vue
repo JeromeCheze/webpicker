@@ -246,7 +246,12 @@ export default Vue.extend({
         },
         type: 'document'
       }).then(qml => {
-        const e = utils.parseQuakeML(qml as Document)[0]
+        const events = utils.parseQuakeML(qml as Document)
+        if (events.length === 0) {
+          this.$store.dispatch('setLoading', { value: false })
+          alert('No event found')
+        }
+        const e = events[0]
         console.log('[EventView::initEvent] full description event', e)
         this.$store.dispatch('log', '[EventView::initEvent] full description event received')
         const chList = []
