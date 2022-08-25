@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-PYTHON3 = True
-from flask import Flask, g, request, session, render_template, Response, abort, redirect
+PYTHON3 = False
+from flask import Flask, request, session, render_template, Response, abort, redirect
 if PYTHON3:
     from urllib.request import urlopen, Request, HTTPError
     from urllib.parse import urlencode
@@ -36,7 +36,7 @@ FE = FlinnEngdahl()
 DEBUG = False
 
 RESTRICTED = os.getenv('WEBPICKER_RESTRICT_ACCESS', 'true') == 'true'
-USER_FILE = os.getenv('WEBPICKER_USER_FILE', 'users.json')
+USER_FILE = os.getenv('WEBPICKER_USER_FILE', '/var/www/webpicker/users.json')
 FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'encelade.unice.fr:8000')
 FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'encelade.unice.fr:8000')
 FDSNWS_SC3_STATION_HOST = os.getenv('FDSNWS_SC3_STATION_HOST', 'encelade.unice.fr:8080')
@@ -49,13 +49,13 @@ FDSNWS_SC3_STATION = 'http://%s/fdsnws/station' % FDSNWS_SC3_STATION_HOST
 FDSNWS_DATASELECT = 'http://%s/fdsnws/dataselect' % FDSNWS_DATASELECT_HOST
 
 # Generated with scxmldump -C
-SC3ML_CONFIG_FILENAME = os.getenv('SC3ML_CONFIG_FILENAME', '/home/cheze/repositories/webpicker/config.xml')
+SC3ML_CONFIG_FILENAME = os.getenv('SC3ML_CONFIG_FILENAME', '/var/www/webpicker/config.xml')
 
-SEISCOMP_ROOT = os.getenv('SEISCOMP_ROOT', '/home/cheze/seiscomp3/')
+SEISCOMP_ROOT = os.getenv('SEISCOMP_ROOT', '/home/sysop/seiscomp3/')
 SEISCOMP_PROGRAM = os.path.join(SEISCOMP_ROOT, 'bin/seiscomp')
 SCP3ML_DISPATCH_VERSION = os.getenv('SCP3ML_DISPATCH_VERSION', '0.11')
 SCP3ML_BINARY_VERSION = os.getenv('SCP3ML_BINARY_VERSION', '0.11')
-SEISCOMP_DB_URI = os.getenv('SEISCOMP_DB_URI', 'postgresql://sc3reader:@babel.unice.fr/seiscomp3_dev')
+SEISCOMP_DB_URI = os.getenv('SEISCOMP_DB_URI', 'postgresql://sc3reader:@babel.unice.fr/seiscomp3')
 
 XSL_SC3ML_TO_QML1_2 = {
   '0.7': os.path.join(SEISCOMP_ROOT, 'share/xml/0.7/sc3ml_0.7__quakeml_1.2.xsl'),
@@ -69,7 +69,7 @@ XSL_SC3ML_TO_QML1_2 = {
 FDSNWS_BASE_URL = 'http://%s' % FDSNWS_DATASELECT_HOST
 
 # used for scdispatch :
-SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'thufir.unice.fr:4805')
+SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'localhost:4805')
 
 FDSN_EVENT_FORMAT = 'xml'
 
@@ -90,7 +90,7 @@ def dump_seiscomp3_config():
     f.close()
     os.rename(conf_filename, SC3ML_CONFIG_FILENAME)
 
-# dump_seiscomp3_config()
+dump_seiscomp3_config()
 
 def check_auth(username, password):
     """This function is called to check if a username /
@@ -227,8 +227,7 @@ class AuthorStatusHandler(object):
                 self._clean()._save()
         return self.__status
 
-# AUTHOR_STATUS = AuthorStatusHandler('/var/www/webpicker/author_status.json')
-AUTHOR_STATUS = AuthorStatusHandler('author_status.json')
+AUTHOR_STATUS = AuthorStatusHandler('/var/www/webpicker/author_status.json')
 
 def get_event_time(eventid):
     req = '%s/1/query?format=text&eventid=%s' % (FDSNWS_EVENT, eventid)
