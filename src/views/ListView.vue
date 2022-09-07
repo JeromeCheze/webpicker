@@ -8,6 +8,7 @@
     <v-tabs v-model="activeTab" right>
       <v-tab><v-icon>mdi-view-list</v-icon></v-tab>
       <v-tab><v-icon>mdi-map</v-icon></v-tab>
+      <v-tab><v-icon>mdi-chart-box-outline</v-icon></v-tab>
     </v-tabs>
     <v-tabs-items touchless v-model="activeTab">
       <v-tab-item>
@@ -46,6 +47,16 @@
       </v-tab-item>
       <v-tab-item>
         <div class="list-view__map-canvas"></div>
+      </v-tab-item>
+      <v-tab-item>
+        <v-row>
+          <v-col cols="12" md="8">
+            <div class="list-view__chart--temporal-distribution"></div>
+          </v-col>
+          <v-col cols="12" md="4">
+            <div class="list-view__chart--temporal-gutemberg-richter"></div>
+          </v-col>
+        </v-row>
       </v-tab-item>
     </v-tabs-items>
     <v-bottom-sheet v-model="bottomSheet">
@@ -108,6 +119,8 @@ import Vue from 'vue'
 import * as utils from '@/utils/utils'
 import L from 'leaflet'
 import { ListViewDataTableRow, StringIndexedObject, WebpickerEventParameters } from '@/types'
+import Graticule from '@/plugins/graticule'
+import Highcharts from 'highcharts'
 
 export default Vue.extend({
 
@@ -168,7 +181,7 @@ export default Vue.extend({
         return (
           !this.hideDiscardedEvents ||
           (this.hideDiscardedEvents && (
-            e.type == null || ['not existing', 'other event'].indexOf(e.type) === -1
+            e.type == null || ['not existing', 'other event', 'not reported'].indexOf(e.type) === -1
           ))
         )
       })
@@ -187,6 +200,10 @@ export default Vue.extend({
             this.plotEvents()
           }
         }, 500)
+      } else if (newValue === 2) {
+        setTimeout(() => {
+          this.renderCharts()
+        }, 500)
       }
     },
 
@@ -202,6 +219,12 @@ export default Vue.extend({
     '$store.state.eventListDirty': function (newValue, oldValue) {
       if (newValue) {
         this.loadEvents()
+      }
+    },
+
+    filteredEvents: function () {
+      if (this.activeTab === 2) {
+        this.renderCharts()
       }
     }
   },
@@ -246,7 +269,7 @@ export default Vue.extend({
 
     getEventColor (e: WebpickerEventParameters) {
       if (['not existing', 'not reported', 'other event'].indexOf(e.type!) >= 0) {
-        return ['gray', 'gray']
+        return ['grey', 'grey']
       }
       const strokeColor = e._po!.evaluation_mode === 'manual' ? 'lime' : 'red'
       if (e._pm == null) {
@@ -282,6 +305,8 @@ export default Vue.extend({
       L.control.layers(baseLayers).addTo(map)
       L.control.scale({ imperial: false }).addTo(map)
       worldtopomap.addTo(map)
+      const graticule = new Graticule()
+      graticule.addTo(map)
       this.plotEvents()
     },
 
@@ -359,6 +384,135 @@ export default Vue.extend({
         region: e._region,
         id: e.public_id
       }))
+    },
+
+    renderCharts () {
+      const tdContainer: HTMLElement | null = this.$el.querySelector('.list-view__chart--temporal-distribution')
+      const grContainer: HTMLElement | null = this.$el.querySelector('.list-view__chart--temporal-gutemberg-richter')
+      if (tdContainer == null || grContainer == null) {
+        return
+      }
+      const events = this.filteredEvents
+      const eventsPerDay: {x: number; y: number}[] = []
+      const scatterMag: {x: number, y: number, name: string, color: string}[] = []
+      let currDay = null
+      for (const event of events) {
+        if (event._pm == null) {
+          continue
+        }
+        const t = event._po.time._value!.getTime()
+        const eventDay = t - (t % 86400e3)
+        if (currDay == null) {
+          currDay = { x: eventDay, y: 0 }
+        }
+        if (currDay.x === eventDay) {
+          currDay.y++
+        } else {
+          if (currDay != null) {
+            eventsPerDay.push(currDay)
+            currDay = null
+          }
+        }
+        const color = this.getEventColor(event)
+        scatterMag.push({
+          x: event._po.time._value!.getTime(),
+          y: event._pm!.mag.value,
+          name: event.public_id,
+          color: color[0] === 'transparent' ? color[1] : color[0]
+        })
+      }
+      if (currDay != null) {
+        eventsPerDay.push(currDay)
+      }
+      Highcharts.chart({
+        chart: {
+          renderTo: tdContainer,
+          zoomType: 'x',
+          backgroundColor: 'transparent'
+        },
+        title: { text: 'Temporal distribution', style: { color: '#888888' } },
+        xAxis: { type: 'datetime', title: { text: 'Time' } },
+        yAxis: [
+          { title: { text: 'Magnitude' }, min: 0, gridLineColor: '#888888', gridLineDashStyle: 'Dot' },
+          { title: { text: 'Nb events/day' }, opposite: true, gridLineColor: '#888888', gridLineDashStyle: 'Dot' }
+        ],
+        legend: { enabled: false },
+        plotOptions: {
+          column: { pointPlacement: 'between', groupPadding: 0, pointPadding: 0, states: { inactive: { opacity: 1 } }, borderColor: 'transparent' },
+          scatter: { states: { inactive: { opacity: 1 } } }
+        },
+        series: [{
+          name: 'Nb events/day',
+          type: 'column',
+          color: 'rgb(103 125 147 / 50%)',
+          yAxis: 1,
+          states: { hover: { brightness: -0.1 } },
+          data: eventsPerDay
+        }, {
+          name: 'Events',
+          type: 'scatter',
+          color: 'black',
+          turboThreshold: 0,
+          data: scatterMag,
+          tooltip: {
+            headerFormat: '',
+            pointFormatter: function () {
+              return [
+                `<strong>${new Date(this.x).toISOString().replace('T', ' ').slice(0, 19)}</strong>`,
+                `Magnitude: ${this.y!.toFixed(1)}`,
+                `<em>${this.name}</em>`
+              ].join('<br>')
+            }
+          }
+        }]
+      })
+      const eventsWithMag = events.filter((e: WebpickerEventParameters) => e._pm != null) as WebpickerEventParameters[]
+      const allMag = [...new Set(eventsWithMag.map(event => event._pm!.mag.value))]
+      allMag.sort()
+      const data = []
+      for (const mag of allMag) {
+        data.push({
+          x: mag,
+          y: eventsWithMag.filter(e => e._pm!.mag.value >= mag).length
+        })
+      }
+      Highcharts.chart({
+        title: { text: 'Gutenberg-Richter', style: { color: '#888888' } },
+        chart: { backgroundColor: 'transparent', renderTo: grContainer },
+        xAxis: { title: { text: 'Magnitudes' } },
+        yAxis: {
+          title: { text: 'Nb events' },
+          min: 1,
+          type: 'logarithmic',
+          gridLineColor: '#888888',
+          gridLineDashStyle: 'Dot'
+        },
+        legend: { enabled: false },
+        tooltip: {
+          formatter: function () {
+            const x = this.x as number
+            return [
+              `Magnitude: ${x.toFixed(1)}`,
+              `Nb events: ${this.y}`
+            ].join('<br/>')
+          }
+        },
+        plotOptions: {
+          series: {
+            marker: {
+              lineWidth: 1,
+              lineColor: '#7cb5ec',
+              fillColor: 'transparent',
+              radius: 2
+            }
+          }
+        },
+        series: [{
+          type: 'scatter',
+          name: 'Nb events',
+          data
+        }]
+      })
     }
 
   }
