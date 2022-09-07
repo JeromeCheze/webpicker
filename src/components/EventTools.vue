@@ -417,7 +417,7 @@ export default Vue.extend({
       if (fm != null) {
         e.preferred_focal_mechanism_id = fm.public_id
       }
-      const cloneEvent = utils.cloneAndClean(e, '/event_parameters/event') as WebpickerEventParameters
+      const cloneEvent = utils.cloneAndClean(e, '/event') as WebpickerEventParameters
       if (cloneEvent.preferred_magnitude_id == null) {
         if (!confirm('You are about to commit an event with no magnitude. Do you really want to proceed ?')) {
           return
