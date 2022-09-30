@@ -312,6 +312,9 @@ export const processEventData = (e: WebpickerEventParameters) => {
     }
     for (const o of e.origin) {
       const arrivalToIgnore = []
+      if (o.arrival == null) {
+        o.arrival = []
+      }
       for (const a of o.arrival) {
         if (a.public_id) {
           delete a.public_id

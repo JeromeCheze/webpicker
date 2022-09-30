@@ -1,13 +1,13 @@
 {
-    "admin": {
-        "password": "admin",
+    "s2rhai": {
+        "password": "52rh@!",
         "rules": {}
     },
     "test": {
         "password": "t35t",
         "rules": {
-            "starttime": "2022-08-18",
-            "endtime": "2022-08-22"
+            "starttime": "2021-09-01",
+            "endtime": "2021-09-07"
         }
     }
 }

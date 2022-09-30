@@ -1,14 +1,4 @@
 import os
 import sys
-sys.path.insert(0, '/var/www/webpicker')
-os.environ["FDSNWS_EVENT_HOST"] = "event-processor.oca:8080"
-os.environ["FDSNWS_STATION_HOST"] = "event-processor.oca:8080"
-os.environ["FDSNWS_DATASELECT_HOST"] = "event-processor.oca:8000"
-os.environ["SEISCOMP_ROOT"] = "/home/sysop/seiscomp3"
-os.environ["SC3_MESSAGING_HOST"] = "event-processor.oca:4803"
-# Warning change also path in startup.sh
-os.environ["SC3ML_CONFIG_FILENAME"] = "/var/www/webpicker/config/config.xml"
-os.environ["SCP3ML_DISPATCH_VERSION"] = "0.11"
-os.environ["SCP3ML_BINARY_VERSION"] = "0.11"
-os.environ["SEISCOMP_DB_URI"] = "postgresql://sc3reader:@babel.unice.fr/seiscomp3"
+sys.path.insert(0, '/var/www/webpicker_playback')
 from site_routage import app as application

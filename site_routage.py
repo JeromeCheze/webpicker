@@ -36,8 +36,9 @@ FE = FlinnEngdahl()
 DEBUG = False
 
 RESTRICTED = os.getenv('WEBPICKER_RESTRICT_ACCESS', 'true') == 'true'
-USER_FILE = os.getenv('WEBPICKER_USER_FILE', '/var/www/webpicker/users.json')
-FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'encelade.unice.fr:8000')
+USER_FILE = os.getenv('WEBPICKER_USER_FILE', '/var/www/webpicker_playback/users.json')
+#FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'encelade.unice.fr:8000')
+FDSNWS_EVENT_HOST = 'localhost:8002'
 FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'encelade.unice.fr:8000')
 FDSNWS_SC3_STATION_HOST = os.getenv('FDSNWS_SC3_STATION_HOST', 'encelade.unice.fr:8080')
 FDSNWS_DATASELECT_HOST = os.getenv('FDSNWS_DATASELECT_HOST', 'encelade.unice.fr:8000')
@@ -49,7 +50,8 @@ FDSNWS_SC3_STATION = 'http://%s/fdsnws/station' % FDSNWS_SC3_STATION_HOST
 FDSNWS_DATASELECT = 'http://%s/fdsnws/dataselect' % FDSNWS_DATASELECT_HOST
 
 # Generated with scxmldump -C
-SC3ML_CONFIG_FILENAME = os.getenv('SC3ML_CONFIG_FILENAME', '/var/www/webpicker/config.xml')
+#SC3ML_CONFIG_FILENAME = os.getenv('SC3ML_CONFIG_FILENAME', '/var/www/webpicker_playback/config.xml')
+SC3ML_CONFIG_FILENAME = '/var/www/webpicker_playback/config.xml'
 
 SEISCOMP_ROOT = os.getenv('SEISCOMP_ROOT', '/home/sysop/seiscomp3/')
 SEISCOMP_PROGRAM = os.path.join(SEISCOMP_ROOT, 'bin/seiscomp')
@@ -69,7 +71,8 @@ XSL_SC3ML_TO_QML1_2 = {
 FDSNWS_BASE_URL = 'http://%s' % FDSNWS_DATASELECT_HOST
 
 # used for scdispatch :
-SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'localhost:4805')
+#SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'thufir.unice.fr:4805')
+SC3_MESSAGING_HOST = 'localhost:4809'
 
 FDSN_EVENT_FORMAT = 'xml'
 
@@ -90,7 +93,7 @@ def dump_seiscomp3_config():
     f.close()
     os.rename(conf_filename, SC3ML_CONFIG_FILENAME)
 
-dump_seiscomp3_config()
+#dump_seiscomp3_config()
 
 def check_auth(username, password):
     """This function is called to check if a username /
@@ -227,7 +230,7 @@ class AuthorStatusHandler(object):
                 self._clean()._save()
         return self.__status
 
-AUTHOR_STATUS = AuthorStatusHandler('/var/www/webpicker/author_status.json')
+AUTHOR_STATUS = AuthorStatusHandler('/var/www/webpicker_playback/author_status.json')
 
 def get_event_time(eventid):
     req = '%s/1/query?format=text&eventid=%s' % (FDSNWS_EVENT, eventid)
@@ -615,7 +618,7 @@ def index():
 @requires_auth
 def logout():
     session['logout'] = True
-    return redirect('/')
+    return redirect('/webpicker_playback/')
 
 @app.route('/set_author', methods=['GET'])
 @requires_auth

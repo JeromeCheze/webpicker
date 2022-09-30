@@ -480,10 +480,10 @@ export default Vue.extend({
       allMag.sort()
       const data = []
       for (const mag of allMag) {
-        data.push({
-          x: mag,
-          y: eventsWithMag.filter(e => e.mag! >= mag).length
-        })
+        data.push([
+          mag,
+          eventsWithMag.filter(e => e.mag! >= mag).length
+        ])
       }
       Highcharts.chart({
         title: { text: 'Gutenberg-Richter', style: { color: '#888888' } },
