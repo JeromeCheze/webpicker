@@ -392,15 +392,26 @@ export default Vue.extend({
       if (tdContainer == null || grContainer == null) {
         return
       }
-      const events = this.filteredEvents
+      const filteredEvents = this.filteredEvents as WebpickerEventParameters[]
+      const events = filteredEvents.map(e => ({
+        time: e._po!.time._value,
+        mag: e._pm != null ? e._pm.mag.value : null,
+        public_id: e.public_id,
+        color: this.getEventColor(e)
+      }))
+      events.sort((a, b) => {
+        const aa = a.time
+        const bb = b.time
+        return aa < bb ? -1 : aa > bb ? 1 : 0
+      })
       const eventsPerDay: {x: number; y: number}[] = []
       const scatterMag: {x: number, y: number, name: string, color: string}[] = []
       let currDay = null
       for (const event of events) {
-        if (event._pm == null) {
+        if (event.mag == null) {
           continue
         }
-        const t = event._po.time._value!.getTime()
+        const t = event.time.getTime()
         const eventDay = t - (t % 86400e3)
         if (currDay == null) {
           currDay = { x: eventDay, y: 0 }
@@ -408,17 +419,14 @@ export default Vue.extend({
         if (currDay.x === eventDay) {
           currDay.y++
         } else {
-          if (currDay != null) {
-            eventsPerDay.push(currDay)
-            currDay = null
-          }
+          eventsPerDay.push(currDay)
+          currDay = null
         }
-        const color = this.getEventColor(event)
         scatterMag.push({
-          x: event._po.time._value!.getTime(),
-          y: event._pm!.mag.value,
+          x: event.time.getTime(),
+          y: event.mag,
           name: event.public_id,
-          color: color[0] === 'transparent' ? color[1] : color[0]
+          color: event.color[0] === 'transparent' ? event.color[1] : event.color[0]
         })
       }
       if (currDay != null) {
@@ -447,7 +455,8 @@ export default Vue.extend({
           color: 'rgb(103 125 147 / 50%)',
           yAxis: 1,
           states: { hover: { brightness: -0.1 } },
-          data: eventsPerDay
+          data: eventsPerDay,
+          pointPadding: 0.1
         }, {
           name: 'Events',
           type: 'scatter',
@@ -466,14 +475,14 @@ export default Vue.extend({
           }
         }]
       })
-      const eventsWithMag = events.filter((e: WebpickerEventParameters) => e._pm != null) as WebpickerEventParameters[]
-      const allMag = [...new Set(eventsWithMag.map(event => event._pm!.mag.value))]
+      const eventsWithMag = events.filter(e => e.mag != null)
+      const allMag = [...new Set(eventsWithMag.map(event => event.mag))] as number[]
       allMag.sort()
       const data = []
       for (const mag of allMag) {
         data.push({
           x: mag,
-          y: eventsWithMag.filter(e => e._pm!.mag.value >= mag).length
+          y: eventsWithMag.filter(e => e.mag! >= mag).length
         })
       }
       Highcharts.chart({
