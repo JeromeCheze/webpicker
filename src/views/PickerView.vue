@@ -163,6 +163,7 @@ export default Vue.extend({
       picks: {} as {[seedid: string]: WaveformPick[]},
       waveform: {} as {[index: string]: WaveformItemOptions},
       stationDistance: {} as {[netsta: string]: number},
+      stationCoordinates: {} as {[netsta: string]: [number, number]},
       stationAzimuth: {} as {[netsta: string]: number},
 
       // instances
@@ -420,7 +421,10 @@ export default Vue.extend({
       for (const a of this.origin.arrival.values()) {
         const fdsnid = a._pick._fdsnid
         const netsta = fdsnid.split('.').slice(0, 2).join('.')
+        const [net, sta] = netsta.split('.')
+        const staPos = [this.inventory[net][sta].lat, this.inventory[net][sta].lon] as L.LatLngTuple
         this.stationDistance[netsta] = a.distance
+        this.stationCoordinates[netsta] = staPos
         this.stationAzimuth[netsta] = a.azimuth
         utils.pushInObject(this.picks, a._pick._seedid, {
           id: a.pick_id,
@@ -587,7 +591,8 @@ export default Vue.extend({
 
     getTTT () {
       return new Promise((resolve, reject) => {
-        const stationDistance = Object.assign({}, this.stationDistance)
+        // const stationDistance = Object.assign({}, this.stationDistance)
+        const stationCoordinates = Object.assign({}, this.stationCoordinates)
 
         // cached origin
         const caO = this.$store.state.pickerLastOrigin
@@ -607,13 +612,13 @@ export default Vue.extend({
           caO.depth === cuO.depth
         ) {
           // current origin == cached origin
-          for (const netsta of Object.keys(this.stationDistance)) {
+          for (const netsta of Object.keys(stationCoordinates)) {
             if (this.ttt[netsta] != null) {
               // As origin in unchanged it is not needed to recompute ttt for station already computed
-              delete stationDistance[netsta]
+              delete stationCoordinates[netsta]
             }
           }
-          if (Object.keys(stationDistance).length === 0) {
+          if (Object.keys(stationCoordinates).length === 0) {
             console.log('[PickerView::getTTT] Origin is unchanged, do not recompute theoretical travel times.')
             this.$store.dispatch('log', '[PickerView::getTTT] Origin is unchanged, do not recompute theoretical travel times.')
             resolve(null)
@@ -623,7 +628,7 @@ export default Vue.extend({
           this.ttt = {}
         }
         this.$store.dispatch('setLoading', { value: true, text: 'Loading theoretical travel times...' })
-        console.log('[PickerView::getTTT] compute theoretical travel time', stationDistance)
+        console.log('[PickerView::getTTT] compute theoretical travel time', stationCoordinates)
         this.$store.dispatch('log', '[PickerView::getTTT] compute theoretical travel time')
         const xhr = new XMLHttpRequest()
         this.xhr.push(xhr)
@@ -631,7 +636,12 @@ export default Vue.extend({
           method: 'POST',
           url: this.$store.getters.getLink('ttt'),
           dataMimeType: 'application/json',
-          data: JSON.stringify({ depth: cuO.depth / 1000, station: stationDistance }),
+          data: JSON.stringify({
+            latitude: cuO.latitude,
+            longitude: cuO.longitude,
+            depth: cuO.depth / 1000,
+            station: stationCoordinates
+          }),
           type: 'json'
         }, xhr).then(ttt => {
           this.xhr.splice(this.xhr.indexOf(xhr), 1)
@@ -897,6 +907,7 @@ export default Vue.extend({
         const [net, sta] = netsta.split('.')
         const staPos = [this.inventory[net][sta].lat, this.inventory[net][sta].lon] as L.LatLngTuple
         this.stationDistance[netsta] = utils.m2deg(pos.distanceTo(staPos))
+        this.stationCoordinates[netsta] = staPos
         this.stationAzimuth[netsta] = utils.coordinates2azimuth([pos.lat, pos.lng], staPos)
       }
       for (const wf of Object.values(this.waveform)) {
@@ -942,6 +953,7 @@ export default Vue.extend({
                   }
                   const degDistance = utils.m2deg(pos.distanceTo([staObj.lat, staObj.lon]))
                   this.stationDistance[netsta] = degDistance
+                  this.stationCoordinates[netsta] = [staObj.lat, staObj.lon]
                   this.stationAzimuth[netsta] = utils.coordinates2azimuth([pos.lat, pos.lng], [staObj.lat, staObj.lon])
                   break
                 }
@@ -1047,7 +1059,10 @@ export default Vue.extend({
       console.log('[PickerView::setListWaveforms]', wfList)
       this.$store.dispatch('log', '[PickerView::setListWaveforms]')
       if (this.list == null) {
-        this.listOpt.size = { height: this.settings['pickerSize.listWaveformHeight'] }
+        this.listOpt.size = {
+          height: this.settings['pickerSize.listWaveformHeight'],
+          wrapperMaxHeight: this.settings['pickerSize.listWaveformWrapperHeight']
+        }
         this.listOpt.color = this.getColorSettings()
         Object.assign(this.listOpt.view, { refTime: this.tools.alignment }, this.defaultView)
         wfList.sort((a, b) => {

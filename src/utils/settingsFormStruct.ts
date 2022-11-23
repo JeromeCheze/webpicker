@@ -146,6 +146,12 @@ const settings: SettingsFormStruct = {
           label: 'Picker waveform height [px]'
         }
       },
+      listWaveformWrapperHeight: {
+        component: 'number-field',
+        props: {
+          label: 'List waveform wrapper height [px]'
+        }
+      },
       listWaveformHeight: {
         component: 'number-field',
         props: {

@@ -37,8 +37,7 @@ DEBUG = False
 
 RESTRICTED = os.getenv('WEBPICKER_RESTRICT_ACCESS', 'true') == 'true'
 USER_FILE = os.getenv('WEBPICKER_USER_FILE', '/var/www/webpicker_playback/users.json')
-#FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'encelade.unice.fr:8000')
-FDSNWS_EVENT_HOST = 'localhost:8002'
+FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'encelade.unice.fr:8000')
 FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'encelade.unice.fr:8000')
 FDSNWS_SC3_STATION_HOST = os.getenv('FDSNWS_SC3_STATION_HOST', 'encelade.unice.fr:8080')
 FDSNWS_DATASELECT_HOST = os.getenv('FDSNWS_DATASELECT_HOST', 'encelade.unice.fr:8000')
@@ -520,16 +519,6 @@ def commit_with_scdispatch(jquake):
         'return_code': scdispatch.returncode
     }
 
-def get_first_arrival_P(arrivals, distance):
-    for a in arrivals:
-        if a.name.upper() == 'P':
-            return a
-        if a.name.upper()[0] != 'P':
-            continue
-        if distance < 120 and a.name in ['Pn', 'Pg', 'Pdiff']:
-            return a
-    return None
-
 def parse_station_post_request(raw_data):
     args = { 'channel': [] }
     for row in raw_data.splitlines():
@@ -550,41 +539,57 @@ def parse_station_post_request(raw_data):
             })
     return args
 
-def get_travel_times(depth, distance):
+# def get_travel_times(depth, distance):
+#     result = {
+#         'P': None,
+#         'S': None
+#     }
+#     if(depth >= IASP91_TABLE['depth_min']
+#        and depth <= IASP91_TABLE['depth_max']
+#        and distance >= IASP91_TABLE['distance_min']
+#        and distance <= IASP91_TABLE['distance_max']):
+#         depth_step = float(IASP91_TABLE['depth_max'] - IASP91_TABLE['depth_min']) / len(IASP91_TABLE['table'])
+#         dist_step = float(IASP91_TABLE['distance_max'] - IASP91_TABLE['distance_min']) / len(IASP91_TABLE['table'][0])
+#         depth_index = int((depth - IASP91_TABLE['depth_min']) / depth_step)
+#         dist_index = int((distance - IASP91_TABLE['distance_min']) / dist_step)
+#         depth_index_next = min(depth_index + 1, len(IASP91_TABLE['table']) - 1)
+#         dist_index_next = min(dist_index + 1, len(IASP91_TABLE['table'][0]) - 1)
+#         depth_ratio = (depth - depth_index * depth_step) / depth_step
+#         dist_ratio = (distance - dist_index * dist_step) / dist_step
+#         result['P'] = (depth_ratio * (IASP91_TABLE['table'][depth_index][dist_index][0][1] * dist_ratio
+#                                       + IASP91_TABLE['table'][depth_index][dist_index_next][0][1] * (1 - dist_ratio))
+#                        + (1 - depth_ratio) * (IASP91_TABLE['table'][depth_index_next][dist_index][0][1] * dist_ratio
+#                                               + IASP91_TABLE['table'][depth_index_next][dist_index_next][0][1] * (1 - dist_ratio)))
+#         result['S'] = (depth_ratio * (IASP91_TABLE['table'][depth_index][dist_index][1][1] * dist_ratio
+#                                       + IASP91_TABLE['table'][depth_index][dist_index_next][1][1] * (1 - dist_ratio))
+#                        + (1 - depth_ratio) * (IASP91_TABLE['table'][depth_index_next][dist_index][1][1] * dist_ratio
+#                                               + IASP91_TABLE['table'][depth_index_next][dist_index_next][1][1] * (1 - dist_ratio)))
+#     else:
+#         phase_list = ['P', 'p', 'Pn', 'Pg', 'Pdiff', 'S', 's']
+#         model = TauPyModel(model="iasp91")
+#         arrivals = model.get_travel_times(depth, distance, phase_list)
+#         p_arrivals = [a.time for a in arrivals if 'P' in a.name.upper()]
+#         if len(p_arrivals) > 0:
+#             result['P'] = min(p_arrivals)
+#         s_arrivals = [a.time for a in arrivals if a.name.upper() == 'S']
+#         if len(s_arrivals) > 0:
+#             result['S'] = min(s_arrivals)
+#     return result
+
+def get_travel_times(lat, lon, depth, station_pos):
     result = {
         'P': None,
         'S': None
     }
-    if(depth >= IASP91_TABLE['depth_min']
-       and depth <= IASP91_TABLE['depth_max']
-       and distance >= IASP91_TABLE['distance_min']
-       and distance <= IASP91_TABLE['distance_max']):
-        depth_step = float(IASP91_TABLE['depth_max'] - IASP91_TABLE['depth_min']) / len(IASP91_TABLE['table'])
-        dist_step = float(IASP91_TABLE['distance_max'] - IASP91_TABLE['distance_min']) / len(IASP91_TABLE['table'][0])
-        depth_index = int((depth - IASP91_TABLE['depth_min']) / depth_step)
-        dist_index = int((distance - IASP91_TABLE['distance_min']) / dist_step)
-        depth_index_next = min(depth_index + 1, len(IASP91_TABLE['table']) - 1)
-        dist_index_next = min(dist_index + 1, len(IASP91_TABLE['table'][0]) - 1)
-        depth_ratio = (depth - depth_index * depth_step) / depth_step
-        dist_ratio = (distance - dist_index * dist_step) / dist_step
-        result['P'] = (depth_ratio * (IASP91_TABLE['table'][depth_index][dist_index][0][1] * dist_ratio
-                                      + IASP91_TABLE['table'][depth_index][dist_index_next][0][1] * (1 - dist_ratio))
-                       + (1 - depth_ratio) * (IASP91_TABLE['table'][depth_index_next][dist_index][0][1] * dist_ratio
-                                              + IASP91_TABLE['table'][depth_index_next][dist_index_next][0][1] * (1 - dist_ratio)))
-        result['S'] = (depth_ratio * (IASP91_TABLE['table'][depth_index][dist_index][1][1] * dist_ratio
-                                      + IASP91_TABLE['table'][depth_index][dist_index_next][1][1] * (1 - dist_ratio))
-                       + (1 - depth_ratio) * (IASP91_TABLE['table'][depth_index_next][dist_index][1][1] * dist_ratio
-                                              + IASP91_TABLE['table'][depth_index_next][dist_index_next][1][1] * (1 - dist_ratio)))
-    else:
-        phase_list = ['P', 'p', 'Pn', 'Pg', 'Pdiff', 'S', 's']
-        model = TauPyModel(model="iasp91")
-        arrivals = model.get_travel_times(depth, distance, phase_list)
-        p_arrivals = [a.time for a in arrivals if 'P' in a.name.upper()]
-        if len(p_arrivals) > 0:
-            result['P'] = min(p_arrivals)
-        s_arrivals = [a.time for a in arrivals if a.name.upper() == 'S']
-        if len(s_arrivals) > 0:
-            result['S'] = min(s_arrivals)
+    phase_list = ['P', 'p', 'Pn', 'Pg', 'Pdiff', 'S', 's']
+    model = TauPyModel(model="iasp91")
+    arrivals = model.get_travel_times_geo(depth, lat, lon, station_pos[0], station_pos[1], phase_list)
+    p_arrivals = [a.time for a in arrivals if 'P' in a.name.upper()]
+    if len(p_arrivals) > 0:
+        result['P'] = min(p_arrivals)
+    s_arrivals = [a.time for a in arrivals if a.name.upper() == 'S']
+    if len(s_arrivals) > 0:
+        result['S'] = min(s_arrivals)
     return result
 
 def takeoffangle(depth, distance):
@@ -643,8 +648,10 @@ def update_scp3_config():
 def get_ttt():
     data = request.get_json()
     result = {}
-    for sta, distance in data['station'].items():
-        result[sta] = { 'distance': distance, 'ttt': get_travel_times(data['depth'], distance) }
+    # for sta, distance in data['station'].items():
+    #     result[sta] = { 'distance': distance, 'ttt': get_travel_times(data['depth'], distance) }
+    for sta, pos in data['station'].items():
+        result[sta] = { 'ttt': get_travel_times(data['latitude'], data['longitude'], data['depth'], pos) }
     return Response(json.dumps(result), mimetype='application/json')
 
 @app.route('/takeoffangle', methods=['POST'])

@@ -51,6 +51,7 @@ const settings: WebpickerSettings = {
   'pickerColor.manual': '#1ab11b',
   'pickerSize.pickerWaveformHeight': 120,
   'pickerSize.listWaveformHeight': 40,
+  'pickerSize.listWaveformWrapperHeight': 400,
   'pickerKeybinding.nextStation': 'down',
   'pickerKeybinding.previousStation': 'up',
   'pickerKeybinding.setPolarityPositive': 'shift+up',
