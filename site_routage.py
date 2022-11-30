@@ -1,6 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 PYTHON3 = False
+import os
+os.environ['SEISCOMP_ROOT'] = '/home/sysop/seiscomp3'
+os.environ['PYTHONPATH'] = ':'.join(os.environ['PYTHONPATH'].split(':') + ['/home/sysop/seiscomp3/lib/python'])
+os.environ['LD_LIBRARY_PATH'] = ':'.join(os.environ['LD_LIBRARY_PATH'].split(':') + ['/home/sysop/seiscomp3/lib'])
+import sys
+import json
+import tempfile
+import subprocess
+from lxml import etree
+from random import randint
+from functools import wraps
+from datetime import datetime
+from obspy import UTCDateTime
+from obspy.taup import TauPyModel
+from obspy.clients.fdsn import Client
+from obspy.geodetics import FlinnEngdahl
+from seiscomp3.Seismology import TravelTimeTableInterface_Create
 from flask import Flask, request, session, render_template, Response, abort, redirect
 if PYTHON3:
     from urllib.request import urlopen, Request, HTTPError
@@ -8,20 +25,6 @@ if PYTHON3:
 else:
     from urllib2 import urlopen, Request, HTTPError
     from urllib import urlencode
-from obspy.geodetics import FlinnEngdahl
-from obspy.clients.fdsn import Client
-from obspy.taup import TauPyModel
-from obspy import UTCDateTime
-from datetime import datetime
-from functools import wraps
-from random import randint
-from lxml import etree
-import subprocess
-import tempfile
-import obspy
-import json
-import sys
-import os
 
 app = Flask(__name__,
             static_folder = "./dist/static",
@@ -35,8 +38,8 @@ FE = FlinnEngdahl()
 
 DEBUG = False
 
-RESTRICTED = os.getenv('WEBPICKER_RESTRICT_ACCESS', 'true') == 'true'
-USER_FILE = os.getenv('WEBPICKER_USER_FILE', '/var/www/webpicker_playback/users.json')
+RESTRICTED = os.getenv('WEBPICKER_RESTRICT_ACCESS', 'false') == 'true'
+USER_FILE = os.getenv('WEBPICKER_USER_FILE', '/var/www/webpicker/users.json')
 FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'encelade.unice.fr:8000')
 FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'encelade.unice.fr:8000')
 FDSNWS_SC3_STATION_HOST = os.getenv('FDSNWS_SC3_STATION_HOST', 'encelade.unice.fr:8080')
@@ -50,13 +53,13 @@ FDSNWS_DATASELECT = 'http://%s/fdsnws/dataselect' % FDSNWS_DATASELECT_HOST
 
 # Generated with scxmldump -C
 #SC3ML_CONFIG_FILENAME = os.getenv('SC3ML_CONFIG_FILENAME', '/var/www/webpicker_playback/config.xml')
-SC3ML_CONFIG_FILENAME = '/var/www/webpicker_playback/config.xml'
+SC3ML_CONFIG_FILENAME = '/var/www/webpicker/config.xml'
 
 SEISCOMP_ROOT = os.getenv('SEISCOMP_ROOT', '/home/sysop/seiscomp3/')
 SEISCOMP_PROGRAM = os.path.join(SEISCOMP_ROOT, 'bin/seiscomp')
 SCP3ML_DISPATCH_VERSION = os.getenv('SCP3ML_DISPATCH_VERSION', '0.11')
 SCP3ML_BINARY_VERSION = os.getenv('SCP3ML_BINARY_VERSION', '0.11')
-SEISCOMP_DB_URI = os.getenv('SEISCOMP_DB_URI', 'postgresql://sc3reader:@babel.unice.fr/seiscomp3')
+SEISCOMP_DB_URI = os.getenv('SEISCOMP_DB_URI', 'postgresql://sysop:@babel.unice.fr/seiscomp3')
 
 XSL_SC3ML_TO_QML1_2 = {
   '0.7': os.path.join(SEISCOMP_ROOT, 'share/xml/0.7/sc3ml_0.7__quakeml_1.2.xsl'),
@@ -70,8 +73,7 @@ XSL_SC3ML_TO_QML1_2 = {
 FDSNWS_BASE_URL = 'http://%s' % FDSNWS_DATASELECT_HOST
 
 # used for scdispatch :
-#SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'thufir.unice.fr:4805')
-SC3_MESSAGING_HOST = 'localhost:4809'
+SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'encelade.unice.fr:4805')
 
 FDSN_EVENT_FORMAT = 'xml'
 
@@ -79,9 +81,6 @@ USERS = {}
 if RESTRICTED and USER_FILE is not None and os.path.exists(USER_FILE):
     with open(USER_FILE, 'r') as f:
         USERS = json.load(f)
-
-with open(os.path.join(os.path.dirname(__file__), 'iasp91_table.json'), 'r') as f:
-    IASP91_TABLE = json.load(f)
 
 def dump_seiscomp3_config():
     fd, conf_filename = tempfile.mkstemp()
@@ -229,7 +228,8 @@ class AuthorStatusHandler(object):
                 self._clean()._save()
         return self.__status
 
-AUTHOR_STATUS = AuthorStatusHandler('/var/www/webpicker_playback/author_status.json')
+AUTHOR_STATUS = AuthorStatusHandler('/var/www/webpicker/author_status.json')
+# AUTHOR_STATUS = AuthorStatusHandler('/home/cheze/repositories/webpicker/author_status.json')
 
 def get_event_time(eventid):
     req = '%s/1/query?format=text&eventid=%s' % (FDSNWS_EVENT, eventid)
@@ -539,43 +539,6 @@ def parse_station_post_request(raw_data):
             })
     return args
 
-# def get_travel_times(depth, distance):
-#     result = {
-#         'P': None,
-#         'S': None
-#     }
-#     if(depth >= IASP91_TABLE['depth_min']
-#        and depth <= IASP91_TABLE['depth_max']
-#        and distance >= IASP91_TABLE['distance_min']
-#        and distance <= IASP91_TABLE['distance_max']):
-#         depth_step = float(IASP91_TABLE['depth_max'] - IASP91_TABLE['depth_min']) / len(IASP91_TABLE['table'])
-#         dist_step = float(IASP91_TABLE['distance_max'] - IASP91_TABLE['distance_min']) / len(IASP91_TABLE['table'][0])
-#         depth_index = int((depth - IASP91_TABLE['depth_min']) / depth_step)
-#         dist_index = int((distance - IASP91_TABLE['distance_min']) / dist_step)
-#         depth_index_next = min(depth_index + 1, len(IASP91_TABLE['table']) - 1)
-#         dist_index_next = min(dist_index + 1, len(IASP91_TABLE['table'][0]) - 1)
-#         depth_ratio = (depth - depth_index * depth_step) / depth_step
-#         dist_ratio = (distance - dist_index * dist_step) / dist_step
-#         result['P'] = (depth_ratio * (IASP91_TABLE['table'][depth_index][dist_index][0][1] * dist_ratio
-#                                       + IASP91_TABLE['table'][depth_index][dist_index_next][0][1] * (1 - dist_ratio))
-#                        + (1 - depth_ratio) * (IASP91_TABLE['table'][depth_index_next][dist_index][0][1] * dist_ratio
-#                                               + IASP91_TABLE['table'][depth_index_next][dist_index_next][0][1] * (1 - dist_ratio)))
-#         result['S'] = (depth_ratio * (IASP91_TABLE['table'][depth_index][dist_index][1][1] * dist_ratio
-#                                       + IASP91_TABLE['table'][depth_index][dist_index_next][1][1] * (1 - dist_ratio))
-#                        + (1 - depth_ratio) * (IASP91_TABLE['table'][depth_index_next][dist_index][1][1] * dist_ratio
-#                                               + IASP91_TABLE['table'][depth_index_next][dist_index_next][1][1] * (1 - dist_ratio)))
-#     else:
-#         phase_list = ['P', 'p', 'Pn', 'Pg', 'Pdiff', 'S', 's']
-#         model = TauPyModel(model="iasp91")
-#         arrivals = model.get_travel_times(depth, distance, phase_list)
-#         p_arrivals = [a.time for a in arrivals if 'P' in a.name.upper()]
-#         if len(p_arrivals) > 0:
-#             result['P'] = min(p_arrivals)
-#         s_arrivals = [a.time for a in arrivals if a.name.upper() == 'S']
-#         if len(s_arrivals) > 0:
-#             result['S'] = min(s_arrivals)
-#     return result
-
 def get_travel_times(lat, lon, depth, station_pos):
     result = {
         'P': None,
@@ -597,6 +560,14 @@ def takeoffangle(depth, distance):
     arrivals = model.get_travel_times(depth, distance)
     arrivals.sort(key=lambda x: x.time)
     return arrivals[0].takeoff_angle
+
+def get_locsat_travel_times(evlat, evlon, evdepth, stalat, stalon, stael=0):
+    ttt = TravelTimeTableInterface_Create('LOCSAT')
+    ttt.setModel('iasp91')
+    return {
+        'P': ttt.compute('P', evlat, evlon, evdepth, stalat, stalon, stael).time,
+        'S': ttt.compute('S', evlat, evlon, evdepth, stalat, stalon, stael).time
+    }
 
 # def get_event_full_description(eventid):
 #     cmd = [
@@ -651,7 +622,8 @@ def get_ttt():
     # for sta, distance in data['station'].items():
     #     result[sta] = { 'distance': distance, 'ttt': get_travel_times(data['depth'], distance) }
     for sta, pos in data['station'].items():
-        result[sta] = { 'ttt': get_travel_times(data['latitude'], data['longitude'], data['depth'], pos) }
+        # result[sta] = { 'ttt': get_travel_times(data['latitude'], data['longitude'], data['depth'], pos) }
+        result[sta] = { 'ttt': get_locsat_travel_times(data['latitude'], data['longitude'], data['depth'], pos[0], pos[1], pos[2]) }
     return Response(json.dumps(result), mimetype='application/json')
 
 @app.route('/takeoffangle', methods=['POST'])

@@ -163,7 +163,7 @@ export default Vue.extend({
       picks: {} as {[seedid: string]: WaveformPick[]},
       waveform: {} as {[index: string]: WaveformItemOptions},
       stationDistance: {} as {[netsta: string]: number},
-      stationCoordinates: {} as {[netsta: string]: [number, number]},
+      stationCoordinates: {} as {[netsta: string]: [number, number, number]},
       stationAzimuth: {} as {[netsta: string]: number},
 
       // instances
@@ -424,7 +424,7 @@ export default Vue.extend({
         const [net, sta] = netsta.split('.')
         const staPos = [this.inventory[net][sta].lat, this.inventory[net][sta].lon] as L.LatLngTuple
         this.stationDistance[netsta] = a.distance
-        this.stationCoordinates[netsta] = staPos
+        this.stationCoordinates[netsta] = [staPos[0], staPos[1], this.inventory[net][sta].alt]
         this.stationAzimuth[netsta] = a.azimuth
         utils.pushInObject(this.picks, a._pick._seedid, {
           id: a.pick_id,
@@ -907,7 +907,7 @@ export default Vue.extend({
         const [net, sta] = netsta.split('.')
         const staPos = [this.inventory[net][sta].lat, this.inventory[net][sta].lon] as L.LatLngTuple
         this.stationDistance[netsta] = utils.m2deg(pos.distanceTo(staPos))
-        this.stationCoordinates[netsta] = staPos
+        this.stationCoordinates[netsta] = [staPos[0], staPos[1], this.inventory[net][sta].alt]
         this.stationAzimuth[netsta] = utils.coordinates2azimuth([pos.lat, pos.lng], staPos)
       }
       for (const wf of Object.values(this.waveform)) {
@@ -953,7 +953,7 @@ export default Vue.extend({
                   }
                   const degDistance = utils.m2deg(pos.distanceTo([staObj.lat, staObj.lon]))
                   this.stationDistance[netsta] = degDistance
-                  this.stationCoordinates[netsta] = [staObj.lat, staObj.lon]
+                  this.stationCoordinates[netsta] = [staObj.lat, staObj.lon, staObj.alt]
                   this.stationAzimuth[netsta] = utils.coordinates2azimuth([pos.lat, pos.lng], [staObj.lat, staObj.lon])
                   break
                 }
@@ -1064,7 +1064,7 @@ export default Vue.extend({
           wrapperMaxHeight: this.settings['pickerSize.listWaveformWrapperHeight']
         }
         this.listOpt.color = this.getColorSettings()
-        Object.assign(this.listOpt.view, { refTime: this.tools.alignment }, this.defaultView)
+        Object.assign(this.listOpt.view!, { refTime: this.tools.alignment }, this.defaultView)
         wfList.sort((a, b) => {
           const aa = a.distance
           const bb = b.distance
