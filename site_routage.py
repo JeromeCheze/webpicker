@@ -2,9 +2,6 @@
 # -*- coding: utf-8 -*-
 PYTHON3 = False
 import os
-os.environ['SEISCOMP_ROOT'] = '/home/sysop/seiscomp3'
-os.environ['PYTHONPATH'] = ':'.join(os.environ['PYTHONPATH'].split(':') + ['/home/sysop/seiscomp3/lib/python'])
-os.environ['LD_LIBRARY_PATH'] = ':'.join(os.environ['LD_LIBRARY_PATH'].split(':') + ['/home/sysop/seiscomp3/lib'])
 import sys
 import json
 import tempfile
@@ -13,10 +10,10 @@ from lxml import etree
 from random import randint
 from functools import wraps
 from datetime import datetime
-from obspy import UTCDateTime
 from obspy.taup import TauPyModel
 from obspy.clients.fdsn import Client
 from obspy.geodetics import FlinnEngdahl
+from obspy.core import UTCDateTime, AttribDict
 from seiscomp3.Seismology import TravelTimeTableInterface_Create
 from flask import Flask, request, session, render_template, Response, abort, redirect
 if PYTHON3:
@@ -32,72 +29,48 @@ app = Flask(__name__,
 app.debug = True
 app.secret_key = '\x02\xcf:\xc5\x88%K\xd2\x0fl\x8b}\xd1\xd9\xeew\xd8\x9e^0)\xa5\x1c\xb1'
 
-EVENTS_CURRENTLY_REVIEWED = {}
-
 FE = FlinnEngdahl()
 
 DEBUG = False
 
-RESTRICTED = os.getenv('WEBPICKER_RESTRICT_ACCESS', 'false') == 'true'
-USER_FILE = os.getenv('WEBPICKER_USER_FILE', '/var/www/webpicker/users.json')
-FDSNWS_EVENT_HOST = os.getenv('FDSNWS_EVENT_HOST', 'encelade.unice.fr:8000')
-FDSNWS_STATION_HOST = os.getenv('FDSNWS_STATION_HOST', 'encelade.unice.fr:8000')
-FDSNWS_SC3_STATION_HOST = os.getenv('FDSNWS_SC3_STATION_HOST', 'encelade.unice.fr:8080')
-FDSNWS_DATASELECT_HOST = os.getenv('FDSNWS_DATASELECT_HOST', 'encelade.unice.fr:8000')
+def load_config(filename):
+    with open(filename, 'r') as f:
+        return AttribDict(json.load(f))
 
-FDSNWS_ROOT = 'http://%s' % FDSNWS_EVENT_HOST
-FDSNWS_EVENT = 'http://%s/fdsnws/event' % FDSNWS_EVENT_HOST
-FDSNWS_STATION = 'http://%s/fdsnws/station' % FDSNWS_STATION_HOST
-FDSNWS_SC3_STATION = 'http://%s/fdsnws/station' % FDSNWS_SC3_STATION_HOST
-FDSNWS_DATASELECT = 'http://%s/fdsnws/dataselect' % FDSNWS_DATASELECT_HOST
+CONFIG = load_config('config.json')
 
-# Generated with scxmldump -C
-#SC3ML_CONFIG_FILENAME = os.getenv('SC3ML_CONFIG_FILENAME', '/var/www/webpicker_playback/config.xml')
-SC3ML_CONFIG_FILENAME = '/var/www/webpicker/config.xml'
-
-SEISCOMP_ROOT = os.getenv('SEISCOMP_ROOT', '/home/sysop/seiscomp3/')
-SEISCOMP_PROGRAM = os.path.join(SEISCOMP_ROOT, 'bin/seiscomp')
-SCP3ML_DISPATCH_VERSION = os.getenv('SCP3ML_DISPATCH_VERSION', '0.11')
-SCP3ML_BINARY_VERSION = os.getenv('SCP3ML_BINARY_VERSION', '0.11')
-SEISCOMP_DB_URI = os.getenv('SEISCOMP_DB_URI', 'postgresql://sysop:@babel.unice.fr/seiscomp3')
+SEISCOMP_PROGRAM = os.path.join(CONFIG.seiscomp.root, 'bin/seiscomp')
 
 XSL_SC3ML_TO_QML1_2 = {
-  '0.7': os.path.join(SEISCOMP_ROOT, 'share/xml/0.7/sc3ml_0.7__quakeml_1.2.xsl'),
-  '0.8': os.path.join(SEISCOMP_ROOT, 'share/xml/0.8/sc3ml_0.8__quakeml_1.2.xsl'),
-  '0.9': os.path.join(SEISCOMP_ROOT, 'share/xml/0.9/sc3ml_0.9__quakeml_1.2.xsl'),
-  '0.10': os.path.join(SEISCOMP_ROOT, 'share/xml/0.10/sc3ml_0.10__quakeml_1.2.xsl'),
-  '0.11': os.path.join(SEISCOMP_ROOT, 'share/xml/0.11/sc3ml_0.11__quakeml_1.2.xsl')
+  '0.7': os.path.join(CONFIG.seiscomp.root, 'share/xml/0.7/sc3ml_0.7__quakeml_1.2.xsl'),
+  '0.8': os.path.join(CONFIG.seiscomp.root, 'share/xml/0.8/sc3ml_0.8__quakeml_1.2.xsl'),
+  '0.9': os.path.join(CONFIG.seiscomp.root, 'share/xml/0.9/sc3ml_0.9__quakeml_1.2.xsl'),
+  '0.10': os.path.join(CONFIG.seiscomp.root, 'share/xml/0.10/sc3ml_0.10__quakeml_1.2.xsl'),
+  '0.11': os.path.join(CONFIG.seiscomp.root, 'share/xml/0.11/sc3ml_0.11__quakeml_1.2.xsl')
 }
-
-# used for scamp and scmag :
-FDSNWS_BASE_URL = 'http://%s' % FDSNWS_DATASELECT_HOST
-
-# used for scdispatch :
-SC3_MESSAGING_HOST = os.getenv('SC3_MESSAGING_HOST', 'encelade.unice.fr:4805')
 
 FDSN_EVENT_FORMAT = 'xml'
 
-USERS = {}
-if RESTRICTED and USER_FILE is not None and os.path.exists(USER_FILE):
-    with open(USER_FILE, 'r') as f:
-        USERS = json.load(f)
-
 def dump_seiscomp3_config():
     fd, conf_filename = tempfile.mkstemp()
-    scxmldump = subprocess.Popen([SEISCOMP_PROGRAM, 'exec', 'scxmldump', '-f', '-C', '-d', SEISCOMP_DB_URI], stdout=subprocess.PIPE)
+    scxmldump = subprocess.Popen([SEISCOMP_PROGRAM, 'exec', 'scxmldump', '-f', '-C', '-d', CONFIG.seiscomp.database_uri], stdout=subprocess.PIPE)
     config, _ = scxmldump.communicate()
     f = os.fdopen(fd, 'w')
-    f.write(config)
+    if PYTHON3:
+        f.write(config.decode('utf-8'))
+    else:
+        f.write(config)
     f.close()
-    os.rename(conf_filename, SC3ML_CONFIG_FILENAME)
+    os.rename(conf_filename, CONFIG.seiscomp.config_filename)
 
-#dump_seiscomp3_config()
+if CONFIG.seiscomp.dump_config:
+    dump_seiscomp3_config()
 
 def check_auth(username, password):
     """This function is called to check if a username /
     password combination is valid.
     """
-    if username in USERS and USERS[username]['password'] == password:
+    if username in CONFIG.access.users and CONFIG.access.users[username]['password'] == password:
         session['logout'] = False
         return True
     return False
@@ -116,7 +89,7 @@ def requires_auth(f):
             session['logout'] = False
             return authenticate()
         auth = request.authorization
-        if RESTRICTED and (not auth or not check_auth(auth.username, auth.password)):
+        if CONFIG.access.restricted and (not auth or not check_auth(auth.username, auth.password)):
             return authenticate()
         return f(*args, **kwargs)
    return decorated
@@ -228,11 +201,10 @@ class AuthorStatusHandler(object):
                 self._clean()._save()
         return self.__status
 
-AUTHOR_STATUS = AuthorStatusHandler('/var/www/webpicker/author_status.json')
-# AUTHOR_STATUS = AuthorStatusHandler('/home/cheze/repositories/webpicker/author_status.json')
+AUTHOR_STATUS = AuthorStatusHandler(CONFIG.author_status_filename)
 
 def get_event_time(eventid):
-    req = '%s/1/query?format=text&eventid=%s' % (FDSNWS_EVENT, eventid)
+    req = 'http://%s/fdsnws/event/1/query?format=text&eventid=%s' % (CONFIG.fdsnws.event_host, eventid)
     try:
         response = urlopen(req).read()
         if PYTHON3:
@@ -247,7 +219,7 @@ def get_event_time(eventid):
         return None
 
 def apply_user_rules(method, username, data):
-    rules = USERS[username]['rules']
+    rules = CONFIG.access.users[username]['rules']
     if method == 'GET':
         if 'starttime' in rules:
             if 'starttime' in data and data['starttime'] < rules['starttime']:
@@ -344,7 +316,7 @@ def get_inventory(jquake):
             wfid['network_code'], wfid['station_code'],
             loc, wfid['channel_code'], t, t
         ))
-    r = Request('%s/1/query' % FDSNWS_SC3_STATION, data='\n'.join(data), headers={'Content-Type': 'text/plain'})
+    r = Request('http://%s/fdsnws/station/1/query' % CONFIG.fdsnws.station_sc3_host, data='\n'.join(data), headers={'Content-Type': 'text/plain'})
     inv = urlopen(r).read()
     _, inv_filename = tempfile.mkstemp(suffix=".xml")
     with open(inv_filename, 'w') as f:
@@ -371,20 +343,20 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
             t1 = (t - 100).isoformat()
             t2 = (t + 130).isoformat()
             req.append(' '.join([wfid[net], wfid[sta], location, wfid[cha], t1, t2]))
-    cl = Client(base_url=FDSNWS_BASE_URL)
+    cl = Client(base_url='http://%s' % CONFIG.fdsnws.dataselect_host)
     st = cl.get_waveforms_bulk('\r\n'.join(req))
     st.write(data, format='MSEED', reclen=512)
 
     # 3) save sc3ml
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
-    write_sc3ml(jquake, sc3ml, SCP3ML_BINARY_VERSION)
+    write_sc3ml(jquake, sc3ml, CONFIG.seiscomp.schema_version)
 
     # 4) compute amplitudes with scamp
     _, scamp_result = tempfile.mkstemp(suffix='.sc3ml')
     scamp_cmd = [
         SEISCOMP_PROGRAM, 'exec', 'scamp',
         '--inventory-db', inventory,
-        '--config-db', SC3ML_CONFIG_FILENAME,
+        '--config-db', CONFIG.seiscomp.config_filename,
         '-I', data,
         '--ep', sc3ml
     ]
@@ -406,7 +378,7 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
     scmag_cmd = [
         SEISCOMP_PROGRAM, 'exec', 'scmag',
         '--inventory-db', inventory,
-        '--config-db', SC3ML_CONFIG_FILENAME,
+        '--config-db', CONFIG.seiscomp.config_filename,
         '--ep', scamp_result
     ]
     if DEBUG:
@@ -417,7 +389,7 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
     dom = etree.fromstring(result)
     update_sc3ml_origin_reference(dom)
     fix_scmag_magnitude_public_id(dom)
-    newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML_TO_QML1_2[SCP3ML_BINARY_VERSION])
+    newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML_TO_QML1_2[CONFIG.seiscomp.schema_version])
 
     if DEBUG:
         _, scmag_result = tempfile.mkstemp(suffix='.sc3ml')
@@ -436,7 +408,7 @@ def relocate_with_screloc(jquake, locator, profile):
     if DEBUG:
         sys.stderr.write('initial sc3ml file from jquake: %s\n' % sc3ml)
 
-    write_sc3ml(jquake, sc3ml, SCP3ML_BINARY_VERSION)
+    write_sc3ml(jquake, sc3ml, CONFIG.seiscomp.schema_version)
     screloc_cmd = [
         SEISCOMP_PROGRAM, 'exec', 'screloc',
         '--inventory-db', inventory,
@@ -467,7 +439,7 @@ def relocate_with_screloc(jquake, locator, profile):
 
     dom = etree.fromstring(result)
     update_sc3ml_origin_reference(dom)
-    newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML_TO_QML1_2[SCP3ML_BINARY_VERSION])
+    newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML_TO_QML1_2[CONFIG.seiscomp.schema_version])
 
     if DEBUG:
         _, qml_result = tempfile.mkstemp(suffix=".sc3ml")
@@ -483,31 +455,13 @@ def relocate_with_screloc(jquake, locator, profile):
         'quakeml': etree.tostring(newdom)
     }
 
-def commit_with_scdb(jquake):
-    _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
-    print(sc3ml)
-    write_sc3ml(jquake, sc3ml, SCP3ML_DISPATCH_VERSION)
-    scdb = subprocess.Popen([
-        SEISCOMP_PROGRAM, 'exec', 'scdb',
-        '-d', SEISCOMP_DB_URI,
-        '-i', sc3ml,
-        '--debug'
-    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = scdb.communicate()
-    # os.remove(sc3ml)
-    msg = '\n'.join(['STDOUT', stdout, '', 'STDERR', stderr])
-    return {
-        'message': msg,
-        'return_code': scdb.returncode
-    }
-
 def commit_with_scdispatch(jquake):
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
     # print(sc3ml)
-    write_sc3ml(jquake, sc3ml, SCP3ML_DISPATCH_VERSION)
+    write_sc3ml(jquake, sc3ml, CONFIG.seiscomp.schema_version)
     scdispatch = subprocess.Popen([
         SEISCOMP_PROGRAM, 'exec', 'scdispatch',
-        '-H', SC3_MESSAGING_HOST,
+        '-H', CONFIG.seiscomp.messaging_host,
         '-O', 'merge',
         '-i', sc3ml,
         '--debug'
@@ -569,20 +523,6 @@ def get_locsat_travel_times(evlat, evlon, evdepth, stalat, stalon, stael=0):
         'S': ttt.compute('S', evlat, evlon, evdepth, stalat, stalon, stael).time
     }
 
-# def get_event_full_description(eventid):
-#     cmd = [
-#         SEISCOMP_PROGRAM, 'exec', 'scxmldump',
-#         '-d', SEISCOMP_DB_URI,
-#         '-E', request.args['eventid'],
-#         '-mPAM'
-#     ]
-#     # print(' '.join(cmd))
-#     scxmldump = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-#     result, error_message = scxmldump.communicate()
-#     dom = etree.fromstring(result)
-#     newdom = apply_xslt(etree.ElementTree(dom), XSL_SC3ML_TO_QML1_2[SCP3ML_BINARY_VERSION])
-#     return etree.tostring(newdom)
-
 @app.route('/')
 @requires_auth
 def index():
@@ -619,10 +559,7 @@ def update_scp3_config():
 def get_ttt():
     data = request.get_json()
     result = {}
-    # for sta, distance in data['station'].items():
-    #     result[sta] = { 'distance': distance, 'ttt': get_travel_times(data['depth'], distance) }
     for sta, pos in data['station'].items():
-        # result[sta] = { 'ttt': get_travel_times(data['latitude'], data['longitude'], data['depth'], pos) }
         result[sta] = { 'ttt': get_locsat_travel_times(data['latitude'], data['longitude'], data['depth'], pos[0], pos[1], pos[2]) }
     return Response(json.dumps(result), mimetype='application/json')
 
@@ -666,7 +603,6 @@ def commit():
         'author': session.get('author')
     })
     result = commit_with_scdispatch(jquake)
-    # result = commit_with_scdb(jquake)
     return Response(json.dumps(result), mimetype='application/json')
 
 @app.route('/fdsnws/', defaults={'service': '', 'path': ''})
@@ -680,11 +616,11 @@ def fdsnws(service, path):
     if service:
         host = ''
         if service == 'event':
-            host = FDSNWS_EVENT
+            host = 'http://%s/fdsnws/event' % CONFIG.fdsnws.event_host
         elif service == 'station':
-            host = FDSNWS_STATION
+            host = 'http://%s/fdsnws/station' % CONFIG.fdsnws.station_host
         elif service == 'dataselect':
-            host = FDSNWS_DATASELECT
+            host = 'http://%s/fdsnws/dataselect' % CONFIG.fdsnws.dataselect_host
         req = '%s%s' % (host, path)
         try:
             if request.method == 'GET':
@@ -714,7 +650,7 @@ def fdsnws(service, path):
         else:
             return Response(result, mimetype=response.headers.type)
     else:
-        return urlopen(FDSNWS_ROOT).read()
+        return urlopen('http://%s' % CONFIG.fdsnws.event_host).read()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8002)

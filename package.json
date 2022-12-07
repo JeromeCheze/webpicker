@@ -12,7 +12,7 @@
     "@mdi/font": "^6.6.96",
     "core-js": "^3.8.3",
     "fili": "^2.0.3",
-    "highcharts": "^10.0.0",
+    "highcharts": "~10.1.0",
     "leaflet": "^1.7.1",
     "leaflet-ellipse": "^0.9.1",
     "vue": "^2.6.14",

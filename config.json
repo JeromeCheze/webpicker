@@ -1,0 +1,33 @@
+{
+    "access": {
+        "restricted": false,
+        "users": {
+            "s2rhai": {
+                "password": "52rh@!",
+                "rules": {}
+            },
+            "test": {
+                "password": "t35t",
+                "rules": {
+                    "starttime": "2021-09-01",
+                    "endtime": "2021-09-07"
+                }
+            }
+        }
+    },
+    "fdsnws": {
+        "event_host": "encelade.unice.fr:8000",
+        "station_host": "encelade.unice.fr:8000",
+        "station_sc3_host": "encelade.unice.fr:8080",
+        "dataselect_host": "encelade.unice.fr:8000"
+    },
+    "seiscomp": {
+        "messaging_host": "encelade.unice.fr:4805",
+        "root": "/home/sysop/seiscomp",
+        "schema_version": "0.11",
+        "database_uri": "postgresql://sysop:@babel.unice.fr/seiscomp3",
+        "dump_config": true,
+        "config_filename": "/var/www/webpicker/config.xml"
+    },
+    "author_status_filename": "/var/www/webpicker/author_status.json"
+}
