@@ -37,7 +37,7 @@ def load_config(filename):
     with open(filename, 'r') as f:
         return AttribDict(json.load(f))
 
-CONFIG = load_config('config.json')
+CONFIG = load_config('/var/www/webpicker/config.json')
 
 SEISCOMP_PROGRAM = os.path.join(CONFIG.seiscomp.root, 'bin/seiscomp')
 

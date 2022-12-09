@@ -166,6 +166,9 @@ export type WebpickerRealQuantity = {
 
 export type WebpickerQuality = {
   'used_phase_count': number;
+  'standard_error': number;
+  'azimuthal_gap': number;
+  'minimum_distance': number;
 }
 
 export type WebpickerPick = {
