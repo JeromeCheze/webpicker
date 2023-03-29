@@ -233,7 +233,18 @@ export default Vue.extend({
     },
 
     handleKeepUsedArrival () {
+      const q = this.origin.quality
       this.origin.arrival = this.origin.arrival.filter(a => a.time_weight > 0.5)
+      const stationMap: StringIndexedObject = {}
+      for (const a of this.origin.arrival) {
+        const [net, sta] = a._pick._seedid.split('.').slice(0, 2)
+        const key = `${net}.${sta}`
+        stationMap[key] = true
+      }
+      q.used_phase_count = this.origin.arrival.length
+      q.associated_phase_count = this.origin.arrival.length
+      q.used_station_count = Object.keys(stationMap).length
+      q.associated_station_count = Object.keys(stationMap).length
       this.$emit('need-update')
     },
 

@@ -116,6 +116,13 @@ const settings: SettingsFormStruct = {
           label: 'Pick manual',
           format: 'hex'
         }
+      },
+      phasenet: {
+        component: 'color-picker',
+        props: {
+          label: 'Pick phasenet',
+          format: 'hex'
+        }
       }
     }
   },

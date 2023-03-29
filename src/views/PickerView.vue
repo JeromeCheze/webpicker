@@ -95,6 +95,8 @@
         dense
         flat
       ></v-select>
+      <v-divider vertical class="mx-2"></v-divider>
+      <v-switch v-model="tools.phasenet" label="Phasenet" class="mt-5"/>
     </v-app-bar>
     <div class="picker-view__container--picker"></div>
     <div class="picker-view__container--list"></div>
@@ -109,7 +111,7 @@ import * as utils from '@/utils/utils'
 import { Stream, Trace } from '@/lib/mseed'
 import Fili from 'fili'
 import L from 'leaflet'
-import { FiliFilterOptions, FilterDescription, StringIndexedObject, TheoreticalTravelTimeObject, WebpickerInventory, WebpickerOrigin, WebpickerSettings } from '@/types'
+import { FiliFilterOptions, FilterDescription, PhasenetPickObject, StringIndexedObject, TheoreticalTravelTimeObject, WebpickerInventory, WebpickerOrigin, WebpickerSettings } from '@/types'
 
 interface PickerView extends Vue {
   handleUpdatePick: (ev: PickEvent) => void;
@@ -123,6 +125,7 @@ interface PickerView extends Vue {
 export default Vue.extend({
 
   data () {
+    const phasenet = localStorage.getItem('phasenet')
     return {
       loading: null as number | null,
       // toolbar variables
@@ -142,7 +145,8 @@ export default Vue.extend({
         alignment: 'O',
         sortBy: 'distance',
         stationRadius: 1,
-        filterList: this.$store.state.settings['picker.filters']
+        filterList: this.$store.state.settings['picker.filters'],
+        phasenet: phasenet != null ? JSON.parse(phasenet) : false
       },
 
       uncertaintyList: [null, 0.05, 0.2, 0.5, 0.8, 1.0, 1.2, 1.5, 2.0, 99.0],
@@ -269,12 +273,23 @@ export default Vue.extend({
         this.$store.dispatch('setTTTCache', ttt)
       }
     },
+    phasenet: {
+      get: function (): PhasenetPickObject {
+        return this.$store.state.phasenetCache
+      },
+      set: function (ttt: PhasenetPickObject) {
+        this.$store.dispatch('setPhasenetCache', ttt)
+      }
+    },
     trace () {
       return this.$store.state.traceCache
     }
   },
 
   watch: {
+    'tools.phasenet': function (val) {
+      localStorage.setItem('phasenet', JSON.stringify(val))
+    },
     'tools.phase': function (val) {
       utils.blurActiveElement()
       if (this.picker != null) {
@@ -573,6 +588,7 @@ export default Vue.extend({
         distance: nWf.distance,
         azimuth: nWf.azimuth,
         ttt: nWf.ttt,
+        phasenet: nWf.phasenet,
         picks: this.picks[rId]
       })
       wfList.push({
@@ -584,6 +600,7 @@ export default Vue.extend({
         distance: nWf.distance,
         azimuth: nWf.azimuth,
         ttt: nWf.ttt,
+        phasenet: nWf.phasenet,
         picks: this.picks[tId]
       })
       return wfList
@@ -614,7 +631,7 @@ export default Vue.extend({
           // current origin == cached origin
           for (const netsta of Object.keys(stationCoordinates)) {
             if (this.ttt[netsta] != null) {
-              // As origin in unchanged it is not needed to recompute ttt for station already computed
+              // As origin is unchanged it is not needed to recompute ttt for station already computed
               delete stationCoordinates[netsta]
             }
           }
@@ -626,6 +643,7 @@ export default Vue.extend({
           }
         } else {
           this.ttt = {}
+          this.phasenet = {}
         }
         this.$store.dispatch('setLoading', { value: true, text: 'Loading theoretical travel times...' })
         console.log('[PickerView::getTTT] compute theoretical travel time', stationCoordinates)
@@ -1117,6 +1135,44 @@ export default Vue.extend({
       return result
     },
 
+    loadPhasenetPick (wfList: WaveformItemOptions[]) {
+      const wf = wfList[0]
+      const netsta = wf.id.split('.').slice(0, 2).join('.')
+      if (this.phasenet[netsta] != null) {
+        return
+      }
+      console.log('[PickerView::loadPhasenetPick] Loading phasenet picks')
+      this.$store.dispatch('log', '[PickerView::loadPhasenetPick] Loading phasenet picks')
+      utils.ajax({
+        method: 'GET',
+        args: {
+          wfid: wf.id,
+          starttime: new Date(wf.start).toISOString().slice(0, 19),
+          endtime: new Date(wf.start + wf.values.length * wf.step).toISOString().slice(0, 19)
+        },
+        url: 'phasenet',
+        type: 'json'
+      }).then(data => {
+        const picks = data as StringIndexedObject[]
+        if (picks.length === 0) {
+          this.$store.dispatch('notify', { color: 'warning', text: `No Phasenet picks for ${netsta}` })
+        }
+        const pn: {phase: string; time: number}[] = []
+        for (const pick of picks) {
+          pn.push({ phase: pick.phase_type, time: new Date(`${pick.phase_time}000Z`).getTime() })
+        }
+        this.phasenet[netsta] = pn
+        for (const currWf of wfList) {
+          currWf.phasenet = pn
+        }
+        console.log('[PickerView::loadPhasenetPick] phasenet picks loaded, redraw picker')
+        this.$store.dispatch('log', '[PickerView::loadPhasenetPick] phasenet picks loaded, redraw picker')
+        this.picker!.draw()
+      }).catch(() => {
+        this.$store.dispatch('notify', { color: 'error', text: `Failed to load Phasenet picks for ${netsta}` })
+      })
+    },
+
     handleWaveformClick (wf: WaveformItemOptions, force = false) {
       if (this.picker != null) {
         if (this.picker.waveforms[0].opt.id === wf.id && !force) {
@@ -1138,6 +1194,9 @@ export default Vue.extend({
       }
       this.tools.sameScale = false
       this.setPickerWaveforms(wfList)
+      if (this.tools.phasenet) {
+        this.loadPhasenetPick(wfList)
+      }
     },
 
     getWaveformObject (tr: Trace): WaveformItemOptions | null {
@@ -1146,6 +1205,7 @@ export default Vue.extend({
       }
       const netsta = tr.stats.id.split('.').slice(0, 2).join('.')
       if (this.ttt[netsta] != null) {
+        const pn = this.phasenet[netsta] != null ? this.phasenet[netsta] : []
         const wf = {
           start: tr.timeseries[0].starttime,
           step: 1000 / tr.stats.samplingRate,
@@ -1155,6 +1215,7 @@ export default Vue.extend({
           distance: this.stationDistance[netsta],
           azimuth: this.stationAzimuth[netsta],
           ttt: Object.assign({ O: this.origin.time._value.getTime() }, this.ttt[netsta].ttt),
+          phasenet: pn,
           picks: this.picks[tr.stats.id]
         }
         this.waveform[tr.stats.id.replace('..', '.--.')] = wf

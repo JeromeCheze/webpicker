@@ -38,6 +38,7 @@ def load_config(filename):
         return AttribDict(json.load(f))
 
 CONFIG = load_config('/var/www/webpicker/config.json')
+# CONFIG = load_config('/home/cheze/repositories/webpicker/config.json')
 
 SEISCOMP_PROGRAM = os.path.join(CONFIG.seiscomp.root, 'bin/seiscomp')
 
@@ -553,6 +554,26 @@ def get_author_status():
 def update_scp3_config():
     dump_seiscomp3_config()
     return 'OK'
+
+
+@app.route('/phasenet', methods=['GET'])
+@requires_auth
+def get_phasenet_picks():
+    net, sta, loc, cha = request.args['wfid'].split('.')
+    args = {
+        'network': net,
+        'station': sta,
+        'location': loc if loc != '' else '--',
+        'channel': cha[:2],
+        'starttime': request.args['starttime'],
+        'endtime': request.args['endtime'],
+        'url': 'http://%s' % CONFIG.fdsnws.dataselect_host
+    }
+    req = Request(CONFIG.phasenet.url,
+                  data=json.dumps(args),
+                  headers={'Content-Type': 'application/json'})
+    return Response(urlopen(req).read(), mimetype='application/json')
+    
 
 @app.route('/ttt', methods=['POST'])
 @requires_auth

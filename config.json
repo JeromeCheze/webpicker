@@ -15,6 +15,9 @@
             }
         }
     },
+    "phasenet": {
+        "url": "http://encelade.unice.fr:9000/phasenet/get_pick"
+    },
     "fdsnws": {
         "event_host": "encelade.unice.fr:8000",
         "station_host": "encelade.unice.fr:8000",

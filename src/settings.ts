@@ -49,6 +49,7 @@ const settings: WebpickerSettings = {
   'pickerColor.theoretical': '#0000ff',
   'pickerColor.automatic': '#ff0000',
   'pickerColor.manual': '#1ab11b',
+  'pickerColor.phasenet': '#ff00ff',
   'pickerSize.pickerWaveformHeight': 120,
   'pickerSize.listWaveformHeight': 40,
   'pickerSize.listWaveformWrapperHeight': 400,

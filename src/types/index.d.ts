@@ -113,6 +113,13 @@ export type TheoreticalTravelTimeObject = {
   [index: string]: StationTheoreticalTravelTimeObject;
 }
 
+export type PhasenetPickObject = {
+  [index: string]: {
+    phase: string;
+    time: number;
+  }[];
+}
+
 export interface WebpickerChannel extends StringIndexedObject {
   azimuth: number;
   dip: number;
@@ -166,6 +173,9 @@ export type WebpickerRealQuantity = {
 
 export type WebpickerQuality = {
   'used_phase_count': number;
+  'associated_phase_count': number;
+  'used_station_count': number;
+  'associated_station_count': number;
   'standard_error': number;
   'azimuthal_gap': number;
   'minimum_distance': number;
@@ -210,6 +220,8 @@ export type WebpickerOrigin = {
   '_not_committed'?: boolean;
   '_is_dirty'?: boolean;
   region: string;
+  'method_id': string;
+  'earth_model_id': string;
 }
 
 export type WebpickerAmplitude = {
@@ -243,6 +255,8 @@ export type WebpickerMagnitude = {
   mag: WebpickerRealQuantity;
   'station_magnitude_contribution'?: WebpickerStationMagnitudeContribution[];
   type: string;
+  'station_count': number;
+  'method_id': string;
 }
 
 export type WebpickerNodalPlane = {
@@ -414,6 +428,7 @@ export type State = {
 
   traceCache: {};
   tttCache: TheoreticalTravelTimeObject;
+  phasenetCache: PhasenetPickObject;
   pickerLastOrigin: WebpickerOrigin | null;
 
   form: WebpickerForm;

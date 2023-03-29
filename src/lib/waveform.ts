@@ -33,6 +33,10 @@ export type WaveformItemOptions = {
   ttt: {
     [index: string]: number;
   };
+  phasenet: {
+    phase: string;
+    time: number;
+  }[];
   picks: WaveformPick[];
 }
 
@@ -108,6 +112,7 @@ export interface WaveformColorOptions extends StringIndexedObject {
   theoretical: string;
   automatic: string;
   manual: string;
+  phasenet: string;
   uncertainty: string;
 }
 
@@ -1156,6 +1161,26 @@ export class Waveform {
     ctx.restore()
   }
 
+  drawPhasenet (wf: WaveformItem) {
+    // console.log(`[${this.opt.mode}::drawTTT] ${wf.opt.id}`);
+    const ctx = wf.ctx as CanvasRenderingContext2D
+    if (wf.opt.ttt == null) {
+      return
+    }
+    ctx.save()
+    ctx.fillStyle = this.opt.color.phasenet
+    for (const p of wf.opt.phasenet) {
+      const pos = this.time2pos(wf.opt.ttt[this.view.refTime], p.time)
+      ctx.fillRect(pos, 0, 1, this.opt.size.height)
+      if ((this.opt.mode === 'picker' &&
+           this.waveforms.indexOf(wf) === this.waveforms.length - 1) ||
+          this.opt.mode === 'list') {
+        ctx.fillText(p.phase, pos + 3, this.opt.size.height - 3)
+      }
+    }
+    ctx.restore()
+  }
+
   drawPicks (wf: WaveformItem) {
     if (wf.ctx2 == null) {
       return
@@ -1272,6 +1297,7 @@ export class Waveform {
     this.computeWaveformDrawOption(wf)
     this.drawXGrid(wf)
     this.drawTTT(wf)
+    this.drawPhasenet(wf)
     if (wf.stats!.count > 1) {
       this.drawAVGLine(wf)
       this.drawLine(wf)

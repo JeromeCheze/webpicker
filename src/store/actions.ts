@@ -132,6 +132,10 @@ export const setTTTCache: GenericAction = ({ commit }, data) => {
   commit('SET_TTT_CACHE', data)
 }
 
+export const setPhasenetCache: GenericAction = ({ commit }, data) => {
+  commit('SET_PHASENET_CACHE', data)
+}
+
 export const setPickerLastOrigin: GenericAction = ({ commit }, data) => {
   commit('SET_PICKER_LAST_ORIGIN', data)
 }
