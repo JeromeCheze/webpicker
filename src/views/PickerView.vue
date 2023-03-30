@@ -96,7 +96,12 @@
         flat
       ></v-select>
       <v-divider vertical class="mx-2"></v-divider>
-      <v-switch v-model="tools.phasenet" label="Phasenet" class="mt-5"/>
+      <v-switch
+        v-model="tools.phasenet"
+        label="Phasenet"
+        class="mt-5"
+        :color="$store.state.settings['pickerColor.phasenet']"
+      />
     </v-app-bar>
     <div class="picker-view__container--picker"></div>
     <div class="picker-view__container--list"></div>
@@ -289,6 +294,9 @@ export default Vue.extend({
   watch: {
     'tools.phasenet': function (val) {
       localStorage.setItem('phasenet', JSON.stringify(val))
+      if (val === true) {
+        this.loadPhasenetPick(this.picker!.opt.waveforms)
+      }
     },
     'tools.phase': function (val) {
       utils.blurActiveElement()
@@ -1168,6 +1176,7 @@ export default Vue.extend({
         console.log('[PickerView::loadPhasenetPick] phasenet picks loaded, redraw picker')
         this.$store.dispatch('log', '[PickerView::loadPhasenetPick] phasenet picks loaded, redraw picker')
         this.picker!.draw()
+        this.list!.draw()
       }).catch(() => {
         this.$store.dispatch('notify', { color: 'error', text: `Failed to load Phasenet picks for ${netsta}` })
       })
