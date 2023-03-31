@@ -104,6 +104,7 @@
       />
     </v-app-bar>
     <div class="picker-view__container--picker"></div>
+    <div class="picker-view__container--probability"></div>
     <div class="picker-view__container--list"></div>
   </div>
 </template>
@@ -116,13 +117,15 @@ import * as utils from '@/utils/utils'
 import { Stream, Trace } from '@/lib/mseed'
 import Fili from 'fili'
 import L from 'leaflet'
-import { FiliFilterOptions, FilterDescription, PhasenetPickObject, StringIndexedObject, TheoreticalTravelTimeObject, WebpickerInventory, WebpickerOrigin, WebpickerSettings } from '@/types'
+import { FiliFilterOptions, FilterDescription, PhasenetPickObject, PhasenetProbabilityObject, StringIndexedObject, TheoreticalTravelTimeObject, WebpickerInventory, WebpickerOrigin, WebpickerSettings } from '@/types'
+import Highcharts from 'highcharts'
 
 interface PickerView extends Vue {
   handleUpdatePick: (ev: PickEvent) => void;
   handleWaveformClick: (wf: WaveformItemOptions) => void;
   list: Waveform;
   picker: Waveform;
+  probabilityChart: Waveform;
   tools: {[index: string]: any};
   uncertaintyList: (number | null)[];
 }
@@ -178,6 +181,7 @@ export default Vue.extend({
       // instances
       list: null as Waveform | null,
       picker: null as Waveform | null,
+      probabilityChart: null as Waveform | null,
 
       // constructor options
       defaultView: { duration: 30000, offset: 10000 },
@@ -196,12 +200,27 @@ export default Vue.extend({
           draw: (view: {start: number, end: number}) => {
             const self = this as PickerView
             self.list.setSelectedWaveformWindow(view)
+            if (self.probabilityChart != null) {
+              Object.assign(self.probabilityChart.view, {
+                duration: self.picker.view.duration,
+                offset: self.picker.view.offset,
+                refTime: self.picker.view.refTime,
+              })
+            }
           },
           waveformFocus: (index: number) => {
             const self = this as PickerView
             self.tools.focusComponent = index
           }
         }
+      } as WaveformOptions,
+      probabilityOpt: {
+        mode: 'list',
+        container: '.picker-view__container--probability',
+        waveforms: [],
+        equalScale: true,
+        view: {},
+
       } as WaveformOptions,
       listOpt: {
         mode: 'list',
@@ -284,6 +303,14 @@ export default Vue.extend({
       },
       set: function (ttt: PhasenetPickObject) {
         this.$store.dispatch('setPhasenetCache', ttt)
+      }
+    },
+    phasenetProbability: {
+      get: function (): PhasenetProbabilityObject {
+        return this.$store.state.phasenetProbabilityCache
+      },
+      set: function (probability: PhasenetProbabilityObject) {
+        this.$store.dispatch('setPhasenetProbabilityCache', probability)
       }
     },
     trace () {
@@ -1147,6 +1174,7 @@ export default Vue.extend({
       const wf = wfList[0]
       const netsta = wf.id.split('.').slice(0, 2).join('.')
       if (this.phasenet[netsta] != null) {
+        this.plotProbabilityChart()
         return
       }
       console.log('[PickerView::loadPhasenetPick] Loading phasenet picks')
@@ -1156,23 +1184,38 @@ export default Vue.extend({
         args: {
           wfid: wf.id,
           starttime: new Date(wf.start).toISOString().slice(0, 19),
-          endtime: new Date(wf.start + wf.values.length * wf.step).toISOString().slice(0, 19)
+          endtime: new Date(wf.start + wf.values.length * wf.step).toISOString().slice(0, 19),
+          probability: true
         },
         url: 'phasenet',
         type: 'json'
       }).then(data => {
-        const picks = data as StringIndexedObject[]
+        const response = data as any[]
+        const picks = response[0]
+        const probability = response[1][0]
         if (picks.length === 0) {
           this.$store.dispatch('notify', { color: 'warning', text: `No Phasenet picks for ${netsta}` })
         }
         const pn: {phase: string; time: number}[] = []
         for (const pick of picks) {
-          pn.push({ phase: pick.phase_type, time: new Date(`${pick.phase_time}000Z`).getTime() })
+          pn.push({
+            phase: `${pick.phase_type} (${pick.phase_score})`,
+            time: new Date(`${pick.phase_time}000Z`).getTime()
+          })
         }
         this.phasenet[netsta] = pn
         for (const currWf of wfList) {
           currWf.phasenet = pn
         }
+        const stationProbability = {
+          P: [] as number[],
+          S: [] as number[]
+        }
+        for (const curr of probability) {
+          stationProbability.P.push(curr[0][1])
+          stationProbability.S.push(curr[0][2])
+        }
+        this.phasenetProbability[netsta] = stationProbability
         console.log('[PickerView::loadPhasenetPick] phasenet picks loaded, redraw picker')
         this.$store.dispatch('log', '[PickerView::loadPhasenetPick] phasenet picks loaded, redraw picker')
         this.picker!.draw()
@@ -1180,6 +1223,10 @@ export default Vue.extend({
       }).catch(() => {
         this.$store.dispatch('notify', { color: 'error', text: `Failed to load Phasenet picks for ${netsta}` })
       })
+    },
+
+    plotProbabilityChart () {
+      
     },
 
     handleWaveformClick (wf: WaveformItemOptions, force = false) {

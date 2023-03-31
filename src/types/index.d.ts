@@ -120,6 +120,13 @@ export type PhasenetPickObject = {
   }[];
 }
 
+export type PhasenetProbabilityObject = {
+  [index: string]: {
+    P: number[];
+    S: number[];
+  }
+}
+
 export interface WebpickerChannel extends StringIndexedObject {
   azimuth: number;
   dip: number;
@@ -429,6 +436,7 @@ export type State = {
   traceCache: {};
   tttCache: TheoreticalTravelTimeObject;
   phasenetCache: PhasenetPickObject;
+  phasenetProbabilityCache: PhasenetProbabilityObject;
   pickerLastOrigin: WebpickerOrigin | null;
 
   form: WebpickerForm;

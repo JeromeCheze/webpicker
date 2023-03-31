@@ -1,4 +1,4 @@
-import { AuthorStatus, LoadingObject, NotificationObject, PhasenetPickObject, SetAuthorObject, State, StringIndexedObject, TheoreticalTravelTimeObject, WebpickerEventParameters, WebpickerFocalMechanism, WebpickerForm, WebpickerInventory, WebpickerOrigin, WebpickerSettings } from '@/types'
+import { AuthorStatus, LoadingObject, NotificationObject, PhasenetPickObject, PhasenetProbabilityObject, SetAuthorObject, State, StringIndexedObject, TheoreticalTravelTimeObject, WebpickerEventParameters, WebpickerFocalMechanism, WebpickerForm, WebpickerInventory, WebpickerOrigin, WebpickerSettings } from '@/types'
 import * as utils from '@/utils/utils'
 
 export const INIT_FORM = (state: State, data: object) => {
@@ -199,6 +199,10 @@ export const SET_TTT_CACHE = (state: State, data: TheoreticalTravelTimeObject) =
 
 export const SET_PHASENET_CACHE = (state: State, data: PhasenetPickObject) => {
   state.phasenetCache = data
+}
+
+export const SET_PHASENET_PROBABILITY_CACHE = (state: State, data: PhasenetProbabilityObject) => {
+  state.phasenetProbabilityCache = data
 }
 
 export const SET_PICKER_LAST_ORIGIN = (state: State, data: WebpickerOrigin) => {

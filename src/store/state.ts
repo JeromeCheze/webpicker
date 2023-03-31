@@ -36,6 +36,7 @@ const state: State = {
   traceCache: {},
   tttCache: {},
   phasenetCache: {},
+  phasenetProbabilityCache: {},
   pickerLastOrigin: null,
 
   form: {
