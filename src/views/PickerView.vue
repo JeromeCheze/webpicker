@@ -1174,6 +1174,7 @@ export default Vue.extend({
       const netsta = wf.id.split('.').slice(0, 2).join('.')
       if (this.probabilityChart != null) {
         this.probabilityChart.destroy()
+        this.probabilityChart = null
       }
       if (this.phasenet[netsta] != null) {
         this.plotProbabilityChart()

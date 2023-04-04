@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-PYTHON3 = True
+PYTHON3 = False
 import os
 import sys
 import json
@@ -37,8 +37,8 @@ def load_config(filename):
     with open(filename, 'r') as f:
         return AttribDict(json.load(f))
 
-# CONFIG = load_config('/var/www/webpicker/config.json')
-CONFIG = load_config('/home/cheze/repositories/webpicker/config.json')
+CONFIG = load_config('/var/www/webpicker/config.json')
+# CONFIG = load_config('/home/cheze/repositories/webpicker/config.json')
 
 SEISCOMP_PROGRAM = os.path.join(CONFIG.seiscomp.root, 'bin/seiscomp')
 
@@ -64,8 +64,8 @@ def dump_seiscomp3_config():
     f.close()
     os.rename(conf_filename, CONFIG.seiscomp.config_filename)
 
-# if CONFIG.seiscomp.dump_config:
-#     dump_seiscomp3_config()
+if CONFIG.seiscomp.dump_config:
+    dump_seiscomp3_config()
 
 def check_auth(username, password):
     """This function is called to check if a username /
@@ -571,7 +571,7 @@ def get_phasenet_picks():
         'get_probability': request.args['probability']
     }
     req = Request(CONFIG.phasenet.url,
-                  data=json.dumps(args).encode('utf8'),
+                  data=json.dumps(args),
                   headers={'Content-Type': 'application/json'})
     return Response(urlopen(req).read(), mimetype='application/json')
     
