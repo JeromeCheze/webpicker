@@ -118,7 +118,6 @@ import { Stream, Trace } from '@/lib/mseed'
 import Fili from 'fili'
 import L from 'leaflet'
 import { FiliFilterOptions, FilterDescription, PhasenetPickObject, PhasenetProbabilityObject, StringIndexedObject, TheoreticalTravelTimeObject, WebpickerInventory, WebpickerOrigin, WebpickerSettings } from '@/types'
-import Highcharts from 'highcharts'
 
 interface PickerView extends Vue {
   handleUpdatePick: (ev: PickEvent) => void;
@@ -204,8 +203,9 @@ export default Vue.extend({
               Object.assign(self.probabilityChart.view, {
                 duration: self.picker.view.duration,
                 offset: self.picker.view.offset,
-                refTime: self.picker.view.refTime,
+                refTime: self.picker.view.refTime
               })
+              self.probabilityChart.draw()
             }
           },
           waveformFocus: (index: number) => {
@@ -219,8 +219,7 @@ export default Vue.extend({
         container: '.picker-view__container--probability',
         waveforms: [],
         equalScale: true,
-        view: {},
-
+        view: {}
       } as WaveformOptions,
       listOpt: {
         mode: 'list',
@@ -1173,6 +1172,9 @@ export default Vue.extend({
     loadPhasenetPick (wfList: WaveformItemOptions[]) {
       const wf = wfList[0]
       const netsta = wf.id.split('.').slice(0, 2).join('.')
+      if (this.probabilityChart != null) {
+        this.probabilityChart.destroy()
+      }
       if (this.phasenet[netsta] != null) {
         this.plotProbabilityChart()
         return
@@ -1192,7 +1194,6 @@ export default Vue.extend({
       }).then(data => {
         const response = data as any[]
         const picks = response[0]
-        const probability = response[1][0]
         if (picks.length === 0) {
           this.$store.dispatch('notify', { color: 'warning', text: `No Phasenet picks for ${netsta}` })
         }
@@ -1207,26 +1208,38 @@ export default Vue.extend({
         for (const currWf of wfList) {
           currWf.phasenet = pn
         }
-        const stationProbability = {
-          P: [] as number[],
-          S: [] as number[]
-        }
-        for (const curr of probability) {
-          stationProbability.P.push(curr[0][1])
-          stationProbability.S.push(curr[0][2])
-        }
-        this.phasenetProbability[netsta] = stationProbability
+        this.phasenetProbability[netsta] = response[1]
         console.log('[PickerView::loadPhasenetPick] phasenet picks loaded, redraw picker')
         this.$store.dispatch('log', '[PickerView::loadPhasenetPick] phasenet picks loaded, redraw picker')
         this.picker!.draw()
         this.list!.draw()
+        this.plotProbabilityChart()
       }).catch(() => {
         this.$store.dispatch('notify', { color: 'error', text: `Failed to load Phasenet picks for ${netsta}` })
       })
     },
 
     plotProbabilityChart () {
-      
+      const wf0 = this.pickerOpt.waveforms[0]
+      const netsta = wf0.id.split('.').slice(0, 2).join('.')
+      const proba = this.phasenetProbability[netsta]
+      const start = new Date(`${proba.starttime}000Z`).getTime()
+      const step = proba.step * 1000
+      if (proba == null) {
+        return
+      }
+      this.probabilityOpt.waveforms = [{
+        id: 'P phasenet proba', distance: wf0.distance, azimuth: wf0.azimuth, phasenet: wf0.phasenet, ttt: wf0.ttt, picks: [], scale: 1, start, step, values: proba.p_prob
+      },
+      {
+        id: 'S phasenet proba', distance: wf0.distance, azimuth: wf0.azimuth, phasenet: wf0.phasenet, ttt: wf0.ttt, picks: [], scale: 1, start, step, values: proba.s_prob
+      }]
+      this.probabilityOpt.view!.refTime = this.picker!.view.refTime
+      this.probabilityOpt.view!.duration = this.picker!.view.duration
+      this.probabilityOpt.view!.offset = this.picker!.view.offset
+      this.probabilityOpt.view!.gain = 0.6
+      this.probabilityOpt.color = Object.assign({}, this.pickerOpt.color)
+      this.probabilityChart = new Waveform(this.probabilityOpt)
     },
 
     handleWaveformClick (wf: WaveformItemOptions, force = false) {

@@ -122,8 +122,10 @@ export type PhasenetPickObject = {
 
 export type PhasenetProbabilityObject = {
   [index: string]: {
-    P: number[];
-    S: number[];
+    starttime: string;
+    step: number;
+    p_prob: number[];
+    s_prob: number[];
   }
 }
 
