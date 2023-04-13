@@ -1221,6 +1221,10 @@ export default Vue.extend({
     },
 
     plotProbabilityChart () {
+      if (this.probabilityChart != null) {
+        this.probabilityChart.destroy()
+        this.probabilityChart = null
+      }
       const wf0 = this.pickerOpt.waveforms[0]
       const netsta = wf0.id.split('.').slice(0, 2).join('.')
       const proba = this.phasenetProbability[netsta]
