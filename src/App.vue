@@ -291,6 +291,7 @@ export default {
       const e = {
         origin: [{
           _not_committed: true,
+          _is_dirty: true,
           public_id: originId,
           creation_info: creationInfo,
           time: { value: this.newEventTime.replace(' ', 'T') + 'Z' },

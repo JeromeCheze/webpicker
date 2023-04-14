@@ -35,7 +35,7 @@
               <td class="text-xs-right"><div :style="{ minWidth: '60px' }">{{ props.item.lat }}</div></td>
               <td class="text-xs-right"><div :style="{ minWidth: '60px' }">{{ props.item.lon }}</div></td>
               <td class="text-xs-right"><div :style="{ minWidth: '60px' }">{{ props.item.depth }}</div></td>
-              <td class="text-xs-right"><div :style="{ minWidth: '60px' }">{{ props.item.rms.toFixed(2) }}</div></td>
+              <td class="text-xs-right"><div :style="{ minWidth: '60px' }">{{ props.item.rms }}</div></td>
               <td><v-chip label outlined small :color="props.item.modeColor">{{ props.item.mode }}</v-chip></td>
               <td>{{ props.item.status }}</td>
               <td>{{ props.item.eventType }}</td>
@@ -378,7 +378,7 @@ export default Vue.extend({
         lat: e._po!.latitude._pretty,
         lon: e._po!.longitude._pretty,
         depth: e._po!.depth._pretty,
-        rms: e._po?.quality.standard_error,
+        rms: e._po?.quality.standard_error ? e._po?.quality.standard_error.toFixed(2) : '--',
         eventType: e.type ? e.type : '',
         mode: e._po!.evaluation_mode === 'manual' ? 'M' : 'A',
         status: e._po!.evaluation_status != null ? e._po!.evaluation_status : '',

@@ -421,6 +421,10 @@ export default Vue.extend({
       const e = this.event
       const o = this.origin
       const fm = this.focalMechanism
+      if (o._is_dirty) {
+        alert('Commit not allowed, relocate is needed.')
+        return
+      }
       e.type = this.commitForm.eventType
       e.type_certainty = this.commitForm.eventTypeCertainty
       e.preferred_origin_id = o.public_id
