@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-PYTHON3 = False
+PYTHON3 = True
 import os
 import sys
 import json
@@ -37,8 +37,8 @@ def load_config(filename):
     with open(filename, 'r') as f:
         return AttribDict(json.load(f))
 
-CONFIG = load_config('/var/www/webpicker/config.json')
-# CONFIG = load_config('/home/cheze/repositories/webpicker/config.json')
+# CONFIG = load_config('/var/www/webpicker/config.json')
+CONFIG = load_config('/home/cheze/repositories/webpicker/config.json')
 
 SEISCOMP_PROGRAM = os.path.join(CONFIG.seiscomp.root, 'bin/seiscomp')
 
@@ -64,8 +64,8 @@ def dump_seiscomp3_config():
     f.close()
     os.rename(conf_filename, CONFIG.seiscomp.config_filename)
 
-if CONFIG.seiscomp.dump_config:
-    dump_seiscomp3_config()
+# if CONFIG.seiscomp.dump_config:
+#     dump_seiscomp3_config()
 
 def check_auth(username, password):
     """This function is called to check if a username /
@@ -402,7 +402,26 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
         os.remove(inventory)
     return { 'message': error_message, 'quakeml': etree.tostring(newdom) }
 
-def relocate_with_screloc(jquake, locator, profile):
+def relocate_with_nll(jquake, profile):
+    sc3ml = render_template('sc3ml.xml', version=CONFIG.seiscomp.schema_version, jquake=jquake)
+    sc3ml = sc3ml.replace(' encoding="UTF-8"', '')
+    qml = sc3ml_to_qml(sc3ml, CONFIG.seiscomp.schema_version)
+    try:
+        req = '%s/nll/%s/%s/' % (CONFIG.nll.url, CONFIG.nll.area, profile)
+        response = urlopen(Request(req, data=qml, method='POST', headers={'Content-Type': 'application/xml'}))
+        if response.status == 204:
+            raise ValueError('NonLinLoc returned no solution')
+        return {
+            'message': '',
+            'quakeml': response.read().decode('utf-8')
+        }
+    except Exception as exception:
+        return {
+            'message': str(exception),
+            'quakeml': qml.decode('utf-8')
+        }
+
+def relocate_with_screloc(jquake, profile):
     inventory = get_inventory(jquake)
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
 
@@ -413,7 +432,7 @@ def relocate_with_screloc(jquake, locator, profile):
     screloc_cmd = [
         SEISCOMP_PROGRAM, 'exec', 'screloc',
         '--inventory-db', inventory,
-        '--locator', locator,
+        '--locator', 'LOCSAT',
         '--profile', profile,
         '--author', 'webpicker',
         '--agencyID', 'OCA',
@@ -571,7 +590,7 @@ def get_phasenet_picks():
         'get_probability': request.args['probability']
     }
     req = Request(CONFIG.phasenet.url,
-                  data=json.dumps(args),
+                  data=json.dumps(args).encode('utf-8'),
                   headers={'Content-Type': 'application/json'})
     return Response(urlopen(req).read(), mimetype='application/json')
     
@@ -612,7 +631,11 @@ def compute_magnitudes():
 @requires_auth
 def relocate():
     jquake = request.get_json()
-    result = relocate_with_screloc(jquake, request.args.get('locator'), request.args.get('profile'))
+    locator = request.args.get('locator')
+    if locator == 'LOCSAT':
+        result = relocate_with_screloc(jquake, request.args.get('profile'))
+    elif locator == 'NonLinLoc':
+        result = relocate_with_nll(jquake, request.args.get('profile'))
     return Response(json.dumps(result), mimetype='application/json')
 
 @app.route('/commit', methods=['POST'])

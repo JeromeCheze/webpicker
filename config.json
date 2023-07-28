@@ -16,17 +16,21 @@
         }
     },
     "phasenet": {
-        "url": "http://encelade.unice.fr:9000/phasenet/get_pick"
+        "url": "http://thesee.unice.fr:9001/phasenet/get_pick"
+    },
+    "nll": {
+        "url": "http://thesee.unice.fr:10000",
+        "area": "ayiti"
     },
     "fdsnws": {
-        "event_host": "encelade.unice.fr:8000",
-        "station_host": "encelade.unice.fr:8000",
-        "station_sc3_host": "encelade.unice.fr:8080",
-        "dataselect_host": "encelade.unice.fr:8000"
+        "event_host": "ayiti.unice.fr:8000",
+        "station_host": "ayiti.unice.fr:8000",
+        "station_sc3_host": "ayiti.unice.fr:8080",
+        "dataselect_host": "ayiti.unice.fr:8000"
     },
     "seiscomp": {
         "messaging_host": "encelade.unice.fr:4805",
-        "root": "/home/sysop/seiscomp3",
+        "root": "/home/cheze/seiscomp",
         "schema_version": "0.11",
         "database_uri": "postgresql://sysop:@babel.unice.fr/seiscomp3",
         "dump_config": true,

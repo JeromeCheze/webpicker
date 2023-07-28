@@ -111,16 +111,20 @@ export default Vue.extend({
   },
 
   data () {
-    const locatorOptions = ['LOCSAT', 'Hypo71']
+    const locatorOptions = ['LOCSAT', 'NonLinLoc']
     const profileOptions: StringIndexedObject = {
       LOCSAT: ['iasp91', 'tab'],
-      Hypo71: ['ModelA', 'tectonic', 'volcanic']
+      NonLinLoc: ['iasp91', 'prem', 'douilly2022']
     }
+    let locator = localStorage.getItem('locator')
+    let profile = localStorage.getItem('profile')
+    locator = locator != null && locatorOptions.indexOf(locator) >= 0 ? locator : locatorOptions[0]
+    profile = profile != null && profileOptions[locator].indexOf(profile) >= 0 ? profile : profileOptions[locator][0]
     return {
       magnitudePopover: false,
       stationMagnitude: [] as EventToolsStationMagnitudeItem[],
-      locator: locatorOptions[0],
-      profile: profileOptions[locatorOptions[0]][0],
+      locator,
+      profile,
       locatorOptions,
       profileOptions,
       commitPopover: false,
@@ -205,6 +209,15 @@ export default Vue.extend({
         return 'orange'
       }
       return 'white'
+    }
+  },
+
+  watch: {
+    locator: function (value) {
+      localStorage.setItem('locator', value)
+    },
+    profile: function (value) {
+      localStorage.setItem('profile', value)
     }
   },
 

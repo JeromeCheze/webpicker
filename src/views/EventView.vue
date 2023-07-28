@@ -378,7 +378,7 @@ export default Vue.extend({
       }
       this.arrivalTableSelected = []
       for (const row of this.arrivalTableData) {
-        if (row.weight === 1) {
+        if (row.weight > 0) {
           this.arrivalTableSelected.push(row)
         }
       }
@@ -492,7 +492,7 @@ export default Vue.extend({
         tmp[netsta] = null
         const serie = (a.phase === 'P' ? 'p' : 's')
         const color = (
-          a.time_weight < 0.5
+          a.time_weight === 0
             ? 'gray'
             : a._pick.evaluation_mode === 'automatic'
               ? 'red'
