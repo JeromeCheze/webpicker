@@ -36,7 +36,6 @@
       sort-by="distance"
       :page="1"
       :items-per-page="-1"
-      @input="handleSelectionChange"
       item-key="id"
       show-select>
       <template v-slot:item="props">

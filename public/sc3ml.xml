@@ -286,7 +286,7 @@
   {%- if event.description %}
     {%- for description in event.description %}
       <description>
-      {%- for key, value in description.iteritems() %}
+      {%- for key, value in description.items() %}
         <{{ key }}>{{ value }}</{{ key }}>
       {%- endfor %}
       </description>
