@@ -330,13 +330,11 @@ export default Vue.extend({
           o.creation_info.author = this.$store.state.author
           o.evaluation_mode = 'manual'
           o._not_committed = true
+          o.public_id = this.$store.getters.getId('Origin')
           // keep only one not committed origin
           const notCommitted = this.event.origin.filter(x => x._not_committed)
           for (const origin of notCommitted) {
             this.event.origin.splice(this.event.origin.indexOf(origin), 1)
-          }
-          if (!this.origin._not_committed) {
-            o.public_id = this.$store.getters.getId('Origin')
           }
           this.event.origin.push(o)
           this.event.preferred_magnitude_id = null

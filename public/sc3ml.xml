@@ -174,7 +174,7 @@
       {%- if arrival.takeoffAngle %}
         <takeOffAngle>{{ arrival.takeoff_angle }}</takeOffAngle>
       {%- endif %}
-        <timeUsed>{% if arrival.time_weight == 0 %}false{% else %}true{% endif %}</timeUsed>
+        <timeUsed>true</timeUsed>
         <weight>{{ arrival.time_weight }}</weight>
       {%- if arrival.creation_info %}
         {{ creation_info(arrival.creation_info) }}
