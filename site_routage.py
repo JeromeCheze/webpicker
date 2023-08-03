@@ -403,7 +403,7 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
     return { 'message': error_message, 'quakeml': etree.tostring(newdom) }
 
 def relocate_with_nll(jquake, profile):
-    sc3ml = render_template('sc3ml.xml', version=CONFIG.seiscomp.schema_version, jquake=jquake)
+    sc3ml = render_template('sc3ml.xml', version=CONFIG.seiscomp.schema_version, jquake=jquake, quakeml_compatible=True)
     sc3ml = sc3ml.replace(' encoding="UTF-8"', '')
     qml = sc3ml_to_qml(sc3ml, CONFIG.seiscomp.schema_version)
     try:

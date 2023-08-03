@@ -174,7 +174,11 @@
       {%- if arrival.takeoffAngle %}
         <takeOffAngle>{{ arrival.takeoff_angle }}</takeOffAngle>
       {%- endif %}
+      {%- if quakeml_compatible == True %}
         <timeUsed>true</timeUsed>
+      {%- else %}
+        <timeUsed>{% if arrival.time_weight == 0 %}false{% else %}true{% endif %}</timeUsed>
+      {%- endif %}
         <weight>{{ arrival.time_weight }}</weight>
       {%- if arrival.creation_info %}
         {{ creation_info(arrival.creation_info) }}
