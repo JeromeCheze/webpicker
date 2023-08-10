@@ -103,6 +103,13 @@ const settings: SettingsFormStruct = {
           format: 'hex'
         }
       },
+      nll_theoretical: {
+        component: 'color-picker',
+        props: {
+          label: 'Pick theoretical (NLL)',
+          format: 'hex'
+        }
+      },
       automatic: {
         component: 'color-picker',
         props: {

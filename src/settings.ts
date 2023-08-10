@@ -47,6 +47,7 @@ const settings: WebpickerSettings = {
   'pickerColor.lineBar': '#000000',
   'pickerColor.avgLine': 'rgba(180,180,180,.3)',
   'pickerColor.theoretical': '#0000ff',
+  'pickerColor.nll_theoretical': '#00ffff',
   'pickerColor.automatic': '#ff0000',
   'pickerColor.manual': '#1ab11b',
   'pickerColor.phasenet': '#ff00ff',

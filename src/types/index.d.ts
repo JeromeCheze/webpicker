@@ -106,7 +106,8 @@ export type WebpickerSettings = Record<string, boolean | string | number | Recor
 
 export type StationTheoreticalTravelTimeObject = {
   distance: number;
-  ttt: Record<string, number>
+  ttt: Record<string, number>;
+  nll_ttt?: Record<string, number>;s
 }
 
 export type TheoreticalTravelTimeObject = {

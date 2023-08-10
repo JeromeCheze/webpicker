@@ -1150,11 +1150,13 @@ export class Waveform {
         ctx.fillRect(pos, 0, 1, this.opt.size.height)
         ctx.restore()
       } else {
+        ctx.fillStyle = p.indexOf('(NLL)') === 0 ? this.opt.color.nll_theoretical : this.opt.color.theoretical
+        const phaseName = p.indexOf('(NLL)') === 0 ? p.split('_')[1] : p
         ctx.fillRect(pos, 0, 1, this.opt.size.height)
         if ((this.opt.mode === 'picker' &&
              this.waveforms.indexOf(wf) === this.waveforms.length - 1) ||
             this.opt.mode === 'list') {
-          ctx.fillText(p, pos + 3, this.opt.size.height - 3)
+          ctx.fillText(phaseName, pos + 3, this.opt.size.height - 3)
         }
       }
     }

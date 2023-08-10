@@ -703,6 +703,11 @@ export default Vue.extend({
             for (const [phase, phaseTTT] of Object.entries(staObj.ttt)) {
               staObj.ttt[phase] = t0 + phaseTTT * 1e3
             }
+            if (staObj.nll_ttt) {
+              for (const [phase, phaseTTT] of Object.entries(staObj.nll_ttt)) {
+                staObj.ttt[`(NLL)_${phase}`] = t0 + phaseTTT * 1e3
+              }
+            }
           }
           this.ttt = Object.assign({}, this.ttt, ttt)
           this.$store.dispatch('setLoading', { value: false })

@@ -601,8 +601,16 @@ def get_phasenet_picks():
 def get_ttt():
     data = request.get_json()
     result = {}
-    for sta, pos in data['station'].items():
-        result[sta] = { 'ttt': get_locsat_travel_times(data['latitude'], data['longitude'], data['depth'], pos[0], pos[1], pos[2]) }
+    for netsta, pos in data['station'].items():
+        result[netsta] = { 'ttt': get_locsat_travel_times(data['latitude'], data['longitude'], data['depth'], pos[0], pos[1], pos[2]) }
+    nll_ttt_data = json.dumps(data)
+    if PYTHON3:
+        nll_ttt_data = nll_ttt_data.encode('utf-8')
+    nll_ttt = json.load(urlopen(Request('%s/ttt/%s/iasp91/' % (CONFIG.nll.url, CONFIG.nll.area), data=nll_ttt_data, headers={'Content-Type': 'application/json'})))
+    for netsta, ttt in nll_ttt.items():
+        if netsta not in result:
+            result[netsta] = {}
+        result[netsta]['nll_ttt'] = ttt['ttt']
     return Response(json.dumps(result), mimetype='application/json')
 
 @app.route('/takeoffangle', methods=['POST'])
