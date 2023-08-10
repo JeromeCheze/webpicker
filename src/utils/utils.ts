@@ -153,7 +153,11 @@ export const removeResourcePrefix = (id: string) => {
   if (id.indexOf('smi:org.gfz-potsdam.de/geofon/') === 0) {
     return id.replace('smi:org.gfz-potsdam.de/geofon/', '')
   } else if (id.indexOf('smi:') === 0) {
-    return id.split('/').slice(2).join('/')
+    let result = id.split('/').slice(2).join('/')
+    if (result === '') {
+      result = id.split('/').slice(-1)[0]
+    }
+    return result
   }
   console.warn(`Failed to remove prefix of resource ID: ${id}`)
   return id

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-PYTHON3 = True
+PYTHON3 = False
 import os
 import sys
 import json
@@ -37,8 +37,8 @@ def load_config(filename):
     with open(filename, 'r') as f:
         return AttribDict(json.load(f))
 
-# CONFIG = load_config('/var/www/webpicker/config.json')
-CONFIG = load_config('/home/cheze/repositories/webpicker/config.json')
+CONFIG = load_config('/var/www/webpicker/config.json')
+# CONFIG = load_config('/home/cheze/repositories/webpicker/config.json')
 
 SEISCOMP_PROGRAM = os.path.join(CONFIG.seiscomp.root, 'bin/seiscomp')
 
@@ -64,8 +64,8 @@ def dump_seiscomp3_config():
     f.close()
     os.rename(conf_filename, CONFIG.seiscomp.config_filename)
 
-# if CONFIG.seiscomp.dump_config:
-#     dump_seiscomp3_config()
+if CONFIG.seiscomp.dump_config:
+    dump_seiscomp3_config()
 
 def check_auth(username, password):
     """This function is called to check if a username /
@@ -302,7 +302,7 @@ def sc3ml_to_qml(sc3ml_str, sc3ml_version):
 
 def write_sc3ml(jquake, filename, version):
     with open(filename, 'w') as f:
-        f.write(render_template('sc3ml.xml', version=version, jquake=jquake).encode('utf-8'))
+        f.write(render_template('sc3ml.xml', version=version, jquake=jquake, quakeml_compatible=False).encode('utf-8'))
 
 def get_inventory(jquake):
     data = [
@@ -408,17 +408,18 @@ def relocate_with_nll(jquake, profile):
     qml = sc3ml_to_qml(sc3ml, CONFIG.seiscomp.schema_version)
     try:
         req = '%s/nll/%s/%s/' % (CONFIG.nll.url, CONFIG.nll.area, profile)
-        response = urlopen(Request(req, data=qml, method='POST', headers={'Content-Type': 'application/xml'}))
-        if response.status == 204:
+        response = urlopen(Request(req, data=qml, headers={'Content-Type': 'application/xml'}))
+        return_code = response.status if PYTHON3 else response.getcode()
+        if return_code == 204:
             raise ValueError('NonLinLoc returned no solution')
         return {
             'message': '',
-            'quakeml': response.read().decode('utf-8')
+            'quakeml': response.read().decode('utf-8') if PYTHON3 else response.read()
         }
     except Exception as exception:
         return {
             'message': str(exception),
-            'quakeml': qml.decode('utf-8')
+            'quakeml': qml.decode('utf-8') if PYTHON3 else qml
         }
 
 def relocate_with_screloc(jquake, profile):
