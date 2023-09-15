@@ -114,7 +114,7 @@ export default Vue.extend({
     const locatorOptions = ['LOCSAT', 'NonLinLoc']
     const profileOptions: StringIndexedObject = {
       LOCSAT: ['iasp91', 'tab'],
-      NonLinLoc: ['iasp91', 'prem']
+      NonLinLoc: ['iasp91', 'prem', 'douilly2022']
     }
     let locator = localStorage.getItem('locator')
     let profile = localStorage.getItem('profile')

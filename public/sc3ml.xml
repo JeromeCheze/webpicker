@@ -230,9 +230,9 @@
         <stationMagnitudeContribution>
           <stationMagnitudeID>{{ station_magnitude_contribution.station_magnitude_id | remove_resource_prefix }}</stationMagnitudeID>
         {%- if station_magnitude_contribution.residual %}
-          <residual>{{ station_magnitude_contribution.residual }}</residual>
+          <residual>{{ station_magnitude_contribution.residual != None }}</residual>
         {%- endif %}
-        {%- if station_magnitude_contribution.weight %}
+        {%- if station_magnitude_contribution.weight != None %}
           <weight>{{ station_magnitude_contribution.weight }}</weight>
         {%- endif %}
         </stationMagnitudeContribution>

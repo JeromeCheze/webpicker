@@ -23,7 +23,7 @@
           <v-btn icon v-on="on"><v-icon>mdi-dots-vertical</v-icon></v-btn>
         </template>
         <v-list min-width="300">
-          <v-list-item @click="handleCreateEventClick">
+          <v-list-item @click="handleCreateEventClick" v-if="$route.name !== 'Picker'">
             <v-icon left>mdi-creation</v-icon> Create new event
           </v-list-item>
           <v-list-item v-if="$store.state.author != null" @click="handleChangeAuthorClick">

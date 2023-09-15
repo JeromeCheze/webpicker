@@ -277,6 +277,9 @@ export const processEventData = (e: WebpickerEventParameters) => {
           if (smc.residual == null) {
             smc.residual = smc._station_magnitude!.mag.value - m.mag.value
           }
+          if (smc.weight == null) {
+            smc.weight = 0
+          }
           smc._pretty_residual = smc.residual != null ? smc.residual.toFixed(2) : '-'
           smc._pretty_weight = smc.weight != null ? smc.weight.toFixed(2) : '-'
         }

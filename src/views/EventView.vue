@@ -519,13 +519,12 @@ export default Vue.extend({
       }
       const colors = Highcharts.getOptions().colors
       let colorIndex = 0
+      this.chart.magnitudes = {}
       for (const mag of this.event.magnitude!) {
         if (mag.origin_id !== this.origin.public_id || mag.station_magnitude_contribution == null || this.event.station_magnitude == null) {
           continue
         }
-        if (this.chart.magnitudes[mag.type] == null) {
-          this.chart.magnitudes[mag.type] = []
-        }
+        this.chart.magnitudes[mag.type] = []
         for (const smc of mag.station_magnitude_contribution) {
           if (smc._station_magnitude == null) {
             continue
