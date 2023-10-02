@@ -112,8 +112,7 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
     # 3) compute amplitudes with scamp
     _, scamp_result = tempfile.mkstemp(suffix='.sc3ml')
     scamp_cmd = [
-        # SEISCOMP_PROGRAM, 'exec', 'scamp',
-        '/home/cheze/repositories/seiscomp/build/bin/scamp',
+        utils.SEISCOMP_PROGRAM, 'exec', 'scamp',
         '--inventory-db', inventory,
         '--config-db', utils.CONFIG.seiscomp.config_filename,
         # '-I', data,
@@ -136,8 +135,7 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
 
     # 4) compute magnitudes with scmag
     scmag_cmd = [
-        # SEISCOMP_PROGRAM, 'exec', 'scmag',
-        '/home/cheze/repositories/seiscomp/build/bin/scmag',
+        utils.SEISCOMP_PROGRAM, 'exec', 'scmag',
         '--inventory-db', inventory,
         '--config-db', utils.CONFIG.seiscomp.config_filename,
         '--ep', scamp_result

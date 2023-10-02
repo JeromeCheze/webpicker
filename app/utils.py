@@ -25,7 +25,7 @@ def load_config(filename):
 
 FE = FlinnEngdahl()
 DEBUG = False
-CONFIG = load_config('/home/cheze/repositories/webpicker/config.json')
+CONFIG = load_config('/home/sysop/repositories/webpicker/config.json')
 SEISCOMP_PROGRAM = os.path.join(CONFIG.seiscomp.root, 'bin', 'seiscomp')
 
 
@@ -201,7 +201,7 @@ def commit_with_scdispatch(jquake):
     _, error_message = scdispatch.communicate()
     os.remove(sc3ml)
     return {
-        'message': error_message,
+        'message': error_message.decode('utf-8') if PYTHON3 else error_message,
         'return_code': scdispatch.returncode
     }
 

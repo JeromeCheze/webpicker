@@ -215,14 +215,19 @@ def relocate(jquake, profile, fdsnws_host):
             ).time
             j_arrival['time_residual'] = p_time - t_time
             new_origin['arrival'].append(j_arrival)
-        new_origin['quality']['associated_phase_count'] = jquake[0]['origin'][0]['quality']['associated_phase_count']
-        new_origin['quality']['associated_station_count'] = jquake[0]['origin'][0]['quality']['associated_station_count']
+        pick_station_map = dict()
+        for pick in jquake[0]['pick']:
+            net_sta = '%s.%s' % (pick['waveform_id']['network_code'], pick['waveform_id']['station_code'])
+            pick_station_map[pick['public_id']] = net_sta
+        new_origin['quality']['associated_phase_count'] = len(new_origin['arrival'])
+        new_origin['quality']['associated_station_count'] = len(set([pick_station_map[a['pick_id']] for a in new_origin['arrival']]))
         jquake[0]['origin'] = [new_origin]
         jquake[0]['preferred_origin_id'] = new_origin['public_id']
         return '', jquake
     except Exception as exception:
-        print(traceback.format_exc())
-        return str(exception), None
+        error_msg = traceback.format_exc()
+        print(error_msg)
+        return error_msg, None
 
 
 if __name__ == '__main__':
@@ -234,3 +239,4 @@ if __name__ == '__main__':
         print(error)
     else:
         print(json.dumps(result, indent=2))
+
