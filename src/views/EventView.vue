@@ -419,6 +419,9 @@ export default Vue.extend({
       const arrivalPerStation: Record<string, WebpickerArrival> = {}
       let maxRes = 0
       for (const a of this.origin.arrival) {
+        if (a.time_residual == null) {
+          continue
+        }
         const netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
         if (a.time_weight > 0) {
           maxRes = Math.max(maxRes, Math.abs(a.time_residual))
@@ -454,7 +457,7 @@ export default Vue.extend({
           weight: 1,
           color: 'gray',
           fillColor: (
-            a.time_weight > 0
+            a.time_weight > 0 && a.time_residual != null
               ? utils.toRGB(utils.applyScale(a.time_residual, utils.RESIDUAL_COLOR_SCALE) as [number, number, number])
               : 'gray'
           ),
@@ -487,6 +490,9 @@ export default Vue.extend({
       this.chart.travelTime = { p: [], s: [] }
       const tmp: StringIndexedObject = {}
       for (const a of this.origin.arrival) {
+        if (a.time_residual == null) {
+          continue
+        }
         const netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
         tmp[netsta] = null
         const serie = (a.phase === 'P' ? 'p' : 's')

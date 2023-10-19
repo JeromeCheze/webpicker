@@ -111,10 +111,12 @@ export default Vue.extend({
   },
 
   data () {
-    const locatorOptions = ['LOCSAT', 'NonLinLoc']
+    // const locatorOptions = ['LOCSAT', 'NonLinLoc']
+    const locatorOptions = ['LOCSAT', 'Hypo71', 'NonLinLoc']
     const profileOptions: StringIndexedObject = {
       LOCSAT: ['iasp91', 'tab'],
-      NonLinLoc: ['iasp91', 'prem', 'douilly2022']
+      Hypo71: ['Tectonic', 'Volcanic', 'Landslide', 'T-Wave'],
+      NonLinLoc: ['tectonique_antithesis']
     }
     let locator = localStorage.getItem('locator')
     let profile = localStorage.getItem('profile')
@@ -317,48 +319,50 @@ export default Vue.extend({
         this.$store.dispatch('setLoading', { value: false })
         if (data.message !== '') {
           alert(data.message)
-        } else {
-          const parser = new DOMParser()
-          const qml = parser.parseFromString(data.quakeml, 'application/xml')
-          // console.log(qml);
-          const e = utils.parseQuakeML(qml)[0]
-          console.log('[EventTools::handleRelocateClick] relocate result', e)
-          this.$store.dispatch('log', '[EventTools::handleRelocateClick] relocate result')
-
-          const o = e.origin[0]
-          o.creation_info.agency_id = this.event.creation_info!.agency_id
-          o.creation_info.author = this.$store.state.author
-          o.evaluation_mode = 'manual'
-          o._not_committed = true
-          o.public_id = this.$store.getters.getId('Origin')
-          // keep only one not committed origin
-          const notCommitted = this.event.origin.filter(x => x._not_committed)
-          for (const origin of notCommitted) {
-            this.event.origin.splice(this.event.origin.indexOf(origin), 1)
-          }
-          this.event.origin.push(o)
-          this.event.preferred_magnitude_id = null
-          this.event._pm = null
-          this.$store.dispatch('setCurrentOrigin', o)
-          this.event.preferred_origin_id = o.public_id
-          this.event._po = o
-          this.$emit('need-update')
-          this.$store.dispatch('log', '[EventTools::handleRelocateClick] send region name request')
-          utils.ajax({
-            method: 'GET',
-            url: this.$store.getters.getLink('region'),
-            args: {
-              latitude: o.latitude.value,
-              longitude: o.longitude.value
-            },
-            type: 'json'
-          }).then(data => {
-            this.$store.dispatch('log', `[EventTools::handleRelocateClick] send region name request response: ${data}`)
-            this.event.description = [{ type: 'region name', text: data as string }]
-          }).catch(data => {
-            this.$store.dispatch('log', `[EventTools::handleRelocateClick] send region name request failed: ${data}`)
-          })
         }
+        if (!data.quakeml) {
+          return
+        }
+        const parser = new DOMParser()
+        const qml = parser.parseFromString(data.quakeml, 'application/xml')
+        // console.log(qml);
+        const e = utils.parseQuakeML(qml)[0]
+        console.log('[EventTools::handleRelocateClick] relocate result', e)
+        this.$store.dispatch('log', '[EventTools::handleRelocateClick] relocate result')
+
+        const o = e.origin[0]
+        o.creation_info.agency_id = this.event.creation_info!.agency_id
+        o.creation_info.author = this.$store.state.author
+        o.evaluation_mode = 'manual'
+        o._not_committed = true
+        o.public_id = this.$store.getters.getId('Origin')
+        // keep only one not committed origin
+        const notCommitted = this.event.origin.filter(x => x._not_committed)
+        for (const origin of notCommitted) {
+          this.event.origin.splice(this.event.origin.indexOf(origin), 1)
+        }
+        this.event.origin.push(o)
+        this.event.preferred_magnitude_id = null
+        this.event._pm = null
+        this.$store.dispatch('setCurrentOrigin', o)
+        this.event.preferred_origin_id = o.public_id
+        this.event._po = o
+        this.$emit('need-update')
+        this.$store.dispatch('log', '[EventTools::handleRelocateClick] send region name request')
+        utils.ajax({
+          method: 'GET',
+          url: this.$store.getters.getLink('region'),
+          args: {
+            latitude: o.latitude.value,
+            longitude: o.longitude.value
+          },
+          type: 'json'
+        }).then(data => {
+          this.$store.dispatch('log', `[EventTools::handleRelocateClick] send region name request response: ${data}`)
+          this.event.description = [{ type: 'region name', text: data as string }]
+        }).catch(data => {
+          this.$store.dispatch('log', `[EventTools::handleRelocateClick] send region name request failed: ${data}`)
+        })
       }).catch(data => {
         this.$store.dispatch('log', `[EventTools::handleRelocateClick] send relocate request failed : ${data}`)
       })

@@ -90,7 +90,9 @@
         <begin>{{ amplitude.time_window.begin }}</begin>
         <end>{{ amplitude.time_window.end }}</end>
       </timeWindow>
+      {%- if amplitude.snr %}
       <snr>{{ amplitude.snr }}</snr>
+      {%- endif %}
       <pickID>{{ amplitude.pick_id | remove_resource_prefix }}</pickID>
       {{ waveform_id(amplitude.waveform_id) }}
     {%- if amplitude.creation_info %}
@@ -104,7 +106,9 @@
     <origin publicID="{{ origin.public_id | remove_resource_prefix }}">
       <time>
         <value>{{ origin.time.value }}</value>
+        {%- if origin.time.uncertainty %}
         <uncertainty>{{ origin.time.uncertainty }}</uncertainty>
+        {%- endif %}
       </time>
       <latitude>
         {{ real_quantity(origin.latitude) }}

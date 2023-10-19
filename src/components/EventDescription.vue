@@ -63,9 +63,9 @@
               <td>{{ o.longitude._pretty }} {{ o.longitude._pretty_uncertainty }}</td>
               <td>{{ o.depth._pretty }} {{ o.depth._pretty_uncertainty }}</td>
               <td>{{ o.quality.used_phase_count }} / {{ o.quality.associated_phase_count }}</td>
-              <td>{{ o.quality.standard_error.toFixed(2) }} s</td>
-              <td>{{ o.quality.azimuthal_gap.toFixed(0) }} °</td>
-              <td>{{ o.quality.minimum_distance.toFixed(2) }} °</td>
+              <td>{{ o.quality.standard_error != null ? o.quality.standard_error.toFixed(2) : "--" }} s</td>
+              <td>{{ o.quality.azimuthal_gap != null ? o.quality.azimuthal_gap.toFixed(0) : "--" }} °</td>
+              <td>{{ o.quality.minimum_distance != null ? o.quality.minimum_distance.toFixed(2) : "--" }} °</td>
             </tr>
           </tbody>
           <tbody v-else>
@@ -75,9 +75,9 @@
               <td>{{ origin.longitude._pretty }} {{ origin.longitude._pretty_uncertainty }}</td>
               <td>{{ origin.depth._pretty }} {{ origin.depth._pretty_uncertainty }}</td>
               <td>{{ origin.quality.used_phase_count }} / {{ origin.quality.associated_phase_count }}</td>
-              <td>{{ origin.quality.standard_error.toFixed(2) }} s</td>
-              <td>{{ origin.quality.azimuthal_gap.toFixed(0) }} °</td>
-              <td>{{ origin.quality.minimum_distance.toFixed(2) }} °</td>
+              <td>{{ origin.quality.standard_error != null ? origin.quality.standard_error.toFixed(2) : "--" }} s</td>
+              <td>{{ origin.quality.azimuthal_gap != null ? origin.quality.azimuthal_gap.toFixed(0) : "--" }} °</td>
+              <td>{{ origin.quality.minimum_distance != null ? origin.quality.minimum_distance.toFixed(2) : "--" }} °</td>
             </tr>
           </tbody>
         </table>
