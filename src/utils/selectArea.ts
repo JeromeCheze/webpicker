@@ -104,12 +104,15 @@ export default class SelectArea {
       return
     }
     this.__map.dragging.disable()
-    this.__map.on('mousemove', this._moveAll, this)
+    const self = this
+    const handler = (e: L.LeafletMouseEvent) => {this._moveAll(e)}
+    // const handler = () => {console.log('moving')}
+    this.__map.on('mousemove', handler)
     this.__map.once('mouseup', () => {
       if (this.__map == null) {
         return
       }
-      this.__map.off('mousemove', this._moveAll, this)
+      this.__map.off('mousemove', handler)
       this.__map.dragging.enable()
     })
   }

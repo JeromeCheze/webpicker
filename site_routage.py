@@ -73,6 +73,9 @@ def remove_resource_prefix(resource_id):
 
 AUTHOR_STATUS = utils.AuthorStatusHandler(utils.CONFIG.author_status_filename)
 
+@app.errorhandler(404)
+def not_found(e):
+    return index()
 
 @app.route('/')
 @requires_auth
@@ -81,33 +84,36 @@ def index():
         session['id'] = utils.gen_id()
     return render_template('index.html')
 
-@app.route('/logout')
+
+# User specific actions
+@app.route('/user/logout')
 @requires_auth
 def logout():
     session['logout'] = True
     return redirect('/webpicker_playback/')
 
-@app.route('/set_author', methods=['GET'])
+@app.route('/user/set', methods=['GET'])
 @requires_auth
 def set_session_author():
     session['author'] = request.args['author']
     return Response('true', mimetype="application/json")
 
-@app.route('/author_status', methods=['GET'])
+@app.route('/user/status', methods=['GET'])
 def get_author_status():
     if 'eventid' in request.args and 'action' in request.args:
         AUTHOR_STATUS.set_status(session['id'], session.get('author'), request.args['eventid'], request.args['action'])
         return Response('true', mimetype='application/json')
     return Response(json.dumps(AUTHOR_STATUS.get_status()), mimetype='application/json')
 
-@app.route('/update_scp3_config')
-def update_scp3_config():
-    utils.dump_seiscomp3_config()
-    return 'OK'
+# @app.route('/update_scp3_config')
+# def update_scp3_config():
+#     utils.dump_seiscomp3_config()
+#     return 'OK'
 
-@app.route('/phasenet', methods=['GET'])
+# Event actions
+@app.route('/api/detector', methods=['GET'])
 @requires_auth
-def get_phasenet_picks():
+def get_detector_picks():
     net, sta, loc, cha = request.args['wfid'].split('.')
     args = {
         'network': net,
@@ -119,12 +125,12 @@ def get_phasenet_picks():
         'url': 'http://%s' % utils.CONFIG.fdsnws.dataselect_host,
         'get_probability': request.args['probability']
     }
-    req = Request(utils.CONFIG.phasenet.url,
+    req = Request(utils.CONFIG.detector.url,
                   data=json.dumps(args).encode('utf-8'),
                   headers={'Content-Type': 'application/json'})
     return Response(urlopen(req).read(), mimetype='application/json')
     
-@app.route('/ttt', methods=['POST'])
+@app.route('/api/ttt', methods=['POST'])
 @requires_auth
 def get_ttt():
     data = request.get_json()
@@ -141,7 +147,7 @@ def get_ttt():
         result[netsta]['nll_ttt'] = ttt['ttt']
     return Response(json.dumps(result), mimetype='application/json')
 
-@app.route('/takeoffangle', methods=['POST'])
+@app.route('/api/takeoffangle', methods=['POST'])
 @requires_auth
 def get_takeoffangle():
     data = request.get_json()
@@ -150,21 +156,21 @@ def get_takeoffangle():
         result[sta] = processing.takeoffangle(data['depth'], distance)
     return Response(json.dumps(result), mimetype='application/json')
 
-@app.route('/region', methods=['GET'])
+@app.route('/api/region', methods=['GET'])
 @requires_auth
 def get_region_name():
     longitude = float(request.args.get('longitude'))
     latitude = float(request.args.get('latitude'))
     return Response(json.dumps(utils.get_region(longitude, latitude)), mimetype='application/json')
 
-@app.route('/compute_magnitudes', methods=['POST'])
+@app.route('/api/compute_magnitudes', methods=['POST'])
 @requires_auth
 def compute_magnitudes():
     jquake = request.get_json()
     result = processing.compute_magnitudes_with_scamp_and_scmag(jquake)
     return Response(json.dumps(result), mimetype='application/json')
 
-@app.route('/relocate', methods=['POST'])
+@app.route('/api/relocate', methods=['POST'])
 @requires_auth
 def relocate():
     jquake = request.get_json()
@@ -176,7 +182,7 @@ def relocate():
         result = processing.relocate_with_nll(jquake, request.args.get('profile'))
     return Response(json.dumps(result), mimetype='application/json')
 
-@app.route('/commit', methods=['POST'])
+@app.route('/api/commit', methods=['POST'])
 @requires_auth
 def commit():
     jquake = request.get_json()
@@ -188,6 +194,8 @@ def commit():
     result = utils.commit_with_scdispatch(jquake)
     return Response(json.dumps(result), mimetype='application/json')
 
+
+# Proxy to FDSNWS
 @app.route('/fdsnws/', defaults={'service': '', 'path': ''})
 @app.route('/fdsnws/<service>/', defaults={'path': ''})
 @app.route('/fdsnws/<service>/<path:path>', methods=['GET', 'POST'])
@@ -233,7 +241,7 @@ def fdsnws(service, path):
         else:
             return Response(result, mimetype=response.headers.type)
     else:
-        return urlopen('http://%s' % utils.CONFIG.fdsnws.event_host).read()
+        return urlopen('http://%s/fdsnws/' % utils.CONFIG.fdsnws.event_host).read()
 
 
 if __name__ == '__main__':

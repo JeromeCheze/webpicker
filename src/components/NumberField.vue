@@ -1,56 +1,47 @@
+<script setup lang="ts">
+import { ref, watch } from 'vue'
+
+
+const props = defineProps<{
+  label: string
+  modelValue?: number | null
+}>()
+
+const emit = defineEmits(['update:modelValue'])
+
+const numberValue = ref(props.modelValue != null ? props.modelValue.toString() : null)
+
+watch(() => props.modelValue, (newValue) => {
+  numberValue.value = newValue!.toString()
+})
+
+function handleInput(ev: InputEvent) {
+  if (ev.target == null) {
+    return
+  }
+  const target = ev.target as HTMLInputElement
+  const value = target.value
+  if (value !== null && value !== '') {
+    const v = parseFloat(value.replace(',', '.'))
+    if (!isNaN(v)) {
+      numberValue.value = value
+      emit('update:modelValue', v)
+    }
+  } else {
+    emit('update:modelValue', null)
+  }
+}
+</script>
+
 <template>
   <v-text-field
     v-bind="$attrs"
     :label="label"
-    :value="numberValue"
+    :model-value="numberValue"
     @change="handleInput"
     class="number-field__v-text-field"
   ></v-text-field>
 </template>
-
-<script lang="ts">
-import Vue from 'vue'
-export default Vue.extend({
-
-  props: {
-    label: {
-      type: String
-    },
-    value: {
-      type: Number
-    }
-  },
-
-  data () {
-    return {
-      numberValue: this.value != null ? this.value.toString() : null
-    }
-  },
-
-  watch: {
-    value: function (newValue) {
-      this.numberValue = newValue
-    }
-  },
-
-  methods: {
-
-    handleInput (ev: string) {
-      if (ev !== null && ev !== '') {
-        const v = parseFloat(ev.replace(',', '.'))
-        if (!isNaN(v)) {
-          this.numberValue = ev
-          this.$emit('input', v)
-        }
-      } else {
-        this.$emit('input', null)
-      }
-    }
-
-  }
-
-})
-</script>
 
 <style lang="css">
 .number-field__v-text-field input {

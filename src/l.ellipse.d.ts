@@ -27,5 +27,5 @@ declare module 'leaflet' {
    * @param tilt The rotation of the ellipse in degrees from west
    * @param options Options dictionary to pass to L.Path
    */
-   function ellipse(latlng: number[], radii: number[], tilt: number, options: EllipseOptions): Path.Ellipse;
+   function ellipse(latlng: L.LatLng, radii: number[], tilt: number, options: EllipseOptions): Path.Ellipse;
 }

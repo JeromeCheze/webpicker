@@ -1,0 +1,53 @@
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { type EventParameter } from '@/lib/sismojs/src/types/index'
+import { Client } from '@/lib/sismojs/src/fdsn'
+import { useRoute } from 'vue-router'
+import { useAppStore } from '@/stores/app'
+
+const store = useAppStore()
+const route = useRoute()
+const client = new Client('.')
+
+const height = document.body.getBoundingClientRect().height - 80
+const currentView = ref('list' as 'list' | 'map')
+const eventList = ref([] as EventParameter[])
+const loading = ref(false)
+
+onMounted(() => {
+  if (store.cacheEventList.length > 0) {
+    eventList.value = store.cacheEventList
+  } else {
+    if (Object.keys(route.query).length === 0) {
+      return
+    }
+    loading.value = true
+    const params = { ...route.query, format: 'xml' }
+    client.getEvents(params).then(response => {
+      store.cacheEventList = response
+      eventList.value = response
+    }).finally(() => {
+      loading.value = false
+    })
+  }
+})
+</script>
+
+<template>
+  <v-row>
+    <v-col cols="12" class="d-flex justify-end align-center">
+      <v-btn class="ml-2" size="small" @click="currentView = 'list'" :active="currentView === 'list'"><v-icon>mdi-view-list</v-icon></v-btn>
+      <v-btn class="ml-2" size="small" @click="currentView = 'map'" :active="currentView === 'map'"><v-icon>mdi-map</v-icon></v-btn>
+    </v-col>
+  </v-row>
+  <v-row>
+    <v-col cols="12">
+      <ListEvents :height="height" :events="eventList" v-if="currentView === 'list'" :active="store.currentEvent"/>
+      <MapEvents :height="height" :events="eventList" v-if="currentView === 'map'" :active="store.currentEvent"/>
+    </v-col>
+  </v-row>
+  <v-overlay v-model="loading" class="align-center justify-center text-black">
+    <v-progress-circular indeterminate color="black"></v-progress-circular>
+    Loading...
+  </v-overlay>
+</template> 

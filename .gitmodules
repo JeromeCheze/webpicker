@@ -1,0 +1,6 @@
+[submodule "src/lib/sismojs"]
+	path = src/lib/sismojs
+	url = https://kleos.unice.fr/cheze/sismojs.git
+[submodule "src/lib/lichen"]
+	path = src/lib/lichen
+	url = https://kleos.unice.fr/cheze/lichen.git
