@@ -614,7 +614,7 @@ export default Vue.extend({
         this.picks[tId] = []
       }
       wfList.push({
-        start: start,
+        start,
         step: nWf.step,
         values: r,
         scale: -eWf.scale * Math.sin(baz) - nWf.scale * Math.cos(baz),
@@ -626,7 +626,7 @@ export default Vue.extend({
         picks: this.picks[rId]
       })
       wfList.push({
-        start: start,
+        start,
         step: nWf.step,
         values: t,
         scale: -eWf.scale * Math.cos(baz) + nWf.scale * Math.sin(baz),
@@ -965,7 +965,7 @@ export default Vue.extend({
         const staPos = [this.inventory[net][sta].lat, this.inventory[net][sta].lon] as L.LatLngTuple
         this.stationDistance[netsta] = utils.m2deg(pos.distanceTo(staPos))
         this.stationCoordinates[netsta] = [staPos[0], staPos[1], this.inventory[net][sta].alt]
-        this.stationAzimuth[netsta] = utils.coordinates2azimuth([pos.lat, pos.lng], staPos)
+        this.stationAzimuth[netsta] = utils.coordinates2azimuth([pos.lat, pos.lng], staPos as [number, number])
       }
       for (const wf of Object.values(this.waveform)) {
         const netsta = wf.id.split('.').slice(0, 2).join('.')

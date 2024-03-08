@@ -65,7 +65,7 @@ import Vue from 'vue'
 import Highcharts from 'highcharts'
 import addMore from 'highcharts/highcharts-more'
 import * as utils from '@/utils/utils'
-import L, { LatLngExpression } from 'leaflet'
+import L, { LatLngTuple } from 'leaflet'
 import 'leaflet-ellipse'
 import { ComplexPoint, EventViewArrivalTableRow, EventViewChartSeries, MagnitudeComplexPoint, StringIndexedObject, WebpickerArrival, WebpickerEventParameters, WebpickerInventory, WebpickerOrigin } from '@/types'
 
@@ -411,7 +411,7 @@ export default Vue.extend({
         l.remove()
       }
       this.layers = {}
-      const originPos: LatLngExpression = [
+      const originPos: LatLngTuple = [
         this.origin.latitude.value,
         this.origin.longitude.value
       ]
@@ -465,7 +465,7 @@ export default Vue.extend({
         }).bindPopup(a._pick._seedid).addTo(this.map)
       }
       if (this.origin.longitude.uncertainty != null && this.origin.latitude.uncertainty != null) {
-        this.layers.ellipse = L.ellipse(originPos, [
+        this.layers.ellipse = L.ellipse(originPos as number[], [
           this.origin.longitude.uncertainty * 1000,
           this.origin.latitude.uncertainty * 1000
         ], 0, {
@@ -507,7 +507,7 @@ export default Vue.extend({
           x: a.distance,
           y: a.time_residual,
           name: a._pick._seedid,
-          color: color,
+          color,
           id: a.pick_id,
           manual: a._pick.evaluation_mode === 'manual'
         })
@@ -515,7 +515,7 @@ export default Vue.extend({
           x: a.distance,
           y: a._traveltime!.getTime() / 1000.0,
           name: a._pick._seedid,
-          color: color,
+          color,
           id: a.pick_id,
           manual: a._pick.evaluation_mode === 'manual'
         })

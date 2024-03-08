@@ -146,14 +146,14 @@ export type WaveformOptions = {
 }
 
 export class Waveform {
-  xGridScales: number[];
-  waveforms: WaveformItem[];
-  event: WaveformEvent;
-  displayedWaveforms: WaveformItem[];
-  opt: {[index: string]: any};
-  view: {[index: string]: any};
-  mainElement: HTMLElement | null;
-  xAxis: CanvasRenderingContext2D | null;
+  xGridScales: number[]
+  waveforms: WaveformItem[]
+  event: WaveformEvent
+  displayedWaveforms: WaveformItem[]
+  opt: {[index: string]: any}
+  view: {[index: string]: any}
+  mainElement: HTMLElement | null
+  xAxis: CanvasRenderingContext2D | null
 
   constructor (opt: WaveformOptions) {
     this.xGridScales = [
@@ -990,8 +990,8 @@ export class Waveform {
     delta = max - min
     const amplitude = max === min ? 1 : max - min
     Object.assign(wf.drawOpt, {
-      min: min,
-      max: max,
+      min,
+      max,
       yRatio: this.opt.size.height / amplitude
     })
   }

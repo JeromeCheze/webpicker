@@ -1,18 +1,18 @@
 import L from 'leaflet'
 
 export default class SelectArea {
-  __customEvents: Record<string, Array<(arg: any) => void>>;
-  __bounds: L.LatLngBounds;
-  __rectangle: L.Rectangle;
-  __north: L.Marker;
-  __northeast: L.Marker;
-  __east: L.Marker;
-  __southeast: L.Marker;
-  __south: L.Marker;
-  __southwest: L.Marker;
-  __west: L.Marker;
-  __northwest: L.Marker;
-  __map: L.Map|null;
+  __customEvents: Record<string, Array<(arg: any) => void>>
+  __bounds: L.LatLngBounds
+  __rectangle: L.Rectangle
+  __north: L.Marker
+  __northeast: L.Marker
+  __east: L.Marker
+  __southeast: L.Marker
+  __south: L.Marker
+  __southwest: L.Marker
+  __west: L.Marker
+  __northwest: L.Marker
+  __map: L.Map|null
 
   constructor (bounds: L.LatLngTuple[]) {
     this.__customEvents = {}

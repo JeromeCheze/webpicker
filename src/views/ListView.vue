@@ -245,7 +245,7 @@ export default Vue.extend({
       utils.ajax({
         method: 'GET',
         url: this.$store.getters.getLink('fdsnws/event/1/query'),
-        args: args,
+        args,
         type: 'document'
       }).then(qml => {
         const events = utils.parseQuakeML(qml as Document)
