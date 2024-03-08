@@ -1,6 +1,17 @@
 import { SettingsFormStruct } from '@/types'
 
 const settings: SettingsFormStruct = {
+  general: {
+    label: 'General',
+    fields: {
+      worldCenterLongitude: {
+        component: 'number-field',
+        props: {
+          label: 'World Center Longitude'
+        }
+      }
+    }
+  },
   pickerColor: {
     label: 'Picker colors',
     fields: {

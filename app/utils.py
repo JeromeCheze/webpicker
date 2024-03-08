@@ -25,7 +25,7 @@ def load_config(filename):
 
 FE = FlinnEngdahl()
 DEBUG = False
-CONFIG = load_config('/home/sysop/repositories/webpicker/config.json')
+CONFIG = load_config('/var/www/webpicker/config.json')
 SEISCOMP_PROGRAM = os.path.join(CONFIG.seiscomp.root, 'bin', 'seiscomp')
 
 

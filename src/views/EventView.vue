@@ -445,6 +445,11 @@ export default Vue.extend({
           console.warn(`No coordinates found for channel ${a._pick._seedid}`)
           continue
         }
+        if (originPos[1] > 0 && pos[1] < 0) {
+          pos[1] += 360
+        } else if (originPos[1] < 0 && pos[1] > 0) {
+          pos[1] -= 360
+        }
         bounds.push(pos)
         if (a.time_weight > 0) {
           this.layers[`${netsta}_line`] = L.polyline([originPos, pos], {

@@ -321,8 +321,14 @@ export default Vue.extend({
         delete this.markerMap[k]
       }
       const bounds: L.LatLngBoundsExpression = []
+      const worldCenter = this.$store.state.settings['general.worldCenterLongitude']
       for (const e of this.filteredEvents) {
         const pos: L.LatLngExpression = [e._po.latitude.value, e._po.longitude.value]
+        if (worldCenter > 0 && worldCenter - 180 > pos[1]) {
+          pos[1] += 360
+        } else if (worldCenter < 0 && worldCenter + 180 < pos[1]) {
+          pos[1] -= 360
+        }
         bounds.push(pos)
         const [fillColor, color] = this.getEventColor(e)
         const m = L.circleMarker(pos, {

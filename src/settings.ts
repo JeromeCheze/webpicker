@@ -2,6 +2,7 @@ import { WebpickerSettings } from './types'
 
 const settings: WebpickerSettings = {
   themeDark: false,
+  'general.worldCenterLongitude': 0,
   'picker.filters': [
     { name: 'HP 1', type: 'highpass', fc: 1, order: 4 },
     { name: 'BP 0.5-8', type: 'bandpass', fc: [0.5, 8], order: 4 },

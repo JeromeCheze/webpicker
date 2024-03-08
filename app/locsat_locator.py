@@ -163,6 +163,7 @@ def relocate(jquake, profile, fdsnws_host):
     pick_map = dict()
     pick_list = list()
     keep_arrival = list()
+    save_arrival = jquake[0]['origin'][0]['arrival']
     not_used_arrival = list()
     for j_pick in jquake[0]['pick']:
         pick_map[j_pick['public_id']] = j_pick
@@ -225,6 +226,7 @@ def relocate(jquake, profile, fdsnws_host):
         jquake[0]['preferred_origin_id'] = new_origin['public_id']
         return '', jquake
     except Exception as exception:
+        jquake[0]['origin'][0]['arrival'] = save_arrival
         error_msg = traceback.format_exc()
         print(error_msg)
         return error_msg, None

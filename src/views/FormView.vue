@@ -119,7 +119,8 @@ export default Vue.extend({
 
   computed: {
     bounds (): L.LatLngTuple[] {
-      return [[this.form.minlat, this.form.minlon], [this.form.maxlat, this.form.maxlon]]
+      const fixedMaxLon = this.form.maxlon < this.form.minlon ? this.form.maxlon + 360 : this.form.maxlon
+      return [[this.form.minlat, this.form.minlon], [this.form.maxlat, fixedMaxLon]]
     }
   },
 
@@ -170,9 +171,9 @@ export default Vue.extend({
       const b = this.area!.getBounds()
       const [ne, sw] = [b[1], b[0]]
       this.form.minlat = sw[0]
-      this.form.minlon = sw[1]
+      this.form.minlon = sw[1] < -180 ? sw[1] + 360 : sw[1]
       this.form.maxlat = ne[0]
-      this.form.maxlon = ne[1]
+      this.form.maxlon = ne[1] > 180 ? ne[1] - 360 : ne[1]
     },
 
     applyBoundsToArea () {
