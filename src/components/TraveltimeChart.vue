@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ScatterOptions } from '@/lib/lichen/src/types'
-import type { Arrival } from '@/lib/sismojs/src/types'
+import type { Arrival } from '@/lib/sismojs/src/core/event/types'
 import { ref, watch, onBeforeUnmount, onMounted } from 'vue'
 import { useAppStore } from '@/stores/app'
 import Lichen from '@/lib/lichen/src'
@@ -8,15 +8,20 @@ import Lichen from '@/lib/lichen/src'
 const store = useAppStore()
 const chartContainer = ref()
 const chart = ref(null as Lichen | null)
-let debounceResize = null as number | null
-let resizeObserver = null as ResizeObserver | null
 
 function getColor(arrival: Arrival) {
-  return arrival.time_weight == 0
+  return arrival.timeWeight == 0
     ? 'grey'
-    : arrival._pick?.evaluation_mode === 'automatic'
+    : arrival.pickID.referredObject.evaluationMode === 'automatic'
       ? 'red'
       : 'green'
+}
+
+function traveltime(a: Arrival) {
+  if (store.currentOrigin == null) {
+    return null
+  }
+  return (a.pickID.referredObject.time.object - store.currentOrigin.time.object) / 1e3
 }
 
 function drawChart() {
@@ -24,15 +29,17 @@ function drawChart() {
     return
   }
   chartContainer.value.innerHTML = ''
-  const serieP: ScatterOptions = { name: 'P', color: 'lime', shape: 'circle', data: [], tooltipFormatter: v => v.toFixed(2) }
-  const serieS: ScatterOptions = { name: 'S', color: 'red', shape: 'diamond', data: [], tooltipFormatter: v => v.toFixed(2) }
+  const serieP: ScatterOptions = { name: 'P', color: 'black', shape: 'circle', data: [], tooltipFormatter: v => v.toFixed(2) }
+  const serieS: ScatterOptions = { name: 'S', color: 'black', shape: 'diamond', data: [], tooltipFormatter: v => v.toFixed(2) }
   let max = 0
   for (const arrival of store.currentArrivals) {
     const serie = arrival.phase === 'P' ? serieP : serieS
     const color = getColor(arrival)
-    const tt = arrival._traveltime.getTime() / 1e3
-    serie.data.push({ x: arrival.distance, y: tt, name: arrival._pick?._seedid || '-', color, extra: arrival })
-    max = Math.max(max, tt)
+    const tt = traveltime(arrival)
+    if (tt != null && arrival.distance != null) {
+      serie.data.push({ x: arrival.distance, y: tt, name: arrival.pickID.referredObject.waveformID.seedid || '-', color, extra: arrival.pickID.id })
+      max = Math.max(max, tt)
+    }
   }
   if (chart.value != null) {
     chart.value.destroy()
@@ -42,15 +49,12 @@ function drawChart() {
     crosshair: { enabled: false },
     xAxis: { datetime: false, title: 'Distance [°]', min: 0, tooltipFormatter: x => x.toFixed(2) },
     yAxis: { min: 0, max: 1.1 * max, title: 'Traveltime [s]' },
+    legend: { enabled: false },
     height: 238,
     type: 'scatter',
     series: [ serieP, serieS ],
     hooks: { beforeSelection: handleChartSelection }
   })
-  if (resizeObserver == null) {
-    resizeObserver = new ResizeObserver(handleResize)
-    resizeObserver.observe(chartContainer.value)
-  }
 }
 
 function handleChartSelection(x: [number | null, number | null], y: [number | null, number | null]) {
@@ -72,10 +76,10 @@ function handleChartSelection(x: [number | null, number | null], y: [number | nu
         : y[0] != null && y[1] != null && point.y >= y[0] && point.y <= y[1]
           ? true
           : false
-      const arrival = point.extra as Arrival
+      const arrival = getArrival(point.extra) as Arrival
       if (inXRange && inYRange) {
         if (manualOnly) {
-          if (arrival._pick?.evaluation_mode === 'manual') {
+          if (arrival.pickID.referredObject.evaluationMode === 'manual') {
             result.push(arrival)
           }
         } else {
@@ -88,24 +92,13 @@ function handleChartSelection(x: [number | null, number | null], y: [number | nu
   return false
 }
 
-function handleResize(entries: ResizeObserverEntry[]) {
-  if (debounceResize != null) {
-    clearTimeout(debounceResize)
-  }
-  debounceResize = setTimeout(() => {
-    if (chart.value != null) {
-      drawChart()
-    }
-  }, 300)
+function getArrival(pickId: string) {
+  return store.currentArrivals!.find(x => x.pickID.id === pickId)
 }
 
-watch(() => store.currentArrivals, () => {
-  drawChart()
-})
+watch(() => store.currentArrivals, drawChart)
 
-onMounted(() => {
-  drawChart()
-})
+onMounted(drawChart)
 
 onBeforeUnmount(() => {
   if (chart.value != null) {

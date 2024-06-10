@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ScatterOptions } from '@/lib/lichen/src/types'
-import type { Arrival } from '@/lib/sismojs/src/types'
+import { Arrival } from '@/lib/sismojs/src/core/event/types'
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useAppStore } from '@/stores/app'
 import Lichen from '@/lib/lichen/src'
@@ -10,9 +10,9 @@ const chartContainer = ref()
 const chart = ref(null as Lichen | null)
 
 function getColor(arrival: Arrival) {
-  return arrival.time_weight == 0
+  return arrival.timeWeight == 0
     ? 'grey'
-    : arrival._pick?.evaluation_mode === 'automatic'
+    : arrival.pickID.referredObject.evaluationMode === 'automatic'
       ? 'red'
       : 'green'
 }
@@ -22,15 +22,18 @@ function drawChart() {
     return
   }
   chartContainer.value.innerHTML = ''
-  const serieP: ScatterOptions = { name: 'P', color: 'lime', shape: 'circle', data: [], tooltipFormatter: v => v.toFixed(2) }
-  const serieS: ScatterOptions = { name: 'S', color: 'red', shape: 'diamond', data: [], tooltipFormatter: v => v.toFixed(2) }
+  const serieP: ScatterOptions = { name: 'P', color: 'black', shape: 'circle', data: [], tooltipFormatter: v => v.toFixed(2) }
+  const serieS: ScatterOptions = { name: 'S', color: 'black', shape: 'diamond', data: [], tooltipFormatter: v => v.toFixed(2) }
   let max = 0
   for (const arrival of store.currentArrivals) {
-    const serie = arrival.phase === 'P' ? serieP : serieS
-    const color = getColor(arrival)
-    serie.data.push({ x: arrival.distance, y: arrival.time_residual, name: arrival._pick?._seedid || '-', color, extra: arrival })
-    max = Math.max(max, Math.abs(arrival.time_residual))
+    if (arrival.distance != null && arrival.timeResidual != null) {
+      const serie = arrival.phase === 'P' ? serieP : serieS
+      const color = getColor(arrival)
+      serie.data.push({ x: arrival.distance, y: arrival.timeResidual, name: arrival.pickID.referredObject.waveformID.seedid || '-', color, extra: arrival.pickID.id })
+      max = Math.max(max, Math.abs(arrival.timeResidual!))
+    }
   }
+  max = Math.max(1, max)
   if (chart.value != null) {
     chart.value.destroy()
   }
@@ -39,23 +42,12 @@ function drawChart() {
     crosshair: { enabled: false },
     xAxis: { datetime: false, title: 'Distance [°]', min: 0, tooltipFormatter: x => x.toFixed(2) },
     yAxis: { min: -1.1 * max, max: 1.1 * max, title: 'Residual [s]' },
+    legend: { enabled: false },
     height: 238,
     type: 'scatter',
+    zoom: null,
     series: [ serieP, serieS ],
-    hooks: {
-      beforeSelection: handleChartSelection,
-      beforeUpdate: (chart) => {
-        const dataUtils = chart.dataUtils
-        const [yMin, yMax] = [dataUtils.yMin, dataUtils.yMax]
-        if (yMin != null && yMax != null && dataUtils.computed.series != null && dataUtils.computed.series[0] != null) {
-          const halfAmplitude = (yMax - yMin) / 2
-          chart.dataUtils.yMin = dataUtils.computed.series[0].avgValue - halfAmplitude
-          chart.dataUtils.yMax = dataUtils.computed.series[0].avgValue + halfAmplitude
-          return true
-        }
-        return true
-      }
-    }
+    hooks: { beforeSelection: handleChartSelection }
   })
 }
 
@@ -63,7 +55,7 @@ function handleChartSelection(x: [number | null, number | null], y: [number | nu
   if (chart.value == null) {
     return false
   }
-  const manualOnly = store.keydown === 'shift+shift'
+  const manualOnly = store.keydown.indexOf('ctrl+shift') === 0
   const series = chart.value.opt.series as ScatterOptions[]
   const result: Arrival[] = []
   for (const serie of series) {
@@ -78,10 +70,10 @@ function handleChartSelection(x: [number | null, number | null], y: [number | nu
         : y[0] != null && y[1] != null && point.y >= y[0] && point.y <= y[1]
           ? true
           : false
-      const arrival = point.extra as Arrival
+      const arrival = getArrival(point.extra) as Arrival
       if (inXRange && inYRange) {
         if (manualOnly) {
-          if (arrival._pick?.evaluation_mode === 'manual') {
+          if (arrival.pickID.referredObject.evaluationMode === 'manual') {
             result.push(arrival)
           }
         } else {
@@ -94,13 +86,13 @@ function handleChartSelection(x: [number | null, number | null], y: [number | nu
   return false
 }
 
-watch(() => store.currentArrivals, () => {
-  drawChart()
-})
+function getArrival(pickId: string) {
+  return store.currentArrivals!.find(x => x.pickID.id === pickId)
+}
 
-onMounted(() => {
-  drawChart()
-})
+watch(() => store.currentArrivals, drawChart)
+
+onMounted(drawChart)
 
 onBeforeUnmount(() => {
   if (chart.value != null) {

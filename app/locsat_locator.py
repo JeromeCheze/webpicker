@@ -8,42 +8,47 @@ from seiscomp.datamodel import Pick, CreationInfo, WaveformStreamID, Phase, \
 from seiscomp.seismology import LocatorInterface, TravelTimeTableInterface
 from obspy.geodetics.base import gps2dist_azimuth, kilometers2degrees
 
+def to_scp_time(t):
+    return Time.FromString(f'{t:0<26}', '%Y-%m-%dT%H:%M:%S.%f')
 
 def to_scp_pick(j_pick):
-    scp_pick = Pick(j_pick['public_id'])
+    scp_pick = Pick(j_pick['@publicID'])
     creation_info = CreationInfo()
-    creation_info.setCreationTime(Time.FromString('%s000' % j_pick["creation_info"]["creation_time"], '%Y-%m-%dT%H:%M:%S.%f'))
-    creation_info.setAgencyID(j_pick["creation_info"]["agency_id"])
-    creation_info.setAuthor(j_pick["creation_info"]["author"])
+    creation_info.setCreationTime(to_scp_time(j_pick["creationInfo"]["creationTime"]))
+    creation_info.setAgencyID(j_pick["creationInfo"]["agencyID"])
+    creation_info.setAuthor(j_pick["creationInfo"]["author"])
     scp_pick.setCreationInfo(creation_info)
-    scp_pick.setTime(TimeQuantity(Time.FromString('%s000' % j_pick["time"]["value"], '%Y-%m-%dT%H:%M:%S.%f')))
-    scp_pick.setEvaluationMode(AUTOMATIC if j_pick['evaluation_mode'] == 'automatic' else MANUAL)
-    scp_pick.setPhaseHint(Phase(j_pick['phase_hint']))
+    scp_pick.setTime(TimeQuantity(to_scp_time(j_pick["time"]["value"])))
+    scp_pick.setEvaluationMode(AUTOMATIC if j_pick['evaluationMode'] == 'automatic' else MANUAL)
+    scp_pick.setPhaseHint(Phase(j_pick['phaseHint']))
     if 'filter_id' in j_pick:
-        scp_pick.setFilterID(j_pick['filter_id'])
-    wfid = j_pick['waveform_id']
-    scp_pick.setWaveformID(WaveformStreamID(wfid['network_code'], wfid['station_code'], wfid.get('location_code', ''), wfid['channel_code'], ''))
+        scp_pick.setFilterID(j_pick['filterID'])
+    wfid = j_pick['waveformID']
+    scp_pick.setWaveformID(WaveformStreamID(wfid['@networkCode'], wfid['@stationCode'], wfid.get('@locationCode', ''), wfid['@channelCode'], ''))
     return scp_pick
 
 def to_scp_arrival(j_arrival):
     scp_arrival = Arrival()
-    scp_arrival.setPickID(j_arrival['pick_id'])
+    scp_arrival.setPickID(j_arrival['pickID'])
     scp_arrival.setPhase(Phase(j_arrival['phase']))
-    scp_arrival.setAzimuth(j_arrival['azimuth'])
-    scp_arrival.setDistance(j_arrival['distance'])
-    scp_arrival.setTimeResidual(j_arrival['time_residual'])
-    scp_arrival.setWeight(j_arrival['time_weight'])
+    if 'azimuth' in j_arrival:
+        scp_arrival.setAzimuth(j_arrival['azimuth'])
+    if 'distance' in j_arrival:
+        scp_arrival.setDistance(j_arrival['distance'])
+    if 'time_residual' in j_arrival:
+        scp_arrival.setTimeResidual(j_arrival['timeResidual'])
+    scp_arrival.setWeight(j_arrival['timeWeight'])
     scp_arrival.setTimeUsed(True)
     return scp_arrival
 
 def to_scp_origin(j_origin):
-    scp_origin: Origin = Origin.Create(j_origin['public_id'])
-    scp_origin.setTime(TimeQuantity(Time.FromString('%s000' % j_origin["time"]["value"], '%Y-%m-%dT%H:%M:%S.%f')))
+    scp_origin: Origin = Origin.Create(j_origin['@publicID'])
+    scp_origin.setTime(TimeQuantity(to_scp_time(j_origin["time"]["value"])))
     scp_origin.setLatitude(RealQuantity(j_origin['latitude']['value'], j_origin['latitude']['uncertainty']))
     scp_origin.setLongitude(RealQuantity(j_origin['longitude']['value'], j_origin['longitude']['uncertainty']))
     scp_origin.setDepth(RealQuantity(j_origin['depth']['value'], j_origin['depth'].get('uncertainty')))
     for j_arrival in j_origin['arrival']:
-        if j_arrival['time_weight'] > 0:
+        if j_arrival['timeWeight'] > 0:
             scp_origin.add(to_scp_arrival(j_arrival))
         scp_origin.add(to_scp_arrival(j_arrival))
     return scp_origin
@@ -54,13 +59,13 @@ def get_inventory(fdsnws_host, pick_map):
         'level=channel'
     ]
     for _, j_pick in pick_map.items():
-        wfid = j_pick['waveform_id']
+        wfid = j_pick['waveformID']
         t = j_pick['time']['value'][:19]
-        req_data.append('%s %s %s %s %s %s' % (wfid["network_code"], wfid["station_code"], wfid.get("location_code", "--"), wfid["channel_code"], t, t))
+        req_data.append('%s %s %s %s %s %s' % (wfid["@networkCode"], wfid["@stationCode"], wfid.get("@locationCode", "--"), wfid["@channelCode"], t, t))
     r = Request('http://%s/fdsnws/station/1/query' % fdsnws_host, data='\r\n'.join(req_data).encode('utf-8'), headers={'Content-Type': 'text/plain'})
     resp = urlopen(r).read().decode('utf-8')
     scp_inv = Inventory()
-    inv_struct = dict()
+    inv_struct = {}
     for line in resp.splitlines():
         if line == '' or line.startswith('#'):
             continue
@@ -69,31 +74,33 @@ def get_inventory(fdsnws_host, pick_map):
         if net not in inv_struct:
             scp_net: Network = Network.Create()
             scp_net.setCode(net)
-            inv_struct[net] = {'obj': scp_net, 'station': dict()}
+            inv_struct[net] = {'obj': scp_net, 'station': {}}
             scp_inv.add(scp_net)
         if sta not in inv_struct[net]['station']:
             scp_sta: Station = Station.Create()
             scp_sta.setCode(sta)
-            inv_struct[net]['station'][sta] = {'obj': scp_sta, 'location': dict()}
+            inv_struct[net]['station'][sta] = {'obj': scp_sta, 'location': {}}
             inv_struct[net]['obj'].add(scp_sta)
         if loc not in inv_struct[net]['station'][sta]['location']:
             scp_sl: SensorLocation = SensorLocation.Create()
-            scp_sl.setCode(loc)
+            if loc != '':
+                scp_sl.setCode(loc)
             scp_sl.setLatitude(float(lat))
             scp_sl.setLongitude(float(lon))
             scp_sl.setElevation(float(alt))
             scp_sl.setStart(Time.FromString(start[:19], '%Y-%m-%dT%H:%M:%S'))
             if end != '':
                 scp_sl.setEnd(Time.FromString(end[:19], '%Y-%m-%dT%H:%M:%S'))
-            inv_struct[net]['station'][sta]['location'][loc] = {'obj': scp_sl, 'channel': dict()}
+            inv_struct[net]['station'][sta]['location'][loc] = {'obj': scp_sl, 'channel': {}}
             inv_struct[net]['station'][sta]['obj'].add(scp_sl)
     scp_inv.setPublicID('Inventory')
     scp_inv.registerMe()
+    # print(inv_struct)
     return scp_inv
 
 def to_jquake(scp_origin: Origin):
     j_origin = {
-        'public_id': 'smi:oca/1.0/%s' % scp_origin.publicID(),
+        '@publicID': scp_origin.publicID(),
         'time': {
             'value': scp_origin.time().value().toString('%Y-%m-%dT%H:%M:%S.%fZ'),
             'uncertainty': scp_origin.time().uncertainty()
@@ -110,37 +117,37 @@ def to_jquake(scp_origin: Origin):
             'value': scp_origin.depth().value() * 1000,
             'uncertainty': scp_origin.depth().uncertainty() * 1000
         },
-        'method_id': 'smi:oca/1.0/%s' % scp_origin.methodID(),
-        'earth_model_id': 'smi:oca/1.0/%s' % scp_origin.earthModelID(),
+        'methodID': scp_origin.methodID(),
+        'earthModelID': scp_origin.earthModelID(),
         'quality': {
-            'associated_phase_count': scp_origin.quality().associatedPhaseCount(),
-            'used_phase_count': scp_origin.quality().usedPhaseCount(),
-            'associated_station_count': scp_origin.quality().associatedStationCount(),
-            'used_station_count': scp_origin.quality().usedStationCount(),
-            'standard_error': scp_origin.quality().standardError(),
-            'azimuthal_gap': scp_origin.quality().azimuthalGap(),
-            'minimum_distance': scp_origin.quality().minimumDistance(),
-            'maximum_distance': scp_origin.quality().maximumDistance(),
-            'median_distance': scp_origin.quality().medianDistance(),
+            'associatedPhaseCount': scp_origin.quality().associatedPhaseCount(),
+            'usedPhaseCount': scp_origin.quality().usedPhaseCount(),
+            'associatedStationCount': scp_origin.quality().associatedStationCount(),
+            'usedStationCount': scp_origin.quality().usedStationCount(),
+            'standardError': scp_origin.quality().standardError(),
+            'azimuthalGap': scp_origin.quality().azimuthalGap(),
+            'minimumDistance': scp_origin.quality().minimumDistance(),
+            'maximumDistance': scp_origin.quality().maximumDistance(),
+            'medianDistance': scp_origin.quality().medianDistance(),
         },
         # 'evaluation_mode': 'manual' if scp_origin.evaluationMode() == MANUAL else 'automatic',
-        'evaluation_mode': 'manual',
-        'creation_info': {
-            'agency_id': 'OCA',
+        'evaluationMode': 'manual',
+        'creationInfo': {
+            'agencyID': 'OCA',
             'author': 'webpicker',
-            'creation_time': scp_origin.creationInfo().creationTime().toString('%Y-%m-%dT%H:%M:%S.%fZ')
+            'creationTime': scp_origin.creationInfo().creationTime().toString('%Y-%m-%dT%H:%M:%S.%fZ')
         },
         'arrival': list()
     }
     for a_i in range(scp_origin.arrivalCount()):
         scp_arrival: Arrival = scp_origin.arrival(a_i)
         j_origin['arrival'].append({
-            'pick_id': scp_arrival.pickID(),
+            'pickID': scp_arrival.pickID(),
             'phase': scp_arrival.phase().code(),
             'azimuth': scp_arrival.azimuth(),
             'distance': scp_arrival.distance(),
-            'time_residual': scp_arrival.timeResidual(),
-            'time_weight': scp_arrival.weight()
+            'timeResidual': scp_arrival.timeResidual(),
+            'timeWeight': scp_arrival.weight()
         })
     return j_origin
 
@@ -160,26 +167,28 @@ def to_jquake(scp_origin: Origin):
 
 def relocate(jquake, profile, fdsnws_host):
     t = jquake[0]['origin'][0]['time']['value'][0:19]
-    pick_map = dict()
+    pick_map = {}
     pick_list = list()
     keep_arrival = list()
+    save_arrival = jquake[0]['origin'][0]['arrival']
     not_used_arrival = list()
     for j_pick in jquake[0]['pick']:
-        pick_map[j_pick['public_id']] = j_pick
+        pick_map[j_pick['@publicID']] = j_pick
         scp_pick = to_scp_pick(j_pick)
         scp_pick.registerMe()
         pick_list.append(scp_pick)
     for j_arrival in jquake[0]['origin'][0]['arrival']:
-        if j_arrival['time_weight'] > 0:
+        if j_arrival['timeWeight'] > 0:
             keep_arrival.append(j_arrival)
         else:
             not_used_arrival.append(j_arrival)
     jquake[0]['origin'][0]['arrival'] = keep_arrival
     scp_inv = get_inventory(fdsnws_host, pick_map)
-    pick_list.sort(key=lambda x: x.time().value())
+    pick_list.sort(key=lambda x: x.time().value().iso())
     locator: LocatorInterface = LocatorInterface.Create('LOCSAT')
     locator.useFixedDepth(False)
     locator.setProfile(profile)
+    # print([(x.waveformID().stationCode(), x.time().value().iso()) for x in pick_list])
     sloc = locator.getSensorLocation(pick_list[0])
     scp_origin = to_scp_origin(jquake[0]['origin'][0])
     scp_origin.setTime(pick_list[0].time())
@@ -190,10 +199,11 @@ def relocate(jquake, profile, fdsnws_host):
     ttti: TravelTimeTableInterface = TravelTimeTableInterface.Create('LOCSAT')
     ttti.setModel(profile)
     try:
-        new_origin = to_jquake(locator.relocate(scp_origin))
+        new_scp_origin = locator.relocate(scp_origin)
+        new_origin = to_jquake(new_scp_origin)
         ot = UTCDateTime.strptime(new_origin['time']['value'], '%Y-%m-%dT%H:%M:%S.%fZ')
         for j_arrival in not_used_arrival:
-            scp_pick: Pick = Pick.Find(j_arrival['pick_id'])
+            scp_pick: Pick = Pick.Find(j_arrival['pickID'])
             p_time = UTCDateTime.strptime(scp_pick.time().value().toString('%Y-%m-%dT%H:%M:%S.%fZ'), '%Y-%m-%dT%H:%M:%S.%fZ')
             sloc: SensorLocation = locator.getSensorLocation(scp_pick)
             distance, azimuth, _ = gps2dist_azimuth(
@@ -215,16 +225,18 @@ def relocate(jquake, profile, fdsnws_host):
             ).time
             j_arrival['time_residual'] = p_time - t_time
             new_origin['arrival'].append(j_arrival)
-        pick_station_map = dict()
+        pick_station_map = {}
         for pick in jquake[0]['pick']:
-            net_sta = '%s.%s' % (pick['waveform_id']['network_code'], pick['waveform_id']['station_code'])
-            pick_station_map[pick['public_id']] = net_sta
-        new_origin['quality']['associated_phase_count'] = len(new_origin['arrival'])
-        new_origin['quality']['associated_station_count'] = len(set([pick_station_map[a['pick_id']] for a in new_origin['arrival']]))
+            net_sta = '%s.%s' % (pick['waveformID']['@networkCode'], pick['waveformID']['@stationCode'])
+            pick_station_map[pick['@publicID']] = net_sta
+        new_origin['quality']['associatedPhaseCount'] = len(new_origin['arrival'])
+        new_origin['quality']['associatedStationCount'] = len(set([pick_station_map[a['pickID']] for a in new_origin['arrival']]))
         jquake[0]['origin'] = [new_origin]
-        jquake[0]['preferred_origin_id'] = new_origin['public_id']
+        jquake[0]['preferredOriginID'] = new_origin['@publicID']
+        new_scp_origin.deregisterMe()
         return '', jquake
     except Exception as exception:
+        jquake[0]['origin'][0]['arrival'] = save_arrival
         error_msg = traceback.format_exc()
         print(error_msg)
         return error_msg, None

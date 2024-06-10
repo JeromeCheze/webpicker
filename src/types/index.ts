@@ -1,6 +1,17 @@
-import type Lichen from '@/lib/lichen/src'
 import type { LineOptions, VLine } from '@/lib/lichen/src/types'
-import type { Pick } from '@/lib/sismojs/src/types'
+import type { Pick } from '@/lib/sismojs/src/core/event/types'
+import type Lichen from '@/lib/lichen/src'
+
+export interface WPNotificationOptions {
+  type: 'progress' | 'info' | 'warning'
+  value: any
+}
+
+export interface Activity {
+  author: string
+  state: string
+  event: string
+}
 
 export interface CommitOptions {
   eventType: string
@@ -15,6 +26,7 @@ export interface ColObject {
   valueAccessor: (item: any) => any
   textAccessor: (item: any) => string
   class?: (item: any) => string
+  icon?: string
   enabled: boolean
 }
 
@@ -40,19 +52,18 @@ export interface EventViewStatus {
 export interface PickerToolbarOptions {
   phase: 'P' | 'S' | undefined
   alignment: string
-  component: string
   components: string[]
   sort: 'distance' | 'name'
   rotation: 'ZNE' | 'ZRT'
-  filters: string[]
   filter: string | null
+  denoiser: boolean
+  spectrogram: boolean
+  detector: boolean
 }
 
 export interface FilterOptions {
   name: string
-  type: 'highpass' | 'lowpass' | 'bandpass'
-  fc: number | [number, number]
-  order: number
+  expression: string
 }
 
 export interface FiliFilterOptions {
@@ -78,13 +89,46 @@ export interface ChartData {
   chart: Lichen
 }
 
+export interface WaveformProcessInterface {
+  id: string
+  start: number
+  step: number
+  values: (number | null)[]
+  spectrogram?: {
+    values: number[][]
+    yMin: number
+    yMax: number
+    zMin: number
+    zMax: number
+  }
+}
+
 export interface TTT {
   [netsta: string]: {
     ttt: {
       P: number
       S: number
+    },
+    nll_ttt?: {
+      P: number
+      S: number
     }
   }
+}
+
+export interface Detection {
+  time: number
+  phase: string
+}
+
+export interface DetectionResult {
+  station_id: string
+  phase_time: string
+  phase_score: number
+  starttime: string
+  endtime: string
+  phase_type: string
+  filter: string
 }
 
 export interface PickMap {
@@ -95,6 +139,6 @@ export interface PickMap {
 
 export interface StationRefTimes {
   [netsta: string]: {
-    [key: string]: number
+    [phase: string]: number
   }
 }

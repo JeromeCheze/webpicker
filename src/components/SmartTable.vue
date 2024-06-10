@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { ColObject } from '@/types'
 import { ref, computed, watch, onMounted } from 'vue'
+import type { ColObject } from '@/types'
 
 const props = defineProps<{
   tableHeight?: number
@@ -10,10 +10,11 @@ const props = defineProps<{
   sortOrder?: 'asc' | 'desc'
   selectable?: boolean
   selected?: any[]
-  active?: (item: any) => boolean
+  rowClass?: (item: any) => string
+  rowColor?: (item: any) => string
 }>()
 
-const emit = defineEmits(['rowClicked', 'selection'])
+const emit = defineEmits(['rowClick', 'selection'])
 const tableConfigDialog = ref(false)
 const sortCol = ref(props.sortCol != null ? props.sortCol : 0)
 const sortOrder = ref(props.sortOrder != null ? props.sortOrder : 'desc')
@@ -73,7 +74,7 @@ function handleSortCol(index: number) {
 }
 
 function handleRowClick(item: any) {
-  emit('rowClicked', item)
+  emit('rowClick', item)
 }
 
 function setAllSelection(value: boolean) {
@@ -129,10 +130,11 @@ function handleSelection(row: any) {
 }
 
 function getClass(row: any) {
-  if (props.active != null && props.active(row[1])) {
-    return 'bg-orange-lighten-1 text-black'
-  }
-  return ''
+  return props.rowClass != null ? props.rowClass(row[1]) : ''
+}
+
+function getColor(row: any) {
+  return props.rowColor != null ? props.rowColor(row[1]) : ''
 }
 
 onMounted(() => {
@@ -146,11 +148,6 @@ onMounted(() => {
   <v-table fixed-header :height="props.tableHeight" density="compact" hover>
     <thead>
       <tr>
-        <th>
-          <v-btn size="x-small" variant="plain" @click="tableConfigDialog = true">
-            <v-icon>mdi-wrench</v-icon>
-          </v-btn>
-        </th>
         <th v-if="props.selectable === true">
           <v-checkbox
             hide-details
@@ -165,6 +162,11 @@ onMounted(() => {
           <v-icon v-if="index === sortCol && sortOrder === 'desc'">mdi-chevron-down</v-icon>
           {{ item.label }}
         </th>
+        <th>
+          <v-btn size="x-small" variant="plain" @click="tableConfigDialog = true">
+            <v-icon>mdi-wrench</v-icon>
+          </v-btn>
+        </th>
       </tr>
     </thead>
     <tbody>
@@ -173,8 +175,14 @@ onMounted(() => {
           <slot></slot>
         </td>
       </tr>
-      <tr v-else v-for="(row, index) in modelValue" :key="index" @click="handleRowClick(row[1])" :class="getClass(row)">
-        <td v-if="props.selectable" colspan="2">
+      <tr
+        v-else
+        v-for="(row, index) in modelValue" 
+        @click="handleRowClick(row[1])"
+        :class="getClass(row)"
+        :style="{ background: getColor(row) }"
+      >
+        <td v-if="props.selectable">
           <v-checkbox
             hide-details
             :model-value="row[0]"
@@ -186,9 +194,13 @@ onMounted(() => {
           v-for="(item, index) in enabledCols"
           :class="item.class ? item.class(row[1]) : ''"
           class="text-no-wrap"
-          :colspan="index === 0 ? (props.selectable ? 1 : 2) : 1"
+          :colspan="index === (enabledCols.length - 1) ? 2 : 1"
         >
-          {{ item.textAccessor(row[1]) }}
+          <v-icon
+            v-if="item.icon != null && item.valueAccessor(row[1])"
+            :title="item.textAccessor(row[1])"
+          >{{ item.icon }}</v-icon>
+          <span v-else>{{ item.textAccessor(row[1]) }}</span>
         </td>
       </tr>
     </tbody>
@@ -203,14 +215,16 @@ onMounted(() => {
           </tr>
         </thead>
         <tbody>
-          <td v-for="item in props.cols">
-            <v-checkbox v-model="item.enabled" density="compact" hide-details></v-checkbox>
-          </td>
+          <tr>
+            <td v-for="item in props.cols">
+              <v-checkbox v-model="item.enabled" density="compact" hide-details></v-checkbox>
+            </td>
+          </tr>
         </tbody>
       </v-table>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn @click="tableConfigDialog = false">Close</v-btn>
+        <v-btn @click="tableConfigDialog = false" color="primary">Close</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

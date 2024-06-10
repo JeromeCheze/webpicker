@@ -1,121 +1,147 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { type EventParameter } from '@/lib/sismojs/src/types/index'
+import { Event } from '@/lib/sismojs/src/core/event/types'
+import { useAppStore } from '@/stores/app'
 import type { ColObject } from '@/types'
+import { getDefault } from '@/utils'
+import { ref, watch } from 'vue'
 import router from '@/router'
 
+const store = useAppStore()
+
 const props = defineProps<{
-  events: EventParameter[]
-  active?: EventParameter
   height: number
 }>()
 
+const usersEventMap = ref({} as Record<string, string[]>)
+
 const header = ref([
   {
+    label: '',
+    valueAccessor: (e: Event) => getDefault(usersEventMap.value, e.publicID, []).length > 0,
+    textAccessor: (e: Event) => getDefault(usersEventMap.value, e.publicID, []).join(', '),
+    icon: 'mdi-account',
+    enabled: true
+  },
+  {
     label: 'Time',
-    valueAccessor: (e: EventParameter) => e._po?.time._value,
-    textAccessor: (e: EventParameter) => e._po?.time._pretty,
+    valueAccessor: (e: Event) => e.preferredOriginID.referredObject.time.object,
+    textAccessor: (e: Event) => e.preferredOriginID.referredObject.time.pretty,
     enabled: true
   },
   {
     label: 'M',
-    valueAccessor: (e: EventParameter) => e._pm?.mag.value,
-    textAccessor: (e: EventParameter) => e._pm?.mag._pretty,
+    valueAccessor: (e: Event) => e.preferredMagnitudeID.referredObject?.mag.value,
+    textAccessor: (e: Event) => e.preferredMagnitudeID.referredObject?.mag.value.toFixed(2),
     enabled: true
   },
   {
     label: 'MT',
-    valueAccessor: (e: EventParameter) => e._pm?.type,
-    textAccessor: (e: EventParameter) => e._pm?.type,
+    valueAccessor: (e: Event) => e.preferredMagnitudeID.referredObject?.type,
+    textAccessor: (e: Event) => e.preferredMagnitudeID.referredObject?.type,
     enabled: false
   },
   {
     label: 'Ph.',
-    valueAccessor: (e: EventParameter) => e._po?.quality?.used_phase_count,
-    textAccessor: (e: EventParameter) => e._po?.quality?.used_phase_count,
+    valueAccessor: (e: Event) => e.preferredOriginID.referredObject.quality?.usedPhaseCount,
+    textAccessor: (e: Event) => e.preferredOriginID.referredObject.quality?.usedPhaseCount,
     class: () => 'text-right',
     enabled: true
   },
   {
     label: 'Lat',
-    valueAccessor: (e: EventParameter) => e._po?.latitude.value,
-    textAccessor: (e: EventParameter) => e._po?.latitude._pretty,
+    valueAccessor: (e: Event) => e.preferredOriginID.referredObject.latitude.value,
+    textAccessor: (e: Event) => e.preferredOriginID.referredObject.latitude.value.toFixed(2),
     enabled: true
   },
   {
     label: 'Lon',
-    valueAccessor: (e: EventParameter) => e._po?.longitude.value,
-    textAccessor: (e: EventParameter) => e._po?.longitude._pretty,
+    valueAccessor: (e: Event) => e.preferredOriginID.referredObject.longitude.value,
+    textAccessor: (e: Event) => e.preferredOriginID.referredObject.longitude.value.toFixed(2),
     enabled: true
   },
   {
     label: 'Depth',
-    valueAccessor: (e: EventParameter) => e._po?.depth.value,
-    textAccessor: (e: EventParameter) => e._po?.depth._pretty,
+    valueAccessor: (e: Event) => e.preferredOriginID.referredObject.depth.value,
+    textAccessor: (e: Event) => (e.preferredOriginID.referredObject.depth.value / 1e3).toFixed(2),
     enabled: true
   },
   {
     label: 'RMS',
-    valueAccessor: (e: EventParameter) => e._po?.quality?.standard_error,
-    textAccessor: (e: EventParameter) => e._po?.quality?.standard_error?.toFixed(2),
+    valueAccessor: (e: Event) => e.preferredOriginID.referredObject.quality?.standardError,
+    textAccessor: (e: Event) => e.preferredOriginID.referredObject.quality?.standardError?.toFixed(2),
     enabled: true
   },
   {
     label: 'Mode',
-    valueAccessor: (e: EventParameter) => e._po?.evaluation_mode,
-    textAccessor: (e: EventParameter) => e._po?.evaluation_mode === 'manual' ? 'M' : 'A',
-    class: (e: EventParameter) => e._po?.evaluation_mode === 'manual' ? 'text-green' : 'text-red',
+    valueAccessor: (e: Event) => e.preferredOriginID.referredObject.evaluationMode,
+    textAccessor: (e: Event) => e.preferredOriginID.referredObject.evaluationMode === 'manual' ? 'M' : 'A',
+    class: (e: Event) => e.preferredOriginID.referredObject.evaluationMode === 'manual' ? 'text-green' : 'text-red',
     enabled: true
   },
   {
     label: 'Status',
-    valueAccessor: (e: EventParameter) => e._po?.evaluation_status,
-    textAccessor: (e: EventParameter) => e._po?.evaluation_status,
+    valueAccessor: (e: Event) => e.preferredOriginID.referredObject.evaluationStatus,
+    textAccessor: (e: Event) => e.preferredOriginID.referredObject.evaluationStatus,
     enabled: false
   },
   {
     label: 'Type',
-    valueAccessor: (e: EventParameter) => e.type,
-    textAccessor: (e: EventParameter) => e.type,
+    valueAccessor: (e: Event) => e.type,
+    textAccessor: (e: Event) => e.type,
     enabled: true
   },
   {
     label: 'Region',
-    valueAccessor: (e: EventParameter) => e._po?.region,
-    textAccessor: (e: EventParameter) => e._po?.region,
+    valueAccessor: (e: Event) => e.preferredOriginID.referredObject.region,
+    textAccessor: (e: Event) => e.preferredOriginID.referredObject.region.toUpperCase(),
     enabled: true
   },
   {
     label: 'Author',
-    valueAccessor: (e: EventParameter) => e._po?.creation_info?.author,
-    textAccessor: (e: EventParameter) => e._po?.creation_info?.author,
+    valueAccessor: (e: Event) => e.preferredOriginID.referredObject.creationInfo?.author,
+    textAccessor: (e: Event) => e.preferredOriginID.referredObject.creationInfo?.author,
     enabled: true
   },
   {
     label: 'ID',
-    valueAccessor: (e: EventParameter) => e.public_id,
-    textAccessor: (e: EventParameter) => e.public_id,
+    valueAccessor: (e: Event) => e.publicID,
+    textAccessor: (e: Event) => e.publicID,
     enabled: true
   }
 ] as ColObject[])
 
-function handleRowClick(event: EventParameter) {
-  router.push({ name: 'event', params: { eventid: event.public_id } })
+function handleRowClick(event: Event) {
+  router.push({ name: 'event', params: { eventid: event.publicID } })
 }
 
-function isActive(event: EventParameter) {
-  return props.active != null && props.active.public_id === event.public_id
+function handleRowColor(event: Event) {
+  return store.currentEvent != null && store.currentEvent.publicID === event.publicID
+    ? store.settings['color.activeRowColor']
+    : ''
 }
+
+watch(() => store.usersActivity, (value) => {
+  const result: Record<string, string[]> = {}
+  for (const activity of value) {
+    if (activity.event !== '') {
+      const users = getDefault(result, activity.event, [])
+      users.push(activity.author)
+      result[activity.event] = users
+    }
+  }
+  usersEventMap.value = result
+}, { immediate: true })
 </script>
 
 <template>
   <v-card>
     <SmartTable
       :table-height="props.height"
-      :items="props.events"
+      :items="store.cacheEventList"
       :cols="header"
-      @row-clicked="handleRowClick"
-      :active="isActive"
+      :sortCol="1"
+      @row-click="handleRowClick"
+      :row-color="handleRowColor"
     >
       No events to display<br>
       Go to <router-link :to="{ name: 'form' }">form</router-link> to define query parameters

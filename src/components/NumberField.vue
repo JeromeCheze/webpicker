@@ -3,7 +3,6 @@ import { ref, watch } from 'vue'
 
 
 const props = defineProps<{
-  label: string
   modelValue?: number | null
 }>()
 
@@ -36,7 +35,6 @@ function handleInput(ev: InputEvent) {
 <template>
   <v-text-field
     v-bind="$attrs"
-    :label="label"
     :model-value="numberValue"
     @change="handleInput"
     class="number-field__v-text-field"

@@ -19,17 +19,21 @@ export default defineConfig({
   build: {
     assetsDir: './static'
   },
-  base: './',
+  base: '/',
   server: {
     proxy: {
       '/fdsnws': {
-        target: 'http://localhost:8002'
+        target: 'http://localhost:8000'
       },
       '/api': {
-        target: 'http://localhost:8002'
+        target: 'http://localhost:8000'
       },
       '/user': {
-        target: 'http://localhost:8002'
+        target: 'http://localhost:8000'
+      },
+      '/ws': {
+        target: 'http://localhost:8000',
+        ws: true
       }
     }
   }

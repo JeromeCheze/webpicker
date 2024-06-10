@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { Origin, RealQuantity } from '@/lib/sismojs/src/core/event/types'
 import type { ColObject, EventViewStatus } from '@/types'
-import type { Origin } from '@/lib/sismojs/src/types'
+import { useAppStore } from '@/stores/app'
 import { ref } from 'vue'
+
+const store = useAppStore()
 
 const props = defineProps<{
   origin?: Origin
@@ -12,87 +15,104 @@ const props = defineProps<{
 const originCols = ref([
   {
     label: 'Time',
-    valueAccessor: (o: Origin) => o.time._value,
-    textAccessor: (o: Origin) => o.time._pretty,
+    valueAccessor: (o: Origin) => o.time.object,
+    textAccessor: (o: Origin) => o.time.pretty,
     enabled: true
   },
   {
     label: 'Latitude',
     valueAccessor: (o: Origin) => o.latitude.value,
-    textAccessor: (o: Origin) => `${o.latitude._pretty} ${o.latitude._pretty_uncertainty}`,
+    textAccessor: (o: Origin) => prettyLatitude(o.latitude),
     enabled: true
   },
   {
     label: 'Longitude',
     valueAccessor: (o: Origin) => o.longitude.value,
-    textAccessor: (o: Origin) => `${o.longitude._pretty} ${o.longitude._pretty_uncertainty}`,
+    textAccessor: (o: Origin) => prettyLongitude(o.longitude),
     enabled: true
   },
   {
     label: 'Depth',
     valueAccessor: (o: Origin) => o.depth.value,
-    textAccessor: (o: Origin) => `${o.depth._pretty} ${o.depth._pretty_uncertainty}`,
+    textAccessor: (o: Origin) => prettyDepth(o.depth),
     class: depthColor,
     enabled: true
   },
   {
     label: 'Phases',
-    valueAccessor: (o: Origin) => o.quality?.used_phase_count,
-    textAccessor: (o: Origin) => `${o.quality?.used_phase_count} / ${o.quality?.associated_phase_count}`,
+    valueAccessor: (o: Origin) => o.quality?.usedPhaseCount,
+    textAccessor: (o: Origin) => `${o.quality?.usedPhaseCount} / ${o.quality?.associatedPhaseCount}`,
     enabled: true
   },
   {
     label: 'RMS',
-    valueAccessor: (o: Origin) => o.quality?.standard_error,
-    textAccessor: (o: Origin) => `${o.quality?.standard_error?.toFixed(2)} s`,
+    valueAccessor: (o: Origin) => o.quality?.standardError,
+    textAccessor: (o: Origin) => `${o.quality?.standardError?.toFixed(2)} s`,
     class: rmsColor,
     enabled: true
   },
   {
     label: 'Az. Gap',
-    valueAccessor: (o: Origin) => o.quality?.azimuthal_gap,
-    textAccessor: (o: Origin) => `${o.quality?.azimuthal_gap?.toFixed(0)} °`,
+    valueAccessor: (o: Origin) => o.quality?.azimuthalGap,
+    textAccessor: (o: Origin) => `${o.quality?.azimuthalGap?.toFixed(0)} °`,
     class: azGapColor,
     enabled: true
   },
   {
     label: 'Min Dist',
-    valueAccessor: (o: Origin) => o.quality?.minimum_distance,
-    textAccessor: (o: Origin) => `${o.quality?.minimum_distance?.toFixed(2)} °`,
+    valueAccessor: (o: Origin) => o.quality?.minimumDistance,
+    textAccessor: (o: Origin) => `${o.quality?.minimumDistance?.toFixed(2)} °`,
     class: minDistColor,
     enabled: true
   },
   {
     label: 'Method',
-    valueAccessor: (o: Origin) => o.method_id,
-    textAccessor: (o: Origin) => o.method_id,
+    valueAccessor: (o: Origin) => o.methodID,
+    textAccessor: (o: Origin) => o.methodID,
     enabled: false
   },
   {
     label: 'Earth Model',
-    valueAccessor: (o: Origin) => o.earth_model_id,
-    textAccessor: (o: Origin) => o.earth_model_id,
+    valueAccessor: (o: Origin) => o.earthModelID,
+    textAccessor: (o: Origin) => o.earthModelID,
     enabled: false
   },
   {
     label: 'Author',
-    valueAccessor: (o: Origin) => o.creation_info?.author,
-    textAccessor: (o: Origin) => o.creation_info?.author,
+    valueAccessor: (o: Origin) => o.creationInfo?.author,
+    textAccessor: (o: Origin) => o.creationInfo?.author,
     enabled: false
   },
   {
-    label: 'Ceation Time',
-    valueAccessor: (o: Origin) => o.creation_info?._creation_time,
-    textAccessor: (o: Origin) => o.creation_info?._pretty_creation_time,
+    label: 'Creation Time',
+    valueAccessor: (o: Origin) => o.creationInfo?.creationTime,
+    textAccessor: (o: Origin) => o.creationInfo?.creationTime,
     enabled: false
   }
 ] as ColObject[])
 
+function prettyLatitude(lat: RealQuantity) {
+  return lat.value > 0
+    ? `${lat.value.toFixed(2)}°N +/- ${lat.uncertainty?.toFixed(2)} km`
+    : `${-lat.value.toFixed(2)}°S +/- ${lat.uncertainty?.toFixed(2)} km`
+}
+
+function prettyLongitude(lon: RealQuantity) {
+  return lon.value > 0
+    ? `${lon.value.toFixed(2)}°E +/- ${lon.uncertainty?.toFixed(2)} km`
+    : `${-lon.value.toFixed(2)}°W +/- ${lon.uncertainty?.toFixed(2)} km`
+}
+
+function prettyDepth(depth: RealQuantity) {
+  const uncertainty = depth.uncertainty != null ? `+- ${(depth.uncertainty / 1e3).toFixed(2)} km` : '(fixed)'
+  return `${(depth.value / 1e3).toFixed(2)} km ${uncertainty}`
+}
+
 function rmsColor(o: Origin) {
-  if (o.quality != null && o.quality.standard_error != null) {
-    return o.quality.standard_error > 2
+  if (o.quality != null && o.quality.standardError != null) {
+    return o.quality.standardError > 2
       ? 'text-red'
-      : o.quality.standard_error > 1
+      : o.quality.standardError > 1
         ? 'text-orange'
         : ''
   }
@@ -100,10 +120,10 @@ function rmsColor(o: Origin) {
 }
 
 function azGapColor(o: Origin) {
-  if (o.quality != null && o.quality.azimuthal_gap != null) {
-    return o.quality.azimuthal_gap > 250
+  if (o.quality != null && o.quality.azimuthalGap != null) {
+    return o.quality.azimuthalGap > 250
       ? 'text-red'
-      : o.quality.azimuthal_gap > 180
+      : o.quality.azimuthalGap > 180
         ? 'text-orange'
         : ''
   }
@@ -111,10 +131,10 @@ function azGapColor(o: Origin) {
 }
 
 function minDistColor(o: Origin) {
-  if (o.quality != null && o.quality.minimum_distance != null) {
-    return o.quality.minimum_distance > 1
+  if (o.quality != null && o.quality.minimumDistance != null) {
+    return o.quality.minimumDistance > 1
       ? 'text-red'
-      : o.quality.minimum_distance > 0.5
+      : o.quality.minimumDistance > 0.5
         ? 'text-orange'
         : ''
   }
@@ -139,8 +159,9 @@ function depthColor(o: Origin) {
     <v-card-text>
       <v-row>
         <v-col :cols="props.compact ? 6 : 3" v-for="col in originCols" :class="{ 'ma-0': props.compact, 'py-0': props.compact }">
-          <v-list density="compact" v-if="props.origin != null">
+          <v-list density="compact" v-if="props.origin != null" :bg-color="store.settings['color.surface']">
             <v-list-item
+             
               :title="col.label"
               :subtitle="col.textAccessor(props.origin)"
               :class="col.class != null ? col.class(props.origin) : ''"/>

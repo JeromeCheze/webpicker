@@ -5,7 +5,6 @@ import subprocess
 from app import locsat_locator
 from lxml import etree
 from app import utils
-from flask import render_template
 from obspy.taup import TauPyModel
 from seiscomp.seismology import TravelTimeTableInterface
 
@@ -16,12 +15,10 @@ else:
 
 
 def relocate_with_nll(jquake, profile):
-    sc3ml = render_template('sc3ml.xml', version=utils.CONFIG.seiscomp.schema_version, jquake=jquake, quakeml_compatible=True)
-    sc3ml = sc3ml.replace(' encoding="UTF-8"', '')
-    qml = utils.sc3ml_to_qml(sc3ml, utils.CONFIG.seiscomp.schema_version)
+    qml = utils.jquake_to_quakeml(jquake)
     try:
         req = '%s/nll/%s/%s/' % (utils.CONFIG.nll.url, utils.CONFIG.nll.area, profile)
-        response = urlopen(Request(req, data=qml, headers={'Content-Type': 'application/xml'}))
+        response = urlopen(Request(req, data=qml.encode('utf-8'), headers={'Content-Type': 'application/xml'}))
         return_code = response.status if utils.PYTHON3 else response.getcode()
         if return_code == 204:
             raise ValueError('NonLinLoc returned no solution')
@@ -32,19 +29,17 @@ def relocate_with_nll(jquake, profile):
     except Exception as exception:
         return {
             'message': str(exception),
-            'quakeml': qml.decode('utf-8') if utils.PYTHON3 else qml
+            'quakeml': qml
         }
 
 def relocate_with_scp_api(jquake, profile):
     error, result = locsat_locator.relocate(jquake, profile, utils.CONFIG.fdsnws.station_host)
     if result is None:
         result = jquake
-    sc3ml = render_template('sc3ml.xml', version=utils.CONFIG.seiscomp.schema_version, jquake=result, quakeml_compatible=True)
-    sc3ml = sc3ml.replace(' encoding="UTF-8"', '')
-    qml = utils.sc3ml_to_qml(sc3ml, utils.CONFIG.seiscomp.schema_version)
+    qml = utils.jquake_to_quakeml(result)
     return {
         'message': error,
-        'quakeml': qml.decode('utf-8') if utils.PYTHON3 else qml
+        'quakeml': qml
     }
 
 def relocate_with_screloc(jquake, profile):
@@ -54,7 +49,7 @@ def relocate_with_screloc(jquake, profile):
     if utils.DEBUG:
         sys.stderr.write('initial sc3ml file from jquake: %s\n' % sc3ml)
 
-    utils.write_sc3ml(jquake, sc3ml, utils.CONFIG.seiscomp.schema_version)
+    utils.write_sc3ml(jquake, sc3ml)
     screloc_cmd = [
         utils.SEISCOMP_PROGRAM, 'exec', 'screloc',
         '--inventory-db', inventory,
@@ -85,7 +80,7 @@ def relocate_with_screloc(jquake, profile):
 
     dom = etree.fromstring(result)
     utils.update_sc3ml_origin_reference(dom)
-    newdom = utils.apply_xslt(etree.ElementTree(dom), utils.get_sc3ml_to_qml_xslt(utils.CONFIG.seiscomp.schema_version, utils.CONFIG.seiscomp.root))
+    newdom = utils.apply_xslt(etree.ElementTree(dom), utils.get_sc3ml_to_qml_xslt())
 
     if utils.DEBUG:
         _, qml_result = tempfile.mkstemp(suffix=".sc3ml")
@@ -107,7 +102,7 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
 
     # 2) save sc3ml
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
-    utils.write_sc3ml(jquake, sc3ml, utils.CONFIG.seiscomp.schema_version)
+    utils.write_sc3ml(jquake, sc3ml)
 
     # 3) compute amplitudes with scamp
     _, scamp_result = tempfile.mkstemp(suffix='.sc3ml')
@@ -115,7 +110,6 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
         utils.SEISCOMP_PROGRAM, 'exec', 'scamp',
         '--inventory-db', inventory,
         '--config-db', utils.CONFIG.seiscomp.config_filename,
-        # '-I', data,
         '-I', 'fdsnws://%s' % utils.CONFIG.fdsnws.dataselect_host,
         '--ep', sc3ml
     ]
@@ -148,23 +142,24 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
     if utils.PYTHON3:
         result = result.decode('utf-8')
         result = result.replace(' encoding="UTF-8"', '')
-    dom = etree.fromstring(result)
-    utils.update_sc3ml_origin_reference(dom)
-    utils.fix_scmag_magnitude_public_id(dom)
-    newdom = utils.apply_xslt(etree.ElementTree(dom), utils.get_sc3ml_to_qml_xslt(utils.CONFIG.seiscomp.schema_version, utils.CONFIG.seiscomp.root))
+
+    qml = utils.sc3ml_to_quakeml(result, add_prefix_id=False)
 
     if utils.DEBUG:
         _, scmag_result = tempfile.mkstemp(suffix='.sc3ml')
+        _, qml_result = tempfile.mkstemp(suffix='.xml')
         sys.stderr.write('scmag result: %s\n' % scmag_result)
+        sys.stderr.write('qml result: %s\n' % qml_result)
         with open(scmag_result, 'w') as f:
             f.write(result)
+        with open(qml_result, 'w') as f:
+            f.write(qml)
     else:
         os.remove(scamp_result)
         os.remove(inventory)
-    qml = etree.tostring(newdom)
     return {
         'message': error_message.decode('utf-8') if utils.PYTHON3 else error_message,
-        'quakeml': qml.decode('utf-8') if utils.PYTHON3 else qml
+        'quakeml': qml
     }
 
 def get_travel_times(lat, lon, depth, station_pos):

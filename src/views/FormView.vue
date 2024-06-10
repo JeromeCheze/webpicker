@@ -1,16 +1,17 @@
 <script setup lang="ts">
+import { getLocalStorageDefault, setLocalStorage } from '@/utils'
 import { ref, computed, onMounted, watch } from 'vue'
-import SelectArea from '@/utils/selectArea'
 import L, { type LatLngTuple } from 'leaflet'
 import type { WebpickerForm } from '@/types'
-import { useRouter } from 'vue-router'
+import SelectArea from '@/utils/selectArea'
 import { useAppStore } from '@/stores/app'
+import { useRouter } from 'vue-router'
 
 const store = useAppStore()
 const router = useRouter()
 const map = ref(null as L.Map | null)
 const area = ref(null as SelectArea | null)
-const rememberGeoConstraints = ref(localStorage.getItem('form') != null)
+const rememberGeoConstraints = ref(getLocalStorageDefault('form', null) != null)
 const startMenu = ref(false)
 const endMenu = ref(false)
 const form = ref(loadForm() as WebpickerForm)
@@ -20,7 +21,8 @@ const pickerEnd = ref(new Date(form.value.end))
 
 
 const bounds = computed(() => {
-  return [[form.value.minlat, form.value.minlon], [form.value.maxlat, form.value.maxlon]] as LatLngTuple[]
+  const fixedMaxLon = form.value.maxlon < form.value.minlon ? form.value.maxlon + 360 : form.value.maxlon
+  return [[form.value.minlat, form.value.minlon], [form.value.maxlat, fixedMaxLon]] as LatLngTuple[]
 })
 
 
@@ -28,7 +30,7 @@ function loadForm() {
   const now = new Date()
   const start = new Date(now.getTime() - 86400e3 * 7)
   const end = new Date(now.getTime() + 86400e3)
-  const savedForm = JSON.parse(localStorage.getItem('form') || '{}')
+  const savedForm = getLocalStorageDefault('form', {})
   const result = {
     start: start.toISOString().split('T')[0],
     end: end.toISOString().split('T')[0],
@@ -42,15 +44,17 @@ function loadForm() {
   return result
 }
 
-function allowedStartDate(v: string) {
-  const start = new Date(v).getTime()
+function allowedStartDate(v: unknown) {
+  const value = v as Date
+  const start = value.getTime()
   const end = new Date(form.value.end).getTime()
   return start < end
 }
 
-function allowedEndDate(v: string) {
+function allowedEndDate(v: unknown) {
+  const value = v as Date
   const start = new Date(form.value.start).getTime()
-  const end = new Date(v).getTime()
+  const end = value.getTime()
   const now = new Date(new Date().toISOString().slice(0, 10)).getTime() + 86400e3
   return end > start && end <= now
 }
@@ -79,9 +83,9 @@ function applyBoundsToForm() {
   const b = area.value.getBounds()
   const [ne, sw] = [b[1], b[0]]
   form.value.minlat = sw[0]
-  form.value.minlon = sw[1]
+  form.value.minlon = sw[1] < -180 ? sw[1] + 360 : sw[1]
   form.value.maxlat = ne[0]
-  form.value.maxlon = ne[1]
+  form.value.maxlon = ne[1] > 180 ? ne[1] - 360 : ne[1]
 }
 
 function applyBoundsToArea() {
@@ -99,12 +103,12 @@ function handleSubmit() {
     }
   }
   if (rememberGeoConstraints.value) {
-    localStorage.setItem('form', JSON.stringify({
+    setLocalStorage('form', {
       minlat: query.minlat,
       maxlat: query.maxlat,
       minlon: query.minlon,
       maxlon: query.maxlon
-    }))
+    })
   } else {
     localStorage.removeItem('form')
   }
@@ -159,15 +163,15 @@ onMounted(() => {
     <v-card-text>
       <v-container fluid>
         <v-row>
-          <v-col cols="6">
-            <div ref="mapContainer" :style="{ zIndex: 1, height: '400px' }"></div>
+          <v-col cols="5">
+            <div ref="mapContainer"></div>
           </v-col>
-          <v-col cols="6">
+          <v-col cols="7">
             <v-row>
               <v-col cols="6">
                 <v-menu offset-y :close-on-content-click="false" v-model="startMenu">
                   <template v-slot:activator="{ props }">
-                    <v-text-field density="compact" v-bind="props" v-model="form.start" label="Start" prepend-icon="mdi-calendar"></v-text-field>
+                    <v-text-field hide-details v-bind="props" v-model="form.start" label="Start" prepend-icon="mdi-calendar"></v-text-field>
                   </template>
                   <v-date-picker v-model="pickerStart" :allowed-dates="allowedStartDate"></v-date-picker>
                 </v-menu>
@@ -175,7 +179,7 @@ onMounted(() => {
               <v-col cols="6">
                 <v-menu offset-y :close-on-content-click="false" v-model="endMenu">
                   <template v-slot:activator="{ props }">
-                    <v-text-field density="compact" v-bind="props" v-model="form.end" label="End" prepend-icon="mdi-calendar"></v-text-field>
+                    <v-text-field hide-details v-bind="props" v-model="form.end" label="End" prepend-icon="mdi-calendar"></v-text-field>
                   </template>
                   <v-date-picker v-model="pickerEnd" :allowed-dates="allowedEndDate"></v-date-picker>
                 </v-menu>
@@ -183,18 +187,18 @@ onMounted(() => {
             </v-row>
             <v-row>
               <v-col cols="6">
-                <NumberField v-model="form.minlat" label="Latitude min [°]"/>
+                <NumberField hide-details v-model="form.minlat" label="Latitude min" suffix="°"/>
               </v-col>
               <v-col cols="6">
-                <NumberField v-model="form.maxlat" label="Latitude max [°]"/>
+                <NumberField hide-details v-model="form.maxlat" label="Latitude max" suffix="°"/>
               </v-col>
             </v-row>
             <v-row>
               <v-col cols="6">
-                <NumberField v-model="form.minlon" label="Longitude min [°]"/>
+                <NumberField hide-details v-model="form.minlon" label="Longitude min" suffix="°"/>
               </v-col>
               <v-col cols="6">
-                <NumberField v-model="form.maxlon" label="Longitude max [°]"/>
+                <NumberField hide-details v-model="form.maxlon" label="Longitude max" suffix="°"/>
               </v-col>
             </v-row>
             <v-row>
@@ -204,18 +208,18 @@ onMounted(() => {
             </v-row>
             <v-row>
               <v-col cols="6">
-                <NumberField v-model="form.mindepth" label="Depth min [km]"/>
+                <NumberField hide-details v-model="form.mindepth" label="Depth min" suffix="km"/>
               </v-col>
               <v-col cols="6">
-                <NumberField v-model="form.maxdepth" label="Depth max [km]"/>
+                <NumberField hide-details v-model="form.maxdepth" label="Depth max" suffix="km"/>
               </v-col>
             </v-row>
             <v-row>
               <v-col cols="6">
-                <NumberField v-model="form.minmag" label="Magnitude min"/>
+                <NumberField hide-details v-model="form.minmag" label="Magnitude min"/>
               </v-col>
               <v-col cols="6">
-                <NumberField v-model="form.maxmag" label="Magnitude max"/>
+                <NumberField hide-details v-model="form.maxmag" label="Magnitude max"/>
               </v-col>
             </v-row>
           </v-col>

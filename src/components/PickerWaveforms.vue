@@ -1,16 +1,13 @@
 <script setup lang="ts">
-import type { FilterOptions, PickMap, StationRefTimes, ChartData } from '@/types'
+import { DenoiseProcessor, RotateProcessor, FilterProcessor, SpectrogramProcessor } from '@/utils/waveformProcessor'
+import type { FilterOptions, StationRefTimes, ChartData, WaveformProcessInterface } from '@/types'
+import type { Pick } from '@/lib/sismojs/src/core/event/types'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
 import type { VLine } from '@/lib/lichen/src/types'
-import type { Pick } from '@/lib/sismojs/src/types'
-import { toNetSta, applyFilter } from '@/utils'
+import { toNetSta } from '@/utils'
 import { ref, watch, computed } from 'vue'
 import { useAppStore } from '@/stores/app'
 import Lichen from '@/lib/lichen/src'
-
-const REDRAW = 0b001
-const UPDATE_VLINES = 0b010
-const UPDATE_CROSSHAIR = 0b100
 
 const emit = defineEmits(['activeChannel', 'createPick', 'update:start', 'update:end', 'selectPicks', 'pickerTime'])
 
@@ -18,13 +15,16 @@ const store = useAppStore()
 
 const props = defineProps<{
   activeStation: string | null
-  pickMap: PickMap
+  denoiser: boolean
+  spectrogram: boolean
+  detector: boolean
+  rotation: 'ZNE' | 'ZRT'
   filter: FilterOptions | null
   phase: 'P' | 'S' | undefined
   data: Trace[]
   refTimeKey: string
   stationRefTimes: StationRefTimes
-  stationDistance: Record<string,number>
+  controller: AbortController
 }>()
 
 const container = ref()
@@ -32,13 +32,26 @@ const start = ref(-2e3)
 const end = ref(10e3)
 const charts: Record<number, Lichen> = {}
 let chartData: Record<string, ChartData> = {}
+const chartWidth = ref(800)
 
-const pickerData = computed(() => {
-  const result: Trace[] = []
+const denoiseProcessor = new DenoiseProcessor(store.dataManager, props.controller.signal)
+const rotateProcessor = new RotateProcessor()
+const filterProcessor = new FilterProcessor()
+const spectrogramProcessor = new SpectrogramProcessor()
+
+const loading = ref(false)
+
+const waveformData = computed(() => {
+  const result: WaveformProcessInterface[] = []
   if (props.activeStation != null) {
     for (const tr of props.data) {
       if (tr.stats.id.startsWith(props.activeStation)) {
-        result.push(tr)
+        result.push({
+          id: tr.stats.id,
+          start: tr.stats.starttime as number,
+          step: 1e3 / tr.stats.samplingRate,
+          values: tr.data
+        })
       }
     }
   }
@@ -46,12 +59,31 @@ const pickerData = computed(() => {
 })
 
 const distance = computed(() => {
-  const value = props.stationDistance[props.activeStation!]
+  const value = store.dataManager.getStationDistance(props.activeStation!)
   if (value != null) {
-    return (value / 1000).toFixed(1)
+    return value
   }
-  return ''
+  return -1
 })
+
+const azimuth = computed(() => {
+  const value = store.dataManager.getStationAzimuth(props.activeStation!)
+  if (value != null) {
+    return value
+  }
+  return -1
+})
+
+async function processWaveforms() {
+  loading.value = true
+  let data = waveformData.value
+  data = await denoiseProcessor.setEnable(props.denoiser).process(data)
+  data = await rotateProcessor.setEnable(props.rotation === 'ZRT').setAzimuth(azimuth.value).process(data)
+  data = await filterProcessor.setEnable(props.filter != null).setFilterParams(props.filter).process(data)
+  data = await spectrogramProcessor.setEnable(props.spectrogram).process(data)
+  loading.value = false
+  return data
+}
 
 function getRefTime(seedid: string) {
   const netsta = toNetSta(seedid)
@@ -69,36 +101,51 @@ function updateTimeWindow(seedid: string, t1: number, t2: number) {
   end.value = t2 - refTime
 }
 
-function getVLines(index: number, seedid: string) {
+function getPickTooltip(p: Pick) {
+  return `<table class="pick-tooltip"><tbody>
+    <tr><th>Creation time</th><td>${p.creationInfo.creationTime}</td></tr>
+    <tr><th>Filter</th><td>${p.filterID || '-'}</td></tr>
+    <tr><th>Author</th><td>${p.creationInfo.author}</td></tr>
+  </tbody></table>`
+}
+
+function getVLines(index: number, dataLength: number, seedid: string) {
   const netsta = toNetSta(seedid)
   const result: VLine[] = [
-    {
-      color: 'red',
-      x: props.stationRefTimes[netsta].O
-    },
-    {
-      color: 'blue',
-      x: props.stationRefTimes[netsta].P,
-      text: index === pickerData.value.length - 1 ? 'P' : undefined,
-      position: 'bottom'
-    },
-    {
-      color: 'blue',
-      x: props.stationRefTimes[netsta].S,
-      text: index === pickerData.value.length - 1 ? 'S' : undefined,
-      position: 'bottom'
-    }
+    { color: store.settings['color.TTT'], x: props.stationRefTimes[netsta].P, text: index === dataLength - 1 ? 'P' : undefined, position: 'bottom' },
+    { color: store.settings['color.TTT'], x: props.stationRefTimes[netsta].S, text: index === dataLength - 1 ? 'S' : undefined, position: 'bottom' },
+    { color: store.settings['color.T0'], x: props.stationRefTimes[netsta].O, text: index === dataLength - 1 ? 'T0' : undefined, position: 'bottom' }
   ]
-  if (props.pickMap[netsta] != null && props.pickMap[netsta][seedid] != null) {
-    for (const p of props.pickMap[netsta][seedid]) {
+  if (props.stationRefTimes[netsta].P_NLL != null) {
+    result.push({ color: store.settings['color.TTTNLL'], x: props.stationRefTimes[netsta].P_NLL, text: index === dataLength - 1 ? 'P (NLL)' : undefined, position: 'bottom' })
+  }
+  if (props.stationRefTimes[netsta].S_NLL != null) {
+    result.push({ color: store.settings['color.TTTNLL'], x: props.stationRefTimes[netsta].S_NLL, text: index === dataLength - 1 ? 'S (NLL)' : undefined, position: 'bottom' })
+  }
+  if (props.detector) {
+    const key = `${netsta}-${store.settings['detector.model']}-${store.settings['detector.pThreshold']}-${store.settings['detector.sThreshold']}`
+    const detection = store.dataManager.detectorCache[key]
+    if (detection != null) {
+      for (const d of detection) {
+        result.push({ color: store.settings['color.detector'], x: d.time, text: index === dataLength - 1 ? d.phase : undefined, position: 'bottom' })
+      }
+    }
+  }
+  if (store.pickMap[netsta] != null && store.pickMap[netsta][seedid] != null) {
+    for (const p of store.pickMap[netsta][seedid]) {
+      const text = [p.phaseHint]
+      if (p.onset != null) {
+        text.push(`(${p.onset})`)
+      }
       result.push({
         arrow: p.polarity === 'positive' ? 'top' : p.polarity === 'negative' ? 'bottom' : undefined,
-        color: p.evaluation_mode === 'manual' ? 'green' : 'red',
-        text: p.phase_hint,
+        color: p.evaluationMode === 'manual' ? store.settings['color.pickManual'] : store.settings['color.pickAutomatic'],
+        text: text.join(' '),
         position: 'top',
         selectable: true,
-        x: p.time._value!.getTime(),
-        data: p.public_id
+        x: p.time.object.getTime(),
+        data: p.publicID,
+        tooltip: getPickTooltip(p)
       })
     }
   }
@@ -109,136 +156,197 @@ function handleVlineSelection(vlines: VLine[]) {
   emit('selectPicks', vlines.map(x => x.data))
 }
 
-function getSerie(tr: Trace) {
-  let values = tr.data
-  if (props.filter != null) {
-    values = applyFilter(props.filter, tr.stats.samplingRate, values)
-  }
+function toSerie(data: WaveformProcessInterface) {
   return {
-    start: tr.stats.starttime!,
-    step: 1000 / tr.stats.samplingRate,
-    data: values,
-    color: store.settings.COLOR.WAVEFORM,
+    start: data.start,
+    step: data.step,
+    data: data.values,
+    color: store.settings['color.waveform'],
     enabled: true
   }
 }
 
-function createChart(index: number, chartContainer: HTMLElement, seedid: string, tr: Trace) {
+function createSpectrogram(chartContainer: HTMLElement, index: number, dataLength: number, data: WaveformProcessInterface) {
   const result = new Lichen(chartContainer, {
-    header: { title: seedid.split('.').slice(2, 4).join('.'), position: 'left', width: 100 },
-    legend: { enabled: false },
-    crosshair: { enabled: props.phase != null, text: index === 0 ? props.phase : '', sticky: false },
-    synced: () => charts,
-    xAxis: { enabled: index === pickerData.value.length -1 },
-    selection: null,
-    tooltip: false,
-    type: 'line',
-    height: 120,
-    vLines: getVLines(index, seedid),
-    series: [getSerie(tr)],
+    header: { title: data.id.replace('..', '.--.').split('.').slice(2, 4).join('.'), position: 'left', width: 100 },
+    legend: { enabled: false }, crosshair: { enabled: false }, synced: () => charts,
+    xAxis: { enabled: index === dataLength - 1 }, yAxis: { max: Math.min(data.spectrogram!.yMax, 50) },
+    selection: null, tooltip: false, type: 'heatmap3d', autoResize: false, zoom: 'x',
+    height: store.settings['picker.spectrogramHeight'], width: chartWidth.value, 
+    colorScale: {
+      min: 0, max: data.spectrogram!.zMax, logarithmic: false,
+      stops: Lichen.getColorScale(store.settings['color.spectrogram'])
+    },
+    series: {
+      smoothing: true,
+      start: data.start, step: data.step, data: data.spectrogram!.values,
+      yMin: data.spectrogram!.yMin, yMax: data.spectrogram!.yMax,
+      zMin: data.spectrogram!.zMin, zMax: data.spectrogram!.zMax
+    },
     hooks: {
       beforeResetDisplay: () => false,
       beforeUpdate: (chart: Lichen) => {
-        const dataUtils = chart.dataUtils
+        const dataUtils = chart.master.getRegistered('DATA_UTILS')
         if (props.activeStation != null) {
           updateTimeWindow(props.activeStation!, dataUtils.start!, dataUtils.end!)
-          const [yMin, yMax] = [dataUtils.yMin, dataUtils.yMax]
-          if (yMin != null && yMax != null && dataUtils.computed.series != null && dataUtils.computed.series[0] != null) {
-            const halfAmplitude = (yMax - yMin) / 2
-            chart.dataUtils.yMin = dataUtils.computed.series[0].avgValue - halfAmplitude
-            chart.dataUtils.yMax = dataUtils.computed.series[0].avgValue + halfAmplitude
-            return true
-          }
+          return true
         }
         return false
-      },
-      onCursorMove: (x: number, y: number) => emit('pickerTime', x),
-      onVlineSelection: handleVlineSelection,
-      onDblClick: (t: number) => emit('createPick', t),
-      onActive: (chart: Lichen) => emit('activeChannel', `${props.activeStation}.${chart.opt.header.title}`)
+      }
     }
   }, false)
   return result
 }
 
-function update(actionBitMap = 0) {
-  for (const [index, tr] of pickerData.value.entries()) {
-    if (chartData[tr.stats.id] == null) {
-      // Force redraw if not all charts already created
-      actionBitMap |= REDRAW
+function createWaveform(chartContainer: HTMLElement, index: number, dataLength: number, data: WaveformProcessInterface) {
+  const result = new Lichen(chartContainer, {
+    header: { title: data.id.replace('..', '.--.').split('.').slice(2, 4).join('.'), position: 'left', width: 100 },
+    legend: { enabled: false }, synced: () => charts,
+    crosshair: { enabled: props.phase != null, text: index === 0 ? props.phase : '', sticky: false },
+    xAxis: { enabled: index === dataLength - 1 }, selection: null, tooltip: false, autoResize: false,
+    type: 'line', height: store.settings['picker.pickerWaveformHeight'], width: chartWidth.value, 
+    vLines: getVLines(index, dataLength, data.id),
+    series: [toSerie(data)],
+    hooks: {
+      onCursorMove: (x: number, y: number) => emit('pickerTime', x),
+      onVlineSelection: handleVlineSelection,
+      onDblClick: (t: number) => emit('createPick', t),
+      onActive: (chart: Lichen) => emit('activeChannel', `${props.activeStation}.${chart.opt.header.title?.replace('--', '')}`),
+      beforeResetDisplay: () => false,
+      beforeUpdate: (chart: Lichen) => {
+        const dataUtils = chart.master.getRegistered('DATA_UTILS')
+        if (props.activeStation != null) {
+          updateTimeWindow(props.activeStation!, dataUtils.start!, dataUtils.end!)
+          const [yMin, yMax] = [dataUtils.yMin, dataUtils.yMax]
+          if (yMin != null && yMax != null && dataUtils.computed.series != null && dataUtils.computed.series[0] != null) {
+            const halfAmplitude = (yMax - yMin) / 2
+            dataUtils.yMin = dataUtils.computed.series[0].avgValue - halfAmplitude
+            dataUtils.yMax = dataUtils.computed.series[0].avgValue + halfAmplitude
+            return true
+          }
+        }
+        return false
+      }
     }
+  }, false)
+  return result
+}
+
+function updateVlines() {
+  for (const [netsta, currChartData] of Object.entries(chartData)) {
+    const chartFrontPanel = currChartData.chart.master.getRegistered('FRONT_PANEL')
+    currChartData.chart.opt.vLines = getVLines(currChartData.index, Object.keys(chartData).length, netsta)
+    chartFrontPanel.update(null)
   }
-  for (const [index, tr] of pickerData.value.entries()) {
-    if (chartData[tr.stats.id] == null) {
-      const div = document.createElement('div')
-      container.value.appendChild(div)
-      const chart = createChart(index, div, tr.stats.id, tr)
-      chartData[tr.stats.id] = { index, chart, container: div }
-      const [x1, x2] = getXRange(tr.stats.id)
-      chart.setXRange(x1, x2)
-    } else {
-      chartData[tr.stats.id].index = index
-      const chart = chartData[tr.stats.id].chart
-      if (actionBitMap & UPDATE_VLINES) {
-        chart.opt.vLines = getVLines(index, tr.stats.id)
-        chart.frontPanel.update(null)
-      }
-      if (actionBitMap & UPDATE_CROSSHAIR) {
-        chart.opt.crosshair!.enabled = props.phase != null
-        chart.opt.crosshair!.text = index === 0 ? props.phase : ''
-      }
-      if (actionBitMap & REDRAW) {
-        chart.opt.xAxis!.enabled = index === pickerData.value.length -1
-        chart.opt.series = [getSerie(tr)]
-        chart.setYRange(null, null)
+}
+
+function updateCrosshair() {
+  for (const currChartData of Object.values(chartData)) {
+    const chart = currChartData.chart
+    chart.opt.crosshair!.enabled = props.phase != null
+    chart.opt.crosshair!.text = currChartData.index === 0 ? props.phase : ''
+  }
+}
+
+async function update(redraw=false) {
+  if (container.value != null && props.activeStation != null) {
+    const data = await processWaveforms()
+    chartWidth.value = Math.floor(container.value.getBoundingClientRect().width)
+    for (const currData of data) {
+      if (chartData[currData.id] == null) {
+        redraw = true
       }
     }
+    const [x1, x2] = getXRange(props.activeStation!)
+    for (const [index, currData] of data.entries()) {
+      if (chartData[currData.id] == null) {
+        const div = document.createElement('div')
+        container.value.appendChild(div)
+        const chartBuilder = currData.spectrogram != null ? createSpectrogram : createWaveform
+        const chart = chartBuilder(div, index, data.length, currData)
+        if (currData.spectrogram == null) {
+          chartData[currData.id] = { index, chart, container: div }
+        }
+        // const [x1, x2] = getXRange(currData.id)
+        chart.setXRange(x1, x2)
+      } else {
+        chartData[currData.id].index = index
+        const chart = chartData[currData.id].chart
+        if (redraw) {
+          chart.opt.xAxis!.enabled = index === data.length - 1
+          chart.opt.series = [toSerie(currData)]
+          chart.setYRange(null, null)
+        }
+      }
+    }
+    updateVlines()
+    updateCrosshair()
   }
 }
 
 function reset() {
-  for (const current of Object.values(chartData)) {
-    current.chart.destroy()
-    current.container.remove()
+  for (const chart of Object.values(charts)) {
+    chart.destroy()
   }
+  container.value.innerHTML = ''
   chartData = {}
 }
 
-watch(() => props.filter, () => update(REDRAW))
+watch([
+  () => props.activeStation,
+  () => props.denoiser,
+  () => props.rotation,
+  () => props.filter,
+  () => props.spectrogram,
+  () => store.settings
+], () => {
+  reset()
+  update(true)
+})
 
-watch(() => props.phase, () => update(UPDATE_CROSSHAIR))
+watch(() => props.data, (value, oldValue) => {
+  const currSeedIds = value.map(x => x.stats.id).filter(x => toNetSta(x) === props.activeStation)
+  const prevSeedIds = oldValue.map(x => x.stats.id).filter(x => toNetSta(x) === props.activeStation)
+  for (const seedid of currSeedIds) {
+    if (prevSeedIds.indexOf(seedid) < 0) {
+      update(true)
+      break
+    }
+  }
+})
 
-watch(() => props.pickMap, () => update(UPDATE_VLINES))
+watch([
+  () => store.pickMap,
+  () => props.detector
+], () => updateVlines())
+
+watch(() => store.dataManager.detectorCache, () => updateVlines(), { deep: true })
+
+watch(() => props.phase, () => updateCrosshair())
 
 watch(() => props.refTimeKey, () => {
-  for (const current of Object.values(chartData)) {
+  for (const chart of Object.values(charts)) {
     const [t1, t2] = getXRange(props.activeStation!)
-    current.chart.setXRange(t1, t2)
+    chart.setXRange(t1, t2)
   }
 })
-
-watch(() => props.data, () => {
-  if (container.value == null) {
-    return
-  }
-  update()
-  const sorted = document.createDocumentFragment()
-  for (const tr of pickerData.value) {
-    sorted.appendChild(chartData[tr.stats.id].container)
-  }
-  container.value.appendChild(sorted)
-})
-
-watch(() => props.activeStation, (value) => {
-  if (value == null) {
-    return
-  }
-  reset()
-  update()
-}, { immediate: true })
 </script>
 
 <template>
-  <div>{{ props.activeStation }} <span class="text-caption">- {{ distance }} km</span></div>
+  <div class="mb-3">
+    {{ props.activeStation }}
+    <span class="text-caption">- Dist: {{ distance.toFixed(1) }} km | Az: {{ azimuth.toFixed(1) }}&deg;</span>
+    <v-progress-circular v-if="loading" indeterminate="disable-shrink" size="20" class="ml-4"/>
+  </div>
   <div ref="container"></div>
 </template>
+
+<style>
+.pick-tooltip th {
+  text-align: right;
+}
+.pick-tooltip th,
+.pick-tooltip td {
+  padding: 0 5px;
+}
+</style>

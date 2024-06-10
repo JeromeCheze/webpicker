@@ -1,22 +1,20 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import { type EventParameter } from '@/lib/sismojs/src/types/index'
 import L, { type LatLngBoundsExpression, type LatLngTuple } from 'leaflet'
+import { Event } from '@/lib/sismojs/src/core/event/types'
+import { ref, onMounted, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 import router from '@/router'
 
 const store = useAppStore()
 
 const props = defineProps<{
-  events: EventParameter[]
-  active?: EventParameter
   height: number
 }>()
 
 const mapContainer = ref()
 const map = ref(null as L.Map | null)
 const layers = {} as { [eventid: string]: L.CircleMarker }
-const activeEvent = ref(undefined as EventParameter | undefined)
+const activeEvent = ref(undefined as Event | undefined)
 
 watch(() => activeEvent.value, () => {
   setTimeout(() => {
@@ -24,16 +22,16 @@ watch(() => activeEvent.value, () => {
   }, 500)
 })
 
-function getEventMarker(pos: LatLngTuple, event: EventParameter) {
+function getEventMarker(pos: LatLngTuple, event: Event) {
   const marker = L.circleMarker(pos, {
     weight: 1,
-    radius: event._pm != null ? 3 + event._pm.mag.value * 2 : 5,
+    radius: event.preferredMagnitudeID.id != null ? 3 + event.preferredMagnitudeID.referredObject.mag.value * 2 : 5,
     color: event.type === 'not reported' || event.type === 'not existing'
       ? 'grey'
-      : event._po!.evaluation_mode === 'automatic'
+      : event.preferredOriginID.referredObject.evaluationMode === 'automatic'
         ? 'red'
         : 'green',
-    fillColor: event._pm == null
+    fillColor: event.preferredMagnitudeID.id == null
       ? 'blue'
       : event.type === 'earthquake'
         ? 'green'
@@ -44,9 +42,9 @@ function getEventMarker(pos: LatLngTuple, event: EventParameter) {
             : 'purple',
     fillOpacity: event.type == null ? 0 : 0.4
   }).addTo(map.value as L.Map)
-  marker.bindPopup(event.public_id)
+  marker.bindPopup(event.publicID)
   marker.on('click', () => {
-    focusEvent(event.public_id)
+    focusEvent(event.publicID)
   })
   return marker
 }
@@ -75,12 +73,12 @@ function initMap() {
   L.control.scale({ imperial: false }).addTo(map.value as L.Map)
   plan.addTo(map.value as L.Map)
   const bounds: LatLngTuple[] = []
-  for (const event of props.events) {
-    if (event._po == null) {
+  for (const event of store.cacheEventList) {
+    if (event.preferredOriginID.id == null) {
       continue
     }
-    const pos: LatLngTuple = [event._po.latitude.value, event._po.longitude.value]
-    const worldCenter = store.settings.GENERAL.WORLD_CENTER_LONGITUDE
+    const pos: LatLngTuple = [event.preferredOriginID.referredObject.latitude.value, event.preferredOriginID.referredObject.longitude.value]
+    const worldCenter = store.settings['miscellaneous.longitudeReference']
     if (worldCenter > 0 && worldCenter - 180 > pos[1]) {
       pos[1] += 360
     } else if (worldCenter < 0 && worldCenter + 180 < pos[1]) {
@@ -88,7 +86,7 @@ function initMap() {
     }
     bounds.push(pos)
     const marker = getEventMarker(pos, event)
-    layers[event.public_id] = marker
+    layers[event.publicID] = marker
   }
   map.value.on('click', () => {
     focusEvent(null)
@@ -97,11 +95,11 @@ function initMap() {
 }
 
 function focusEvent(eventid: string | null) {
-  if (activeEvent.value != null && activeEvent.value.public_id === eventid) {
+  if (activeEvent.value != null && activeEvent.value.publicID === eventid) {
     eventid = null
   }
   if (eventid != null) {
-    activeEvent.value = props.events.find(x => x.public_id === eventid)
+    activeEvent.value = store.cacheEventList.find(x => x.publicID === eventid)
   } else {
     activeEvent.value = undefined
   }
@@ -123,21 +121,21 @@ function focusEvent(eventid: string | null) {
 
 function goToEvent() {
   if (activeEvent.value != null) {
-    router.push({ name: 'event', params: { eventid: activeEvent.value.public_id } })
+    router.push({ name: 'event', params: { eventid: activeEvent.value.publicID } })
   }
 }
 
 onMounted(() => {
   initMap()
-  if (props.active != null) {
-    focusEvent(props.active.public_id)
+  if (store.currentEvent != null) {
+    focusEvent(store.currentEvent.publicID)
   }
 })
 </script>
 
 <template>
-  <v-card >
-    <v-card-text v-if="props.events.length === 0">
+  <v-card>
+    <v-card-text v-if="store.cacheEventList.length === 0">
       No events to display<br>
       Go to <router-link :to="{ name: 'form' }">form</router-link> to define query parameters
     </v-card-text>
@@ -148,11 +146,11 @@ onMounted(() => {
   <v-navigation-drawer location="right" permanent v-if="activeEvent" width="400">
     <v-card>
       <v-card-title>
-        <v-btn @click="goToEvent"><v-icon>mdi-checkbook-arrow-right</v-icon></v-btn>
-        {{ activeEvent.public_id }}
+        <v-btn variant="text" color="primary" :to="{ name: 'event', params: { eventid: activeEvent.publicID } }">
+          {{ activeEvent.publicID }}
+        </v-btn>
         <v-chip
           label
-          variant="outlined"
           size="x-small"
           :color="activeEvent.type == null ? 'grey' : 'green'"
           class="text-uppercase"
@@ -161,7 +159,7 @@ onMounted(() => {
         </v-chip>
       </v-card-title>
     </v-card>
-    <OriginPanel :origin="activeEvent._po" :action-required="false" compact/>
-    <MagnitudePanel :magnitude="activeEvent._pm" :action-required="false" compact/>
+    <OriginPanel :origin="activeEvent.preferredOriginID.referredObject" :action-required="false" compact/>
+    <MagnitudePanel :magnitude="activeEvent.preferredMagnitudeID.referredObject" :action-required="false" compact/>
   </v-navigation-drawer>
 </template>

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ColorScaleOptions } from '@/lib/lichen/src/types'
-import type { Inventory } from '@/lib/sismojs/src/types'
+import { ref, computed, watch, onMounted } from 'vue'
+import type { WPNotificationOptions } from '@/types'
 import DataUtils from '@/lib/lichen/src/dataUtils'
 import L, { type LatLngTuple } from 'leaflet'
-import { ref, computed, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 import 'leaflet-ellipse'
 
@@ -12,7 +12,6 @@ const store = useAppStore()
 const mapContainer = ref()
 const map = ref(null as L.Map | null)
 const layers = [] as L.Layer[]
-const inventory = ref({} as Inventory)
 
 const originLatLng = computed(() => {
   if (store.currentOrigin != null) {
@@ -26,32 +25,14 @@ function initMap() {
   }
   const container = mapContainer.value
   map.value = L.map(container, { trackResize: false, attributionControl: false })
-  const plan = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-    attribution: 'Sources: Esri, HERE, DeLorme, USGS, Intermap, increment P Corp., NRCAN, Esri Japan, METI, Esri China (Hong Kong), <br>Esri (Thailand), TomTom, MapmyIndia, &copy; OpenStreetMap contributors, and the GIS User Community',
-  })
-  const worldtopomap = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
-    attribution: '&copy; Esri, HERE, DeLorme, TomTom, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, <br>Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), swisstopo, MapmyIndia, © OpenStreetMap contributors, and the GIS User Community'
-  })
-  const satmap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: '&copy; Esri, DigitalGlobe, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, <br>USGS, AEX, Getmapping, Aerogrid, IGN, IGP, swisstopo, and the GIS User Community'
-  })
-  const baseLayers = {
-    Plan: plan,
-    Terrain: worldtopomap,
-    Satellite: satmap
-  }
+  const plan = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}')
+  const worldtopomap = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}')
+  const satmap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}')
+  const baseLayers = { Plan: plan, Terrain: worldtopomap, Satellite: satmap }
   L.control.layers(baseLayers).addTo(map.value as L.Map)
   L.control.scale({ imperial: false }).addTo(map.value as L.Map)
   plan.addTo(map.value as L.Map)
-}
-
-function getStationPos(net: string, sta: string) {
-  if (inventory.value[net] != null) {
-    if (inventory.value[net][sta] != null) {
-      return [inventory.value[net][sta].lat, inventory.value[net][sta].lon]
-    }
-  }
-  return null
+  map.value.setView([0, 0], 5)
 }
 
 function displayOrigin() {
@@ -69,24 +50,39 @@ function displayOrigin() {
   const originMarker = L.circleMarker(originLatLng.value, { color: 'red', radius: 5, fillOpacity: 1 }).addTo(map.value as L.Map)
   layers.push(ellipse)
   layers.push(originMarker)
-  map.value.setView(originLatLng.value, 8)
+  // map.value.setView(originLatLng.value, 8)
 }
 
-function displayStation() {
+function handleNotification(opt: WPNotificationOptions) {
+  store.notification.push(opt)
+}
+
+function displayStations() {
   if (store.currentOrigin == null || store.currentArrivals == null) {
     return
   }
-  store.dataManager.getOriginStationInventory('..', store.currentOrigin).then((inv) => {
-    inventory.value = inv as Inventory
-    if (store.currentOrigin == null || store.currentArrivals == null || map.value == null || inventory.value == null) {
+  store.dataManager.getOriginStationInventory('..', store.currentOrigin, store.currentArrivals, handleNotification).then((inv) => {
+    if (store.currentOrigin == null || store.currentArrivals == null || map.value == null) {
       return
     }
-    const evPos = [store.currentOrigin.latitude.value, store.currentOrigin.longitude.value] as LatLngTuple
-    const bounds: LatLngTuple[] = [evPos] 
+    const oPos = [store.currentOrigin.latitude.value, store.currentOrigin.longitude.value] as LatLngTuple
+    const bounds: LatLngTuple[] = [oPos]
+    const stationMap: Record<string, number | null> = {}
     let maxRes = 0
     for (const arrival of store.currentArrivals) {
-      if (arrival.time_weight > 0) {
-        maxRes = Math.max(maxRes, Math.abs(arrival.time_residual))
+      if (arrival.timeResidual != null && arrival.timeWeight != null && arrival.timeWeight != null) {
+        const netsta = arrival.pickID.referredObject.waveformID.netsta
+        const v = stationMap[netsta]
+        if (arrival.timeWeight > 0) {
+          maxRes = Math.max(maxRes, Math.abs(arrival.timeResidual))
+          stationMap[netsta] = v != null
+            ? Math.abs(v) > Math.abs(arrival.timeResidual)
+              ? v
+              : arrival.timeResidual
+            : arrival.timeResidual
+        } else {
+          stationMap[netsta] = v != null ? v : null
+        }
       }
     }
     const colorScale: ColorScaleOptions = {
@@ -100,38 +96,35 @@ function displayStation() {
       logarithmic: false
     }
     const oLon = store.currentOrigin.longitude.value
-    for (const arrival of store.currentArrivals) {
-      if (arrival._pick == null || arrival._pick.waveform_id == null) {
-        continue
-      }
-      const wfid = arrival._pick.waveform_id
-      const pos = getStationPos(wfid.network_code, wfid.station_code) as LatLngTuple | null
+    for (const [netsta, residual] of Object.entries(stationMap)) {
+      const pos = store.dataManager.getStationPos(netsta)
       if (pos == null) {
-        console.warn(`failed to get coordinates for channel ${arrival._pick._seedid}`)
+        console.warn(`failed to get coordinates for channel ${netsta}`)
         continue
       }
-      if (oLon > 0 && pos[1] < 0) {
-        pos[1] += 360
-      } else if (oLon < 0 && pos[1] > 0) {
-        pos[1] -= 360
+      if (oLon > 90 && pos.lon < 0) {
+        pos.lon += 360
+      } else if (oLon < -90 && pos.lon > 0) {
+        pos.lon -= 360
       }
-      bounds.push(pos)
-      const color = arrival.time_weight === 0 ? 'grey' : DataUtils.getColor(arrival.time_residual, colorScale) as string
-      const marker = L.circleMarker(pos, { radius: 4, color: 'grey', fillOpacity: 1, fillColor: color, weight: 1 }).addTo(map.value as L.Map)
-      const tooltip = L.tooltip().setContent(`${wfid.network_code}.${wfid.station_code}`)
-      marker.bindTooltip(tooltip)
-      layers.push(tooltip)
+      const staPos = [pos.lat, pos.lon] as LatLngTuple
+      bounds.push(staPos)
+      const color = residual == null ? 'grey' : DataUtils.getColor(residual, colorScale) as string
+      const marker = L.circleMarker(staPos, { radius: 4, color: 'grey', fillOpacity: 1, fillColor: color, weight: 1 })
+      .addTo(map.value as L.Map)
+      // marker.bindPopup(netsta)
       layers.push(marker)
-      if (arrival.time_weight === 0) {
-        marker.bringToBack()
-      }
-      if (arrival.time_weight > 0) {
-        const line = L.polyline([evPos, pos], { color: 'grey', weight: 1 }).addTo(map.value as L.Map)
+      if (residual != null) {
+        const line = L.polyline([oPos, staPos], { color: 'grey', weight: 1 }).addTo(map.value as L.Map)
         layers.push(line)
         line.bringToBack()
       }
     }
-    map.value.fitBounds(bounds)
+    if (bounds.length > 1) {
+      map.value.fitBounds(bounds, { animate: false })
+    } else {
+      map.value.setView(bounds[0], 8)
+    }
   })
 }
 
@@ -139,16 +132,29 @@ function reset() {
   for (const layer of layers) {
     layer.remove()
   }
+  layers.splice(0, layers.length)
 }
 
-watch(() => store.currentOrigin, () => {
+function update() {
   initMap()
   reset()
   if (store.currentOrigin != null) {
     displayOrigin()
-    displayStation()
+    displayStations()
   }
-}, { immediate: true })
+}
+
+// watch(() => store.currentOrigin, () => {
+//   update()
+// })
+
+watch(() => store.currentArrivals, () => {
+  update()
+})
+
+onMounted(() => {
+  update()
+})
 </script>
 
 <template>

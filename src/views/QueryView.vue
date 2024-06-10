@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { type EventParameter } from '@/lib/sismojs/src/types/index'
+// import { type EventParameter } from '@/lib/sismojs/src/types/index'
+import { Event } from '@/lib/sismojs/src/core/event/types'
 import { Client } from '@/lib/sismojs/src/fdsn'
 import { useRoute } from 'vue-router'
 import { useAppStore } from '@/stores/app'
@@ -11,7 +12,7 @@ const client = new Client('.')
 
 const height = document.body.getBoundingClientRect().height - 80
 const currentView = ref('list' as 'list' | 'map')
-const eventList = ref([] as EventParameter[])
+const eventList = ref([] as Event[])
 const loading = ref(false)
 
 onMounted(() => {
@@ -42,8 +43,8 @@ onMounted(() => {
   </v-row>
   <v-row>
     <v-col cols="12">
-      <ListEvents :height="height" :events="eventList" v-if="currentView === 'list'" :active="store.currentEvent"/>
-      <MapEvents :height="height" :events="eventList" v-if="currentView === 'map'" :active="store.currentEvent"/>
+      <ListEvents :height="height" v-if="currentView === 'list'"/>
+      <MapEvents :height="height" v-if="currentView === 'map'"/>
     </v-col>
   </v-row>
   <v-overlay v-model="loading" class="align-center justify-center text-black">

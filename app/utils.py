@@ -2,9 +2,9 @@ import os
 import sys
 import json
 import tempfile
+import xmltodict
 import subprocess
 from lxml import etree
-from flask import render_template
 from random import randint
 from datetime import datetime
 from obspy.core import AttribDict
@@ -106,6 +106,40 @@ class AuthorStatusHandler(object):
                 self._clean()._save()
         return self.__status
 
+def fix_ids(o):
+    if isinstance(o, list):
+        for item in o:
+            fix_ids(item)
+    elif isinstance(o, dict):
+        for k, v in o.items():
+            if isinstance(v, str) and k.endswith('ID'):
+                o[k] = f'smi:oca/1.0/{v}'
+            else:
+                fix_ids(v)
+
+def jquake_to_quakeml(jquake, add_prefix_id=True):
+    if add_prefix_id:
+        fix_ids(jquake)
+    qml = {
+        "q:quakeml": {
+            "@xmlns": "http://quakeml.org/xmlns/bed/1.2",
+            "@xmlns:q": "http://quakeml.org/xmlns/quakeml/1.2",
+            "eventParameters": {
+                "@publicID": "smi:oca/1.0/NA",
+                "event": jquake
+            }
+        }
+    }
+    return xmltodict.unparse(qml).replace(' encoding="utf-8"', '')
+
+def sc3ml_to_quakeml(sc3ml_str, add_prefix_id=True):
+    dom = etree.fromstring(sc3ml_str)
+    newdom = apply_xslt(dom, get_sc3ml_to_qml_xslt())
+    qml = etree.tostring(newdom)
+    jquake = xmltodict.parse(qml)
+    if add_prefix_id:
+        fix_ids(jquake)
+    return xmltodict.unparse(jquake)
 
 def dump_seiscomp3_config():
     fd, conf_filename = tempfile.mkstemp()
@@ -119,16 +153,13 @@ def dump_seiscomp3_config():
     f.close()
     os.rename(conf_filename, CONFIG.seiscomp.config_filename)
 
-def get_sc3ml_to_qml_xslt(schema_version, seiscomp_root):
-    XSL_SC3ML_TO_QML1_2 = {
-        '0.7':  '%SEISCOMP_ROOT%/share/xml/0.7/sc3ml_0.7__quakeml_1.2.xsl',
-        '0.8':  '%SEISCOMP_ROOT%/share/xml/0.8/sc3ml_0.8__quakeml_1.2.xsl',
-        '0.9':  '%SEISCOMP_ROOT%/share/xml/0.9/sc3ml_0.9__quakeml_1.2.xsl',
-        '0.10': '%SEISCOMP_ROOT%/share/xml/0.10/sc3ml_0.10__quakeml_1.2.xsl',
-        '0.11': '%SEISCOMP_ROOT%/share/xml/0.11/sc3ml_0.11__quakeml_1.2.xsl',
-        '0.12': '%SEISCOMP_ROOT%/share/xml/0.12/sc3ml_0.12__quakeml_1.2.xsl'
-    }
-    return XSL_SC3ML_TO_QML1_2[schema_version].replace('%SEISCOMP_ROOT%', seiscomp_root)
+def get_sc3ml_to_qml_xslt():
+    v = CONFIG.seiscomp.schema_version
+    return f'{ CONFIG.seiscomp.root }/share/xml/{v}/sc3ml_{v}__quakeml_1.2.xsl'
+
+def get_qml_to_sc3ml_xslt():
+    v = CONFIG.seiscomp.schema_version
+    return f'{ CONFIG.seiscomp.root }/share/xml/{v}/quakeml_1.2__sc3ml_{v}.xsl'
 
 def gen_id():
     hexa = ['%x'% x for x in range(0, 16)]
@@ -156,41 +187,41 @@ def fix_scmag_magnitude_public_id(root):
     for mag in mags:
         mag.attrib['publicID'] = mag.attrib['publicID'].replace('/', '.')
 
-def sc3ml_to_qml(sc3ml_str, sc3ml_version):
-    dom = etree.fromstring(sc3ml_str)
-    newdom = apply_xslt(dom, get_sc3ml_to_qml_xslt(sc3ml_version, CONFIG.seiscomp.root))
-    return etree.tostring(newdom)
-
-def write_sc3ml(jquake, filename, version, quakeml_compatible=False):
+def write_sc3ml(jquake, filename):
+    qml = jquake_to_quakeml(jquake, add_prefix_id=False)
+    dom = etree.fromstring(qml)
+    sc3ml = apply_xslt(etree.ElementTree(dom), get_qml_to_sc3ml_xslt())
     with open(filename, 'w') as f:
-        f.write(render_template('sc3ml.xml', version=version, jquake=jquake, quakeml_compatible=quakeml_compatible))
+        f.write(etree.tostring(sc3ml).decode('utf-8'))
 
 def get_inventory(jquake):
+    _, inv_filename = tempfile.mkstemp(suffix=".xml")
     data = [
         'level=response',
-        'format=sc3ml'
+        'format=xml'
     ]
     t = jquake[0]['origin'][0]['time']['value'][0:19]
     for pick in jquake[0]['pick']:
-        wfid = pick['waveform_id']
-        loc = wfid['location_code'] if 'location_code' in wfid else '--'
-        data.append('%s %s %s %s %s %s' % (
-            wfid['network_code'], wfid['station_code'],
-            loc, wfid['channel_code'], t, t
-        ))
-    req_data = '\n'.join(data).encode('utf-8') if PYTHON3 else '\n'.join(data)
-    r = Request('http://%s/fdsnws/station/1/query' % CONFIG.fdsnws.station_sc3_host,
+        wfid = pick['waveformID']
+        loc = wfid['@locationCode'] if '@locationCode' in wfid else '--'
+        data.append(f'{wfid["@networkCode"]} {wfid["@stationCode"]} {loc} {wfid["@channelCode"]} {t} {t}')
+    req_data = '\r\n'.join(data).encode('utf-8')
+    r = Request('http://%s/fdsnws/station/1/query' % CONFIG.fdsnws.station_host,
                                data=req_data, headers={'Content-Type': 'text/plain'})
     inv = urlopen(r).read()
-    _, inv_filename = tempfile.mkstemp(suffix=".xml")
     with open(inv_filename, 'w') as f:
-        f.write(inv.decode('utf-8') if PYTHON3 else inv)
+        f.write(inv.decode('utf-8'))
+    prog = os.path.join(CONFIG.seiscomp.root, 'bin', 'fdsnxml2inv')
+    conv = subprocess.Popen([prog, inv_filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    sc3ml, _ = conv.communicate()
+    with open(inv_filename, 'w') as f:
+        f.write(sc3ml.decode('utf-8'))
     return inv_filename
 
 def commit_with_scdispatch(jquake):
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
     # print(sc3ml)
-    write_sc3ml(jquake, sc3ml, CONFIG.seiscomp.schema_version)
+    write_sc3ml(jquake, sc3ml)
     scdispatch = subprocess.Popen([
         SEISCOMP_PROGRAM, 'exec', 'scdispatch',
         '-H', CONFIG.seiscomp.messaging_host,
@@ -250,7 +281,7 @@ def apply_user_rules(method, username, data):
     elif method == 'POST':
         parameters = []
         selection = []
-        for line in data.decode('utf-8').splitlines():
+        for line in data.splitlines():
             if line == '':
                 continue
             if '=' in line:

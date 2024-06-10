@@ -1,33 +1,84 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { RouterView } from 'vue-router'
+import { getLocalStorageDefault, setLocalStorage } from './utils'
+import { ref, onMounted, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
+import { RouterView } from 'vue-router'
 
 const store = useAppStore()
 const authorDialog = ref(store.author == null)
 const authorValue = ref(store.author || '')
+const settingsDialog = ref(false)
+const createEventDialog = ref(false)
 const drawer = ref(true)
-const rail = ref(false)
+const rail = ref(getLocalStorageDefault('navDrawer', false) as boolean)
 const logDialog = ref(false)
+const infoNotification = ref(false)
+const infoNotificationText = ref('')
+const warningNotification = ref(false)
+const warningNotificationText = ref('')
+const progressNotification = ref(false)
+const progressNotificationValue = ref({ percent: 0, text: '' })
 
 function handleCreateEventClick() {
   // TODO
 }
 
 function handleSetAuthor() {
-  localStorage.setItem('author', authorValue.value)
+  setLocalStorage('author', authorValue.value)
   store.author = authorValue.value
+  store.activityManager.author = store.author
   authorDialog.value = false
 }
 
-onMounted(() => {
+function setBackground() {
   const appDiv = document.body.querySelector('.v-application') as HTMLElement | null
   if (appDiv != null) {
-    appDiv.style.background = 'linear-gradient(153deg, rgba(255,133,0,1) 0%, rgba(79,21,120,1) 100%)'
-    // appDiv.style.background = '#E3E9F0'
+    appDiv.style.background = store.settings['color.background']
   }
+}
+
+watch(rail, (value) => {
+  setLocalStorage('navDrawer', value)
+})
+
+watch(() => store.settings['color.background'], () => {
+  setBackground()
+})
+
+watch(() => store.notification, (value) => {
+  const curr = value.shift()
+  if (curr != null) {
+    if (curr.type === 'info') {
+      if (curr.value == null) {
+        infoNotification.value = false
+      } else {
+        infoNotificationText.value = curr.value
+        infoNotification.value = true
+      }
+    } else if (curr.type === 'warning') {
+      if (curr.value == null) {
+        warningNotification.value = false
+      } else {
+        warningNotificationText.value = curr.value
+        warningNotification.value = true
+      }
+    } else if (curr.type === 'progress') {
+      if (curr.value == null) {
+        progressNotification.value = false
+      } else {
+        progressNotificationValue.value = curr.value
+        progressNotification.value = true
+      }
+    }
+  }
+}, { deep: true })
+
+onMounted(() => {
+  setBackground()
   document.body.addEventListener('keydown', ev => {
-    store.keydownEvent = ev
+    if (!settingsDialog.value) {
+      store.keydownEvent = ev
+    }
   })
   document.body.addEventListener('keyup', ev => {
     store.keydownEvent = null
@@ -41,10 +92,26 @@ onMounted(() => {
 </script>
 
 <template>
-  <v-app>
+  <v-app :theme="store.settings['color.theme']" :class="{ custom: store.settings['color.surface'] != null && store.settings['color.surface'] !== '' }">
+    <v-main>
+      <v-container fluid>
+        <RouterView />
+      </v-container>
+      <v-snackbar v-model="infoNotification" timeout="2000">{{ infoNotificationText }}</v-snackbar>
+      <v-snackbar v-model="progressNotification" timeout="-1">
+        <v-progress-circular :model-value="progressNotificationValue.percent" :indeterminate="progressNotificationValue.percent === -1" size="16" class="mr-2"/>
+        {{ progressNotificationValue.text }}
+      </v-snackbar>
+      <v-snackbar v-model="warningNotification" timeout="-1" vertical color="warning">
+        <pre :style="{ maxHeight: '200px', overflowY: 'auto' }">{{ warningNotificationText }}</pre>
+        <template v-slot:actions>
+          <v-btn variant="text" @click="warningNotification = false">Close</v-btn>
+        </template>
+      </v-snackbar>
+    </v-main>
     <v-navigation-drawer v-model="drawer" :rail="rail" permanent>
       <v-list nav>
-        <v-list-item prepend-avatar="@/assets/webpicker_icon.png" class="font-weight-bold" @click.stop="rail = !rail">
+        <v-list-item prepend-avatar="@/assets/webpicker2.png" class="font-weight-bold" @click.stop="rail = !rail">
           WebPicker
           <template v-slot:append>
             <v-btn variant="text" icon="mdi-chevron-left" @click.stop="rail = !rail"></v-btn>
@@ -54,26 +121,33 @@ onMounted(() => {
         <v-list-item :to="{ name: 'form' }" title="Form" prepend-icon="mdi-pencil"></v-list-item>
         <v-list-item :to="{ name: 'query' }" title="Result" prepend-icon="mdi-database"></v-list-item>
         <v-list-item
-          :to="{ name: 'event', params: { eventid: store.currentEvent.public_id } }"
-          :title="store.currentEvent.public_id"
+          :to="{ name: 'event', params: { eventid: store.currentEvent.publicID } }"
+          :title="store.currentEvent.publicID"
           prepend-icon="mdi-bullseye"
           v-if="store.currentEvent != null"
         ></v-list-item>
+        <v-list-item
+          title="Create event"
+          prepend-icon="mdi-creation"
+          @click="createEventDialog = !createEventDialog"
+          :active="createEventDialog"
+        ></v-list-item>
         <v-divider></v-divider>
-        <v-list-item title="Settings" prepend-icon="mdi-cog"></v-list-item>
-        <v-list-item title="Logs" prepend-icon="mdi-console"></v-list-item>
-        <v-divider></v-divider>
+        <v-list-item
+          title="Settings"
+          prepend-icon="mdi-cog"
+          @click="settingsDialog = !settingsDialog"
+          :active="settingsDialog"
+        ></v-list-item>
+        <!-- <v-list-item title="Logs" prepend-icon="mdi-console"></v-list-item> -->
         <v-list-item :title="store.author || 'undefined'" prepend-icon="mdi-account" @click="authorDialog = true"></v-list-item>
       </v-list>
     </v-navigation-drawer>
-    <v-main>
-      <v-container fluid>
-        <RouterView />
-      </v-container>
-    </v-main>
-    <v-dialog v-model="authorDialog" persistent width="500">
+    <v-dialog v-model="authorDialog" persistent width="500" attach>
       <v-card>
-        <v-card-title>Set author</v-card-title>
+        <v-card-title>
+          <div class="text-h5 text-medium-emphasis ps-2">Set author</div>
+        </v-card-title>
         <v-card-text>
           <v-text-field label="Author" required v-model="authorValue"></v-text-field>
         </v-card-text>
@@ -83,10 +157,17 @@ onMounted(() => {
         </v-card-actions>
       </v-card>
     </v-dialog>
+    <SettingsPanel v-model="settingsDialog"/>
+    <CreateEvent v-model="createEventDialog"/>
   </v-app>
 </template>
 
 <style>
+.custom .v-theme--dark,
+.custom .v-theme--light {
+  --v-theme-surface: v-bind('store.settings["color.surface"]');
+}
+
 .circle {
   width: 10px;
   height: 10px;

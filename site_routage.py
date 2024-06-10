@@ -51,26 +51,6 @@ def requires_auth(f):
         return f(*args, **kwargs)
    return decorated
 
-@app.template_filter('sc3ml_type')
-def qml_type_to_sc3ml(event_type):
-    if event_type == 'induced or triggered event':
-        return 'induced earthquake'
-    elif event_type == 'meteorite':
-        return 'meteor impact'
-    elif event_type == 'other event':
-        return 'other'
-    else:
-        return event_type
-
-@app.template_filter('remove_resource_prefix')
-def remove_resource_prefix(resource_id):
-    if resource_id.startswith('smi:org.gfz-potsdam.de/geofon/'):
-        return resource_id.replace('smi:org.gfz-potsdam.de/geofon/', '')
-    elif resource_id.startswith('smi:'):
-        return '/'.join(resource_id.split('/')[2:])
-    raise ValueError('Failed to remove prefix of resource ID: %s' % resource_id)
-
-
 AUTHOR_STATUS = utils.AuthorStatusHandler(utils.CONFIG.author_status_filename)
 
 @app.errorhandler(404)
@@ -105,10 +85,10 @@ def get_author_status():
         return Response('true', mimetype='application/json')
     return Response(json.dumps(AUTHOR_STATUS.get_status()), mimetype='application/json')
 
-# @app.route('/update_scp3_config')
-# def update_scp3_config():
-#     utils.dump_seiscomp3_config()
-#     return 'OK'
+@app.route('/api/update_scp3_config', methods=['GET'])
+def update_scp3_config():
+    utils.dump_seiscomp3_config()
+    return 'OK'
 
 # Event actions
 @app.route('/api/detector', methods=['GET'])
@@ -129,14 +109,31 @@ def get_detector_picks():
                   data=json.dumps(args).encode('utf-8'),
                   headers={'Content-Type': 'application/json'})
     return Response(urlopen(req).read(), mimetype='application/json')
-    
+
+@app.route('/api/denoiser', methods=['GET'])
+@requires_auth
+def get_denoised_waveforms():
+    args = request.args.to_dict()
+    args['url'] = f'http://{utils.CONFIG.fdsnws.dataselect_host}'
+    req = Request(utils.CONFIG.denoiser.url,
+                  data=json.dumps(args).encode('utf-8'),
+                  headers={'Content-Type': 'application/json'})
+    response = urlopen(req)
+    if utils.PYTHON3:
+        return Response(response.read(), mimetype=response.headers.get_content_type())
+    else:
+        return Response(response.read(), mimetype=response.headers.type)
+
 @app.route('/api/ttt', methods=['POST'])
 @requires_auth
 def get_ttt():
     data = request.get_json()
     result = {}
     for netsta, pos in data['station'].items():
-        result[netsta] = { 'ttt': processing.get_locsat_travel_times(data['latitude'], data['longitude'], data['depth'], pos[0], pos[1], pos[2]) }
+        try:
+            result[netsta] = { 'ttt': processing.get_locsat_travel_times(data['latitude'], data['longitude'], data['depth'], pos[0], pos[1], pos[2]) }
+        except:
+            result[netsta] = { 'ttt': { 'P': 0, 'S': 0 } }
     nll_ttt_data = json.dumps(data)
     if utils.PYTHON3:
         nll_ttt_data = nll_ttt_data.encode('utf-8')
@@ -235,7 +232,7 @@ def fdsnws(service, path):
             abort(err.code)
         result = response.read()
         if service == 'event' and FDSN_EVENT_FORMAT == 'sc3ml':
-            result = utils.sc3ml_to_qml(result, '0.7')
+            result = utils.sc3ml_to_qml(result)
         if utils.PYTHON3:
             return Response(result, mimetype=response.headers.get_content_type())
         else:

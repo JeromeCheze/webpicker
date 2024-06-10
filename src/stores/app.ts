@@ -1,178 +1,236 @@
-import type { Arrival, EventParameter, Magnitude, Origin, Pick } from '@/lib/sismojs/src/types/index'
-import { DataManager, shortcutString, getId, cloneAndClean } from '@/utils'
-import { processEvent } from '@/lib/sismojs/src/core/event/event'
-import type { EventViewStatus } from '@/types/index'
+import { Event, Origin, Magnitude, Pick, Arrival, FocalMechanism, type EvaluationMode } from '@/lib/sismojs/src/core/event/types'
+import { shortcutString, getId, deepCopy, getDefault, kmToDeg, getLocalStorageDefault, setLocalStorage } from '@/utils'
+import type { Activity, EventViewStatus, PickMap, WPNotificationOptions } from '@/types'
+import defaultSettings from '@/utils/defaultSettings'
+import ActivityManager from '@/utils/activityManager'
+import DataManager from '@/utils/dataManager'
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import L from 'leaflet'
 
-export const useAppStore = defineStore('app', () => {
-  const author = ref(localStorage.getItem('author') as string | null)
+if (getLocalStorageDefault('version', null) !== 2) {
+  localStorage.clear()
+  setLocalStorage('version', 2)
+}
 
-  const cacheEventList = ref([] as EventParameter[])
+const author = ref(getLocalStorageDefault('author', null) as string | null)
 
-  // Utilities for keybind actions
-  const keydownEvent = ref(null as KeyboardEvent | null)
-  const keydown = computed(() => keydownEvent.value != null ? shortcutString(keydownEvent.value) : '')
-  function preventDefault() {
-    if (keydownEvent.value != null) {
-      keydownEvent.value.preventDefault()
+const notification = ref([] as WPNotificationOptions[])
+
+const cacheEventList = ref([] as Event[])
+
+// Utilities for keybind actions
+const keydownEvent = ref(null as KeyboardEvent | null)
+const keydown = computed(() => keydownEvent.value != null ? shortcutString(keydownEvent.value) : '')
+function preventDefault() {
+  if (keydownEvent.value != null) {
+    keydownEvent.value.preventDefault()
+  }
+}
+
+// Class handling inventory and waveforms data management
+const dataManager = new DataManager('.')
+
+// EventView states
+const currentEvent = ref(null as Event | null)
+const currentOrigin = ref(null as Origin | null)
+const currentArrivals = ref([] as Arrival[])
+const currentMagnitude = ref(null as Magnitude | null)
+const currentFocalMechanism = ref(null as FocalMechanism | null)
+const currentOriginMagnitudes = ref([] as Magnitude[])
+const originDirty = ref(false)
+const pickMap = ref({} as PickMap)
+const eventViewStatus = ref({
+  relocateStatus: 'enabled',
+  computeMagnitudesStatus: 'enabled',
+  commitStatus: 'enabled'
+} as EventViewStatus)
+
+// Event management
+function updatePickMap() {
+  console.log('update pickMap')
+  const result: PickMap = {}
+  for (const arrival of currentArrivals.value!) {
+    const p = arrival.pickID.referredObject
+    if (p != null) {
+      const netsta = p.waveformID.netsta
+      getDefault(result, netsta, {})
+      getDefault(result[netsta], p.waveformID.seedid, []).push(p)
     }
   }
-
-  // Class handling inventory and waveforms data management
-  const dataManager = new DataManager('.')
-
-  // EventView states
-  const currentEvent = ref(null as EventParameter | null)
-  const currentOrigin = ref(null as Origin | null)
-  const currentArrivals = ref(null as Arrival[] | null)
-  const currentMagnitude = ref(null as Magnitude | null)
-  const eventViewStatus = ref({
-    relocateStatus: 'enabled',
-    computeMagnitudesStatus: 'enabled',
-    commitStatus: 'enabled'
-  } as EventViewStatus)
-
-  // Event management
-  function setEvent(event: EventParameter) {
-    currentEvent.value = event
-    currentOrigin.value = event._po != null ? event._po : null
-    currentArrivals.value = event._po != null && event._po.arrival != null ? event._po.arrival : null
-    currentMagnitude.value = event._pm != null ? event._pm : null
+  pickMap.value = result
+}
+function setEvent(event: Event) {
+  console.log('set event', event)
+  currentEvent.value = event
+  currentOrigin.value = event.preferredOriginID != null ? event.preferredOriginID.referredObject : null
+  if (currentOrigin.value != null) {
+    currentArrivals.value = currentOrigin.value.arrival
   }
-  function cloneOrigin() {
-    if (currentOrigin.value == null) {
-      return
-    }
-    const saveArrivals = currentOrigin.value.arrival || []
-    currentOrigin.value.arrival = []
-    const cloneEvent = processEvent({ origin: [cloneAndClean(currentOrigin.value)] } as EventParameter)
-    currentOrigin.value.arrival = saveArrivals
-    const cloned = cloneEvent._po as Origin
-    cloned.public_id = getId('Origin')
-    cloned.arrival = saveArrivals.map((x: Arrival) => x)
-    currentOrigin.value = cloned
-    currentArrivals.value = cloned.arrival
-    eventViewStatus.value.relocateStatus = 'required'
-    eventViewStatus.value.computeMagnitudesStatus = 'disabled'
-    eventViewStatus.value.commitStatus = 'disabled'
+  currentOriginMagnitudes.value = event.magnitude.filter(m => m.originID.id === currentOrigin.value!.publicID)
+  currentMagnitude.value = event.preferredMagnitudeID != null ? event.preferredMagnitudeID.referredObject : null
+  currentFocalMechanism.value = event.preferredFocalMechanismID != null ? event.preferredFocalMechanismID.referredObject : null
+  eventViewStatus.value.relocateStatus = 'enabled'
+  eventViewStatus.value.computeMagnitudesStatus = 'enabled'
+  eventViewStatus.value.commitStatus = 'enabled'
+  dataManager.clearWaveformCache()
+  dataManager.clearInventoryCache()
+  dataManager.clearDistanceAzimuth()
+  dataManager.clearTTTCache()
+  dataManager.clearDetectorCache()
+  updatePickMap()
+}
+function cloneOrigin() {
+  if (currentOrigin.value == null) {
+    return
   }
-  function createArrival(p: Pick) {
-    const netsta = `${p.waveform_id.network_code}.${p.waveform_id.station_code}`
-    const ttt = dataManager.getStationPhaseTime(netsta, p.phase_hint as 'P' | 'S')
-    const originPos = L.latLng([currentOrigin.value!.latitude.value, currentOrigin.value!.longitude.value])
-    const stationPos = dataManager.getStationPos(netsta)
-    const dist = originPos.distanceTo([stationPos!.lat, stationPos!.lon])
-    const t0 = currentOrigin.value!.time._value!.getTime()
-    const pTime = p.time._value!.getTime()
-    const arrival: Arrival = {
-      public_id: getId('Arrival'),
-      time_weight: 1,
-      pick_id: p.public_id,
-      phase: p.phase_hint,
-      _pick: p,
-      _traveltime: new Date(pTime - t0),
-      time_residual: (pTime - (t0 + ttt * 1e3)) / 1e3,
-      distance: dist / 111e3,
-      azimuth: 0
-    }
-    const arrivals = [...currentOrigin.value!.arrival!, arrival]
-    currentOrigin.value!.arrival = arrivals
-    currentArrivals.value = arrivals
+  currentOrigin.value = new Origin(
+    Object.assign(
+      deepCopy(currentOrigin.value.desc),
+      { publicID: getId('Origin') }
+    )
+  )
+  currentArrivals.value = currentOrigin.value.arrival
+  eventViewStatus.value.relocateStatus = 'required'
+  eventViewStatus.value.computeMagnitudesStatus = 'disabled'
+  eventViewStatus.value.commitStatus = 'disabled'
+  originDirty.value = true
+}
+function createArrival(p: Pick) {
+  const netsta = p.waveformID.netsta
+  const ttt = dataManager.getStationPhaseTime(currentOrigin.value!, netsta, p.phaseHint as 'P' | 'S')
+  const pTime = p.time.object.getTime()
+  const arrivalDesc = {
+    '@publicID': getId('Arrival'),
+    timeWeight: 1,
+    pickID: p.publicID,
+    phase: p.phaseHint,
+    timeResidual: (pTime - ttt) / 1e3,
+    distance: kmToDeg(dataManager.getStationDistance(netsta)),
+    azimuth: dataManager.getStationAzimuth(netsta)
   }
-  function createPick(phase: string, pickTime: number, seedid: string, filter: string | undefined) {
-    const ct = new Date()
-    const t = new Date(pickTime)
-    const [net, sta, loc, cha] = seedid.split('.')
-    const pick: Pick = {
-      public_id: getId('Pick'),
-      time: {
-        value: t.toISOString(),
-        _value: t
-      },
-      waveform_id: {
-        network_code: net,
-        station_code: sta,
-        location_code: loc,
-        channel_code: cha
-      },
-      _seedid: seedid,
-      _fdsnid: seedid.replace('..', '.--.'),
-      phase_hint: phase,
-      evaluation_mode: 'manual',
-      creation_info: {
-        author: author.value != null ? author.value : '',
-        agency_id: 'OCA',
-        creation_time: ct.toISOString(),
-        _creation_time: ct
-      },
-      filter_id: filter
-    }
-    currentEvent.value!.pick!.push(pick)
-    createArrival(pick)
-  }
-  function deletePick(pickid: string) {
-    const arrivals = currentArrivals.value!.filter(a => a.pick_id !== pickid)
-    currentArrivals.value = arrivals
-    currentOrigin.value!.arrival = arrivals
-    currentEvent.value!.pick = currentEvent.value!.pick!.filter(p => p.public_id !== pickid)
-  }
-  function selectArrivals(selectedArrival: Arrival[]) {
-    if (currentArrivals.value == null) {
-      return
-    }
-    const pickIdList = selectedArrival.map(x => x.pick_id)
+  console.log('create arrival', arrivalDesc)
+  currentOrigin.value!.addArrival(arrivalDesc)
+  currentArrivals.value = currentOrigin.value!.arrival.map(x => x)
+}
+function createPick(phase: string, pickTime: number, seedid: string, filter: string | undefined): Pick {
+  if (!originDirty.value) {
     cloneOrigin()
-    for (const arrival of currentArrivals.value) {
-      if (pickIdList.indexOf(arrival.pick_id) >= 0) {
-        arrival.time_weight = 1
-      } else {
-        arrival.time_weight = 0
+  }
+  const ct = new Date()
+  const t = new Date(pickTime)
+  const [networkCode, stationCode, loc, channelCode] = seedid.split('.')
+  const locationCode = loc === '' ? undefined : loc
+  const pickDesc = {
+    '@publicID': getId('Pick'),
+    time: { value: t.toISOString() },
+    waveformID: {
+      '@networkCode': networkCode,
+      '@stationCode': stationCode,
+      '@locationCode': locationCode,
+      '@channelCode': channelCode
+    },
+    phaseHint: phase,
+    evaluationMode: 'manual' as EvaluationMode,
+    creationInfo: {
+      author: author.value != null ? author.value : '',
+      agencyID: 'OCA',
+      creationTime: ct.toISOString()
+    },
+    filterID: filter
+  }
+  console.log('create pick', pickDesc)
+  const pick = currentEvent.value!.addPick(pickDesc)
+  createArrival(pick)
+  updatePickMap()
+  return pick
+}
+function deletePick(pick: Pick) {
+  const arrival = currentArrivals.value!.find(x => x.pickID.id === pick.publicID)
+  if (arrival != null) {
+    currentOrigin.value!.deleteArrival(arrival)
+  }
+  let canBeDeleted = true
+  for (const origin of currentEvent.value!.origin) {
+    for (const arrival of origin.arrival) {
+      if (arrival.pickID.id === pick.publicID) {
+        canBeDeleted = false
+        break
       }
     }
   }
-
-  // Application settings
-  const settings = ref({
-    KEYBINDING: {
-      SET_PHASE_P: 'w',
-      SET_PHASE_S: 's',
-      ALIGN_TO_ORIGIN: 'alt+o',
-      ALIGN_TO_P: 'alt+w',
-      ALIGN_TO_S: 'alt+s',
-      TOGGLE_FILTER: 'f',
-      PICK: 'space',
-      NEXT_STATION: 'a',
-      PREV_STATION: 'q'
-    },
-    COLOR: {
-      WAVEFORM: 'rgb(183 56 86)',
-      ACTIVE_WAVEFORM: 'rgb(250, 250, 250)'
-    },
-    GENERAL: {
-      WORLD_CENTER_LONGITUDE: 166
+  // delete pick only if it is not referred by another arrival
+  if (canBeDeleted) {
+    currentEvent.value!.deletePick(pick)
+  }
+  currentArrivals.value = currentOrigin.value!.arrival.map(x => x)
+  updatePickMap()
+}
+function selectArrivals(selectedArrivals: Arrival[]) {
+  if (!originDirty.value) {
+    cloneOrigin()
+  }
+  const pickIdList = selectedArrivals.map(x => x.pickID.id)
+  if (currentArrivals.value == null) {
+    console.warn('no arrivals')
+    return
+  }
+  for (const arrival of currentArrivals.value) {
+    arrival.timeWeight = pickIdList.indexOf(arrival.pickID.id) >= 0 ? 1 : 0
+  }
+  currentArrivals.value = currentArrivals.value.map(x => x)
+}
+function createFocalMechanism(strike: number, dip: number, rake: number, nbStation: number) {
+  currentFocalMechanism.value = new FocalMechanism({
+    '@publicID': getId('FocalMechanism'),
+    triggeringOriginID: currentOrigin.value!.publicID,
+    stationPolarityCount: nbStation,
+    evaluationMode: 'manual',
+    nodalPlanes: {
+      nodalPlane1: {
+        strike: { value: strike },
+        dip: { value: dip },
+        rake: { value: rake }
+      }
     }
   })
+  eventViewStatus.value.commitStatus = 'required'
+}
 
+// Load application settings
+const settings = Object.assign(deepCopy(defaultSettings), getLocalStorageDefault('settings', {}))
+
+const usersActivity = ref([] as Activity[])
+const activityManager = new ActivityManager(author.value || 'unknown user', value => {
+  usersActivity.value = value
+})
+
+export const useAppStore = defineStore('app', () => {
   return {
     author,
+    notification,
     cacheEventList,
     currentEvent,
     currentOrigin,
     currentArrivals,
     currentMagnitude,
+    currentFocalMechanism,
+    currentOriginMagnitudes,
+    updatePickMap,
+    pickMap,
     setEvent, 
     cloneOrigin,
     createPick,
     deletePick,
     createArrival,
+    createFocalMechanism,
     selectArrivals,
     eventViewStatus,
     keydownEvent,
     keydown,
     preventDefault,
     dataManager,
+    activityManager,
+    usersActivity,
     settings
   }
 })

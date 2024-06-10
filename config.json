@@ -16,7 +16,10 @@
         }
     },
     "detector": {
-        "url": "http://thesee.unice.fr:9001/phasenet/get_pick"
+        "url": "http://thesee.unice.fr:9001/<model>/get_pick"
+    },
+    "denoiser": {
+        "url": "http://thesee.unice.fr:9001/deepdenoiser"
     },
     "nll": {
         "url": "http://thesee.unice.fr:10000",
@@ -25,13 +28,12 @@
     "fdsnws": {
         "event_host": "encelade.unice.fr:8000",
         "station_host": "encelade.unice.fr:8000",
-        "station_sc3_host": "encelade.unice.fr:8080",
         "dataselect_host": "encelade.unice.fr:8000"
     },
     "seiscomp": {
         "messaging_host": "encelade.unice.fr:4805",
-        "root": "/home/cheze/seiscomp3",
-        "schema_version": "0.11",
+        "root": "/home/cheze/seiscomp",
+        "schema_version": "0.13",
         "database_uri": "postgresql://sysop:@babel.unice.fr/seiscomp3",
         "dump_config": false,
         "config_filename": "/home/cheze/repositories/webpicker/config.xml"

@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import type { Magnitude } from '@/lib/sismojs/src/core/event/types'
 import type { ColObject, EventViewStatus } from '@/types'
-import type { Magnitude } from '@/lib/sismojs/src/types'
+import { useAppStore } from '@/stores/app'
 import { ref } from 'vue'
+
+const store = useAppStore()
 
 const props = defineProps<{
   magnitude?: Magnitude
@@ -12,8 +15,8 @@ const props = defineProps<{
 const magnitudeCols = ref([
   {
     label: 'Value',
-    valueAccessor: (m: Magnitude) => m.mag.value,
-    textAccessor: (m: Magnitude) => m.mag._pretty,
+    valueAccessor: (m: Magnitude) => m.mag,
+    textAccessor: (m: Magnitude) => m.mag.value.toFixed(2),
     enabled: true
   },
   {
@@ -24,14 +27,14 @@ const magnitudeCols = ref([
   },
   {
     label: 'Nb Station',
-    valueAccessor: (m: Magnitude) => m.station_count,
-    textAccessor: (m: Magnitude) => m.station_count,
+    valueAccessor: (m: Magnitude) => m.stationCount,
+    textAccessor: (m: Magnitude) => m.stationCount,
     enabled: true
   },
   {
     label: 'Method',
-    valueAccessor: (m: Magnitude) => m.method_id,
-    textAccessor: (m: Magnitude) => m.method_id,
+    valueAccessor: (m: Magnitude) => m.methodID,
+    textAccessor: (m: Magnitude) => m.methodID,
     enabled: true
   }
 ] as ColObject[])
@@ -47,7 +50,7 @@ const magnitudeCols = ref([
     <v-card-text v-if="props.magnitude != null">
       <v-row>
         <v-col :cols="props.compact ? 6 : 4" v-for="col in magnitudeCols" :class="{ 'ma-0': props.compact, 'py-0': props.compact }">
-          <v-list density="compact">
+          <v-list density="compact" :bg-color="store.settings['color.surface']">
             <v-list-item
               :title="col.label"
               :subtitle="col.textAccessor(props.magnitude)"

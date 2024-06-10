@@ -6,7 +6,6 @@ import router from './router'
 
 import '@mdi/font/css/materialdesignicons.css'
 import { createVuetify } from 'vuetify'
-import { VDatePicker } from 'vuetify/labs/VDatePicker'
 import NumberField from '@/components/NumberField.vue'
 import SmartTable from '@/components/SmartTable.vue'
 import OriginMap from '@/components/OriginMap.vue'
@@ -17,13 +16,20 @@ import ResVsDistChart from '@/components/ResVsDistChart.vue'
 import TraveltimeChart from '@/components/TraveltimeChart.vue'
 import PickerPanel from '@/components/PickerPanel.vue'
 import RelocateComponent from '@/components/RelocateComponent.vue'
-import ComputeMagnitudeComponent from '@/components/ComputeMagnitudeComponent.vue'
+import ComputeMagnitudesComponent from '@/components/ComputeMagnitudesComponent.vue'
 import CommitComponent from '@/components/CommitComponent.vue'
 import MapEvents from '@/components/MapEvents.vue'
 import ListEvents from '@/components/ListEvents.vue'
 import PickerToolbar from '@/components/PickerToolbar.vue'
 import PickerWaveforms from '@/components/PickerWaveforms.vue'
 import PickerWaveformList from '@/components/PickerWaveformList.vue'
+import StationRadius from '@/components/StationRadius.vue'
+import FirstMotion from '@/components/FirstMotion.vue'
+import EventOriginsMap from '@/components/EventOriginsMap.vue'
+import EventInspector from '@/components/EventInspector.vue'
+import SettingsPanel from '@/components/SettingsPanel.vue'
+import CreateEvent from '@/components/CreateEvent.vue'
+import StationMagnitudeChart from '@/components/StationMagnitudeChart.vue'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import 'vuetify/styles'
@@ -32,7 +38,6 @@ import 'leaflet/dist/leaflet.css'
 const vuetify = createVuetify({
   components: {
     ...components,
-    VDatePicker,
     NumberField,
     SmartTable,
     OriginMap,
@@ -43,13 +48,20 @@ const vuetify = createVuetify({
     TraveltimeChart,
     PickerPanel,
     RelocateComponent,
-    ComputeMagnitudeComponent,
+    ComputeMagnitudesComponent,
     CommitComponent,
     MapEvents,
     ListEvents,
     PickerToolbar,
     PickerWaveforms,
-    PickerWaveformList
+    PickerWaveformList,
+    StationRadius,
+    FirstMotion,
+    EventOriginsMap,
+    EventInspector,
+    SettingsPanel,
+    CreateEvent,
+    StationMagnitudeChart
   },
   theme: { defaultTheme: 'dark' },
   directives
