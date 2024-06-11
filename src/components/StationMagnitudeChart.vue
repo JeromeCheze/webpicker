@@ -30,7 +30,7 @@ function drawChart() {
       continue
     }
     magMap[mag.type] = []
-    magColor[mag.type] = DataUtils.getColor(index, colorScale)
+    magColor[mag.type] = DataUtils.getColor(index, colorScale) as string
     for (const smc of mag.stationMagnitudeContribution) {
       const staMag = smc.stationMagnitudeID.referredObject
       if (staMag == null) {

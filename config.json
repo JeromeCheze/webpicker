@@ -31,7 +31,7 @@
         "dataselect_host": "encelade.unice.fr:8000"
     },
     "seiscomp": {
-        "messaging_host": "encelade.unice.fr:4805",
+        "messaging_host": "event-processor.oca:18180/webpicker",
         "root": "/home/cheze/seiscomp",
         "schema_version": "0.13",
         "database_uri": "postgresql://sysop:@babel.unice.fr/seiscomp3",
