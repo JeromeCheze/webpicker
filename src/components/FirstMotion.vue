@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import BeachballEngine from '@/lib/beachball'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useAppStore } from '@/stores/app'
 import type { Pick } from '@/lib/sismojs/src/core/event/types';
 
@@ -81,7 +81,9 @@ function handleStationPopup(e: MouseEvent) {
   for (const [k, v] of Object.entries(stationPos.value)) {
     const dist = Math.sqrt(Math.pow(Math.abs(x - v.pos[0]), 2) + Math.pow(Math.abs(y - v.pos[1]), 2))
     if (dist < 5) {
-      console.log(k)
+      if (stationPopup != null) {
+        stationPopup.remove()
+      }
       stationPopup = document.createElement('div')
       Object.assign(stationPopup.style, {
         top: `${e.clientY + 5}px`,
@@ -137,6 +139,7 @@ function updateBeachball() {
     hirestimeout = window.setTimeout(() => {
       hiresbbe.value!.drawFocal(s, d, r, COLOR)
       hiresbbe.value!.ctx!.canvas.style.zIndex = '1'
+      updateStationLayer(bbe.value!.center, bbe.value!.radius as number)
     }, HIRESTHRESH)
     // console.log(t - lastCall);
     lastCall = t
@@ -225,9 +228,6 @@ function createBeachBall() {
       loading.value = false
     })
   })
-  setTimeout(() => {
-    updateStationLayer(hiresbbe.value!.center, hiresbbe.value!.radius as number)
-  }, HIRESTHRESH + 100)
 }
 
 function init() {
@@ -264,6 +264,13 @@ function init() {
 
 onMounted(() => {
   init()
+})
+
+onBeforeUnmount(() => {
+  if (stationPopup != null) {
+    stationPopup.remove()
+    stationPopup = null
+  }
 })
 </script>
 
