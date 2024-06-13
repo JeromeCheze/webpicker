@@ -26,17 +26,16 @@
         "area": "geoazur"
     },
     "fdsnws": {
-        "event_host": "encelade.unice.fr:8000",
-        "station_host": "encelade.unice.fr:8000",
-        "dataselect_host": "encelade.unice.fr:8000"
+        "event_host": "event-processor-ayiti.oca:8000",
+        "station_host": "event-processor-ayiti.oca:8000",
+        "dataselect_host": "thufir.unice.fr:28000"
     },
     "seiscomp": {
-        "messaging_host": "event-processor.oca:18180/webpicker",
-        "root": "/home/cheze/seiscomp",
+        "messaging_host": "event-processor-ayiti.oca:18180/webpicker",
+        "root": "/home/sysop/seiscomp",
         "schema_version": "0.13",
-        "database_uri": "postgresql://sysop:@babel.unice.fr/seiscomp3",
+        "database_uri": "postgresql://sysop:@babel.unice.fr/seiscomp_dev_ayiti",
         "dump_config": false,
-        "config_filename": "/home/cheze/repositories/webpicker/config.xml"
-    },
-    "author_status_filename": "/home/cheze/repositories/webpicker/author_status.json"
+        "config_filename": "/var/www/webpicker/config.xml"
+    }
 }

@@ -19,7 +19,7 @@ export default defineConfig({
   build: {
     assetsDir: './static'
   },
-  base: '/',
+  base: '/webpicker/',
   server: {
     proxy: {
       '/fdsnws': {

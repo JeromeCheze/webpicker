@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.insert(0, os.path.join(os.environ['SEISCOMP_ROOT'], 'lib', 'python'))
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, Depends, status
 from app.model import WSDetectorArgs, WSDenoiserArgs, TTTQuery, TakeoffAngleQuery, Activity
 from fastapi.security import HTTPBasic, HTTPBasicCredentials

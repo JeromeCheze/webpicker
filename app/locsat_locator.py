@@ -9,7 +9,7 @@ from seiscomp.seismology import LocatorInterface, TravelTimeTableInterface
 from obspy.geodetics.base import gps2dist_azimuth, kilometers2degrees
 
 def to_scp_time(t):
-    return Time.FromString(f'{t:0<26}', '%Y-%m-%dT%H:%M:%S.%f')
+    return Time.FromString(f'{t.replace("Z", ""):0<26}', '%Y-%m-%dT%H:%M:%S.%f')
 
 def to_scp_pick(j_pick):
     scp_pick = Pick(j_pick['@publicID'])
@@ -83,8 +83,7 @@ def get_inventory(fdsnws_host, pick_map):
             inv_struct[net]['obj'].add(scp_sta)
         if loc not in inv_struct[net]['station'][sta]['location']:
             scp_sl: SensorLocation = SensorLocation.Create()
-            if loc != '':
-                scp_sl.setCode(loc)
+            scp_sl.setCode(loc)
             scp_sl.setLatitude(float(lat))
             scp_sl.setLongitude(float(lon))
             scp_sl.setElevation(float(alt))
