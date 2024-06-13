@@ -36,6 +36,6 @@
         "schema_version": "0.13",
         "database_uri": "postgresql://sysop:@babel.unice.fr/seiscomp_dev_ayiti",
         "dump_config": false,
-        "config_filename": "/var/www/webpicker/config.xml"
+        "config_filename": "/home/sysop/webpicker/config.xml"
     }
 }
