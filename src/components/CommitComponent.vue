@@ -44,7 +44,7 @@ function commit() {
           }
           const amp = staMag.amplitudeID.referredObject
           if (event.amplitude.find(x => x.publicID === amp.publicID) == null) {
-            event.addAmplitude(amp)
+            event.addAmplitude(amp.desc)
           }
         }
       }
