@@ -331,6 +331,19 @@ export default class DataManager {
     return result
   }
 
+  getStationChannels(net: string, sta: string): string[] {
+    const inv = this.inventoryCache
+    const result: string[] = []
+    if (inv[net] != null && inv[net][sta] != null) {
+      for (const loc of Object.keys(this.inventoryCache[net][sta].location)) {
+        for (const cha of Object.keys(this.inventoryCache[net][sta].location[loc])) {
+          result.push(`${net}.${sta}.${loc}.${cha}`)
+        }
+      }
+    }
+    return result
+  }
+
   getDetection(baseUrl: string, model: string, wfid: string, start: string, end: string, p_thresh: number, s_thresh: number, signal: AbortSignal): Promise<Detection[]> {
     return new Promise((resolve, reject) => {
       const netsta = toNetSta(wfid)

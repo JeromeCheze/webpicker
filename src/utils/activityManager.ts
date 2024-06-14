@@ -31,7 +31,10 @@ export default class ActivityManager {
         this.updateCallback(this.usersActivity)
       }
       this.ws.onclose = () => {
-        this.connect()
+        // try to reconnect after 1s
+        setTimeout(() => {
+          this.connect()
+        }, 1000)
       }
       this.ws.onopen = () => {
         this._sendActivity()

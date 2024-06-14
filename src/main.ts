@@ -30,6 +30,7 @@ import EventInspector from '@/components/EventInspector.vue'
 import SettingsPanel from '@/components/SettingsPanel.vue'
 import CreateEvent from '@/components/CreateEvent.vue'
 import StationMagnitudeChart from '@/components/StationMagnitudeChart.vue'
+import AdditionalChannels from '@/components/AdditionalChannels.vue'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import 'vuetify/styles'
@@ -61,7 +62,8 @@ const vuetify = createVuetify({
     EventInspector,
     SettingsPanel,
     CreateEvent,
-    StationMagnitudeChart
+    StationMagnitudeChart,
+    AdditionalChannels
   },
   theme: { defaultTheme: 'dark' },
   directives

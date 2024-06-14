@@ -4,7 +4,7 @@ import { blurActiveElement } from '@/utils'
 import { ref, watch, computed } from 'vue'
 import { useAppStore } from '@/stores/app'
 
-const emit = defineEmits(['leave', 'radiusStations'])
+const emit = defineEmits(['leave', 'downloadChannels'])
 
 const props = defineProps<{
   modelValue: PickerToolbarOptions
@@ -125,8 +125,10 @@ watch(() => rotation.value, (value: number) => props.modelValue.rotation = rotat
     <v-btn-toggle v-model="sortValue" class="ml-4" density="compact" mandatory>
       <v-btn v-for="curr in sortOptions"><v-icon>{{ curr.icon }}</v-icon></v-btn>
     </v-btn-toggle>
+    <!-- ADDITIONAL CHANNELS -->
+    <AdditionalChannels :seedids="props.modelValue.seedids" @additional-channels="(seedidList: string[]) => emit('downloadChannels', seedidList)"/>
     <!-- STATION RADIUS -->
-    <StationRadius @radius-stations="(seedidList: string[]) => emit('radiusStations', seedidList)"/>
+    <StationRadius @radius-stations="(seedidList: string[]) => emit('downloadChannels', seedidList)"/>
     <!-- EXIT -->
     <v-btn @click="emit('leave')"><v-icon>mdi-exit-to-app</v-icon></v-btn>
   </v-app-bar>

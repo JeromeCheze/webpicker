@@ -53,6 +53,7 @@ export interface PickerToolbarOptions {
   phase: 'P' | 'S' | undefined
   alignment: string
   components: string[]
+  seedids: string[]
   sort: 'distance' | 'name'
   rotation: 'ZNE' | 'ZRT'
   filter: string | null

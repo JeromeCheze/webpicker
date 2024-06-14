@@ -33,6 +33,7 @@ const toolbarValue = ref({
   alignment: 'O',
   component: '',
   components: [],
+  seedids: [],
   sort: 'distance',
   filter: null,
   rotation: 'ZNE',
@@ -130,10 +131,11 @@ function displayWaveforms() {
     '..', store.currentOrigin, seedidList,
     store.settings['miscellaneous.maxTrace'],
     controller.value.signal,
-    processDataCallback, handleNotification)
+    processDataCallback, handleNotification
+  )
 }
 
-function handleStationRadius(seedidList: string[]) {
+function downloadChannels(seedidList: string[]) {
   if (store.currentOrigin == null || controller.value == null) {
     return
   }
@@ -141,7 +143,8 @@ function handleStationRadius(seedidList: string[]) {
     '..', store.currentOrigin, seedidList,
     store.settings['miscellaneous.maxTrace'],
     controller.value.signal,
-    processDataCallback, handleNotification)
+    processDataCallback, handleNotification
+  )
 }
 
 function handleActiveChannel(seedid: string) {
@@ -150,13 +153,16 @@ function handleActiveChannel(seedid: string) {
 
 function handleSelectStation(netsta: string) {
   const components: string[] = []
+  const seedIds: string[] = []
   for (const tr of data.value) {
     const current = `${tr.stats.network}.${tr.stats.station}`
     if (current === netsta) {
       components.push(tr.stats.channel.slice(-1))
+      seedIds.push(tr.stats.id)
     }
   }
   toolbarValue.value.components = components
+  toolbarValue.value.seedids = seedIds
   pickerStation.value = netsta
 }
 
@@ -275,7 +281,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <PickerToolbar v-model="toolbarValue" @leave="emit('update:modelValue', false)" @radius-stations="handleStationRadius"/>
+  <PickerToolbar v-model="toolbarValue" @leave="emit('update:modelValue', false)" @download-channels="downloadChannels"/>
   <v-card>
     <v-card-text>
       <PickerWaveforms
