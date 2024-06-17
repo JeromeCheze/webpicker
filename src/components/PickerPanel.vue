@@ -242,6 +242,25 @@ function setPickOnset(value: PickOnset) {
   store.updatePickMap()
 }
 
+function setPickUncertainty(value: number) {
+  if (selectedPicks.value.length > 0) {
+    const p = selectedPicks.value[0]
+    if (p.evaluationMode === 'automatic') {
+      return
+    }
+    if (p.time.uncertainty === value) {
+      p.time.uncertainty = undefined
+    } else {
+      if (value === 0) {
+        p.time.uncertainty = undefined
+      } else {
+        p.time.uncertainty = value
+      }
+    }
+  }
+  store.updatePickMap()
+}
+
 watch(() => store.keydown, (value) => {
   if (value === store.settings['keybinding.createPick']) {
     store.preventDefault()
@@ -313,21 +332,47 @@ onBeforeUnmount(() => {
         @select-station="handleSelectStation"/>
     </v-card-text>
   </v-card>
-  <v-menu v-model="contextMenu" attach :target="contextMenuPos" z-index="4000" :style="{ position: 'absolute', top: `${contextMenuPos[1]}px`, left: `${contextMenuPos[0]}px` }">
-    <v-card v-if="selectedPicks.length > 0">
-      <v-list density="compact">
-        <v-list-subheader>Polarity</v-list-subheader>
-        <v-list-item prepend-icon="mdi-arrow-up-bold" @click="setPickPolarity('positive')" :append-icon="selectedPicks[0].polarity === 'positive' ? 'mdi-check' : ''">positive</v-list-item>
-        <v-list-item prepend-icon="mdi-arrow-down-bold" @click="setPickPolarity('negative')" :append-icon="selectedPicks[0].polarity === 'negative' ? 'mdi-check' : ''">negative</v-list-item>
-        <v-list-item prepend-icon="mdi-help" @click="setPickPolarity('undecidable')" :append-icon="selectedPicks[0].polarity === 'undecidable' ? 'mdi-check' : ''">undecidable</v-list-item>
-        <v-divider></v-divider>
-        <v-list-subheader>Onset</v-list-subheader>
-        <v-list-item prepend-icon="mdi-pulse" @click="setPickOnset('impulsive')" :append-icon="selectedPicks[0].onset === 'impulsive' ? 'mdi-check' : ''">impulsive</v-list-item>
-        <v-list-item prepend-icon="mdi-tilde" @click="setPickOnset('emergent')" :append-icon="selectedPicks[0].onset === 'emergent' ? 'mdi-check' : ''">emergent</v-list-item>
-        <v-list-item prepend-icon="mdi-help" @click="setPickOnset('undecidable')" :append-icon="selectedPicks[0].onset === 'undecidable' ? 'mdi-check' : ''">undecidable</v-list-item>
-        <v-divider></v-divider>
-        <v-list-item prepend-icon="mdi-delete" @click="deleteSelectedPicks">Delete</v-list-item>
-      </v-list>
+  <v-menu
+    v-model="contextMenu"
+    attach
+    :target="contextMenuPos"
+    z-index="4000"
+    :style="{ position: 'absolute', top: `${contextMenuPos[1]}px`, left: `${contextMenuPos[0]}px` }"
+    :transition="false"
+  >
+    <v-card v-if="selectedPicks.length > 0" width="420">
+      <v-card-text>
+        <v-row>
+          <v-col cols="7">
+            <v-list density="compact">
+              <v-list-subheader>Polarity</v-list-subheader>
+              <v-list-item prepend-icon="mdi-arrow-up-bold" @click="setPickPolarity('positive')" :append-icon="selectedPicks[0].polarity === 'positive' ? 'mdi-check' : ''">positive</v-list-item>
+              <v-list-item prepend-icon="mdi-arrow-down-bold" @click="setPickPolarity('negative')" :append-icon="selectedPicks[0].polarity === 'negative' ? 'mdi-check' : ''">negative</v-list-item>
+              <v-list-item prepend-icon="mdi-help" @click="setPickPolarity('undecidable')" :append-icon="selectedPicks[0].polarity === 'undecidable' ? 'mdi-check' : ''">undecidable</v-list-item>
+              <v-divider></v-divider>
+              <v-list-subheader>Onset</v-list-subheader>
+              <v-list-item prepend-icon="mdi-pulse" @click="setPickOnset('impulsive')" :append-icon="selectedPicks[0].onset === 'impulsive' ? 'mdi-check' : ''">impulsive</v-list-item>
+              <v-list-item prepend-icon="mdi-tilde" @click="setPickOnset('emergent')" :append-icon="selectedPicks[0].onset === 'emergent' ? 'mdi-check' : ''">emergent</v-list-item>
+              <v-list-item prepend-icon="mdi-help" @click="setPickOnset('undecidable')" :append-icon="selectedPicks[0].onset === 'undecidable' ? 'mdi-check' : ''">undecidable</v-list-item>            
+              <v-divider></v-divider>
+              <v-list-item prepend-icon="mdi-delete" @click="deleteSelectedPicks">Delete</v-list-item>
+            </v-list>
+          </v-col>
+          <v-col cols="5">
+            <v-list density="compact">
+              <v-list-subheader>Uncertainty [s]</v-list-subheader>
+              <v-list-item @click="setPickUncertainty(0)" :append-icon="selectedPicks[0].time.uncertainty == null ? 'mdi-check' : ''">0</v-list-item>
+              <v-list-item @click="setPickUncertainty(0.05)" :append-icon="selectedPicks[0].time.uncertainty == 0.05 ? 'mdi-check' : ''">0.05</v-list-item>
+              <v-list-item @click="setPickUncertainty(0.2)" :append-icon="selectedPicks[0].time.uncertainty == 0.2 ? 'mdi-check' : ''">0.2</v-list-item>
+              <v-list-item @click="setPickUncertainty(0.5)" :append-icon="selectedPicks[0].time.uncertainty == 0.5 ? 'mdi-check' : ''">0.5</v-list-item>
+              <v-list-item @click="setPickUncertainty(0.8)" :append-icon="selectedPicks[0].time.uncertainty == 0.8 ? 'mdi-check' : ''">0.8</v-list-item>
+              <v-list-item @click="setPickUncertainty(1.0)" :append-icon="selectedPicks[0].time.uncertainty == 1.0 ? 'mdi-check' : ''">1.0</v-list-item>
+              <v-list-item @click="setPickUncertainty(1.5)" :append-icon="selectedPicks[0].time.uncertainty == 1.5 ? 'mdi-check' : ''">1.5</v-list-item>
+              <v-list-item @click="setPickUncertainty(2.0)" :append-icon="selectedPicks[0].time.uncertainty == 2.0 ? 'mdi-check' : ''">2.0</v-list-item>
+            </v-list>
+          </v-col>
+        </v-row>
+      </v-card-text>
     </v-card>
   </v-menu>
 </template>

@@ -137,6 +137,9 @@ function getVLines(index: number, dataLength: number, seedid: string) {
       if (p.onset != null) {
         text.push(`(${p.onset})`)
       }
+      const range: [number, number] | undefined = p.time.uncertainty != null
+        ? [p.time.uncertainty * 1e3, p.time.uncertainty * 1e3]
+        : undefined
       result.push({
         arrow: p.polarity === 'positive' ? 'top' : p.polarity === 'negative' ? 'bottom' : undefined,
         color: p.evaluationMode === 'manual' ? store.settings['color.pickManual'] : store.settings['color.pickAutomatic'],
@@ -145,7 +148,8 @@ function getVLines(index: number, dataLength: number, seedid: string) {
         selectable: true,
         x: p.time.object.getTime(),
         data: p.publicID,
-        tooltip: getPickTooltip(p)
+        tooltip: getPickTooltip(p),
+        range
       })
     }
   }

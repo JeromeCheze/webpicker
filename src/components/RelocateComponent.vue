@@ -68,6 +68,8 @@ function relocate() {
           store.dataManager.clearTTTCache()
         }
       })
+    } else {
+      store.notification.push({ type: 'warning', value: `Error: ${response.status} (${response.statusText})` })
     }
   })
 }

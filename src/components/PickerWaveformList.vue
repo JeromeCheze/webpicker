@@ -96,12 +96,16 @@ function getVLines(netsta: string) {
   if (store.pickMap[netsta] != null) {
     for (const picks of Object.values(store.pickMap[netsta])) {
       for (const p of picks) {
+        const range: [number, number] | undefined = p.time.uncertainty != null
+          ? [p.time.uncertainty * 1e3, p.time.uncertainty * 1e3]
+          : undefined
         result.push({
           arrow: p.polarity === 'positive' ? 'top' : p.polarity === 'negative' ? 'bottom' : undefined,
           color: p.evaluationMode === 'manual' ? store.settings['color.pickManual'] : store.settings['color.pickAutomatic'],
           text: p.phaseHint,
           position: 'top',
-          x: p.time.object.getTime()
+          x: p.time.object.getTime(),
+          range
         })
       }
     }

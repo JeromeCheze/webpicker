@@ -9,7 +9,9 @@ from seiscomp.seismology import LocatorInterface, TravelTimeTableInterface
 from obspy.geodetics.base import gps2dist_azimuth, kilometers2degrees
 
 def to_scp_time(t):
-    return Time.FromString(f'{t.replace("Z", ""):0<26}', '%Y-%m-%dT%H:%M:%S.%f')
+    if '.' in t:
+        return Time.FromString(f'{t.replace("Z", ""):0<26}', '%Y-%m-%dT%H:%M:%S.%f')
+    return Time.FromString(f'{t.replace("Z", "")}', '%Y-%m-%dT%H:%M:%S')
 
 def to_scp_pick(j_pick):
     scp_pick = Pick(j_pick['@publicID'])
@@ -19,6 +21,8 @@ def to_scp_pick(j_pick):
     creation_info.setAuthor(j_pick["creationInfo"]["author"])
     scp_pick.setCreationInfo(creation_info)
     scp_pick.setTime(TimeQuantity(to_scp_time(j_pick["time"]["value"])))
+    if "uncertainty" in j_pick["time"]:
+        scp_pick.time().setUncertainty(j_pick["time"]["uncertainty"])
     scp_pick.setEvaluationMode(AUTOMATIC if j_pick['evaluationMode'] == 'automatic' else MANUAL)
     scp_pick.setPhaseHint(Phase(j_pick['phaseHint']))
     if 'filter_id' in j_pick:
@@ -187,7 +191,8 @@ def relocate(jquake, profile, fdsnws_host):
     locator: LocatorInterface = LocatorInterface.Create('LOCSAT')
     locator.useFixedDepth(False)
     locator.setProfile(profile)
-    # print([(x.waveformID().stationCode(), x.time().value().iso()) for x in pick_list])
+    # for p in pick_list:
+    #     print(p.publicID(), p.waveformID().stationCode(), p.time().value().iso())
     sloc = locator.getSensorLocation(pick_list[0])
     scp_origin = to_scp_origin(jquake[0]['origin'][0])
     scp_origin.setTime(pick_list[0].time())
