@@ -111,7 +111,8 @@ function displayStations() {
       bounds.push(staPos)
       const color = residual == null ? 'grey' : DataUtils.getColor(residual, colorScale) as string
       const marker = L.circleMarker(staPos, { radius: 4, color: 'grey', fillOpacity: 1, fillColor: color, weight: 1 })
-      .addTo(map.value as L.Map)
+        .bindPopup(netsta)
+        .addTo(map.value as L.Map)
       // marker.bindPopup(netsta)
       layers.push(marker)
       if (residual != null) {

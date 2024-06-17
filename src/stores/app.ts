@@ -78,6 +78,13 @@ function setEvent(event: Event) {
   dataManager.clearTTTCache()
   dataManager.clearDetectorCache()
   updatePickMap()
+  const e = cacheEventList.value.find(x => x.publicID === event.publicID)
+  if (e != null) {
+    const i = cacheEventList.value.indexOf(e)
+    cacheEventList.value.splice(i, 1, event)
+  } else {
+    cacheEventList.value.push(event)
+  }
 }
 function cloneOrigin() {
   if (currentOrigin.value == null) {
