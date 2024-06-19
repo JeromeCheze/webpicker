@@ -33,6 +33,7 @@ const end = ref(10e3)
 const charts: Record<number, Lichen> = {}
 let chartData: Record<string, ChartData> = {}
 const chartWidth = ref(800)
+const pickerTime = ref('')
 
 const denoiseProcessor = new DenoiseProcessor(store.dataManager, props.controller.signal)
 const rotateProcessor = new RotateProcessor()
@@ -212,7 +213,10 @@ function createWaveform(chartContainer: HTMLElement, index: number, dataLength: 
     vLines: getVLines(index, dataLength, data.id),
     series: [toSerie(data)],
     hooks: {
-      onCursorMove: (x: number, y: number) => emit('pickerTime', x),
+      onCursorMove: (x: number, y: number) => {
+        pickerTime.value = new Date(x).toISOString().replace('T', ' ').replace('Z', '')
+        emit('pickerTime', x)
+      },
       onVlineSelection: handleVlineSelection,
       onDblClick: (t: number) => emit('createPick', t),
       onActive: (chart: Lichen) => emit('activeChannel', `${props.activeStation}.${chart.opt.header.title?.replace('--', '')}`),
@@ -339,6 +343,7 @@ watch(() => props.refTimeKey, () => {
 <template>
   <div class="mb-3">
     {{ props.activeStation }}
+    <span class="text-caption float-right">{{ props.phase != null ? pickerTime : '' }}</span>
     <span class="text-caption">- Dist: {{ distance.toFixed(1) }} km | Az: {{ azimuth.toFixed(1) }}&deg;</span>
     <v-progress-circular v-if="loading" indeterminate="disable-shrink" size="20" class="ml-4"/>
   </div>
