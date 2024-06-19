@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import { setLocalStorage, getLocalStorageDefault } from '@/utils'
 import type { ColObject } from '@/types'
 
 const props = defineProps<{
+  storeKey?: string
   tableHeight?: number
   items: any[]
   cols: ColObject[]
@@ -33,6 +35,12 @@ watch(() => props.selected, () => {
 })
 
 function initItems() {
+  if (props.storeKey != null) {
+    for (const col of props.cols) {
+      const key = `${props.storeKey}.${col.label}`
+      col.enabled = getLocalStorageDefault(key, col.enabled)
+    }
+  }
   modelValue.value = props.items.map(x => [true, x])
   applySelection()
 }
@@ -137,6 +145,13 @@ function getColor(row: any) {
   return props.rowColor != null ? props.rowColor(row[1]) : ''
 }
 
+function storeValue(col: ColObject, value: boolean) {
+  if (props.storeKey != null) {
+    const key = `${props.storeKey}.${col.label}`
+    setLocalStorage(key, value)
+  }
+}
+
 onMounted(() => {
   initItems()
   applySort()
@@ -211,13 +226,13 @@ onMounted(() => {
       <v-table>
         <thead>
           <tr>
-            <th v-for="item in props.cols">{{ item.label }}</th>
+            <th v-for="col in props.cols">{{ col.label }}</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td v-for="item in props.cols">
-              <v-checkbox v-model="item.enabled" density="compact" hide-details></v-checkbox>
+            <td v-for="col in props.cols">
+              <v-checkbox v-model="col.enabled" density="compact" hide-details @update:modelValue="value => storeValue(col, value)"></v-checkbox>
             </td>
           </tr>
         </tbody>

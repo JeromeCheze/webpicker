@@ -230,6 +230,7 @@ onMounted(() => {
           :row-color="handleOriginColor"
           :row-class="handleOriginClass"
           @row-click="setActiveOrigin"
+          store-key="originList"
         />
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -249,6 +250,7 @@ onMounted(() => {
           :row-class="handleMagnitudeClass"
           :row-color="handleMagnitudeColor"
           @row-click="setActiveMagnitude"
+          store-key="magnitudeList"
         />
         <v-card-actions>
           <v-spacer></v-spacer>

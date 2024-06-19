@@ -124,6 +124,7 @@ function setSelected() {
       selectable
       :selected="selected"
       @selection="handleSelection"
+      store-key="arrivalPanel"
     ></SmartTable>
   </v-card>
 </template>

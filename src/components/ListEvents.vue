@@ -142,6 +142,7 @@ watch(() => store.usersActivity, (value) => {
       :sortCol="1"
       @row-click="handleRowClick"
       :row-color="handleRowColor"
+      store-key="eventList"
     >
       No events to display<br>
       Go to <router-link :to="{ name: 'form' }">form</router-link> to define query parameters
