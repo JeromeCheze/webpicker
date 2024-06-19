@@ -145,8 +145,8 @@ function getColor(row: any) {
   return props.rowColor != null ? props.rowColor(row[1]) : ''
 }
 
-function storeValue(col: ColObject, value: boolean) {
-  if (props.storeKey != null) {
+function storeValue(col: ColObject, value: boolean | null) {
+  if (props.storeKey != null && value != null) {
     const key = `${props.storeKey}.${col.label}`
     setLocalStorage(key, value)
   }
