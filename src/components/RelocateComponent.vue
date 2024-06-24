@@ -55,16 +55,16 @@ function relocate() {
         if (statusResponse.quakeml !== '') {
           const doc = new DOMParser().parseFromString(statusResponse.quakeml, 'application/xml')
           const result = parse(doc) as Event[]
-          console.log(result)
-          store.currentOrigin = result[0].preferredOriginID.referredObject
-          store.currentOrigin!.creationInfo.author = store.author
-          store.currentArrivals = store.currentOrigin!.arrival
+          const newOrigin = result[0].origin[0]
+          newOrigin.creationInfo.author = store.author
           store.eventViewStatus.relocateStatus = 'enabled'
           store.eventViewStatus.computeMagnitudesStatus = 'required'
           store.eventViewStatus.commitStatus = 'disabled'
           store.currentMagnitude = null
           store.currentOriginMagnitudes = []
-          store.dataManager.updateStationDistanceAzimuth(store.currentOrigin!.latitude.value, store.currentOrigin!.longitude.value)
+          store.dataManager.updateStationDistanceAzimuth(newOrigin.latitude.value, newOrigin.longitude.value)
+          store.currentArrivals = newOrigin.arrival
+          store.currentOrigin = newOrigin
           store.dataManager.clearTTTCache()
         }
       })
