@@ -39,6 +39,7 @@ const currentFocalMechanism = ref(null as FocalMechanism | null)
 const currentOriginMagnitudes = ref([] as Magnitude[])
 const originDirty = ref(false)
 const pickMap = ref({} as PickMap)
+const additionalPickMap = ref({} as PickMap)
 const eventViewStatus = ref({
   relocateStatus: 'enabled',
   computeMagnitudesStatus: 'enabled',
@@ -222,8 +223,9 @@ export const useAppStore = defineStore('app', () => {
     currentMagnitude,
     currentFocalMechanism,
     currentOriginMagnitudes,
-    updatePickMap,
     pickMap,
+    additionalPickMap,
+    updatePickMap,
     setEvent, 
     cloneOrigin,
     createPick,

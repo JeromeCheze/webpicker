@@ -14,6 +14,8 @@ export default {
   'color.TTTNLL': '#0000ff',
   'color.pickAutomatic': '#ff0000',
   'color.pickManual': '#008000',
+  'color.additionalPickAutomatic': '#c94b4b',
+  'color.additionalPickManual': '#537a53',
   'color.detector': '#7303fc',
   'color.spectrogram': 'VIRIDIS',
   'picker.spectrogramHeight': 80,
@@ -44,6 +46,9 @@ export default {
   'keybinding.togglePicker': 'alt+shift+p',
   'miscellaneous.longitudeReference': 166,
   'miscellaneous.maxTrace': 100,
+  'miscellaneous.defaultRadius': 1,
+  'miscellaneous.timewindow1': 15,
+  'miscellaneous.timewindow2': 30,
   'filter': [
     { name: 'HP 1', expression: 'highpass(4, 1)' },
     { name: 'BP 0.5-8', expression: 'bandpass(4, 0.5, 8)' },

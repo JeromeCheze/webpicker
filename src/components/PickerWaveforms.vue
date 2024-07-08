@@ -110,6 +110,31 @@ function getPickTooltip(p: Pick) {
   </tbody></table>`
 }
 
+function pickToVLine(p: Pick, selectable: boolean) {
+  const text = [p.phaseHint]
+  if (p.onset != null) {
+    text.push(`(${p.onset})`)
+  }
+  const range: [number, number] | undefined = p.time.uncertainty != null
+    ? [p.time.uncertainty * 1e3, p.time.uncertainty * 1e3]
+    : undefined
+  let color = p.evaluationMode === 'manual' ? store.settings['color.pickManual'] : store.settings['color.pickAutomatic']
+  if (!selectable) {
+    color = p.evaluationMode === 'manual' ? store.settings['color.additionalPickManual'] : store.settings['color.additionalPickAutomatic']
+  }
+  return {
+    arrow: p.polarity === 'positive' ? 'top' : p.polarity === 'negative' ? 'bottom' : undefined,
+    color,
+    text: text.join(' '),
+    position: 'top',
+    selectable,
+    x: p.time.object.getTime(),
+    data: p.publicID,
+    tooltip: getPickTooltip(p),
+    range
+  } as VLine
+}
+
 function getVLines(index: number, dataLength: number, seedid: string) {
   const netsta = toNetSta(seedid)
   const result: VLine[] = [
@@ -134,24 +159,12 @@ function getVLines(index: number, dataLength: number, seedid: string) {
   }
   if (store.pickMap[netsta] != null && store.pickMap[netsta][seedid] != null) {
     for (const p of store.pickMap[netsta][seedid]) {
-      const text = [p.phaseHint]
-      if (p.onset != null) {
-        text.push(`(${p.onset})`)
-      }
-      const range: [number, number] | undefined = p.time.uncertainty != null
-        ? [p.time.uncertainty * 1e3, p.time.uncertainty * 1e3]
-        : undefined
-      result.push({
-        arrow: p.polarity === 'positive' ? 'top' : p.polarity === 'negative' ? 'bottom' : undefined,
-        color: p.evaluationMode === 'manual' ? store.settings['color.pickManual'] : store.settings['color.pickAutomatic'],
-        text: text.join(' '),
-        position: 'top',
-        selectable: true,
-        x: p.time.object.getTime(),
-        data: p.publicID,
-        tooltip: getPickTooltip(p),
-        range
-      })
+      result.push(pickToVLine(p, true))
+    }
+  }
+  if (store.additionalPickMap[netsta] != null && store.additionalPickMap[netsta][seedid] != null) {
+    for (const p of store.additionalPickMap[netsta][seedid]) {
+      result.push(pickToVLine(p, false))
     }
   }
   return result
@@ -325,6 +338,7 @@ watch(() => props.data, (value, oldValue) => {
 
 watch([
   () => store.pickMap,
+  () => store.additionalPickMap,
   () => props.detector
 ], () => updateVlines())
 

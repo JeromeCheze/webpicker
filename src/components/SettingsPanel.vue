@@ -35,6 +35,8 @@ const struct = [
       { label: 'Color TTT (NLL)', key: 'color.TTTNLL', type: 'text' },
       { label: 'Color Pick Automatic', key: 'color.pickAutomatic', type: 'text' },
       { label: 'Color Pick Manual', key: 'color.pickManual', type: 'text' },
+      { label: 'Color Pick Automatic (other)', key: 'color.additionalPickAutomatic', type: 'text' },
+      { label: 'Color Pick Manual (other)', key: 'color.additionalPickManual', type: 'text' },
       { label: 'Color Detector', key: 'color.detector', type: 'text' },
       { label: 'Picker Waveform Height', key: 'picker.pickerWaveformHeight', type: 'number' },
       { label: 'List Waveform Height', key: 'picker.listWaveformHeight', type: 'number' },
@@ -53,7 +55,10 @@ const struct = [
     title: 'Miscellaneous',
     fields: [
       { label: 'Longitude Reference', key: 'miscellaneous.longitudeReference', type: 'number' },
-      { label: 'Max Trace', key: 'miscellaneous.maxTrace', type: 'number' }
+      { label: 'Default Radius', key: 'miscellaneous.defaultRadius', type: 'number' },
+      { label: 'Max Trace', key: 'miscellaneous.maxTrace', type: 'number' },
+      { label: 'Time window 1 [s]', key: 'miscellaneous.timewindow1', type: 'number' },
+      { label: 'Time window 2 [s]', key: 'miscellaneous.timewindow2', type: 'number' }
     ]
   },
   {

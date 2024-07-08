@@ -81,6 +81,24 @@ function updateTimeWindow(seedid: string, t1: number, t2: number) {
   end.value = t2 - refTime
 }
 
+function pickToVLine(p: Pick, additional: boolean) {
+  const range: [number, number] | undefined = p.time.uncertainty != null
+    ? [p.time.uncertainty * 1e3, p.time.uncertainty * 1e3]
+    : undefined
+  let color = p.evaluationMode === 'manual' ? store.settings['color.pickManual'] : store.settings['color.pickAutomatic']
+  if (additional) {
+    color = p.evaluationMode === 'manual' ? store.settings['color.additionalPickManual'] : store.settings['color.additionalPickAutomatic']
+  }
+  return {
+    arrow: p.polarity === 'positive' ? 'top' : p.polarity === 'negative' ? 'bottom' : undefined,
+    color,
+    text: p.phaseHint,
+    position: 'top',
+    x: p.time.object.getTime(),
+    range
+  } as VLine
+}
+
 function getVLines(netsta: string) {
   const result: VLine[] = [
     { color: store.settings['color.TTT'], x: props.stationRefTimes[netsta].P, text: 'P', position: 'bottom' },
@@ -96,17 +114,14 @@ function getVLines(netsta: string) {
   if (store.pickMap[netsta] != null) {
     for (const picks of Object.values(store.pickMap[netsta])) {
       for (const p of picks) {
-        const range: [number, number] | undefined = p.time.uncertainty != null
-          ? [p.time.uncertainty * 1e3, p.time.uncertainty * 1e3]
-          : undefined
-        result.push({
-          arrow: p.polarity === 'positive' ? 'top' : p.polarity === 'negative' ? 'bottom' : undefined,
-          color: p.evaluationMode === 'manual' ? store.settings['color.pickManual'] : store.settings['color.pickAutomatic'],
-          text: p.phaseHint,
-          position: 'top',
-          x: p.time.object.getTime(),
-          range
-        })
+        result.push(pickToVLine(p, false))
+      }
+    }
+  }
+  if (store.additionalPickMap[netsta] != null) {
+    for (const picks of Object.values(store.additionalPickMap[netsta])) {
+      for (const p of picks) {
+        result.push(pickToVLine(p, true))
       }
     }
   }

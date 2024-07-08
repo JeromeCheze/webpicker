@@ -151,7 +151,9 @@ export default class DataManager {
   getRadiusInventory(
     baseUrl: string, time: string,
     latitude: number, longitude: number,
-    maxradius: number, channel: string
+    maxradius: number,
+    network: string, station: string,
+    location: string, channel: string
   ): Promise<Inventory> {
     return new Promise((resolve, reject) => {
       this.client.baseURL = baseUrl
@@ -164,7 +166,7 @@ export default class DataManager {
         maxradius,
         starttime: time,
         endtime: time,
-        channel
+        network, station, location, channel
       }).then((inv) => {
         this.mergeInventory(inv as Inventory)
         resolve(this.inventoryCache)
@@ -443,6 +445,7 @@ export default class DataManager {
     origin: Origin,
     seedidList: string[],
     maxTrace: number | null,
+    timewindow: [number, number],
     signal: AbortSignal,
     callback: (data: Trace[]) => void,
     notification: (opt: WPNotificationOptions) => void
@@ -454,14 +457,14 @@ export default class DataManager {
     this.getInventory(baseUrl, seedidList, origin.time.object, notification).then(() => {
       this.loadTTT(baseUrl, origin, netstaList, notification).then(() => {
         const t0 = origin.time.object.getTime()
-        const t1 = new Date(t0 - 15e3)
+        const t1 = new Date(t0 - timewindow[0] * 1e3)
         let maxTime = t0 + 120e3
         for (const netstaTTT of Object.values(this.tttCache)) {
           for (const ttt of Object.values(netstaTTT.ttt)) {
             maxTime = Math.max(maxTime, t0 + ttt * 1e3)
           }
         }
-        const t2 = new Date(maxTime + 30e3)
+        const t2 = new Date(maxTime + timewindow[1] * 1e3)
         let reqSeedidList: string[] = []
         for (const seedid of seedidList) {
           const [net, sta, loc, chaPrefix] = seedid.slice(0, -1).split('.')

@@ -10,8 +10,11 @@ const emit = defineEmits(['radiusStations'])
 const store = useAppStore()
 
 const menu = ref(false)
-const radius = ref(1)
-const chSelector = ref('?H?')
+const radius = ref(store.settings['miscellaneous.defaultRadius'])
+const netSelector = ref('*')
+const staSelector = ref('*')
+const locSelector = ref('*')
+const chaSelector = ref('?H?')
 const mapContainer = ref()
 const map = ref(null as L.Map | null)
 const circle = ref(null as L.Circle | null)
@@ -74,7 +77,10 @@ function preview(): Promise<void> {
     }
     const pos = circle.value!.getLatLng()
     const t = store.currentOrigin!.time.value.slice(0, 19)
-    store.dataManager.getRadiusInventory('..', t, pos.lat, pos.lng, radius.value, chSelector.value).then(inv => {
+    store.dataManager.getRadiusInventory(
+      '..', t, pos.lat, pos.lng, radius.value,
+      netSelector.value, staSelector.value, locSelector.value, chaSelector.value
+    ).then(inv => {
       const [lat, lon] = [store.currentOrigin!.latitude.value, store.currentOrigin!.longitude.value]
       store.dataManager.updateStationDistanceAzimuth(lat, lon)
       displayStations()
@@ -153,10 +159,23 @@ watch(() => menu.value, (value) => {
     <v-card min-width="500">
       <v-card-text>
         <div ref="mapContainer" :style="{ height: '400px' }"></div>
+        <v-row>
+          <v-col cols="3">
+            <v-text-field v-model="netSelector" label="Network" density="compact" hide-details/>
+          </v-col>
+          <v-col cols="3">
+            <v-text-field v-model="staSelector" label="Station" density="compact" hide-details/>
+          </v-col>
+          <v-col cols="3">
+            <v-text-field v-model="locSelector" label="Location" density="compact" hide-details/>
+          </v-col>
+          <v-col cols="3">
+            <v-text-field v-model="chaSelector" label="Channel" density="compact" hide-details/>
+          </v-col>
+        </v-row>
       </v-card-text>
       <v-toolbar density="compact" :color="color">
         <NumberField v-model="radius" label="Radius [°]" density="compact" hide-details class="mx-1"/>
-        <v-text-field v-model="chSelector" label="Channel selector" density="compact" hide-details class="mx-1"/>
         <v-btn @click="preview" class="mx-1">Preview</v-btn>
         <v-btn @click="validate" class="mx-1">Validate</v-btn>
       </v-toolbar>

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { FilterOptions, PickerToolbarOptions, StationRefTimes, WPNotificationOptions } from '@/types'
+import type { FilterOptions, PickerToolbarOptions, PickMap, StationRefTimes, WPNotificationOptions } from '@/types'
 import { Pick, type PickOnset, type PickPolarity } from '@/lib/sismojs/src/core/event/types'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
 import { ref, watch, onMounted, computed } from 'vue'
+import { Client } from '@/lib/sismojs/src/fdsn'
 import { pushUnique, toNetSta } from '@/utils'
 import { useAppStore } from '@/stores/app'
 import { onBeforeUnmount } from 'vue'
@@ -17,6 +18,8 @@ const props = defineProps<{
 
 const store = useAppStore()
 console.log(store.dataManager)
+
+const client = new Client('..')
 
 const contextMenu = ref(false)
 const contextMenuPos = ref([0, 0])
@@ -130,6 +133,7 @@ function displayWaveforms() {
   store.dataManager.getData(
     '..', store.currentOrigin, seedidList,
     store.settings['miscellaneous.maxTrace'],
+    [store.settings['miscellaneous.timewindow1'], store.settings['miscellaneous.timewindow2']],
     controller.value.signal,
     processDataCallback, handleNotification
   )
@@ -142,6 +146,7 @@ function downloadChannels(seedidList: string[]) {
   store.dataManager.getData(
     '..', store.currentOrigin, seedidList,
     store.settings['miscellaneous.maxTrace'],
+    [store.settings['miscellaneous.timewindow1'], store.settings['miscellaneous.timewindow2']],
     controller.value.signal,
     processDataCallback, handleNotification
   )
@@ -261,6 +266,36 @@ function setPickUncertainty(value: number) {
   store.updatePickMap()
 }
 
+function loadAdditionalPicks() {
+  const t0 = store.currentOrigin!.time.object.getTime()
+  client.getEvents({
+    format: 'xml',
+    starttime: new Date(t0 - 3600e3).toISOString().slice(0, 19),
+    endtime: new Date(t0 + 3600e3).toISOString().slice(0, 19),
+    includeallorigins: true,
+    includearrivals: true
+  }).then((events) => {
+    const additionalPickMap: PickMap = {}
+    for (const event of events) {
+      if (event.publicID === store.currentEvent!.publicID) {
+        continue
+      }
+      for (const pick of event.pick) {
+        const netsta = pick.waveformID.netsta
+        const seedid = pick.waveformID.seedid
+        if (additionalPickMap[netsta] == null) {
+          additionalPickMap[netsta] = {}
+        }
+        if (additionalPickMap[netsta][seedid] == null) {
+          additionalPickMap[netsta][seedid] = []
+        }
+        additionalPickMap[netsta][seedid].push(pick)
+      }
+    }
+    store.additionalPickMap = additionalPickMap
+  })
+}
+
 watch(() => store.keydown, (value) => {
   if (value === store.settings['keybinding.createPick']) {
     store.preventDefault()
@@ -287,7 +322,7 @@ onMounted(() => {
   document.body.addEventListener('contextmenu', handleContextMenu)
   data.value = []
   displayWaveforms()
-
+  loadAdditionalPicks()
 })
 
 onBeforeUnmount(() => {
