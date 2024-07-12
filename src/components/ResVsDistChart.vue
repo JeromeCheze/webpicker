@@ -12,9 +12,9 @@ const chart = ref(null as Lichen | null)
 function getColor(arrival: Arrival) {
   return arrival.timeWeight == 0
     ? 'grey'
-    : arrival.pickID.referredObject.evaluationMode === 'automatic'
-      ? 'red'
-      : 'green'
+    : arrival.pickID.referredObject.evaluationMode === 'manual'
+      ? 'green'
+      : 'red'
 }
 
 function drawChart() {

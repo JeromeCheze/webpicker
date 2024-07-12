@@ -34,7 +34,7 @@ def fix_ids(o):
             fix_ids(item)
     elif isinstance(o, dict):
         for k, v in o.items():
-            if isinstance(v, str) and k.endswith('ID'):
+            if isinstance(v, str) and k.endswith('ID') and k != 'agencyID':
                 if not v.startswith('smi:'):
                     o[k] = f'smi:oca/1.0/{v}'
             else:

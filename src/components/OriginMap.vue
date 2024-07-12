@@ -19,6 +19,17 @@ const originLatLng = computed(() => {
   }
 })
 
+const originUncertainty = computed(() => {
+  if (store.currentOrigin != null) {
+    const latUncertainty = store.currentOrigin.latitude.uncertainty
+    const lonUncertainty = store.currentOrigin.longitude.uncertainty
+    if (latUncertainty != null && lonUncertainty != null) {
+      return [lonUncertainty * 1e3, latUncertainty * 1e3]
+    }
+  }
+  return null
+})
+
 function initMap() {
   if (mapContainer.value == null || map.value != null) {
     return
@@ -39,16 +50,15 @@ function displayOrigin() {
   if (map.value == null || originLatLng.value == null) {
     return
   }
-  const ellipse = L.ellipse(originLatLng.value, [
-    store.currentOrigin!.longitude.uncertainty! * 1e3,
-    store.currentOrigin!.latitude.uncertainty! * 1e3
-  ], 0, {
-    weight: 0,
-    color: 'red',
-    fillOpacity: 0.2
-  }).addTo(map.value as L.Map)
+  if (originUncertainty.value != null) {
+    const ellipse = L.ellipse(originLatLng.value, originUncertainty.value, 0, {
+      weight: 0,
+      color: 'red',
+      fillOpacity: 0.2
+    }).addTo(map.value as L.Map)
+    layers.push(ellipse)
+  }
   const originMarker = L.circleMarker(originLatLng.value, { color: 'red', radius: 5, fillOpacity: 1 }).addTo(map.value as L.Map)
-  layers.push(ellipse)
   layers.push(originMarker)
   // map.value.setView(originLatLng.value, 8)
 }
@@ -70,20 +80,27 @@ function displayStations() {
     const stationMap: Record<string, number | null> = {}
     let maxRes = 0
     for (const arrival of store.currentArrivals) {
-      if (arrival.timeResidual != null && arrival.timeWeight != null && arrival.timeWeight != null) {
+      if (arrival.timeWeight != null) {
         const netsta = arrival.pickID.referredObject.waveformID.netsta
         const v = stationMap[netsta]
         if (arrival.timeWeight > 0) {
-          maxRes = Math.max(maxRes, Math.abs(arrival.timeResidual))
-          stationMap[netsta] = v != null
-            ? Math.abs(v) > Math.abs(arrival.timeResidual)
-              ? v
+          if (arrival.timeResidual != null) {
+            maxRes = Math.max(maxRes, Math.abs(arrival.timeResidual))
+            stationMap[netsta] = v != null
+              ? Math.abs(v) > Math.abs(arrival.timeResidual)
+                ? v
+                : arrival.timeResidual
               : arrival.timeResidual
-            : arrival.timeResidual
+          } else {
+            stationMap[netsta] = v != null ? v : 0
+          }
         } else {
           stationMap[netsta] = v != null ? v : null
         }
       }
+    }
+    if (maxRes === 0) {
+      maxRes = 1
     }
     const colorScale: ColorScaleOptions = {
       stops: [

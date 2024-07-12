@@ -15,15 +15,19 @@ def to_scp_time(t):
 
 def to_scp_pick(j_pick):
     scp_pick = Pick(j_pick['@publicID'])
-    creation_info = CreationInfo()
-    creation_info.setCreationTime(to_scp_time(j_pick["creationInfo"]["creationTime"]))
-    creation_info.setAgencyID(j_pick["creationInfo"]["agencyID"])
-    creation_info.setAuthor(j_pick["creationInfo"]["author"])
-    scp_pick.setCreationInfo(creation_info)
+    if 'creationInfo' in j_pick:
+        creation_info = CreationInfo()
+        if 'creationTime' in j_pick['creationInfo']:
+            creation_info.setCreationTime(to_scp_time(j_pick["creationInfo"]["creationTime"]))
+        if 'agencyID' in j_pick['creationInfo']:
+            creation_info.setAgencyID(j_pick["creationInfo"]["agencyID"])
+        if 'author' in j_pick['creationInfo']:
+            creation_info.setAuthor(j_pick["creationInfo"]["author"])
+        scp_pick.setCreationInfo(creation_info)
     scp_pick.setTime(TimeQuantity(to_scp_time(j_pick["time"]["value"])))
     if "uncertainty" in j_pick["time"]:
         scp_pick.time().setUncertainty(j_pick["time"]["uncertainty"])
-    scp_pick.setEvaluationMode(AUTOMATIC if j_pick['evaluationMode'] == 'automatic' else MANUAL)
+    scp_pick.setEvaluationMode(MANUAL if j_pick.get('evaluationMode') == 'manual' else AUTOMATIC)
     scp_pick.setPhaseHint(Phase(j_pick['phaseHint']))
     if 'filter_id' in j_pick:
         scp_pick.setFilterID(j_pick['filterID'])
@@ -48,8 +52,8 @@ def to_scp_arrival(j_arrival):
 def to_scp_origin(j_origin):
     scp_origin: Origin = Origin.Create(j_origin['@publicID'])
     scp_origin.setTime(TimeQuantity(to_scp_time(j_origin["time"]["value"])))
-    scp_origin.setLatitude(RealQuantity(j_origin['latitude']['value'], j_origin['latitude']['uncertainty']))
-    scp_origin.setLongitude(RealQuantity(j_origin['longitude']['value'], j_origin['longitude']['uncertainty']))
+    scp_origin.setLatitude(RealQuantity(j_origin['latitude']['value'], j_origin['latitude'].get('uncertainty')))
+    scp_origin.setLongitude(RealQuantity(j_origin['longitude']['value'], j_origin['longitude'].get('uncertainty')))
     scp_origin.setDepth(RealQuantity(j_origin['depth']['value'], j_origin['depth'].get('uncertainty')))
     for j_arrival in j_origin['arrival']:
         if j_arrival['timeWeight'] > 0:

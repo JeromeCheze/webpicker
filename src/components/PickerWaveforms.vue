@@ -104,9 +104,9 @@ function updateTimeWindow(seedid: string, t1: number, t2: number) {
 
 function getPickTooltip(p: Pick) {
   return `<table class="pick-tooltip"><tbody>
-    <tr><th>Creation time</th><td>${p.creationInfo.creationTime}</td></tr>
+    <tr><th>Creation time</th><td>${p.creationInfo?.creationTime}</td></tr>
     <tr><th>Filter</th><td>${p.filterID || '-'}</td></tr>
-    <tr><th>Author</th><td>${p.creationInfo.author}</td></tr>
+    <tr><th>Author</th><td>${p.creationInfo?.author}</td></tr>
   </tbody></table>`
 }
 
