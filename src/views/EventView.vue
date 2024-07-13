@@ -124,7 +124,7 @@ onMounted(() => {
         :color="store.currentOrigin?.evaluationStatus == null ? 'grey' : 'blue'"
         class="text-uppercase mx-1"
       >
-        {{ store.currentOrigin?.evaluationStatus || 'NO TYPE SET' }}
+        {{ store.currentOrigin?.evaluationStatus || 'NO STATUS SET' }}
       </v-chip>
     </v-app-bar-title>
     <v-spacer></v-spacer>
