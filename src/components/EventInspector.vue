@@ -182,7 +182,7 @@ function setPreferredOrigin() {
   if (store.currentEvent != null && activeOrigin.value != null) {
     store.currentEvent.setPreferredOriginID(activeOrigin.value.publicID)
     if (
-      store.currentEvent.preferredMagnitudeID != null
+      store.currentEvent.preferredMagnitudeID.id != null
       && store.currentEvent.preferredMagnitudeID.referredObject.originID.id !== activeOrigin.value.publicID
     ) {
       store.currentEvent.setPreferredMagnitudeID(undefined)
