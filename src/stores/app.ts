@@ -144,7 +144,7 @@ function createPick(phase: string, pickTime: number, seedid: string, filter: str
       agencyID: 'OCA',
       creationTime: ct.toISOString()
     },
-    filterID: filter
+    filterID: filter?.replace(' ', '_').replace(':', '_')
   }
   console.log('create pick', pickDesc)
   const pick = currentEvent.value!.addPick(pickDesc)
