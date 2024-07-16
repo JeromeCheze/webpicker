@@ -30,6 +30,7 @@ const pickerStation = ref(null as string | null)
 const activeChannel = ref(null as string | null)
 const selectedPicks = ref([] as Pick[])
 const pickerTime = ref(null as number | null)
+const pickerTimeWindow = ref([0, 0] as [number, number])
 
 const toolbarValue = ref({
   phase: undefined,
@@ -353,7 +354,8 @@ onBeforeUnmount(() => {
         @active-channel="handleActiveChannel"
         @create-pick="createPick"
         @select-picks="handleSelectPicks"
-        @picker-time="(t: number) => pickerTime = t"/>
+        @picker-time="(t: number) => pickerTime = t"
+        @updateTimeWindow="(tw: [number, number]) => pickerTimeWindow = tw"/>
     </v-card-text>
   </v-card>
   <v-card class="mt-3">
@@ -364,6 +366,7 @@ onBeforeUnmount(() => {
         :station-ref-times="stationRefTimes"
         :ref-time-key="toolbarValue.alignment"
         :filter="filterValue"
+        :time-window="pickerTimeWindow"
         @select-station="handleSelectStation"/>
     </v-card-text>
   </v-card>

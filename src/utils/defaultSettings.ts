@@ -9,6 +9,7 @@ export default {
   'color.waveform': 'rgb(106,137,184)',
   'color.activeWaveform': '#303F9F',
   // 'color.activeWaveform': 'rgb(250, 250, 250)',
+  'color.activeTimeWindow': '#888888',
   'color.T0': 'orange',
   'color.TTT': '#0352fc',
   'color.TTTNLL': '#0000ff',

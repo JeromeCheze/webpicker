@@ -9,7 +9,7 @@ import { ref, watch, computed } from 'vue'
 import { useAppStore } from '@/stores/app'
 import Lichen from '@/lib/lichen/src'
 
-const emit = defineEmits(['activeChannel', 'createPick', 'update:start', 'update:end', 'selectPicks', 'pickerTime'])
+const emit = defineEmits(['activeChannel', 'createPick', 'selectPicks', 'pickerTime', 'updateTimeWindow'])
 
 const store = useAppStore()
 
@@ -97,6 +97,7 @@ function getXRange(seedid: string) {
 }
 
 function updateTimeWindow(seedid: string, t1: number, t2: number) {
+  emit('updateTimeWindow', [t1, t2])
   const refTime = getRefTime(seedid)
   start.value = t1 - refTime
   end.value = t2 - refTime

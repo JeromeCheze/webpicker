@@ -4,7 +4,7 @@ import { useAppStore } from '@/stores/app'
 import { deepCopy, getId } from '@/utils'
 import { ref, watch } from 'vue'
 import router from '@/router'
-import L from 'leaflet'
+import * as L from 'leaflet'
 
 const store = useAppStore()
 

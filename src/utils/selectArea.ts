@@ -1,4 +1,4 @@
-import L from 'leaflet'
+import * as L from 'leaflet'
 
 export default class SelectArea {
   __customEvents: Record<string, Array<(arg: any) => void>>;

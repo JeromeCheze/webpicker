@@ -25,8 +25,9 @@ def to_scp_pick(j_pick):
             creation_info.setAuthor(j_pick["creationInfo"]["author"])
         scp_pick.setCreationInfo(creation_info)
     scp_pick.setTime(TimeQuantity(to_scp_time(j_pick["time"]["value"])))
-    if "uncertainty" in j_pick["time"]:
-        scp_pick.time().setUncertainty(j_pick["time"]["uncertainty"])
+    uncertainty = j_pick["time"].get('uncertainty')
+    if uncertainty is not None:
+        scp_pick.time().setUncertainty(uncertainty)
     scp_pick.setEvaluationMode(MANUAL if j_pick.get('evaluationMode') == 'manual' else AUTOMATIC)
     scp_pick.setPhaseHint(Phase(j_pick['phaseHint']))
     if 'filter_id' in j_pick:

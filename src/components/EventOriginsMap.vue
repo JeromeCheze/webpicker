@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { Origin } from '@/lib/sismojs/src/core/event/types'
 import type { WPNotificationOptions } from '@/types'
-import L, { type LatLngTuple } from 'leaflet'
 import { ref, watch, onMounted } from 'vue'
 import { useAppStore } from '@/stores/app'
+import * as L from 'leaflet'
 
 const store = useAppStore()
 
@@ -53,7 +53,7 @@ function displayOrigins() {
   }
   layers = []
   for (const origin of store.currentEvent.origin) {
-    const pos = [origin.latitude.value, origin.longitude.value] as LatLngTuple
+    const pos = [origin.latitude.value, origin.longitude.value] as L.LatLngTuple
     const m = L.circleMarker(pos, {
       color: 'red',
       weight: 2,
@@ -66,7 +66,7 @@ function displayOrigins() {
 }
 
 function displayStations() {
-  const bounds: (LatLngTuple)[] = []
+  const bounds: (L.LatLngTuple)[] = []
   for (const m of layers) {
     const pos = m.getLatLng()
     bounds.push([pos.lat, pos.lng])
@@ -79,7 +79,7 @@ function displayStations() {
   }
   stationLayers = []
   const stationMap: Record<string, boolean> = {}
-  const oPos = [props.activeOrigin.latitude.value, props.activeOrigin.longitude.value] as LatLngTuple
+  const oPos = [props.activeOrigin.latitude.value, props.activeOrigin.longitude.value] as L.LatLngTuple
   store.dataManager.getOriginStationInventory('..', props.activeOrigin, props.activeOrigin.arrival, handleNotification).then((inv) => {
     for (const arrival of props.activeOrigin!.arrival) {
       const netsta = arrival.pickID.referredObject.waveformID.netsta
@@ -91,7 +91,7 @@ function displayStations() {
         console.warn(`failed to get coordinates for channel ${netsta}`)
         continue
       }
-      const staPos = [pos.lat, pos.lon] as LatLngTuple
+      const staPos = [pos.lat, pos.lon] as L.LatLngTuple
       bounds.push(staPos)
       const marker = L.circleMarker(staPos, { radius: 4, color: 'grey', fillOpacity: 1, fillColor: 'white', weight: 1 }).addTo(map.value as L.Map)
       stationLayers.push(marker)

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { getLocalStorageDefault, setLocalStorage } from '@/utils'
 import { ref, computed, onMounted, watch } from 'vue'
-import L, { type LatLngTuple } from 'leaflet'
 import type { WebpickerForm } from '@/types'
 import SelectArea from '@/utils/selectArea'
 import { useAppStore } from '@/stores/app'
 import { useRouter } from 'vue-router'
+import * as L from 'leaflet'
 
 const store = useAppStore()
 const router = useRouter()
@@ -22,7 +22,7 @@ const pickerEnd = ref(new Date(form.value.end))
 
 const bounds = computed(() => {
   const fixedMaxLon = form.value.maxlon < form.value.minlon ? form.value.maxlon + 360 : form.value.maxlon
-  return [[form.value.minlat, form.value.minlon], [form.value.maxlat, fixedMaxLon]] as LatLngTuple[]
+  return [[form.value.minlat, form.value.minlon], [form.value.maxlat, fixedMaxLon]] as L.LatLngTuple[]
 })
 
 
@@ -171,7 +171,7 @@ onMounted(() => {
               <v-col cols="6">
                 <v-menu offset-y :close-on-content-click="false" v-model="startMenu">
                   <template v-slot:activator="{ props }">
-                    <v-text-field hide-details v-bind="props" v-model="form.start" label="Start" prepend-icon="mdi-calendar"></v-text-field>
+                    <v-text-field hide-details v-bind="props" v-model="form.start" label="Start" prepend-icon="mdi-calendar" readonly></v-text-field>
                   </template>
                   <v-date-picker v-model="pickerStart" :allowed-dates="allowedStartDate"></v-date-picker>
                 </v-menu>
@@ -179,7 +179,7 @@ onMounted(() => {
               <v-col cols="6">
                 <v-menu offset-y :close-on-content-click="false" v-model="endMenu">
                   <template v-slot:activator="{ props }">
-                    <v-text-field hide-details v-bind="props" v-model="form.end" label="End" prepend-icon="mdi-calendar"></v-text-field>
+                    <v-text-field hide-details v-bind="props" v-model="form.end" label="End" prepend-icon="mdi-calendar" readonly></v-text-field>
                   </template>
                   <v-date-picker v-model="pickerEnd" :allowed-dates="allowedEndDate"></v-date-picker>
                 </v-menu>

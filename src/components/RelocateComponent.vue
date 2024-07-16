@@ -3,7 +3,7 @@ import { parse } from '@/lib/sismojs/src/core/event/quakeml'
 import { Event } from '@/lib/sismojs/src/core/event/types'
 import { computed, ref, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
-import { deepCopy } from '@/utils'
+import { deepCopy, getId } from '@/utils'
 
 const store = useAppStore()
 
@@ -56,6 +56,9 @@ function relocate() {
           const doc = new DOMParser().parseFromString(statusResponse.quakeml, 'application/xml')
           const result = parse(doc) as Event[]
           const newOrigin = result[0].origin[0]
+          for (const arrival of newOrigin.arrival) {
+            arrival.desc['@publicID'] = getId('Arrival')
+          }
           newOrigin.creationInfo.author = store.author
           store.eventViewStatus.relocateStatus = 'enabled'
           store.eventViewStatus.computeMagnitudesStatus = 'required'

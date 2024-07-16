@@ -148,4 +148,4 @@ watch(() => store.usersActivity, (value) => {
       Go to <router-link :to="{ name: 'form' }">form</router-link> to define query parameters
     </SmartTable>
   </v-card>
-</template> 
+</template>

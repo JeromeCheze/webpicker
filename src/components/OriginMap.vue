@@ -3,8 +3,8 @@ import type { ColorScaleOptions } from '@/lib/lichen/src/types'
 import { ref, computed, watch, onMounted } from 'vue'
 import type { WPNotificationOptions } from '@/types'
 import DataUtils from '@/lib/lichen/src/dataUtils'
-import L, { type LatLngTuple } from 'leaflet'
 import { useAppStore } from '@/stores/app'
+import * as L from 'leaflet'
 import 'leaflet-ellipse'
 
 const store = useAppStore()
@@ -75,8 +75,8 @@ function displayStations() {
     if (store.currentOrigin == null || store.currentArrivals == null || map.value == null) {
       return
     }
-    const oPos = [store.currentOrigin.latitude.value, store.currentOrigin.longitude.value] as LatLngTuple
-    const bounds: LatLngTuple[] = [oPos]
+    const oPos = [store.currentOrigin.latitude.value, store.currentOrigin.longitude.value] as L.LatLngTuple
+    const bounds: L.LatLngTuple[] = [oPos]
     const stationMap: Record<string, number | null> = {}
     let maxRes = 0
     for (const arrival of store.currentArrivals) {
@@ -124,7 +124,7 @@ function displayStations() {
       } else if (oLon < -90 && pos.lon > 0) {
         pos.lon -= 360
       }
-      const staPos = [pos.lat, pos.lon] as LatLngTuple
+      const staPos = [pos.lat, pos.lon] as L.LatLngTuple
       bounds.push(staPos)
       const color = residual == null ? 'grey' : DataUtils.getColor(residual, colorScale) as string
       const marker = L.circleMarker(staPos, { radius: 4, color: 'grey', fillOpacity: 1, fillColor: color, weight: 1 })

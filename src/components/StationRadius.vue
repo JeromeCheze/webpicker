@@ -3,7 +3,7 @@ import type { Inventory } from '@/lib/sismojs/src/types'
 import { degToKm, kmToDeg, pushUnique } from '@/utils'
 import { useAppStore } from '@/stores/app'
 import { ref, watch, computed } from 'vue'
-import L from 'leaflet'
+import * as L from 'leaflet'
 
 const emit = defineEmits(['radiusStations'])
 
@@ -154,7 +154,7 @@ watch(() => menu.value, (value) => {
 <template>
   <v-menu v-model="menu" :close-on-content-click="false" attach>
     <template v-slot:activator="{ props }">
-      <v-btn class="ml-4" v-bind="props"><v-icon>mdi-less-than-or-equal</v-icon></v-btn>
+      <v-btn class="ml-4" v-bind="props" title="Add station radius"><v-icon>mdi-less-than-or-equal</v-icon></v-btn>
     </template>
     <v-card min-width="500">
       <v-card-text>

@@ -28,6 +28,7 @@ const struct = [
       { label: 'Active Row Color', key: 'color.activeRowColor', type: 'text' },
       { label: 'Color Waveform', key: 'color.waveform', type: 'text' },
       { label: 'Color Active Waveform', key: 'color.activeWaveform', type: 'text' },
+      { label: 'Color Active TimeWindow', key: 'color.activeTimeWindow', type: 'text' },
       { label: 'Spectrogram Colormap', key: 'color.spectrogram', type: 'select', items: ['PARULA' ,'VIRIDIS' ,'PLASMA' ,'INFERNO' ,'MAGMA' ,'CIVIDIS'] },
       { label: 'Spectrogram Height', key: 'picker.spectrogramHeight', type: 'number' },
       { label: 'Color T0', key: 'color.T0', type: 'text' },

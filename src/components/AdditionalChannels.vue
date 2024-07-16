@@ -42,7 +42,7 @@ function handleValidate() {
 <template>
   <v-menu v-model="menu" :close-on-content-click="false" attach>
     <template v-slot:activator="{ props }">
-      <v-btn class="ml-4" v-bind="props" :disabled="channels.length === 0"><v-icon>mdi-playlist-plus</v-icon></v-btn>
+      <v-btn class="ml-4" v-bind="props" :disabled="channels.length === 0" title="Add additional channels"><v-icon>mdi-playlist-plus</v-icon></v-btn>
     </template>
     <v-card>
       <v-list>

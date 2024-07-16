@@ -9,7 +9,7 @@ import { getDefault, toNetSta } from '@/utils'
 import { useAppStore } from '@/stores/app'
 import Lichen from '@/lib/lichen/src'
 
-const emit = defineEmits(['selectStation', 'update:start', 'update:end'])
+const emit = defineEmits(['selectStation'])
 
 const store = useAppStore()
 
@@ -19,6 +19,7 @@ const props = defineProps<{
   filter: FilterOptions | null
   refTimeKey: string
   stationRefTimes: StationRefTimes
+  timeWindow: [number, number]
 }>()
 
 const container = ref()
@@ -125,16 +126,22 @@ function getVLines(netsta: string) {
       }
     }
   }
+  if (netsta === selected.value && props.timeWindow[0] !== 0 && props.timeWindow[1] !== 0) {
+    const [t1, t2] = props.timeWindow
+    result.push({ color: store.settings['color.activeTimeWindow'], x: t1, range: [0, t2 - t1], width: 0 })
+  }
   return result
 }
 
 function selectStation(netsta: string) {
-  if (selected.value != null) {
-    const series = chartData[selected.value].chart.opt.series as LineOptions[]
-    series[0].color = store.settings['color.waveform']
-    chartData[selected.value].chart.draw()
-  }
+  const prevSelected = selected.value
   selected.value = netsta
+  if (prevSelected != null) {
+    const series = chartData[prevSelected].chart.opt.series as LineOptions[]
+    series[0].color = store.settings['color.waveform']
+    chartData[prevSelected].chart.draw()
+    updateChartVlines(prevSelected, chartData[prevSelected].chart)
+  }
   const series = chartData[netsta].chart.opt.series as LineOptions[]
   series[0].color = store.settings['color.activeWaveform']
   chartData[netsta].chart.draw()
@@ -214,11 +221,21 @@ function createChart(chartContainer: HTMLElement, data: WaveformProcessInterface
   return result
 }
 
+function updateChartVlines(netsta: string, chart: Lichen) {
+  chart.opt.vLines = getVLines(netsta)
+  const chartFrontPanel = chart.master.getRegistered('FRONT_PANEL')
+  chartFrontPanel.update(null)
+}
+
 function updateVlines() {
   for (const [netsta, currChartData] of Object.entries(chartData)) {
-    currChartData.chart.opt.vLines = getVLines(netsta)
-    const chartFrontPanel = currChartData.chart.master.getRegistered('FRONT_PANEL')
-    chartFrontPanel.update(null)
+    updateChartVlines(netsta, currChartData.chart)
+  }
+}
+
+function updateSelectedVlines() {
+  if (selected.value != null) {
+    updateChartVlines(selected.value, chartData[selected.value].chart)
   }
 }
 
@@ -278,6 +295,8 @@ watch([
 ], () => update(false))
 
 watch(() => store.pickMap, () => updateVlines())
+
+watch(() => props.timeWindow, () => updateSelectedVlines())
 
 watch(() => store.keydown, (newValue) => {
   if (newValue === store.settings['keybinding.nextStation']) {

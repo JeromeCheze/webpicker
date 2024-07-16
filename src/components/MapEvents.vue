@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import L, { type LatLngBoundsExpression, type LatLngTuple } from 'leaflet'
+import * as L from 'leaflet'
 import { Event } from '@/lib/sismojs/src/core/event/types'
 import { ref, onMounted, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
@@ -22,7 +22,7 @@ watch(() => activeEvent.value, () => {
   }, 500)
 })
 
-function getEventMarker(pos: LatLngTuple, event: Event) {
+function getEventMarker(pos: L.LatLngTuple, event: Event) {
   const marker = L.circleMarker(pos, {
     weight: 1,
     radius: event.preferredMagnitudeID.id != null ? 3 + event.preferredMagnitudeID.referredObject.mag.value * 2 : 5,
@@ -72,12 +72,12 @@ function initMap() {
   L.control.layers(baseLayers).addTo(map.value as L.Map)
   L.control.scale({ imperial: false }).addTo(map.value as L.Map)
   plan.addTo(map.value as L.Map)
-  const bounds: LatLngTuple[] = []
+  const bounds: L.LatLngTuple[] = []
   for (const event of store.cacheEventList) {
     if (event.preferredOriginID.id == null) {
       continue
     }
-    const pos: LatLngTuple = [event.preferredOriginID.referredObject.latitude.value, event.preferredOriginID.referredObject.longitude.value]
+    const pos: L.LatLngTuple = [event.preferredOriginID.referredObject.latitude.value, event.preferredOriginID.referredObject.longitude.value]
     const worldCenter = store.settings['miscellaneous.longitudeReference']
     if (worldCenter > 0 && worldCenter - 180 > pos[1]) {
       pos[1] += 360
@@ -103,7 +103,7 @@ function focusEvent(eventid: string | null) {
   } else {
     activeEvent.value = undefined
   }
-  const bounds: LatLngBoundsExpression = []
+  const bounds: L.LatLngBoundsExpression = []
   for (const [id, marker] of Object.entries(layers)) {
     const pos = marker.getLatLng()
     bounds.push([pos.lat, pos.lng])

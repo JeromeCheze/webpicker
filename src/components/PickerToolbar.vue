@@ -123,13 +123,13 @@ watch(() => rotation.value, (value: number) => props.modelValue.rotation = rotat
     </v-btn-toggle>
     <!-- SORT -->
     <v-btn-toggle v-model="sortValue" class="ml-4" density="compact" mandatory>
-      <v-btn v-for="curr in sortOptions"><v-icon>{{ curr.icon }}</v-icon></v-btn>
+      <v-btn v-for="curr in sortOptions" :title="`Sort stations by ${curr.value}`"><v-icon>{{ curr.icon }}</v-icon></v-btn>
     </v-btn-toggle>
     <!-- ADDITIONAL CHANNELS -->
     <AdditionalChannels :seedids="props.modelValue.seedids" @additional-channels="(seedidList: string[]) => emit('downloadChannels', seedidList)"/>
     <!-- STATION RADIUS -->
     <StationRadius @radius-stations="(seedidList: string[]) => emit('downloadChannels', seedidList)"/>
     <!-- EXIT -->
-    <v-btn @click="emit('leave')"><v-icon>mdi-exit-to-app</v-icon></v-btn>
+    <v-btn @click="emit('leave')" :title="`Exit picker [${store.settings['keybinding.togglePicker']}]`"><v-icon>mdi-exit-to-app</v-icon></v-btn>
   </v-app-bar>
 </template>
