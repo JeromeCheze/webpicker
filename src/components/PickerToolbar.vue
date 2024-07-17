@@ -51,6 +51,8 @@ watch(() => store.keydown, (newValue) => {
     props.modelValue.denoiser = !props.modelValue.denoiser
   } else if (newValue === store.settings['keybinding.toggleSpectrogram']) {
     props.modelValue.spectrogram = !props.modelValue.spectrogram
+  } else if (newValue === store.settings['keybinding.toggleRotation']) {
+    rotation.value = rotations.indexOf(props.modelValue.rotation === 'ZNE' ? 'ZRT' : 'ZNE')
   }
 })
 

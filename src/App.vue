@@ -12,6 +12,8 @@ const createEventDialog = ref(false)
 const drawer = ref(true)
 const rail = ref(getLocalStorageDefault('navDrawer', false) as boolean)
 const logDialog = ref(false)
+const connectionPopup = ref(false)
+const connectionStatus = ref(false)
 const infoNotification = ref(false)
 const infoNotificationText = ref('')
 const warningNotification = ref(false)
@@ -36,6 +38,11 @@ function setBackground() {
     appDiv.style.background = store.settings['color.background']
   }
 }
+
+watch(() => store.connected, (value) => {
+  connectionStatus.value = value
+  connectionPopup.value = true
+})
 
 watch(rail, (value) => {
   setLocalStorage('navDrawer', value)
@@ -97,6 +104,10 @@ onMounted(() => {
       <v-container fluid>
         <RouterView />
       </v-container>
+      <v-snackbar v-model="connectionPopup" :color="connectionStatus ? 'success' : 'error'" :timeout="connectionStatus ? 2000 : -1">
+        <div v-if="connectionStatus"><v-icon>mdi-thumb-up</v-icon> Connected.</div>
+        <div v-else><v-icon>mdi-cloud-off-outline</v-icon> Disconnected from server...</div>
+      </v-snackbar>
       <v-snackbar v-model="infoNotification" timeout="2000">{{ infoNotificationText }}</v-snackbar>
       <v-snackbar v-model="progressNotification" timeout="-1">
         <v-progress-circular :model-value="progressNotificationValue.percent" :indeterminate="progressNotificationValue.percent === -1" size="16" class="mr-2"/>

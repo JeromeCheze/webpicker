@@ -71,9 +71,10 @@ function handleUsers() {
   const eventUsers = store.activityManager.eventUsers(props.eventid!).filter(x => x !== store.author)
   if (eventUsers.length > 0) {
     store.notification.push({ type: 'warning', value: `This event is currently reviewed by some users (${eventUsers.join(', ')})` })
-  } else {
-    store.notification.push({ type: 'warning', value: null })
   }
+  // } else {
+  //   store.notification.push({ type: 'warning', value: null })
+  // }
 }
 
 watch(() => store.keydown, (newValue) => {

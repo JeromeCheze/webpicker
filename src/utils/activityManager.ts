@@ -7,14 +7,20 @@ export default class ActivityManager {
   _event: string
   usersActivity: Activity[]
   updateCallback: (usersActivity: Activity[]) => void
+  connectionCallback: (connected: boolean) => void
 
-  constructor(author: string, updateCallback: (usersActivity: Activity[]) => void) {
+  constructor(
+    author: string,
+    updateCallback: (usersActivity: Activity[]) => void,
+    connectionCallback: (connected: boolean) => void,
+  ) {
     this.ws = null
     this.usersActivity = []
     this._author = author
     this._state = 'online'
     this._event = ''
     this.updateCallback = updateCallback
+    this.connectionCallback = connectionCallback
     this.connect()
   }
 
@@ -31,6 +37,7 @@ export default class ActivityManager {
         this.updateCallback(this.usersActivity)
       }
       this.ws.onclose = () => {
+        this.connectionCallback(false)
         // try to reconnect after 1s
         setTimeout(() => {
           this.connect()
@@ -38,6 +45,7 @@ export default class ActivityManager {
       }
       this.ws.onopen = () => {
         this._sendActivity()
+        this.connectionCallback(true)
         resolve()
       }
     })

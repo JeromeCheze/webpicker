@@ -167,10 +167,9 @@ async def commit(request: Request, username: Annotated[str, Depends(check_authen
 
 @app.get('/fdsnws/event/1/query', tags=['fdsnws'])
 def get_events(request: Request, username: Annotated[str, Depends(check_authentication)]):
-    query = dict(request.query_params)
     if utils.CONFIG.access.restricted:
-        utils.apply_user_rules('GET', username, query)
-    req = f'http://{utils.CONFIG.fdsnws.event_host}/fdsnws/event/1/query?{urllib.parse.urlencode(query)}'
+        utils.apply_user_rules('GET', username, request.query_params)
+    req = f'http://{utils.CONFIG.fdsnws.event_host}/fdsnws/event/1/query?{urllib.parse.urlencode(request.query_params)}'
     response = urllib.request.urlopen(req)
     return Response(content=response.read(), media_type=response.headers.get_content_type())
 
@@ -192,10 +191,9 @@ async def post_stations(request: Request, username: Annotated[str, Depends(check
 
 @app.get('/fdsnws/dataselect/1/query', tags=['fdsnws'])
 def get_dataselect(request: Request, username: Annotated[str, Depends(check_authentication)]):
-    query = dict([x.split('=') for x in request.query_params.split('&')])
     if utils.CONFIG.access.restricted:
-        utils.apply_user_rules('GET', username, query)
-    req = f'http://{utils.CONFIG.fdsnws.dataselect_host}/fdsnws/dataselect/1/query?{urllib.parse.urlencode(query)}'
+        utils.apply_user_rules('GET', username, request.query_params)
+    req = f'http://{utils.CONFIG.fdsnws.dataselect_host}/fdsnws/dataselect/1/query?{urllib.parse.urlencode(request.query_params)}'
     response = urllib.request.urlopen(req)
     return Response(content=response.read(), media_type=response.headers.get_content_type())
 

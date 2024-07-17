@@ -106,6 +106,7 @@ function updateTimeWindow(seedid: string, t1: number, t2: number) {
 function getPickTooltip(p: Pick) {
   return `<table class="pick-tooltip"><tbody>
     <tr><th>Creation time</th><td>${p.creationInfo?.creationTime}</td></tr>
+    <tr><th>WFID</th><td>${p.waveformID.seedid}</td></tr>
     <tr><th>Filter</th><td>${p.filterID || '-'}</td></tr>
     <tr><th>Author</th><td>${p.creationInfo?.author}</td></tr>
   </tbody></table>`
@@ -159,9 +160,18 @@ function getVLines(index: number, dataLength: number, seedid: string) {
     }
   }
   if (store.pickMap[netsta] != null && store.pickMap[netsta][seedid] != null) {
-    for (const p of store.pickMap[netsta][seedid]) {
-      result.push(pickToVLine(p, true))
+    for (const [currSeedid, pickList] of Object.entries(store.pickMap[netsta])) {
+      for (const p of pickList) {
+        if (currSeedid === seedid) {
+          result.push(pickToVLine(p, true))
+        } else if (props.rotation !== 'ZRT' && index === 0 && ['R', 'T'].indexOf(currSeedid.slice(-1)) >= 0) {
+          result.push(pickToVLine(p, true))
+        }
+      }
     }
+    // for (const p of store.pickMap[netsta][seedid]) {
+    //   result.push(pickToVLine(p, true))
+    // }
   }
   if (store.additionalPickMap[netsta] != null && store.additionalPickMap[netsta][seedid] != null) {
     for (const p of store.additionalPickMap[netsta][seedid]) {

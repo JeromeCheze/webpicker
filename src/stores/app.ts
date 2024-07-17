@@ -208,12 +208,16 @@ function createFocalMechanism(strike: number, dip: number, rake: number, nbStati
 const settings = Object.assign(deepCopy(defaultSettings), getLocalStorageDefault('settings', {}))
 
 const usersActivity = ref([] as Activity[])
-const activityManager = new ActivityManager(author.value || 'unknown user', value => {
-  usersActivity.value = value
-})
+const connected = ref(false)
+const activityManager = new ActivityManager(
+  author.value || 'unknown user',
+  value => usersActivity.value = value,
+  value => connected.value = value
+)
 
 export const useAppStore = defineStore('app', () => {
   return {
+    connected,
     author,
     notification,
     cacheEventList,

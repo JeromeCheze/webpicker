@@ -74,6 +74,7 @@ const struct = [
       { label: 'Toggle Filter', key: 'keybinding.toggleFilter', type: 'text' },
       { label: 'Toggle Denoiser', key: 'keybinding.toggleDenoiser', type: 'text' },
       { label: 'Toggle Spectrogram', key: 'keybinding.toggleSpectrogram', type: 'text' },
+      { label: 'Toggle Rotation (ZNE/ZRT)', key: 'keybinding.toggleRotation', type: 'text' },
       { label: 'Create Pick', key: 'keybinding.createPick', type: 'text' },
       { label: 'Delete Pick', key: 'keybinding.deletePick', type: 'text' },
       { label: 'Set Polarity Positive', key: 'keybinding.polarityPositive', type: 'text' },
@@ -87,6 +88,19 @@ const struct = [
     ]
   }
 ]
+
+function checkKeybinding(key: string, value: string) {
+  const conflicts: string[] = []
+  for (const [k, v] of Object.entries(values.value)) {
+    if (k !== key && k.indexOf('keybinding.') === 0 && v === value) {
+      conflicts.push(k)
+    }
+  }
+  if (conflicts.length > 0) {
+    return `Conflict with ${conflicts.join(', ')}`
+  }
+  return true
+}
 
 function resetDefault(key: string) {
   values.value[key] = deepCopy(defaultSettings[key])
@@ -193,7 +207,7 @@ onMounted(() => {
                       <th>{{ field.label }}</th>
                       <td>
                         <v-select v-if="field.type === 'select'" density="compact" hide-details :items="field.items" v-model="values[field.key]"/>
-                        <v-text-field v-else-if="field.type === 'text'" density="compact" hide-details v-model="values[field.key]"/>
+                        <v-text-field v-else-if="field.type === 'text'" density="compact" hide-details="auto" v-model="values[field.key]" :rules="section.title === 'Keybindings' ? [checkKeybinding(field.key, values[field.key])] : []"/>
                         <NumberField v-else-if="field.type === 'number'" density="compact" hide-details v-model="values[field.key]"/>
                       </td>
                       <td><v-btn variant="plain" v-if="!isDefaultValue(field.key)" @click="resetDefault(field.key)"><v-icon>mdi-backup-restore</v-icon></v-btn></td>
