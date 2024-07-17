@@ -159,12 +159,14 @@ function getVLines(index: number, dataLength: number, seedid: string) {
       }
     }
   }
-  if (store.pickMap[netsta] != null && store.pickMap[netsta][seedid] != null) {
+  if (store.pickMap[netsta] != null) {
     for (const [currSeedid, pickList] of Object.entries(store.pickMap[netsta])) {
       for (const p of pickList) {
         if (currSeedid === seedid) {
           result.push(pickToVLine(p, true))
         } else if (props.rotation !== 'ZRT' && index === 0 && ['R', 'T'].indexOf(currSeedid.slice(-1)) >= 0) {
+          result.push(pickToVLine(p, true))
+        } else if (props.rotation === 'ZRT' && index === 0 && ['Z', 'R', 'T'].indexOf(currSeedid.slice(-1)) < 0) {
           result.push(pickToVLine(p, true))
         }
       }
