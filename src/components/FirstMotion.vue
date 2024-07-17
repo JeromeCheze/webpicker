@@ -78,24 +78,31 @@ function handleStationPopup(e: MouseEvent) {
   const bbcr = stationCtx.value!.canvas.getBoundingClientRect()
   const x = e.clientX - bbcr.left
   const y = e.clientY - bbcr.top
+  const content: string[] = []
   for (const [k, v] of Object.entries(stationPos.value)) {
     const dist = Math.sqrt(Math.pow(Math.abs(x - v.pos[0]), 2) + Math.pow(Math.abs(y - v.pos[1]), 2))
     if (dist < 5) {
-      if (stationPopup != null) {
-        stationPopup.remove()
+      const text = [k]
+      if (v.pick.polarity != null) {
+        text.push(`| ${v.pick.polarity}`)
       }
-      stationPopup = document.createElement('div')
-      Object.assign(stationPopup.style, {
-        top: `${e.clientY + 5}px`,
-        left: `${e.clientX + 5}px`
-      }, stationPopupStyle)
-      const text = [k, `| ${v.pick.polarity}`]
       if (v.pick.onset != null) {
         text.push(`(${v.pick.onset})`)
       }
-      stationPopup.innerHTML = text.join(' ')
-      document.body.appendChild(stationPopup)
+      content.push(text.join(' '))
     }
+  }
+  if (content.length > 0) {
+    if (stationPopup != null) {
+      stationPopup.remove()
+    }
+    stationPopup = document.createElement('div')
+    Object.assign(stationPopup.style, {
+      top: `${e.clientY + 5}px`,
+      left: `${e.clientX + 5}px`
+    }, stationPopupStyle)
+    stationPopup.innerHTML = content.join('<br>')
+    document.body.appendChild(stationPopup)
   }
 }
 
@@ -104,8 +111,8 @@ function updateStationLayer(center: number, radius: number) {
   ctx.save()
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
   const result: {[netsta: string]: { pos: [number, number], pick: Pick } } = {}
-  for (const a of polarizedArrivals.value) {
-    if (a.takeoffAngle == null || a.azimuth == null) {
+  for (const a of store.currentArrivals) {
+    if (a.phase !== 'P' || a.takeoffAngle == null || a.azimuth == null) {
       continue
     }
     const dist = radius * (a.takeoffAngle > 90 ? 180 - a.takeoffAngle : a.takeoffAngle) / 90
@@ -114,15 +121,24 @@ function updateStationLayer(center: number, radius: number) {
     const pick: Pick = a.pickID.referredObject
     const netsta = pick.waveformID.netsta
     result[netsta] = { pos: [xPos, yPos], pick }
-    ctx.beginPath()
-    const r = pick.onset === 'impulsive' ? 5 : pick.onset === 'emergent' ? 3 : 4
-    ctx.setLineDash(pick.polarity === 'undecidable' ? [2, 2] : [])
-    ctx.lineWidth = pick.polarity === 'undecidable' ? 2 : 1
-    ctx.arc(xPos, yPos, r, 0, 2 * Math.PI)
-    if (pick.polarity === 'positive') {
-      ctx.fill()
-    } else {
+    if (pick.polarity == null) {
+      ctx.beginPath()
+      ctx.moveTo(xPos - 3, yPos - 3)
+      ctx.lineTo(xPos + 3, yPos + 3)
+      ctx.moveTo(xPos + 3, yPos - 3)
+      ctx.lineTo(xPos - 3, yPos + 3)
       ctx.stroke()
+    } else {
+      ctx.beginPath()
+      const r = pick.onset === 'impulsive' ? 5 : pick.onset === 'emergent' ? 3 : 4
+      ctx.setLineDash(pick.polarity === 'undecidable' ? [2, 2] : [])
+      ctx.lineWidth = pick.polarity === 'undecidable' ? 2 : 1
+      ctx.arc(xPos, yPos, r, 0, 2 * Math.PI)
+      if (pick.polarity === 'positive') {
+        ctx.fill()
+      } else {
+        ctx.stroke()
+      }
     }
   }
   ctx.restore()
@@ -239,8 +255,8 @@ function init() {
     oldSdr.value = [s, d, r]
   }
   const stationDistance: {[index: string]: number} = {}
-  for (const a of polarizedArrivals.value) {
-    if (a.distance != null) {
+  for (const a of store.currentArrivals) {
+    if (a.distance != null && a.phase === 'P') {
       const netsta = a.pickID.referredObject.waveformID.netsta
       stationDistance[netsta] = a.distance
     }
@@ -252,7 +268,7 @@ function init() {
   }).then(response => {
     if (response.status === 200) {
       response.json().then(toa => {
-        for (const a of polarizedArrivals.value) {
+        for (const a of store.currentArrivals) {
           const netsta = a.pickID.referredObject.waveformID.netsta
           a.takeoffAngle = toa[netsta]
         }

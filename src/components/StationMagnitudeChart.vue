@@ -21,7 +21,6 @@ function drawChart() {
     stops: Lichen.getColorScale('PARULA'),
     logarithmic: false
   }
-  console.log(colorScale)
   const magMap: Record<string, any> = {}
   const magColor: Record<string, string> = {}
   for (const [index, mag] of store.currentOriginMagnitudes.entries()) {
