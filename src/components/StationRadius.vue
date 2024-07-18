@@ -70,6 +70,10 @@ function validate() {
 function preview(): Promise<void> {
   return new Promise((resolve, reject) => {
     if (form.value.validate()) {
+      setLocalStorage(
+        'stationRadius',
+        [netSelector.value, staSelector.value, locSelector.value, chaSelector.value, radius.value]
+      )
       const toRemove: string[] = []
       for (const [net, staMap] of Object.entries(store.dataManager.inventoryCache as Inventory)) {
         for (const sta of Object.keys(staMap)) {
@@ -95,6 +99,7 @@ function preview(): Promise<void> {
         resolve()
       })
     } else {
+      console.warn('reject')
       reject()
     }
   })
