@@ -64,7 +64,7 @@ watch (() => props.modelValue.filter, (value) => {
 })
 
 watch(() => phase.value, (value: number | undefined) => props.modelValue.phase = value != undefined ? phases[value] as 'P' | 'S' : undefined)
-watch(() => alignment.value, (value: number) => props.modelValue.alignment = alignments[value])
+watch(() => alignment.value, (value: number) => props.modelValue.alignment = alignments[value] as PickerToolbarOptions['alignment'])
 watch(() => sortValue.value, (value: number) => props.modelValue.sort = sortOptions[value].value as 'distance' | 'name')
 watch(() => rotation.value, (value: number) => props.modelValue.rotation = rotations[value] as 'ZNE' | 'ZRT')
 </script>

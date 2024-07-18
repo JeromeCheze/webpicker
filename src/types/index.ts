@@ -51,7 +51,7 @@ export interface EventViewStatus {
 
 export interface PickerToolbarOptions {
   phase: 'P' | 'S' | undefined
-  alignment: string
+  alignment: 'O' | 'P' | 'S'
   components: string[]
   seedids: string[]
   sort: 'distance' | 'name'

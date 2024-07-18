@@ -17,7 +17,7 @@ const props = defineProps<{
   data: Trace[]
   sortTrace: PickerToolbarOptions['sort']
   filter: FilterOptions | null
-  refTimeKey: string
+  refTimeKey: PickerToolbarOptions['alignment']
   stationRefTimes: StationRefTimes
   timeWindow: [number, number]
 }>()
@@ -68,6 +68,20 @@ async function processWaveforms() {
 }
 
 function getRefTime(seedid: string) {
+  if (props.refTimeKey === 'O') {
+    return props.stationRefTimes[toNetSta(seedid)][props.refTimeKey]
+  }
+  const netsta = toNetSta(seedid)
+  if (store.pickMap[netsta] != null) {
+    for (const pickList of Object.values(store.pickMap[netsta])) {
+      for (const pick of pickList) {
+        if (pick.phaseHint === props.refTimeKey) {
+          console.log(props.refTimeKey, netsta, pick.phaseHint)
+          return pick.time.object.getTime()
+        }
+      }
+    }
+  }
   return props.stationRefTimes[toNetSta(seedid)][props.refTimeKey]
 }
 

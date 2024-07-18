@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import { getDefault, getLocalStorageDefault } from '@/utils'
 import { Event } from '@/lib/sismojs/src/core/event/types'
 import { useAppStore } from '@/stores/app'
 import type { ColObject } from '@/types'
-import { getDefault } from '@/utils'
 import { ref, watch } from 'vue'
 import router from '@/router'
 
@@ -139,7 +139,8 @@ watch(() => store.usersActivity, (value) => {
       :table-height="props.height"
       :items="store.cacheEventList"
       :cols="header"
-      :sortCol="1"
+      :sort-col="getLocalStorageDefault('eventList._sortCol', 1)"
+      :sort-order="getLocalStorageDefault('eventList._sortOrder', 'desc')"
       @row-click="handleRowClick"
       :row-color="handleRowColor"
       store-key="eventList"

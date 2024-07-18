@@ -78,6 +78,10 @@ function handleSortCol(index: number) {
   } else {
     sortCol.value = index
   }
+  if (props.storeKey != null) {
+    setLocalStorage(`${props.storeKey}._sortCol`, sortCol.value)
+    setLocalStorage(`${props.storeKey}._sortOrder`, sortOrder.value)
+  }
   applySort()
 }
 
@@ -232,7 +236,7 @@ onMounted(() => {
         <tbody>
           <tr>
             <td v-for="col in props.cols">
-              <v-checkbox v-model="col.enabled" density="compact" hide-details @update:modelValue="value => storeValue(col, value)"></v-checkbox>
+              <v-checkbox v-model="col.enabled" density="compact" hide-details @update:modelValue="(value: boolean | null) => storeValue(col, value)"></v-checkbox>
             </td>
           </tr>
         </tbody>

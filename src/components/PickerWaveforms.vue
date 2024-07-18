@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { DenoiseProcessor, RotateProcessor, FilterProcessor, SpectrogramProcessor } from '@/utils/waveformProcessor'
-import type { FilterOptions, StationRefTimes, ChartData, WaveformProcessInterface } from '@/types'
+import type { FilterOptions, StationRefTimes, ChartData, WaveformProcessInterface, PickerToolbarOptions } from '@/types'
 import type { Pick } from '@/lib/sismojs/src/core/event/types'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
 import type { VLine } from '@/lib/lichen/src/types'
@@ -22,7 +22,7 @@ const props = defineProps<{
   filter: FilterOptions | null
   phase: 'P' | 'S' | undefined
   data: Trace[]
-  refTimeKey: string
+  refTimeKey: PickerToolbarOptions['alignment']
   stationRefTimes: StationRefTimes
   controller: AbortController
 }>()
@@ -87,8 +87,20 @@ async function processWaveforms() {
 }
 
 function getRefTime(seedid: string) {
+  if (props.refTimeKey === 'O') {
+    return props.stationRefTimes[toNetSta(seedid)][props.refTimeKey]
+  }
   const netsta = toNetSta(seedid)
-  return props.stationRefTimes[netsta][props.refTimeKey]
+  if (store.pickMap[netsta] != null) {
+    for (const pickList of Object.values(store.pickMap[netsta])) {
+      for (const pick of pickList) {
+        if (pick.phaseHint === props.refTimeKey) {
+          return pick.time.object.getTime()
+        }
+      }
+    }
+  }
+  return props.stationRefTimes[toNetSta(seedid)][props.refTimeKey]
 }
 
 function getXRange(seedid: string) {

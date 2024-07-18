@@ -105,8 +105,8 @@ onMounted(() => {
         <RouterView />
       </v-container>
       <v-snackbar v-model="connectionPopup" :color="connectionStatus ? 'success' : 'error'" :timeout="connectionStatus ? 2000 : -1">
-        <div v-if="connectionStatus"><v-icon>mdi-thumb-up</v-icon> Connected.</div>
-        <div v-else><v-icon>mdi-cloud-off-outline</v-icon> Disconnected from server...</div>
+        <div class="text-center" v-if="connectionStatus"><v-icon>mdi-thumb-up</v-icon> Connected.</div>
+        <div class="text-center" v-else><v-icon>mdi-cloud-off-outline</v-icon> Disconnected from server...</div>
       </v-snackbar>
       <v-snackbar v-model="infoNotification" timeout="2000">{{ infoNotificationText }}</v-snackbar>
       <v-snackbar v-model="progressNotification" timeout="-1">

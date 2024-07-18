@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Inventory } from '@/lib/sismojs/src/types'
-import { degToKm, kmToDeg, pushUnique } from '@/utils'
+import { degToKm, kmToDeg, pushUnique, getLocalStorageDefault, setLocalStorage } from '@/utils'
 import { useAppStore } from '@/stores/app'
 import { ref, watch, computed } from 'vue'
 import * as L from 'leaflet'
@@ -9,18 +9,25 @@ const emit = defineEmits(['radiusStations'])
 
 const store = useAppStore()
 
+const [net, sta, loc, cha, rad] = getLocalStorageDefault(
+  'stationRadius',
+  ['*', '*', '*', '?H?', store.settings['miscellaneous.defaultRadius']]
+)
+
+const form = ref()
 const menu = ref(false)
-const radius = ref(store.settings['miscellaneous.defaultRadius'])
-const netSelector = ref('*')
-const staSelector = ref('*')
-const locSelector = ref('*')
-const chaSelector = ref('?H?')
+const radius = ref(rad)
+const netSelector = ref(net)
+const staSelector = ref(sta)
+const locSelector = ref(loc)
+const chaSelector = ref(cha)
 const mapContainer = ref()
 const map = ref(null as L.Map | null)
 const circle = ref(null as L.Circle | null)
 const center = ref(null as L.Marker | null)
 const resize = ref(null as L.Marker | null)
 const stations = ref([] as L.Layer[])
+const valueRe = /^[A-Z0-9?*,]+$/
 
 const INSTRUMENT_WEIGHT = ['N', 'H']
 
@@ -62,30 +69,34 @@ function validate() {
 
 function preview(): Promise<void> {
   return new Promise((resolve, reject) => {
-    const toRemove: string[] = []
-    for (const [net, staMap] of Object.entries(store.dataManager.inventoryCache as Inventory)) {
-      for (const sta of Object.keys(staMap)) {
-        const netsta = `${net}.${sta}`
-        if (store.pickMap[netsta] == null) {
-          toRemove.push(netsta)
+    if (form.value.validate()) {
+      const toRemove: string[] = []
+      for (const [net, staMap] of Object.entries(store.dataManager.inventoryCache as Inventory)) {
+        for (const sta of Object.keys(staMap)) {
+          const netsta = `${net}.${sta}`
+          if (store.pickMap[netsta] == null) {
+            toRemove.push(netsta)
+          }
         }
       }
+      for (const netsta of toRemove) {
+        const [net, sta] = netsta.split('.')
+        delete store.dataManager.inventoryCache[net][sta]
+      }
+      const pos = circle.value!.getLatLng()
+      const t = store.currentOrigin!.time.value.slice(0, 19)
+      store.dataManager.getRadiusInventory(
+        '..', t, pos.lat, pos.lng, radius.value,
+        netSelector.value, staSelector.value, locSelector.value, chaSelector.value
+      ).then(inv => {
+        const [lat, lon] = [store.currentOrigin!.latitude.value, store.currentOrigin!.longitude.value]
+        store.dataManager.updateStationDistanceAzimuth(lat, lon)
+        displayStations()
+        resolve()
+      })
+    } else {
+      reject()
     }
-    for (const netsta of toRemove) {
-      const [net, sta] = netsta.split('.')
-      delete store.dataManager.inventoryCache[net][sta]
-    }
-    const pos = circle.value!.getLatLng()
-    const t = store.currentOrigin!.time.value.slice(0, 19)
-    store.dataManager.getRadiusInventory(
-      '..', t, pos.lat, pos.lng, radius.value,
-      netSelector.value, staSelector.value, locSelector.value, chaSelector.value
-    ).then(inv => {
-      const [lat, lon] = [store.currentOrigin!.latitude.value, store.currentOrigin!.longitude.value]
-      store.dataManager.updateStationDistanceAzimuth(lat, lon)
-      displayStations()
-      resolve()
-    })
   })
 }
 
@@ -136,6 +147,10 @@ function initMap() {
   map.value.setView(pos, 7)
 }
 
+function checkValue(value: string) {
+  return valueRe.test(value) || 'Invalid'
+}
+
 watch(() => radius.value, (value) => {
   const pos = circle.value!.getLatLng()
   circle.value!.setRadius(degToKm(value) * 1e3)
@@ -159,20 +174,22 @@ watch(() => menu.value, (value) => {
     <v-card min-width="500">
       <v-card-text>
         <div ref="mapContainer" :style="{ height: '400px' }"></div>
-        <v-row>
-          <v-col cols="3">
-            <v-text-field v-model="netSelector" label="Network" density="compact" hide-details/>
-          </v-col>
-          <v-col cols="3">
-            <v-text-field v-model="staSelector" label="Station" density="compact" hide-details/>
-          </v-col>
-          <v-col cols="3">
-            <v-text-field v-model="locSelector" label="Location" density="compact" hide-details/>
-          </v-col>
-          <v-col cols="3">
-            <v-text-field v-model="chaSelector" label="Channel" density="compact" hide-details/>
-          </v-col>
-        </v-row>
+        <v-form ref="form">
+          <v-row>
+            <v-col cols="3">
+              <v-text-field v-model="netSelector" label="Network" density="compact" hide-details :rules="[checkValue]"/>
+            </v-col>
+            <v-col cols="3">
+              <v-text-field v-model="staSelector" label="Station" density="compact" hide-details :rules="[checkValue]"/>
+            </v-col>
+            <v-col cols="3">
+              <v-text-field v-model="locSelector" label="Location" density="compact" hide-details :rules="[checkValue]"/>
+            </v-col>
+            <v-col cols="3">
+              <v-text-field v-model="chaSelector" label="Channel" density="compact" hide-details :rules="[checkValue]"/>
+            </v-col>
+          </v-row>
+        </v-form>
       </v-card-text>
       <v-toolbar density="compact" :color="color">
         <NumberField v-model="radius" label="Radius [°]" density="compact" hide-details class="mx-1"/>
