@@ -16,7 +16,7 @@ const magnitudeCols = ref([
   {
     label: 'Value',
     valueAccessor: (m: Magnitude) => m.mag,
-    textAccessor: (m: Magnitude) => m.mag.value.toFixed(2),
+    textAccessor: (m: Magnitude) => `${m.mag.value.toFixed(2)} +/- ${m.mag.uncertainty?.toFixed(2)}`,
     enabled: true
   },
   {

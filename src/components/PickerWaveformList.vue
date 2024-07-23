@@ -76,7 +76,6 @@ function getRefTime(seedid: string) {
     for (const pickList of Object.values(store.pickMap[netsta])) {
       for (const pick of pickList) {
         if (pick.phaseHint === props.refTimeKey) {
-          console.log(props.refTimeKey, netsta, pick.phaseHint)
           return pick.time.object.getTime()
         }
       }

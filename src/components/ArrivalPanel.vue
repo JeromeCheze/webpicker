@@ -89,6 +89,12 @@ const arrivalCols = ref([
     textAccessor: (a: Arrival) => traveltime(a),
     enabled: true
   },
+  {
+    label: 'Uncert [s]',
+    valueAccessor: (a: Arrival) => a.pickID.referredObject.time.uncertainty,
+    textAccessor: (a: Arrival) => a.pickID.referredObject.time.uncertainty,
+    enabled: false
+  }
 ] as ColObject[])
 
 watch(() => store.currentArrivals, setSelected, { immediate: true })

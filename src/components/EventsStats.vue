@@ -57,7 +57,14 @@ function drawGutenbergRichter() {
     height: 300,
     xAxis: { datetime: false },
     type: 'scatter',
-    series: [serie]
+    series: [serie],
+    hooks: {
+      beforeUpdate: (chart) => {
+        const dataUtils = chart.master.getRegistered('DATA_UTILS')
+        dataUtils.yMin = Math.max(1, dataUtils.yMin)
+        return true
+      }
+    }
   })
 }
 
