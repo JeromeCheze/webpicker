@@ -4,7 +4,7 @@ import type { Activity, EventViewStatus, PickMap, WPNotificationOptions } from '
 import defaultSettings from '@/utils/defaultSettings'
 import ActivityManager from '@/utils/activityManager'
 import DataManager from '@/utils/dataManager'
-import { computed, ref } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 
 if (getLocalStorageDefault('version', null) !== 2) {
@@ -31,15 +31,15 @@ function preventDefault() {
 const dataManager = new DataManager('.')
 
 // EventView states
-const currentEvent = ref(null as Event | null)
-const currentOrigin = ref(null as Origin | null)
-const currentArrivals = ref([] as Arrival[])
-const currentMagnitude = ref(null as Magnitude | null)
-const currentFocalMechanism = ref(null as FocalMechanism | null)
-const currentOriginMagnitudes = ref([] as Magnitude[])
+const currentEvent = shallowRef(null as Event | null)
+const currentOrigin = shallowRef(null as Origin | null)
+const currentArrivals = shallowRef([] as Arrival[])
+const currentMagnitude = shallowRef(null as Magnitude | null)
+const currentFocalMechanism = shallowRef(null as FocalMechanism | null)
+const currentOriginMagnitudes = shallowRef([] as Magnitude[])
 const originDirty = ref(false)
-const pickMap = ref({} as PickMap)
-const additionalPickMap = ref({} as PickMap)
+const pickMap = shallowRef({} as PickMap)
+const additionalPickMap = shallowRef({} as PickMap)
 const eventViewStatus = ref({
   relocateStatus: 'enabled',
   computeMagnitudesStatus: 'enabled',
@@ -48,7 +48,6 @@ const eventViewStatus = ref({
 
 // Event management
 function updatePickMap() {
-  console.log('update pickMap')
   const result: PickMap = {}
   for (const arrival of currentArrivals.value!) {
     const p = arrival.pickID.referredObject
@@ -58,10 +57,11 @@ function updatePickMap() {
       getDefault(result[netsta], p.waveformID.seedid, []).push(p)
     }
   }
+  console.log('[updatePickMap]', result)
   pickMap.value = result
 }
 function setEvent(event: Event) {
-  console.log('set event', event)
+  console.log('[app.setEvent]', event)
   currentEvent.value = event
   currentOrigin.value = event.preferredOriginID != null ? event.preferredOriginID.referredObject : null
   if (currentOrigin.value != null) {
@@ -102,6 +102,7 @@ function cloneOrigin() {
   eventViewStatus.value.computeMagnitudesStatus = 'disabled'
   eventViewStatus.value.commitStatus = 'disabled'
   originDirty.value = true
+  console.log('[app.cloneOrigin]', currentOrigin.value)
 }
 function createArrival(p: Pick) {
   const netsta = p.waveformID.netsta
@@ -119,6 +120,7 @@ function createArrival(p: Pick) {
   console.log('create arrival', arrivalDesc)
   currentOrigin.value!.addArrival(arrivalDesc)
   currentArrivals.value = currentOrigin.value!.arrival.map(x => x)
+  console.log('[app.createArrivals]', arrivalDesc)
 }
 function createPick(phase: string, pickTime: number, seedid: string, filter: string | undefined): Pick {
   if (!originDirty.value) {
@@ -168,6 +170,7 @@ function deletePick(pick: Pick) {
   }
   // delete pick only if it is not referred by another arrival
   if (canBeDeleted) {
+    console.log('[app.deletePick]', pick)
     currentEvent.value!.deletePick(pick)
   }
   currentArrivals.value = currentOrigin.value!.arrival.map(x => x)
@@ -182,8 +185,9 @@ function selectArrivals(selectedArrivals: Arrival[]) {
     console.warn('no arrivals')
     return
   }
+  console.log('[app.selectedArrivals]', selectedArrivals)
   for (const arrival of currentArrivals.value) {
-    arrival.timeWeight = pickIdList.indexOf(arrival.pickID.id) >= 0 ? 1 : 0
+    arrival.timeWeight = pickIdList.indexOf(arrival.pickID.id) < 0 ? 0 : 1
   }
   currentArrivals.value = currentArrivals.value.map(x => x)
 }

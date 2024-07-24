@@ -2,7 +2,6 @@
 import type { Arrival } from '@/lib/sismojs/src/core/event/types'
 import FirstMotion from '@/components/FirstMotion.vue'
 import { Client } from '@/lib/sismojs/src/fdsn'
-import type { CommitOptions } from '@/types'
 import { ref, onMounted, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 
@@ -18,12 +17,6 @@ const picker = ref(false)
 const activeChart = ref('residual' as 'residual' | 'traveltime' | 'firstmotion' | 'magnitude')
 const allOriginDisplay = ref(false)
 
-function commit(opt: CommitOptions) {
-  if (store.eventViewStatus.commitStatus === 'disabled') {
-    return
-  }
-  alert('commit not implemented')
-}
 
 function enablePicker() {
   picker.value = true

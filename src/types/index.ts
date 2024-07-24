@@ -60,6 +60,7 @@ export interface PickerToolbarOptions {
   denoiser: boolean
   spectrogram: boolean
   detector: boolean
+  commonScale: boolean
 }
 
 export interface FilterOptions {

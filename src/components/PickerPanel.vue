@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { FilterOptions, PickerToolbarOptions, PickMap, StationRefTimes, WPNotificationOptions } from '@/types'
-import { Pick, type PickOnset, type PickPolarity } from '@/lib/sismojs/src/core/event/types'
+import { ResourceIdentifier, Pick, type PickOnset, type PickPolarity } from '@/lib/sismojs/src/core/event/types'
+import { ref, shallowRef, watch, onMounted, computed } from 'vue'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
-import { ref, watch, onMounted, computed } from 'vue'
 import { Client } from '@/lib/sismojs/src/fdsn'
 import { pushUnique, toNetSta } from '@/utils'
 import { useAppStore } from '@/stores/app'
@@ -23,12 +23,12 @@ const client = new Client('..')
 
 const contextMenu = ref(false)
 const contextMenuPos = ref([0, 0])
-const controller = ref(new AbortController())
+const controller = shallowRef(new AbortController())
 const data = ref([] as Trace[])
 
 const pickerStation = ref(null as string | null)
 const activeChannel = ref(null as string | null)
-const selectedPicks = ref([] as Pick[])
+const selectedPicks = shallowRef([] as Pick[])
 const pickerTime = ref(null as number | null)
 const pickerTimeWindow = ref([0, 0] as [number, number])
 
@@ -43,7 +43,8 @@ const toolbarValue = ref({
   rotation: 'ZNE',
   denoiser: false,
   spectrogram: false,
-  detector: false
+  detector: false,
+  commonScale: false
 } as PickerToolbarOptions)
 
 const stationRefTimes = ref({} as StationRefTimes)
@@ -181,6 +182,7 @@ function handleSelectPicks(pickids: string[]) {
     .map(a => a.pickID.referredObject)
     .filter(p => pickids.indexOf(p.publicID) >= 0)
   selectedPicks.value = picks
+  console.log('selectedPicks', picks[0])
 }
 
 function createPick() {
@@ -234,6 +236,7 @@ function setPickPolarity(value?: PickPolarity) {
       selectedPicks.value[0].polarity = value
     }
   }
+  console.log(selectedPicks.value[0])
   store.updatePickMap()
 }
 
@@ -268,6 +271,10 @@ function setPickUncertainty(value: number) {
 }
 
 function loadAdditionalPicks() {
+  // The mainKey of ResourceIdentifier MUST be set to an other value
+  // to prevent modified objects to be overwritten by new load
+  const saveMainKey = ResourceIdentifier.mainKey
+  ResourceIdentifier.mainKey = 'sandbox'
   const t0 = store.currentOrigin!.time.object.getTime()
   client.getEvents({
     format: 'xml',
@@ -294,6 +301,9 @@ function loadAdditionalPicks() {
       }
     }
     store.additionalPickMap = additionalPickMap
+  }).finally(() => {
+    // Restore the original mainKey of ResourceIdentifier
+    ResourceIdentifier.mainKey = saveMainKey
   })
 }
 
@@ -351,6 +361,7 @@ onBeforeUnmount(() => {
         :rotation="toolbarValue.rotation"
         :filter="filterValue"
         :controller="controller"
+        :common-scale="toolbarValue.commonScale"
         @active-channel="handleActiveChannel"
         @create-pick="createPick"
         @select-picks="handleSelectPicks"

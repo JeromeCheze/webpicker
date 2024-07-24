@@ -25,11 +25,12 @@ const props = defineProps<{
   refTimeKey: PickerToolbarOptions['alignment']
   stationRefTimes: StationRefTimes
   controller: AbortController
+  commonScale: boolean
 }>()
 
 const container = ref()
-const start = ref(-2e3)
-const end = ref(10e3)
+const start = ref(-6e3)
+const end = ref(6e3)
 const charts: Record<number, Lichen> = {}
 let chartData: Record<string, ChartData> = {}
 const chartWidth = ref(800)
@@ -314,7 +315,12 @@ async function update(redraw=false) {
           chartData[currData.id] = { index, chart, container: div }
         }
         // const [x1, x2] = getXRange(currData.id)
-        chart.setXRange(x1, x2)
+        if (props.commonScale) {
+          chart.setXRange(x1, x2)
+        } else {
+          chart.setXRange(x1, x2, false)
+          chart.setYRange(null, null)
+        }
       } else {
         chartData[currData.id].index = index
         const chart = chartData[currData.id].chart
