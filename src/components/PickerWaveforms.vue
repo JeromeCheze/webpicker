@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DenoiseProcessor, RotateProcessor, FilterProcessor, SpectrogramProcessor } from '@/utils/waveformProcessor'
+import { DenoiseProcessor, RotateProcessor, FilterProcessor, SpectrogramProcessor, IntegrationProcessor } from '@/utils/waveformProcessor'
 import type { FilterOptions, StationRefTimes, ChartData, WaveformProcessInterface, PickerToolbarOptions } from '@/types'
 import type { Pick } from '@/lib/sismojs/src/core/event/types'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
@@ -26,6 +26,7 @@ const props = defineProps<{
   stationRefTimes: StationRefTimes
   controller: AbortController
   commonScale: boolean
+  integration: boolean
 }>()
 
 const container = ref()
@@ -37,6 +38,7 @@ const chartWidth = ref(800)
 const pickerTime = ref('')
 
 const denoiseProcessor = new DenoiseProcessor(store.dataManager, props.controller.signal)
+const integrationProcessor = new IntegrationProcessor()
 const rotateProcessor = new RotateProcessor()
 const filterProcessor = new FilterProcessor()
 const spectrogramProcessor = new SpectrogramProcessor()
@@ -80,6 +82,7 @@ async function processWaveforms() {
   loading.value = true
   let data = waveformData.value
   data = await denoiseProcessor.setEnable(props.denoiser).process(data)
+  data = await integrationProcessor.setEnable(props.integration).process(data)
   data = await rotateProcessor.setEnable(props.rotation === 'ZRT').setAzimuth(azimuth.value).process(data)
   data = await filterProcessor.setEnable(props.filter != null).setFilterParams(props.filter).process(data)
   data = await spectrogramProcessor.setEnable(props.spectrogram).process(data)
@@ -211,10 +214,12 @@ function toSerie(data: WaveformProcessInterface) {
 }
 
 function createSpectrogram(chartContainer: HTMLElement, index: number, dataLength: number, data: WaveformProcessInterface) {
+  const fontSize = store.settings['picker.tickFontSize']
   const result = new Lichen(chartContainer, {
     header: { title: data.id.replace('..', '.--.').split('.').slice(2, 4).join('.'), position: 'left', width: 100 },
     legend: { enabled: false }, crosshair: { enabled: false }, synced: () => charts,
-    xAxis: { enabled: index === dataLength - 1 }, yAxis: { max: Math.min(data.spectrogram!.yMax, 50) },
+    xAxis: { enabled: index === dataLength - 1, fontSize },
+    yAxis: { max: Math.min(data.spectrogram!.yMax, 50), fontSize },
     selection: null, tooltip: false, type: 'heatmap3d', autoResize: false, zoom: 'x',
     height: store.settings['picker.spectrogramHeight'], width: chartWidth.value, 
     colorScale: {
@@ -229,7 +234,7 @@ function createSpectrogram(chartContainer: HTMLElement, index: number, dataLengt
     },
     hooks: {
       beforeResetDisplay: () => false,
-      beforeUpdate: (chart: Lichen) => {
+      beforeDraw: (chart: Lichen) => {
         const dataUtils = chart.master.getRegistered('DATA_UTILS')
         if (props.activeStation != null) {
           updateTimeWindow(props.activeStation!, dataUtils.start!, dataUtils.end!)
@@ -243,11 +248,13 @@ function createSpectrogram(chartContainer: HTMLElement, index: number, dataLengt
 }
 
 function createWaveform(chartContainer: HTMLElement, index: number, dataLength: number, data: WaveformProcessInterface) {
+  const fontSize = store.settings['picker.tickFontSize']
   const result = new Lichen(chartContainer, {
     header: { title: data.id.replace('..', '.--.').split('.').slice(2, 4).join('.'), position: 'left', width: 100 },
     legend: { enabled: false }, synced: () => charts,
     crosshair: { enabled: props.phase != null, text: index === 0 ? props.phase : '', sticky: false },
-    xAxis: { enabled: index === dataLength - 1 }, selection: null, tooltip: false, autoResize: false,
+    xAxis: { enabled: index === dataLength - 1, fontSize }, yAxis: { fontSize },
+    selection: null, tooltip: false, autoResize: false,
     type: 'line', height: store.settings['picker.pickerWaveformHeight'], width: chartWidth.value, 
     vLines: getVLines(index, dataLength, data.id),
     series: [toSerie(data)],
@@ -260,7 +267,7 @@ function createWaveform(chartContainer: HTMLElement, index: number, dataLength: 
       onDblClick: (t: number) => emit('createPick', t),
       onActive: (chart: Lichen) => emit('activeChannel', `${props.activeStation}.${chart.opt.header.title?.replace('--', '')}`),
       beforeResetDisplay: () => false,
-      beforeUpdate: (chart: Lichen) => {
+      beforeDraw: (chart: Lichen) => {
         const dataUtils = chart.master.getRegistered('DATA_UTILS')
         if (props.activeStation != null) {
           updateTimeWindow(props.activeStation!, dataUtils.start!, dataUtils.end!)
@@ -305,30 +312,45 @@ async function update(redraw=false) {
       }
     }
     const [x1, x2] = getXRange(props.activeStation!)
+    let maxRange: number = 0
     for (const [index, currData] of data.entries()) {
       if (chartData[currData.id] == null) {
         const div = document.createElement('div')
         container.value.appendChild(div)
         const chartBuilder = currData.spectrogram != null ? createSpectrogram : createWaveform
         const chart = chartBuilder(div, index, data.length, currData)
+        chart.setXRange(x1, x2, false)
         if (currData.spectrogram == null) {
           chartData[currData.id] = { index, chart, container: div }
-        }
-        // const [x1, x2] = getXRange(currData.id)
-        if (props.commonScale) {
-          chart.setXRange(x1, x2)
         } else {
-          chart.setXRange(x1, x2, false)
           chart.setYRange(null, null)
         }
+        // const [x1, x2] = getXRange(currData.id)
       } else {
         chartData[currData.id].index = index
         const chart = chartData[currData.id].chart
         if (redraw) {
           chart.opt.xAxis!.enabled = index === data.length - 1
           chart.opt.series = [toSerie(currData)]
-          chart.setYRange(null, null)
         }
+      }
+      if (chartData[currData.id] != null && props.commonScale) {
+        const chart = chartData[currData.id].chart
+        chart.setYRange(null, null, false)
+        const dataUtils = chart.master.getRegistered('DATA_UTILS')
+        console.log(currData.id, dataUtils.yMax - dataUtils.yMin)
+        maxRange = Math.max(maxRange, dataUtils.yMax - dataUtils.yMin)
+      }
+    }
+    const midRange = maxRange / 2
+    for (const currData of Object.values(chartData)) {
+      if (props.commonScale) {
+        const dataUtils = currData.chart.master.getRegistered('DATA_UTILS')
+        const mid = dataUtils.yMin + (dataUtils.yMax - dataUtils.yMin) / 2
+        currData.chart.setYRange(mid - midRange, mid + midRange, false)
+        currData.chart.draw()
+      } else {
+        currData.chart.setYRange(null, null)
       }
     }
     updateVlines()
@@ -347,6 +369,7 @@ function reset() {
 watch([
   () => props.activeStation,
   () => props.denoiser,
+  () => props.integration,
   () => props.rotation,
   () => props.filter,
   () => props.spectrogram,
@@ -355,6 +378,8 @@ watch([
   reset()
   update(true)
 })
+
+watch(() => props.commonScale, () => update(true))
 
 watch(() => props.data, (value, oldValue) => {
   const currSeedIds = value.map(x => x.stats.id).filter(x => toNetSta(x) === props.activeStation)

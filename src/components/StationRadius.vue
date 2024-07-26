@@ -174,7 +174,7 @@ watch(() => menu.value, (value) => {
 <template>
   <v-menu v-model="menu" :close-on-content-click="false" attach>
     <template v-slot:activator="{ props }">
-      <v-btn class="ml-4" v-bind="props" title="Add station radius"><v-icon>mdi-less-than-or-equal</v-icon></v-btn>
+      <v-btn class="mx-1" v-bind="props" title="Add station radius"><v-icon>mdi-less-than-or-equal</v-icon></v-btn>
     </template>
     <v-card min-width="500">
       <v-card-text>

@@ -61,6 +61,7 @@ export interface PickerToolbarOptions {
   spectrogram: boolean
   detector: boolean
   commonScale: boolean
+  integration: boolean
 }
 
 export interface FilterOptions {

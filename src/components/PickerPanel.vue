@@ -44,14 +44,15 @@ const toolbarValue = ref({
   denoiser: false,
   spectrogram: false,
   detector: false,
-  commonScale: false
+  commonScale: false,
+  integration: false
 } as PickerToolbarOptions)
 
 const stationRefTimes = ref({} as StationRefTimes)
 
 const filterValue = computed(() => {
   if (toolbarValue.value.filter != null) {
-    return store.settings['filter'].find((x: FilterOptions) => x.name === toolbarValue.value.filter)
+    return store.settings['filter'].find((x: FilterOptions) => x.name === toolbarValue.value.filter) as FilterOptions | null
   }
   return null
 })
@@ -203,8 +204,11 @@ function createPick() {
   if (toolbarValue.value.denoiser) {
     filter.push('deepdenoiser')
   }
-  if (toolbarValue.value.filter != null) {
-    filter.push(toolbarValue.value.filter)
+  if (toolbarValue.value.integration) {
+    filter.push('integration')
+  }
+  if (filterValue.value != null) {
+    filter.push(filterValue.value.expression.replace(/ /g, ''))
   }
   const newPick = store.createPick(
     toolbarValue.value.phase,
@@ -362,6 +366,7 @@ onBeforeUnmount(() => {
         :filter="filterValue"
         :controller="controller"
         :common-scale="toolbarValue.commonScale"
+        :integration="toolbarValue.integration"
         @active-channel="handleActiveChannel"
         @create-pick="createPick"
         @select-picks="handleSelectPicks"

@@ -47,6 +47,45 @@ abstract class BaseProcessor {
   }
 }
 
+export class IntegrationProcessor extends BaseProcessor {
+  task(data: WaveformProcessInterface[]): Promise<WaveformProcessInterface[]> {
+    return new Promise((resolve, reject) => {
+      const result: WaveformProcessInterface[] = []
+      for (const currData of data) {
+        const step = currData.step / 1e3 // convert the step from [ms] to [s]
+        // compute the average value
+        let sum = 0
+        let count = 0
+        for (const sample of currData.values) {
+          if (sample != null) {
+            sum += sample
+            count++
+          }
+        }
+        const avg = sum / count
+        // integrate
+        // the method used is cumulative trapezoid
+        const values = []
+        let prev = 0
+        for (let i = 1; i < currData.values.length; i++) {
+          const sPrev = currData.values[i - 1]
+          const s = currData.values[i]
+          if (sPrev == null || s == null) {
+            values.push(null)
+            continue
+          }
+          // the average value is removed from the samples
+          const v = prev + step * ((sPrev - avg) + (s - avg) / 2)
+          prev = parseFloat(v.toPrecision(14))
+          values.push(prev)
+        }
+        result.push({ id: currData.id, start: currData.start, step: currData.step, values })
+      }
+      resolve(result)
+    })
+  }
+}
+
 export class SpectrogramProcessor extends BaseProcessor {
   task(data: WaveformProcessInterface[]): Promise<WaveformProcessInterface[]> {
     const FFTSize = 128

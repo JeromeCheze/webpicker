@@ -216,7 +216,7 @@ function createChart(chartContainer: HTMLElement, data: WaveformProcessInterface
     vLines: getVLines(netsta), series: [toSerie(data)],
     hooks: {
       beforeResetDisplay: () => false,
-      beforeUpdate: (chart: Lichen) => {
+      beforeDraw: (chart: Lichen) => {
         const dataUtils = chart.master.getRegistered('DATA_UTILS')
         updateTimeWindow(chart.opt.header.title!, dataUtils.start!, dataUtils.end!)
         const [yMin, yMax] = [dataUtils.yMin, dataUtils.yMax]

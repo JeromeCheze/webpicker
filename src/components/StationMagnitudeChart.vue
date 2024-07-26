@@ -59,12 +59,13 @@ function drawChart() {
   for (const [name, data] of Object.entries(magMap)) {
     series.push({ name, shape: 'circle', data, color: magColor[name], tooltipFormatter: v => v.toFixed(2) })
   }
+  const fontSize = store.settings['picker.tickFontSize']
   chart.value = new Lichen(chartContainer.value as HTMLElement, {
     header: { title: 'Magnitude / Distance', position: 'top' },
     crosshair: { enabled: false },
     legend: { enabled: true, position: 'right' },
-    xAxis: { datetime: false, title: 'Distance [°]', min: 0, tooltipFormatter: x => x.toFixed(2) },
-    yAxis: { title: 'Magnitude' },
+    xAxis: { datetime: false, title: 'Distance [°]', min: 0, tooltipFormatter: x => x.toFixed(2), fontSize },
+    yAxis: { title: 'Magnitude', fontSize },
     height: 238,
     type: 'scatter',
     zoom: null,

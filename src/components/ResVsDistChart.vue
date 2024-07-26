@@ -37,11 +37,12 @@ function drawChart() {
   if (chart.value != null) {
     chart.value.destroy()
   }
+  const fontSize = store.settings['picker.tickFontSize']
   chart.value = new Lichen(chartContainer.value as HTMLElement, {
     header: { title: 'Time residual / Distance', position: 'top' },
     crosshair: { enabled: false },
-    xAxis: { datetime: false, title: 'Distance [°]', min: 0, tooltipFormatter: x => x.toFixed(2) },
-    yAxis: { min: -1.1 * max, max: 1.1 * max, title: 'Residual [s]' },
+    xAxis: { datetime: false, title: 'Distance [°]', min: 0, tooltipFormatter: x => x.toFixed(2), fontSize },
+    yAxis: { min: -1.1 * max, max: 1.1 * max, title: 'Residual [s]', fontSize },
     legend: { enabled: false },
     height: 238,
     type: 'scatter',

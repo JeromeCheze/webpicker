@@ -26,8 +26,10 @@ function drawMagScatter() {
     data.push({ name: event.publicID, x: po.time.object.getTime(), y: pm.mag.value })
   }
   const serie: ScatterOptions = { name: '', shape: 'circle', enabled: true, color: 'blue', data }
+  const fontSize = store.settings['picker.tickFontSize']
   magScatterChart.value = new Lichen(magScatter.value, {
     header: { position: 'top', title: 'Temporal distribution' },
+    xAxis: { fontSize }, yAxis: { fontSize },
     legend: { enabled: false },
     height: 300,
     type: 'scatter',
@@ -50,16 +52,17 @@ function drawGutenbergRichter() {
   }
   console.log(data)
   const serie: ScatterOptions = { name: '', shape: 'circle', enabled: true, color: 'blue', data }
+  const fontSize = store.settings['picker.tickFontSize']
   gutenbergRichterChart.value = new Lichen(gutenbergRichter.value, {
     header: { position: 'top', title: 'Temporal distribution' },
     legend: { enabled: false },
-    yAxis: { logarithmic: true, min: 1, max: data[0].y * 2 },
+    xAxis: { datetime: false, fontSize },
+    yAxis: { logarithmic: true, min: 1, max: data[0].y * 2, fontSize },
     height: 300,
-    xAxis: { datetime: false },
     type: 'scatter',
     series: [serie],
     hooks: {
-      beforeUpdate: (chart) => {
+      beforeDraw: (chart) => {
         const dataUtils = chart.master.getRegistered('DATA_UTILS')
         dataUtils.yMin = Math.max(1, dataUtils.yMin)
         return true
