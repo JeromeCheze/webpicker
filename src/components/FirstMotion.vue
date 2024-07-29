@@ -57,6 +57,10 @@ const polarizedArrivals = computed(() => {
   })
 })
 
+function deg2rad(a: number) {
+  return a * Math.PI / 180
+}
+
 function handleReset() {
   if (bbe.value == null || hiresbbe.value == null) {
     return
@@ -115,9 +119,19 @@ function updateStationLayer(center: number, radius: number) {
     if (a.phase !== 'P' || a.takeoffAngle == null || a.azimuth == null) {
       continue
     }
-    const dist = radius * (a.takeoffAngle > 90 ? 180 - a.takeoffAngle : a.takeoffAngle) / 90
-    const xPos = center - dist * Math.cos(Math.PI * (a.azimuth - 90) / 180)
-    const yPos = center - dist * Math.sin(Math.PI * (a.azimuth - 90) / 180)
+    let azi = a.azimuth
+    let beta = a.takeoffAngle
+    // https://github.com/SeisComP/common/blob/6.4.4/libs/seiscomp/gui/datamodel/originlocatorview.cpp#L4248
+    if (beta > 90) {
+      beta = 180 - beta
+      azi = azi - 180
+      if (azi < 0) {
+        azi == 360
+      }
+    }
+    const dist = radius * Math.sqrt(2.0) * Math.sin(0.5 * deg2rad(beta))
+    const xPos = center + dist * Math.sin(deg2rad(azi))
+    const yPos = center - dist * Math.cos(deg2rad(azi))
     const pick: Pick = a.pickID.referredObject
     const netsta = pick.waveformID.netsta
     result[netsta] = { pos: [xPos, yPos], pick }
@@ -189,6 +203,7 @@ function bindEvents() {
     if (mouseX == null || mouseY == null) {
       return
     }
+    e.stopPropagation()
     e.preventDefault()
     const deltaX = e.clientX - mouseX
     const deltaY = e.clientY - mouseY
@@ -201,8 +216,8 @@ function bindEvents() {
       }
     } else {
       if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
-        const dip = d + (-1 * deltaX * Math.cos(s * Math.PI / 180) + Math.sin(s * Math.PI / 180) * deltaY * -1) / 2
-        let rake = r + (-1 * deltaY * Math.cos(s * Math.PI / 180) + Math.sin(s * Math.PI / 180) * deltaX) / 2
+        const dip = d + (-1 * deltaX * Math.cos(deg2rad(s)) + Math.sin(deg2rad(s)) * deltaY * -1) / 2
+        let rake = r + (-1 * deltaY * Math.cos(deg2rad(s)) + Math.sin(deg2rad(s)) * deltaX) / 2
         if (dip > 90) {
           sdr.value[0] = s < 180 ? s + 180 : s - 180
           rake = rake * -1
@@ -269,9 +284,12 @@ function init() {
     if (response.status === 200) {
       response.json().then(toa => {
         for (const a of store.currentArrivals) {
-          const netsta = a.pickID.referredObject.waveformID.netsta
-          a.takeoffAngle = toa[netsta]
+          if (a.phase === 'P') {
+            const netsta = a.pickID.referredObject.waveformID.netsta
+            a.takeoffAngle = toa[netsta]
+          }
         }
+        store.currentArrivals = store.currentArrivals.map(x => x)
         createBeachBall()
       })
     }
