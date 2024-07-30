@@ -9,7 +9,7 @@ const store = useAppStore()
 
 const relocateOptions: { [locator: string]: string[] } = {
   LOCSAT: [ 'iasp91', 'tab' ],
-  NonLinLoc: [ 'iasp91', 'prem' ]
+  NonLinLoc: [  'puna_3_35_005', 'iasp91', 'prem' ]
 }
 
 const locators = computed(() => Object.keys(relocateOptions))
@@ -69,6 +69,7 @@ function relocate() {
           store.currentArrivals = newOrigin.arrival
           store.currentOrigin = newOrigin
           store.dataManager.clearTTTCache()
+          store.updatePickMap()
         }
       })
     } else {
