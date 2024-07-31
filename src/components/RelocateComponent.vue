@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Event, ArrivalDescription, PickDescription } from '@/lib/sismojs/src/core/event/types'
+import type { Event, EventDescription, ArrivalDescription, PickDescription } from '@/lib/sismojs/src/core/event/types'
 import { parse } from '@/lib/sismojs/src/core/event/quakeml'
 import { computed, ref, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
@@ -33,13 +33,13 @@ function relocate() {
   store.notification.push({ type: 'progress', value: { text: 'Relocate...', percent: -1 } })
   const origin = deepCopy(store.currentOrigin!.desc)
   const pickIds = origin.arrival.map((x: ArrivalDescription) => x.pickID)
-  const event = Object.assign(deepCopy(store.currentEvent!.desc), {
+  const event: EventDescription = Object.assign(deepCopy(store.currentEvent!.desc), {
     origin: [origin],
     magnitude: undefined,
-    station_magnitude: undefined,
+    stationMagnitude: undefined,
     amplitude: undefined,
-    preferred_origin_id: origin.public_id,
-    preferred_magnitude_id: undefined
+    preferredOriginID: origin['@publicID'],
+    preferredMagnitudeID: undefined
   })
   // Keep only pick referred by arrivals
   event.pick = event.pick.filter((x: PickDescription) => pickIds.indexOf(x['@publicID']) >= 0)
