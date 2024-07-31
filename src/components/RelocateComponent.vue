@@ -25,6 +25,10 @@ watch(() => store.keydown, (newValue) => {
   }
 })
 
+watch(() => locator.value, (value) => {
+  profile.value = relocateOptions[value][0]
+})
+
 function relocate() {
   if (store.currentArrivals.length === 0 || locked.value) {
     return
