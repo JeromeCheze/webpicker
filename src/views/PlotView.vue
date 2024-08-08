@@ -46,6 +46,11 @@ function handleSubmit(seedids: string[]) {
       latitude: { value: latitude.value, uncertainty: 1 },
       longitude: { value: longitude.value, uncertainty: 1 },
       evaluationStatus: 'preliminary',
+      creationInfo: {
+        author: store.author!,
+        agencyID: 'OCA',
+        creationTime: new Date().toISOString()
+      },
       depth: { value: 5 * 1e3 },
       arrival: []
     })
