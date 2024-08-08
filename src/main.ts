@@ -7,6 +7,7 @@ import router from './router'
 import '@mdi/font/css/materialdesignicons.css'
 import { createVuetify } from 'vuetify'
 import NumberField from '@/components/NumberField.vue'
+import DateField from '@/components/DateField.vue'
 import SmartTable from '@/components/SmartTable.vue'
 import OriginMap from '@/components/OriginMap.vue'
 import OriginPanel from '@/components/OriginPanel.vue'
@@ -32,6 +33,7 @@ import CreateEvent from '@/components/CreateEvent.vue'
 import StationMagnitudeChart from '@/components/StationMagnitudeChart.vue'
 import AdditionalChannels from '@/components/AdditionalChannels.vue'
 import EventsStats from '@/components/EventsStats.vue'
+import CatalogForm from '@/components/CatalogForm.vue'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import 'vuetify/styles'
@@ -41,6 +43,7 @@ const vuetify = createVuetify({
   components: {
     ...components,
     NumberField,
+    DateField,
     SmartTable,
     OriginMap,
     OriginPanel,
@@ -65,7 +68,8 @@ const vuetify = createVuetify({
     CreateEvent,
     StationMagnitudeChart,
     AdditionalChannels,
-    EventsStats
+    EventsStats,
+    CatalogForm
   },
   theme: { defaultTheme: 'dark' },
   directives

@@ -92,7 +92,7 @@ function createEvent() {
 
 watch(pickerTime, (newValue) => {
   const t = new Date(newValue.getTime() - newValue.getTimezoneOffset() * 60e3)
-  date.valuet = t.toISOString().split('T')[0]
+  date.value = t.toISOString().split('T')[0]
   dateMenu.value = false
 })
 

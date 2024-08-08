@@ -7,7 +7,11 @@ import { useAppStore } from '@/stores/app'
 const emit = defineEmits(['leave', 'downloadChannels'])
 
 const props = defineProps<{
+  time: number
+  latitude: number
+  longitude: number
   modelValue: PickerToolbarOptions
+  noEvent: boolean
 }>()
 
 const store = useAppStore()
@@ -22,6 +26,7 @@ const sortOptions = [
 const filters = computed(() => store.settings['filter'].map((x: FilterOptions) => x.name))
 
 const phase = ref()
+const stationRadiusMenu = ref(false)
 const alignment = ref(alignments.indexOf(props.modelValue.alignment))
 const sortValue = ref(sortOptions.indexOf(sortOptions.find(x => x.value === props.modelValue.sort)!))
 const lastFilter = ref(filters.value[0])
@@ -62,11 +67,11 @@ watch(() => store.keydown, (newValue) => {
     phase.value = 1
   } else if (newValue === store.settings['keybinding.toggleFilter']) {
     props.modelValue.filter = props.modelValue.filter == null ? lastFilter.value : null
-  } else if (newValue === store.settings['keybinding.alignToOrigin']) {
+  } else if (!props.noEvent && newValue === store.settings['keybinding.alignToOrigin']) {
     alignment.value = 0
-  } else if (newValue === store.settings['keybinding.alignToP']) {
+  } else if (!props.noEvent && newValue === store.settings['keybinding.alignToP']) {
     alignment.value = 1
-  } else if (newValue === store.settings['keybinding.alignToS']) {
+  } else if (!props.noEvent && newValue === store.settings['keybinding.alignToS']) {
     alignment.value = 2
   } else if (newValue === store.settings['keybinding.toggleDenoiser']) {
     toggleDenoiser()
@@ -153,7 +158,7 @@ watch(() => sortValue.value, (value: number) => props.modelValue.sort = sortOpti
       <v-icon>mdi-ruler</v-icon>
     </v-btn>
     <!-- TIME ALIGNMENT -->
-    <v-btn-toggle v-model="alignment" class="mx-1" density="compact" mandatory variant="outlined">
+    <v-btn-toggle v-model="alignment" class="mx-1" density="compact" mandatory variant="outlined" v-if="!props.noEvent">
       <v-btn :title="`Align to origin (${store.settings['keybinding.alignToOrigin']})`">O</v-btn>
       <v-btn :title="`Align to P (${store.settings['keybinding.alignToP']})`">P</v-btn>
       <v-btn :title="`Align to S (${store.settings['keybinding.alignToS']})`">S</v-btn>
@@ -165,7 +170,22 @@ watch(() => sortValue.value, (value: number) => props.modelValue.sort = sortOpti
     <!-- ADDITIONAL CHANNELS -->
     <AdditionalChannels :seedids="props.modelValue.seedids" @additional-channels="(seedidList: string[]) => emit('downloadChannels', seedidList)"/>
     <!-- STATION RADIUS -->
-    <StationRadius @radius-stations="(seedidList: string[]) => emit('downloadChannels', seedidList)"/>
+    <v-menu v-model="stationRadiusMenu" :close-on-content-click="false" attach>
+      <template v-slot:activator="{ props }">
+        <v-btn class="mx-1" v-bind="props" title="Add station radius"><v-icon>mdi-less-than-or-equal</v-icon></v-btn>
+      </template>
+      <v-card min-width="500">
+        <v-card-text>
+          <StationRadius
+            v-model="stationRadiusMenu"
+            storage-key="stationRadius"
+            :time="props.time"
+            :latitude="props.latitude"
+            :longitude="props.longitude"
+            @radius-stations="(seedidList: string[]) => emit('downloadChannels', seedidList)"/>
+        </v-card-text>
+      </v-card>
+    </v-menu>
     <!-- EXIT -->
     <v-btn @click="emit('leave')" :title="`Exit picker [${store.settings['keybinding.togglePicker']}]`" class="ml-1 mr-2"><v-icon>mdi-exit-to-app</v-icon></v-btn>
   </v-app-bar>

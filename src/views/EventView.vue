@@ -180,5 +180,13 @@ onMounted(() => {
       </v-col>
     </v-row>
   </template>
-  <PickerPanel v-model="picker" v-if="picker && store.currentOrigin != null"/>
+  <PickerPanel
+    v-model="picker" v-if="picker && store.currentOrigin != null"
+    :time-window="[store.settings['miscellaneous.timewindow1'], store.settings['miscellaneous.timewindow2']]"
+    :time="store.currentOrigin.time.object.getTime()"
+    :latitude="store.currentOrigin.latitude.value"
+    :longitude="store.currentOrigin.longitude.value"
+    :depth="store.currentOrigin.depth.value"
+    :seedid-list="[]"
+    :no-event="false"/>
 </template>

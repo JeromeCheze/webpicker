@@ -14,6 +14,13 @@ const emit = defineEmits(['update:modelValue'])
 
 const props = defineProps<{
   modelValue: boolean
+  noEvent: boolean
+  seedidList: string[]
+  time: number
+  latitude: number
+  longitude: number
+  depth: number
+  timeWindow: [number, number]
 }>()
 
 const store = useAppStore()
@@ -86,26 +93,34 @@ function handleDetector() {
 }
 
 function processDataCallback(response: Trace[]) {
-  const t0 = store.currentOrigin!.time.object.getTime()
+  const result = [...data.value]
+  const seedIds = result.map(tr => tr.stats.id)
   for (const tr of response) {
+    if (seedIds.indexOf(tr.stats.id) >= 0) {
+      continue
+    }
+    result.push(tr)
     const netsta = `${tr.stats.network}.${tr.stats.station}`
     if (stationRefTimes.value[netsta] == null) {
-      stationRefTimes.value[netsta] = {
-        O: t0,
-        P: store.dataManager.getStationPhaseTime(store.currentOrigin!, netsta, 'P'),
-        S: store.dataManager.getStationPhaseTime(store.currentOrigin!, netsta, 'S')
-      }
-      const pNLL = store.dataManager.getNLLStationPhaseTime(store.currentOrigin!, netsta, 'P')
-      if (pNLL != null) {
-        stationRefTimes.value[netsta].P_NLL = pNLL
-      }
-      const sNLL = store.dataManager.getNLLStationPhaseTime(store.currentOrigin!, netsta, 'S')
-      if (sNLL != null) {
-        stationRefTimes.value[netsta].S_NLL = sNLL
+      if (props.noEvent) {
+        stationRefTimes.value[netsta] = { O: props.time, P: props.time, S: props.time }
+      } else {
+        stationRefTimes.value[netsta] = {
+          O: props.time,
+          P: store.dataManager.getStationPhaseTime(props.time, netsta, 'P'),
+          S: store.dataManager.getStationPhaseTime(props.time, netsta, 'S')
+        }
+        const pNLL = store.dataManager.getNLLStationPhaseTime(props.time, netsta, 'P')
+        if (pNLL != null) {
+          stationRefTimes.value[netsta].P_NLL = pNLL
+        }
+        const sNLL = store.dataManager.getNLLStationPhaseTime(props.time, netsta, 'S')
+        if (sNLL != null) {
+          stationRefTimes.value[netsta].S_NLL = sNLL
+        }
       }
     }
   }
-  const result = [...data.value, ...response]
   result.sort((a, b) => {
     const aa = TRACE_SORT_RULES.indexOf(a.stats.channel.slice(-1))
     const bb = TRACE_SORT_RULES.indexOf(b.stats.channel.slice(-1))
@@ -119,7 +134,7 @@ function handleNotification(opt: WPNotificationOptions) {
 }
 
 function displayWaveforms() {
-  if (store.currentOrigin == null || store.currentArrivals == null || controller.value == null) {
+  if (store.currentArrivals == null || controller.value == null) {
     return
   }
   stationRefTimes.value = {}
@@ -134,7 +149,7 @@ function displayWaveforms() {
     pushUnique(seedidList, `${pick.waveformID.seedid.slice(0, -1)}?`)
   }
   store.dataManager.getData(
-    '..', store.currentOrigin, seedidList,
+    '..', props.time, props.latitude, props.longitude, props.depth, seedidList,
     store.settings['miscellaneous.maxTrace'],
     [store.settings['miscellaneous.timewindow1'], store.settings['miscellaneous.timewindow2']],
     controller.value.signal,
@@ -143,13 +158,13 @@ function displayWaveforms() {
 }
 
 function downloadChannels(seedidList: string[]) {
-  if (store.currentOrigin == null || controller.value == null) {
+  if (controller.value == null) {
     return
   }
   store.dataManager.getData(
-    '..', store.currentOrigin, seedidList,
+    '..', props.time, props.latitude, props.longitude, props.depth, seedidList,
     store.settings['miscellaneous.maxTrace'],
-    [store.settings['miscellaneous.timewindow1'], store.settings['miscellaneous.timewindow2']],
+    [props.timeWindow[0], props.timeWindow[1]],
     controller.value.signal,
     processDataCallback, handleNotification
   )
@@ -279,17 +294,16 @@ function loadAdditionalPicks() {
   // to prevent modified objects to be overwritten by new load
   const saveMainKey = ResourceIdentifier.mainKey
   ResourceIdentifier.mainKey = 'sandbox'
-  const t0 = store.currentOrigin!.time.object.getTime()
   client.getEvents({
     format: 'xml',
-    starttime: new Date(t0 - 3600e3).toISOString().slice(0, 19),
-    endtime: new Date(t0 + 3600e3).toISOString().slice(0, 19),
+    starttime: new Date(props.time - 3600e3).toISOString().slice(0, 19),
+    endtime: new Date(props.time + 3600e3).toISOString().slice(0, 19),
     includeallorigins: true,
     includearrivals: true
   }).then((events) => {
     const additionalPickMap: PickMap = {}
     for (const event of events) {
-      if (event.publicID === store.currentEvent!.publicID) {
+      if (store.currentEvent != null && event.publicID === store.currentEvent.publicID) {
         continue
       }
       for (const pick of event.pick) {
@@ -336,7 +350,11 @@ onMounted(() => {
   pickerStation.value = null
   document.body.addEventListener('contextmenu', handleContextMenu)
   data.value = []
-  displayWaveforms()
+  if (props.noEvent && props.seedidList.length > 0) {
+    downloadChannels(props.seedidList)
+  } else {
+    displayWaveforms()
+  }
   loadAdditionalPicks()
 })
 
@@ -350,7 +368,14 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <PickerToolbar v-model="toolbarValue" @leave="emit('update:modelValue', false)" @download-channels="downloadChannels"/>
+  <PickerToolbar
+    v-model="toolbarValue"
+    :time="props.time"
+    :latitude="props.latitude"
+    :longitude="props.longitude"
+    :no-event="props.noEvent"
+    @leave="emit('update:modelValue', false)"
+    @download-channels="downloadChannels"/>
   <v-card>
     <v-card-text>
       <PickerWaveforms
@@ -367,6 +392,7 @@ onBeforeUnmount(() => {
         :controller="controller"
         :common-scale="toolbarValue.commonScale"
         :integration="toolbarValue.integration"
+        :hide-ref-times="props.noEvent"
         @active-channel="handleActiveChannel"
         @create-pick="createPick"
         @select-picks="handleSelectPicks"
@@ -383,6 +409,7 @@ onBeforeUnmount(() => {
         :ref-time-key="toolbarValue.alignment"
         :filter="filterValue"
         :time-window="pickerTimeWindow"
+        :hide-ref-times="props.noEvent"
         @select-station="handleSelectStation"/>
     </v-card-text>
   </v-card>

@@ -1,8 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
-import FormView from '@/views/FormView.vue'
 import QueryView from '@/views/QueryView.vue'
 import EventView from '@/views/EventView.vue'
+import PlotView from '@/views/PlotView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -13,14 +13,14 @@ const router = createRouter({
       component: HomeView
     },
     {
-      path: '/form',
-      name: 'form',
-      component: FormView
-    },
-    {
       path: '/query',
       name: 'query',
       component: QueryView
+    },
+    {
+      path: '/plot',
+      name: 'plot',
+      component: PlotView
     },
     {
       path: '/event/:eventid',

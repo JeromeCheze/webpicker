@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import defaultSettings from '@/utils/defaultSettings'
-import { ref, computed, onMounted } from 'vue'
-import { useAppStore } from '@/stores/app'
 import { deepCopy, getLocalStorageDefault, parseFilter, setLocalStorage } from '@/utils';
-import type { FilterOptions } from '@/types';
+import defaultSettings from '@/utils/defaultSettings'
+import type { FilterOptions } from '@/types'
+import { useAppStore } from '@/stores/app'
+import { ref, onMounted } from 'vue'
 
 const emit = defineEmits(['update:modelValue'])
 
@@ -196,7 +196,7 @@ onMounted(() => {
   >
     <v-card>
       <v-card-title class="d-flex justify-space-between align-center">
-        <div class="text-h5 text-medium-emphasis ps-2">Settings</div>
+        <div class="text-h5 text-medium-emphasis">Settings</div>
         <v-btn icon="mdi-close" variant="text" @click="emit('update:modelValue', false)"></v-btn>
       </v-card-title>
       <v-card-text :style="{ height: '80vh' }">

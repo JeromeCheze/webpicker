@@ -106,7 +106,7 @@ function cloneOrigin() {
 }
 function createArrival(p: Pick) {
   const netsta = p.waveformID.netsta
-  const ttt = dataManager.getStationPhaseTime(currentOrigin.value!, netsta, p.phaseHint as 'P' | 'S')
+  const ttt = dataManager.getStationPhaseTime(currentOrigin.value!.time.object.getTime(), netsta, p.phaseHint as 'P' | 'S')
   const pTime = p.time.object.getTime()
   const arrivalDesc = {
     '@publicID': getId('Arrival'),

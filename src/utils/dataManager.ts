@@ -1,8 +1,8 @@
 import type { FDSNStationBulkItem, FDSNWaveformBulkItem, Inventory } from '@/lib/sismojs/src/types'
 import type { Detection, DetectionResult, TTT, WPNotificationOptions } from '@/types'
-import { type Origin, type Arrival } from '@/lib/sismojs/src/core/event/types'
 import { Stream, type Trace } from "@/lib/sismojs/src/core/waveform"
 import { getDistanceAzimuth, pushUnique, toNetSta } from '@/utils'
+import { type Arrival } from '@/lib/sismojs/src/core/event/types'
 import { Client } from "@/lib/sismojs/src/fdsn"
 
 const CHUNK_LENGTH = 12
@@ -111,7 +111,13 @@ export default class DataManager {
     }
   }
 
-  getInventory(baseUrl: string, seedidList: string[], t: Date, notification: (opt: WPNotificationOptions) => void): Promise<Inventory> {
+  getInventory(
+    baseUrl: string,
+    seedidList: string[],
+    time: number,
+    notification: (opt: WPNotificationOptions) => void
+  ): Promise<Inventory> {
+    const t = new Date(time)
     return new Promise((resolve, reject) => {
       notification({ type: 'progress', value: { text: 'Loading inventory...', percent: -1 } })
       const bulk: FDSNStationBulkItem[] = []
@@ -149,11 +155,15 @@ export default class DataManager {
   }
 
   getRadiusInventory(
-    baseUrl: string, time: string,
-    latitude: number, longitude: number,
+    baseUrl: string,
+    time: string,
+    latitude: number,
+    longitude: number,
     maxradius: number,
-    network: string, station: string,
-    location: string, channel: string
+    network: string,
+    station: string,
+    location: string,
+    channel: string
   ): Promise<Inventory> {
     return new Promise((resolve, reject) => {
       this.client.baseURL = baseUrl
@@ -174,7 +184,14 @@ export default class DataManager {
     })
   }
 
-  getOriginStationInventory(baseUrl: string, origin: Origin, arrivals: Arrival[], notification: (opt: WPNotificationOptions) => void): Promise<Inventory> {
+  getOriginStationInventory(
+    baseUrl: string,
+    time: number,
+    latitude: number,
+    longitude: number,
+    arrivals: Arrival[],
+    notification: (opt: WPNotificationOptions) => void
+  ): Promise<Inventory> {
     return new Promise((resolve, reject) => {
       const seedidList: string[] = []
       for (const arrival of arrivals) {
@@ -186,8 +203,8 @@ export default class DataManager {
         }
       }
       if (seedidList.length > 0) {
-        this.getInventory(baseUrl, seedidList, origin.time.object, notification).then(response => {
-          this.updateStationDistanceAzimuth(origin.latitude.value, origin.longitude.value)
+        this.getInventory(baseUrl, seedidList, time, notification).then(response => {
+          this.updateStationDistanceAzimuth(latitude, longitude)
           resolve(response as Inventory)
         })
       } else {
@@ -196,7 +213,16 @@ export default class DataManager {
     })
   }
 
-  _downloadDenoisedWaveforms(baseUrl: string, network: string, station: string, location: string, channel: string, starttime: string, endtime: string, signal: AbortSignal): Promise<Trace[]> {
+  _downloadDenoisedWaveforms(
+    baseUrl: string,
+    network: string,
+    station: string,
+    location: string,
+    channel: string,
+    starttime: string,
+    endtime: string,
+    signal: AbortSignal
+  ): Promise<Trace[]> {
     return new Promise((resolve, reject) => {
       const cacheKey = `${starttime}-${endtime}`
       const args = Object.entries({ network, station, location, channel, starttime, endtime }).map(x => `${x[0]}=${x[1]}`).join('&')
@@ -214,7 +240,13 @@ export default class DataManager {
     })
   }
 
-  getDenoisedWaveforms(baseUrl: string, seedidList: string[], t1: Date, t2: Date, signal: AbortSignal): Promise<Trace[]> {
+  getDenoisedWaveforms(
+    baseUrl: string,
+    seedidList: string[],
+    t1: Date,
+    t2: Date,
+    signal: AbortSignal
+  ): Promise<Trace[]> {
     return new Promise((resolve, reject) => {
       const starttime = t1.toISOString().slice(0, 19)
       const endtime = t2.toISOString().slice(0, 19)
@@ -267,14 +299,21 @@ export default class DataManager {
     return null
   }
 
-  loadTTT(baseUrl: string, origin: Origin, netstaList: string[], notification: (opt: WPNotificationOptions) => void): Promise<null> {
+  loadTTT(
+    baseUrl: string,
+    latitude: number,
+    longitude: number,
+    depth: number,
+    netstaList: string[],
+    notification: (opt: WPNotificationOptions) => void
+  ): Promise<null> {
     return new Promise((resolve, reject) => {
       notification({ type: 'progress', value: { text: 'Loading theoretical travel times...', percent: -1 } })
       const stationQuery: Record<string, [number, number, number]> = {}
       const query = {
-        latitude: origin.latitude.value,
-        longitude: origin.longitude.value,
-        depth: origin.depth.value / 1e3,
+        latitude: latitude,
+        longitude: longitude,
+        depth: depth / 1e3,
         station: stationQuery
       }
       for (const netsta of netstaList) {
@@ -304,16 +343,14 @@ export default class DataManager {
     })
   }
 
-  getStationPhaseTime(origin: Origin, netsta: string, phase: 'P' | 'S'): number {
-    const t0 = origin.time.object.getTime()
+  getStationPhaseTime(t0: number, netsta: string, phase: 'P' | 'S'): number {
     if (this.tttCache[netsta] != null && this.tttCache[netsta].ttt[phase] != null) {
       return t0 + this.tttCache[netsta].ttt[phase] * 1e3
     }
     return t0
   }
 
-  getNLLStationPhaseTime(origin: Origin, netsta: string, phase: 'P' | 'S'): number | null {
-    const t0 = origin.time.object.getTime()
+  getNLLStationPhaseTime(t0: number, netsta: string, phase: 'P' | 'S'): number | null {
     if (this.tttCache[netsta] != null && this.tttCache[netsta].nll_ttt != null) {
       return t0 + this.tttCache[netsta].nll_ttt![phase] * 1e3
     }
@@ -346,7 +383,16 @@ export default class DataManager {
     return result
   }
 
-  getDetection(baseUrl: string, model: string, wfid: string, start: string, end: string, p_thresh: number, s_thresh: number, signal: AbortSignal): Promise<Detection[]> {
+  getDetection(
+    baseUrl: string,
+    model: string,
+    wfid: string,
+    start: string,
+    end: string,
+    p_thresh: number,
+    s_thresh: number,
+    signal: AbortSignal
+  ): Promise<Detection[]> {
     return new Promise((resolve, reject) => {
       const netsta = toNetSta(wfid)
       const key = `${netsta}-${model}-${p_thresh}-${s_thresh}`
@@ -442,7 +488,10 @@ export default class DataManager {
 
   getData(
     baseUrl: string,
-    origin: Origin,
+    time: number,
+    latitude: number,
+    longitude: number,
+    depth: number,
     seedidList: string[],
     maxTrace: number | null,
     timewindow: [number, number],
@@ -454,14 +503,13 @@ export default class DataManager {
     for (const seedid of seedidList) {
       pushUnique(netstaList, toNetSta(seedid))
     }
-    this.getInventory(baseUrl, seedidList, origin.time.object, notification).then(() => {
-      this.loadTTT(baseUrl, origin, netstaList, notification).then(() => {
-        const t0 = origin.time.object.getTime()
-        const t1 = new Date(t0 - timewindow[0] * 1e3)
-        let maxTime = t0 + 120e3
+    this.getInventory(baseUrl, seedidList, time, notification).then(() => {
+      this.loadTTT(baseUrl, latitude, longitude, depth, netstaList, notification).then(() => {
+        const t1 = new Date(time - timewindow[0] * 1e3)
+        let maxTime = time + 120e3
         for (const netstaTTT of Object.values(this.tttCache)) {
           for (const ttt of Object.values(netstaTTT.ttt)) {
-            maxTime = Math.max(maxTime, t0 + ttt * 1e3)
+            maxTime = Math.max(maxTime, time + ttt * 1e3)
           }
         }
         const t2 = new Date(maxTime + timewindow[1] * 1e3)

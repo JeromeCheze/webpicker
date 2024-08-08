@@ -1,26 +1,42 @@
 <script setup lang="ts">
-import type { Inventory } from '@/lib/sismojs/src/types'
 import { degToKm, kmToDeg, pushUnique, getLocalStorageDefault, setLocalStorage } from '@/utils'
+import type { Inventory } from '@/lib/sismojs/src/types'
 import { useAppStore } from '@/stores/app'
-import { ref, watch, computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { onMounted, ref, watch } from 'vue'
 import * as L from 'leaflet'
 
-const emit = defineEmits(['radiusStations'])
+const route = useRoute()
+
+const emit = defineEmits(['radiusStations', 'update:modelValue', 'update:latitude', 'update:longitude'])
+
+const props = defineProps<{
+  modelValue: boolean
+  latitude: number
+  longitude: number
+  storageKey: string
+  time: number
+}>()
 
 const store = useAppStore()
 
-const [net, sta, loc, cha, rad] = getLocalStorageDefault(
-  'stationRadius',
-  ['*', '*', '*', '?H?', store.settings['miscellaneous.defaultRadius']]
+const opt = getLocalStorageDefault(
+  props.storageKey,
+  Object.assign({
+    network: '*',
+    station: '*',
+    location: '*',
+    channel: '?H?',
+    radius: store.settings['miscellaneous.defaultRadius']
+  }, route.query)
 )
 
 const form = ref()
-const menu = ref(false)
-const radius = ref(rad)
-const netSelector = ref(net)
-const staSelector = ref(sta)
-const locSelector = ref(loc)
-const chaSelector = ref(cha)
+const radius = ref(parseFloat(opt.radius))
+const netSelector = ref(opt.network)
+const staSelector = ref(opt.station)
+const locSelector = ref(opt.location)
+const chaSelector = ref(opt.channel)
 const mapContainer = ref()
 const map = ref(null as L.Map | null)
 const circle = ref(null as L.Circle | null)
@@ -30,11 +46,6 @@ const stations = ref([] as L.Layer[])
 const valueRe = /^[A-Z0-9?*,]+$/
 
 const INSTRUMENT_WEIGHT = ['N', 'H']
-
-const color = computed(() => {
-  const rgb = store.settings['color.surface']
-  return rgb !== '' ? `rgb(${rgb})` : ''
-})
 
 function validate() {
   preview().then(() => {
@@ -62,7 +73,7 @@ function validate() {
         }
       }
     }
-    menu.value = false
+    emit('update:modelValue', false)
     emit('radiusStations', seedidList)
   })
 }
@@ -71,8 +82,14 @@ function preview(): Promise<void> {
   return new Promise((resolve, reject) => {
     if (form.value.validate()) {
       setLocalStorage(
-        'stationRadius',
-        [netSelector.value, staSelector.value, locSelector.value, chaSelector.value, radius.value]
+        props.storageKey,
+        {
+          network: netSelector.value,
+          station: staSelector.value,
+          location: locSelector.value,
+          channel: chaSelector.value,
+          radius: radius.value
+        }
       )
       const toRemove: string[] = []
       for (const [net, staMap] of Object.entries(store.dataManager.inventoryCache as Inventory)) {
@@ -87,13 +104,12 @@ function preview(): Promise<void> {
         const [net, sta] = netsta.split('.')
         delete store.dataManager.inventoryCache[net][sta]
       }
-      const pos = circle.value!.getLatLng()
-      const t = store.currentOrigin!.time.value.slice(0, 19)
+      const t = new Date(props.time).toISOString().slice(0, 19)
       store.dataManager.getRadiusInventory(
-        '..', t, pos.lat, pos.lng, radius.value,
+        '..', t, props.latitude, props.longitude, radius.value,
         netSelector.value, staSelector.value, locSelector.value, chaSelector.value
       ).then(inv => {
-        const [lat, lon] = [store.currentOrigin!.latitude.value, store.currentOrigin!.longitude.value]
+        const [lat, lon] = [props.latitude, props.longitude]
         store.dataManager.updateStationDistanceAzimuth(lat, lon)
         displayStations()
         resolve()
@@ -123,18 +139,25 @@ function displayStations() {
   }
 }
 
-function initMap() {
-  if (mapContainer.value == null) {
+function ready(callback?: () => void) {
+  if (callback != null) {
+    callback()
   }
-  const container = mapContainer.value
-  map.value = L.map(container, { trackResize: false, attributionControl: false })
+}
+
+function initMap() {
+  if (mapContainer.value == null || map.value != null) {
+    return
+  }
+  console.log('initMap')
+  map.value = L.map(mapContainer.value, { trackResize: false, attributionControl: false })
   const plan = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}')
   const worldtopomap = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}')
   const satmap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}')
   const baseLayers = { Plan: plan, Terrain: worldtopomap, Satellite: satmap }
   L.control.layers(baseLayers).addTo(map.value as L.Map)
   plan.addTo(map.value as L.Map)
-  const pos = [store.currentOrigin!.latitude.value, store.currentOrigin!.longitude.value] as L.LatLngTuple
+  const pos = [props.latitude, props.longitude] as L.LatLngTuple
   circle.value = L.circle(pos, { radius: degToKm(radius.value) * 1e3 }).addTo(map.value as L.Map)
   center.value = L.marker(pos, { icon: L.divIcon({ className: 'circle c-move', iconSize: [10, 10] }), draggable: true }).addTo(map.value as L.Map)
   resize.value = L.marker([pos[0] + radius.value, pos[1]], { icon: L.divIcon({ className: 'circle c-ns-resize', iconSize: [10, 10] }), draggable: true }).addTo(map.value as L.Map)
@@ -142,6 +165,8 @@ function initMap() {
     const newPos = center.value!.getLatLng()
     circle.value!.setLatLng(newPos)
     resize.value!.setLatLng([newPos.lat + radius.value, newPos.lng])
+    emit('update:latitude', newPos.lat)
+    emit('update:longitude', newPos.lng)
   })
   resize.value.on('drag', () => {
     const dist = circle.value!.getLatLng().distanceTo(resize.value!.getLatLng())
@@ -150,6 +175,7 @@ function initMap() {
   })
   displayStations()
   map.value.setView(pos, 7)
+  ready()
 }
 
 function checkValue(value: string) {
@@ -162,45 +188,48 @@ watch(() => radius.value, (value) => {
   resize.value!.setLatLng([pos.lat + value, pos.lng])
 })
 
-watch(() => menu.value, (value) => {
+watch(() => props.modelValue, (value) => {
   if (value === true) {
     setTimeout(() => {
       initMap()
     }, 200)
   }
 })
+
+onMounted(() => {
+  initMap()
+})
+
+defineExpose({ validate, ready })
 </script>
 
 <template>
-  <v-menu v-model="menu" :close-on-content-click="false" attach>
-    <template v-slot:activator="{ props }">
-      <v-btn class="mx-1" v-bind="props" title="Add station radius"><v-icon>mdi-less-than-or-equal</v-icon></v-btn>
-    </template>
-    <v-card min-width="500">
-      <v-card-text>
-        <div ref="mapContainer" :style="{ height: '400px' }"></div>
-        <v-form ref="form">
-          <v-row>
-            <v-col cols="3">
-              <v-text-field v-model="netSelector" label="Network" density="compact" hide-details :rules="[checkValue]"/>
-            </v-col>
-            <v-col cols="3">
-              <v-text-field v-model="staSelector" label="Station" density="compact" hide-details :rules="[checkValue]"/>
-            </v-col>
-            <v-col cols="3">
-              <v-text-field v-model="locSelector" label="Location" density="compact" hide-details :rules="[checkValue]"/>
-            </v-col>
-            <v-col cols="3">
-              <v-text-field v-model="chaSelector" label="Channel" density="compact" hide-details :rules="[checkValue]"/>
-            </v-col>
-          </v-row>
-        </v-form>
-      </v-card-text>
-      <v-toolbar density="compact" :color="color">
-        <NumberField v-model="radius" label="Radius [°]" density="compact" hide-details class="mx-1"/>
-        <v-btn @click="preview" class="mx-1">Preview</v-btn>
-        <v-btn @click="validate" class="mx-1">Validate</v-btn>
-      </v-toolbar>
-    </v-card>
-  </v-menu>
+  <div ref="mapContainer" :style="{ height: '400px' }" class="mb-4"></div>
+  <v-form ref="form">
+    <v-row>
+      <v-col cols="3">
+        <v-text-field v-model="netSelector" label="Network" density="compact" hide-details :rules="[checkValue]"/>
+      </v-col>
+      <v-col cols="3">
+        <v-text-field v-model="staSelector" label="Station" density="compact" hide-details :rules="[checkValue]"/>
+      </v-col>
+      <v-col cols="3">
+        <v-text-field v-model="locSelector" label="Location" density="compact" hide-details :rules="[checkValue]"/>
+      </v-col>
+      <v-col cols="3">
+        <v-text-field v-model="chaSelector" label="Channel" density="compact" hide-details :rules="[checkValue]"/>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col cols="6">
+        <NumberField v-model="radius" label="Radius [°]" density="compact" hide-details/>
+      </v-col>
+      <v-col cols="3">
+        <v-btn @click="preview">Preview</v-btn>
+      </v-col>
+      <v-col cols="3">
+        <v-btn @click="validate">Validate</v-btn>
+      </v-col>
+    </v-row>
+  </v-form>
 </template>

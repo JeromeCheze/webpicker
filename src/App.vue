@@ -21,9 +21,6 @@ const warningNotificationText = ref('')
 const progressNotification = ref(false)
 const progressNotificationValue = ref({ percent: 0, text: '' })
 
-function handleCreateEventClick() {
-  // TODO
-}
 
 function handleSetAuthor() {
   setLocalStorage('author', authorValue.value)
@@ -122,34 +119,35 @@ onMounted(() => {
     </v-main>
     <v-navigation-drawer v-model="drawer" :rail="rail" permanent>
       <v-list nav>
-        <v-list-item prepend-avatar="@/assets/webpicker2.png" class="font-weight-bold" @click.stop="rail = !rail">
+        <v-list-item prepend-avatar="@/assets/wp.png" class="font-weight-bold" @click.stop="rail = !rail">
           WebPicker
           <template v-slot:append>
             <v-btn variant="text" icon="mdi-chevron-left" @click.stop="rail = !rail"></v-btn>
           </template>
         </v-list-item>
-        <v-divider></v-divider>
-        <v-list-item :to="{ name: 'form' }" title="Form" prepend-icon="mdi-pencil"></v-list-item>
-        <v-list-item :to="{ name: 'query' }" title="Result" prepend-icon="mdi-database"></v-list-item>
+        <v-list-item
+          :to="{ name: 'query' }"
+          title="Query"
+          prepend-icon="mdi-database"></v-list-item>
         <v-list-item
           :to="{ name: 'event', params: { eventid: store.currentEvent.publicID } }"
           :title="store.currentEvent.publicID"
           prepend-icon="mdi-bullseye"
-          v-if="store.currentEvent != null"
-        ></v-list-item>
+          v-if="store.currentEvent != null"></v-list-item>
         <v-list-item
           title="Create event"
-          prepend-icon="mdi-creation"
+          prepend-icon="mdi-plus-circle-outline"
           @click="createEventDialog = !createEventDialog"
-          :active="createEventDialog"
-        ></v-list-item>
-        <v-divider></v-divider>
+          :active="createEventDialog"></v-list-item>
+        <v-list-item
+          :to="{ name: 'plot' }"
+          title="Plot"
+          prepend-icon="mdi-eye"></v-list-item>
         <v-list-item
           title="Settings"
           prepend-icon="mdi-cog"
           @click="settingsDialog = !settingsDialog"
-          :active="settingsDialog"
-        ></v-list-item>
+          :active="settingsDialog"></v-list-item>
         <!-- <v-list-item title="Logs" prepend-icon="mdi-console"></v-list-item> -->
         <v-list-item :title="store.author || 'undefined'" prepend-icon="mdi-account" @click="authorDialog = true"></v-list-item>
       </v-list>

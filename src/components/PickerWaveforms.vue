@@ -27,6 +27,7 @@ const props = defineProps<{
   controller: AbortController
   commonScale: boolean
   integration: boolean
+  hideRefTimes: boolean
 }>()
 
 const container = ref()
@@ -155,16 +156,17 @@ function pickToVLine(p: Pick, selectable: boolean) {
 
 function getVLines(index: number, dataLength: number, seedid: string) {
   const netsta = toNetSta(seedid)
-  const result: VLine[] = [
-    { color: store.settings['color.TTT'], x: props.stationRefTimes[netsta].P, text: index === dataLength - 1 ? 'P' : undefined, position: 'bottom' },
-    { color: store.settings['color.TTT'], x: props.stationRefTimes[netsta].S, text: index === dataLength - 1 ? 'S' : undefined, position: 'bottom' },
-    { color: store.settings['color.T0'], x: props.stationRefTimes[netsta].O, text: index === dataLength - 1 ? 'T0' : undefined, position: 'bottom' }
-  ]
-  if (props.stationRefTimes[netsta].P_NLL != null) {
-    result.push({ color: store.settings['color.TTTNLL'], x: props.stationRefTimes[netsta].P_NLL, text: index === dataLength - 1 ? 'P (NLL)' : undefined, position: 'bottom' })
-  }
-  if (props.stationRefTimes[netsta].S_NLL != null) {
-    result.push({ color: store.settings['color.TTTNLL'], x: props.stationRefTimes[netsta].S_NLL, text: index === dataLength - 1 ? 'S (NLL)' : undefined, position: 'bottom' })
+  const result: VLine[] = []
+  if (!props.hideRefTimes) {
+    result.push({ color: store.settings['color.T0'], x: props.stationRefTimes[netsta].O, text: index === dataLength - 1 ? 'T0' : undefined, position: 'bottom' })
+    result.push({ color: store.settings['color.TTT'], x: props.stationRefTimes[netsta].P, text: index === dataLength - 1 ? 'P' : undefined, position: 'bottom' })
+    result.push({ color: store.settings['color.TTT'], x: props.stationRefTimes[netsta].S, text: index === dataLength - 1 ? 'S' : undefined, position: 'bottom' })
+    if (props.stationRefTimes[netsta].P_NLL != null) {
+      result.push({ color: store.settings['color.TTTNLL'], x: props.stationRefTimes[netsta].P_NLL, text: index === dataLength - 1 ? 'P (NLL)' : undefined, position: 'bottom' })
+    }
+    if (props.stationRefTimes[netsta].S_NLL != null) {
+      result.push({ color: store.settings['color.TTTNLL'], x: props.stationRefTimes[netsta].S_NLL, text: index === dataLength - 1 ? 'S (NLL)' : undefined, position: 'bottom' })
+    }
   }
   if (props.detector) {
     const key = `${netsta}-${store.settings['detector.model']}-${store.settings['detector.pThreshold']}-${store.settings['detector.sThreshold']}`
@@ -313,6 +315,7 @@ async function update(redraw=false) {
     }
     const [x1, x2] = getXRange(props.activeStation!)
     let maxRange: number = 0
+    console.log(data)
     for (const [index, currData] of data.entries()) {
       if (chartData[currData.id] == null) {
         const div = document.createElement('div')

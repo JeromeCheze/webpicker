@@ -80,7 +80,14 @@ function displayStations() {
   stationLayers = []
   const stationMap: Record<string, boolean> = {}
   const oPos = [props.activeOrigin.latitude.value, props.activeOrigin.longitude.value] as L.LatLngTuple
-  store.dataManager.getOriginStationInventory('..', props.activeOrigin, props.activeOrigin.arrival, handleNotification).then((inv) => {
+  store.dataManager.getOriginStationInventory(
+    '..',
+    props.activeOrigin.time.object.getTime(),
+    props.activeOrigin.latitude.value,
+    props.activeOrigin.longitude.value,
+    props.activeOrigin.arrival,
+    handleNotification
+  ).then((inv) => {
     for (const arrival of props.activeOrigin!.arrival) {
       const netsta = arrival.pickID.referredObject.waveformID.netsta
       if (arrival.timeWeight === 0 || stationMap[netsta] === true) {

@@ -20,6 +20,7 @@ const props = defineProps<{
   refTimeKey: PickerToolbarOptions['alignment']
   stationRefTimes: StationRefTimes
   timeWindow: [number, number]
+  hideRefTimes: boolean
 }>()
 
 const container = ref()
@@ -114,11 +115,12 @@ function pickToVLine(p: Pick, additional: boolean) {
 }
 
 function getVLines(netsta: string) {
-  const result: VLine[] = [
-    { color: store.settings['color.TTT'], x: props.stationRefTimes[netsta].P, text: 'P', position: 'bottom' },
-    { color: store.settings['color.TTT'], x: props.stationRefTimes[netsta].S, text: 'S', position: 'bottom' },
-    { color: store.settings['color.T0'], x: props.stationRefTimes[netsta].O }
-  ]
+  const result: VLine[] = []
+  if (!props.hideRefTimes) {
+    result.push({ color: store.settings['color.T0'], x: props.stationRefTimes[netsta].O })
+    result.push({ color: store.settings['color.TTT'], x: props.stationRefTimes[netsta].P, text: 'P', position: 'bottom' })
+    result.push({ color: store.settings['color.TTT'], x: props.stationRefTimes[netsta].S, text: 'S', position: 'bottom' })
+  }
   // if (props.stationRefTimes[netsta].P_NLL != null) {
   //   result.push({ color: store.settings['color.TTTNLL'], x: props.stationRefTimes[netsta].P_NLL, text: 'P (NLL)', position: 'bottom' })
   // }

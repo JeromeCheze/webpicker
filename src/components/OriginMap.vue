@@ -71,7 +71,14 @@ function displayStations() {
   if (store.currentOrigin == null || store.currentArrivals == null) {
     return
   }
-  store.dataManager.getOriginStationInventory('..', store.currentOrigin, store.currentArrivals, handleNotification).then((inv) => {
+  store.dataManager.getOriginStationInventory(
+    '..',
+    store.currentOrigin.time.object.getTime(),
+    store.currentOrigin.latitude.value,
+    store.currentOrigin.longitude.value,
+    store.currentArrivals,
+    handleNotification
+  ).then((inv) => {
     if (store.currentOrigin == null || store.currentArrivals == null || map.value == null) {
       return
     }

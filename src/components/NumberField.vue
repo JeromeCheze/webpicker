@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, useAttrs, watch } from 'vue'
 
 
 const props = defineProps<{
   modelValue?: number | null
 }>()
+
+const attrs = useAttrs()
 
 const emit = defineEmits(['update:modelValue'])
 
@@ -34,7 +36,7 @@ function handleInput(ev: InputEvent) {
 
 <template>
   <v-text-field
-    v-bind="$attrs"
+    v-bind="attrs"
     :model-value="numberValue"
     @change="handleInput"
     class="number-field__v-text-field"

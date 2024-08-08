@@ -21,7 +21,7 @@ function traveltime(a: Arrival) {
   if (store.currentOrigin == null) {
     return null
   }
-  return (a.pickID.referredObject.time.object - store.currentOrigin.time.object) / 1e3
+  return (a.pickID.referredObject.time.object.getTime() - store.currentOrigin.time.object.getTime()) / 1e3
 }
 
 function drawChart() {

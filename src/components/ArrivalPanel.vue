@@ -103,7 +103,7 @@ function traveltime(a: Arrival) {
   if (store.currentOrigin == null) {
     return null
   }
-  return new Date(a.pickID.referredObject.time.object - store.currentOrigin.time.object).toISOString().slice(0, 19).split('T')[1]
+  return new Date(a.pickID.referredObject.time.object.getTime() - store.currentOrigin.time.object.getTime()).toISOString().slice(0, 19).split('T')[1]
 }
 
 function handleSelection (selected: Arrival[]) {

@@ -6,6 +6,8 @@ import type { ColObject } from '@/types'
 import { ref, watch } from 'vue'
 import router from '@/router'
 
+const emit = defineEmits(['openForm'])
+
 const store = useAppStore()
 
 const props = defineProps<{
@@ -146,7 +148,7 @@ watch(() => store.usersActivity, (value) => {
       store-key="eventList"
     >
       No events to display<br>
-      Go to <router-link :to="{ name: 'form' }">form</router-link> to define query parameters
+      <v-btn variant="text" @click="emit('openForm')" color="primary">open form</v-btn>
     </SmartTable>
   </v-card>
 </template>
