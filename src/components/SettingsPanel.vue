@@ -212,7 +212,7 @@ onMounted(() => {
                       <td>
                         <v-select v-if="field.type === 'select'" density="compact" hide-details :items="field.items" v-model="values[field.key]"/>
                         <v-text-field v-else-if="field.type === 'text'" density="compact" hide-details="auto" v-model="values[field.key]" :rules="section.title === 'Keybindings' ? [checkKeybinding(field.key, values[field.key])] : []"/>
-                        <NumberField v-else-if="field.type === 'number'" density="compact" hide-details v-model="values[field.key]"/>
+                        <NumberField v-else-if="field.type === 'number'" density="compact" hide-details v-model="values[field.key]" required/>
                       </td>
                       <td><v-btn variant="plain" v-if="!isDefaultValue(field.key)" @click="resetDefault(field.key)"><v-icon>mdi-backup-restore</v-icon></v-btn></td>
                     </tr>

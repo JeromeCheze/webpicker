@@ -43,7 +43,8 @@ const circle = ref(null as L.Circle | null)
 const center = ref(null as L.Marker | null)
 const resize = ref(null as L.Marker | null)
 const stations = ref([] as L.Layer[])
-const valueRe = /^[A-Z0-9?*,]+$/
+const reValue = /^\*|([A-Z0-9?*]+(,[A-Z0-9?*]+)*)$/
+const reChannel = /^\*|([A-Z0-9?*]{3}(,[A-Z0-9?*]{3})*)$/
 
 const INSTRUMENT_WEIGHT = ['N', 'H']
 
@@ -179,7 +180,11 @@ function initMap() {
 }
 
 function checkValue(value: string) {
-  return valueRe.test(value) || 'Invalid'
+  return reValue.test(value) || 'Invalid'
+}
+
+function checkChannel(value: string) {
+  return reChannel.test(value) || 'Invalid'
 }
 
 watch(() => radius.value, (value) => {
@@ -217,12 +222,12 @@ defineExpose({ validate, ready })
         <v-text-field v-model="locSelector" label="Location" density="compact" hide-details :rules="[checkValue]"/>
       </v-col>
       <v-col cols="3">
-        <v-text-field v-model="chaSelector" label="Channel" density="compact" hide-details :rules="[checkValue]"/>
+        <v-text-field v-model="chaSelector" label="Channel" density="compact" hide-details :rules="[checkChannel]"/>
       </v-col>
     </v-row>
     <v-row>
       <v-col cols="6">
-        <NumberField v-model="radius" label="Radius [°]" density="compact" hide-details/>
+        <NumberField v-model="radius" label="Radius [°]" density="compact" hide-details required/>
       </v-col>
       <v-col cols="3">
         <v-btn @click="preview">Preview</v-btn>

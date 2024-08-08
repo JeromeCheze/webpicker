@@ -4,6 +4,7 @@ import { ref, useAttrs, watch } from 'vue'
 
 const props = defineProps<{
   modelValue?: number | null
+  required?: boolean | undefined
 }>()
 
 const attrs = useAttrs()
@@ -11,9 +12,10 @@ const attrs = useAttrs()
 const emit = defineEmits(['update:modelValue'])
 
 const numberValue = ref(props.modelValue != null ? props.modelValue.toString() : null)
+const reFloat = /^\d+(\.\d+)?$/
 
-watch(() => props.modelValue, (newValue) => {
-  numberValue.value = newValue!.toString()
+watch(() => props.modelValue, (value) => {
+  numberValue.value = value != null ? value.toString() : null
 })
 
 function handleInput(ev: InputEvent) {
@@ -32,6 +34,13 @@ function handleInput(ev: InputEvent) {
     emit('update:modelValue', null)
   }
 }
+
+function checkValue(v: string | null) {
+  if (v != null) {
+    return reFloat.test(v) || 'Invalid value'
+  }
+  return props.required === true && v != null || 'Field required'
+}
 </script>
 
 <template>
@@ -40,6 +49,7 @@ function handleInput(ev: InputEvent) {
     :model-value="numberValue"
     @change="handleInput"
     class="number-field__v-text-field"
+    :rules="[checkValue]"
   ></v-text-field>
 </template>
 
