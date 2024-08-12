@@ -70,6 +70,7 @@ function handleSubmit(seedids: string[]) {
     store.eventViewStatus.relocateStatus = 'enabled'
     store.eventViewStatus.computeMagnitudesStatus = 'disabled'
     store.eventViewStatus.commitStatus = 'enabled'
+    store.updatePickMap()
     seedidList.value = seedids
     const query = Object.assign({
       starttime: starttime.value.toISOString(),
