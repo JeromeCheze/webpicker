@@ -1,85 +1,85 @@
 <script setup lang="ts">
-import type { Magnitude, Origin, RealQuantity } from '@/lib/sismojs/src/core/event/types'
+import type { QMagnitude, QOrigin, QRealQuantity } from '@/lib/sismojs/src/core/event/types'
 import { ref, computed, onMounted } from 'vue'
 import { useAppStore } from '@/stores/app'
 import type { ColObject } from '@/types'
 
 const store = useAppStore()
 
-const activeOrigin = ref(null as Origin | null)
-const activeMagnitude = ref(null as Magnitude | null)
+const activeOrigin = ref(null as QOrigin | null)
+const activeMagnitude = ref(null as QMagnitude | null)
 
 const originCols = ref([
   {
     label: 'Creation Time',
-    valueAccessor: (o: Origin) => o.creationInfo.creationTime,
-    textAccessor: (o: Origin) => prettyTime(o.creationInfo.creationTime),
+    valueAccessor: (o: QOrigin) => o.creationInfo.creationTime,
+    textAccessor: (o: QOrigin) => prettyTime(o.creationInfo.creationTime),
     enabled: true
   },
   {
     label: 'Author',
-    valueAccessor: (o: Origin) => o.creationInfo.author,
-    textAccessor: (o: Origin) => o.creationInfo.author,
+    valueAccessor: (o: QOrigin) => o.creationInfo.author,
+    textAccessor: (o: QOrigin) => o.creationInfo.author,
     enabled: true
   },
   {
     label: 'Time',
-    valueAccessor: (o: Origin) => o.time.object,
-    textAccessor: (o: Origin) => o.time.pretty,
+    valueAccessor: (o: QOrigin) => o.time.object,
+    textAccessor: (o: QOrigin) => o.time.pretty,
     enabled: true
   },
   {
     label: 'Latitude',
-    valueAccessor: (o: Origin) => o.latitude.value,
-    textAccessor: (o: Origin) => prettyLatitude(o.latitude),
+    valueAccessor: (o: QOrigin) => o.latitude.value,
+    textAccessor: (o: QOrigin) => prettyLatitude(o.latitude),
     enabled: true
   },
   {
     label: 'Longitude',
-    valueAccessor: (o: Origin) => o.longitude.value,
-    textAccessor: (o: Origin) => prettyLongitude(o.longitude),
+    valueAccessor: (o: QOrigin) => o.longitude.value,
+    textAccessor: (o: QOrigin) => prettyLongitude(o.longitude),
     enabled: true
   },
   {
     label: 'Depth',
-    valueAccessor: (o: Origin) => o.depth.value,
-    textAccessor: (o: Origin) => prettyDepth(o.depth),
+    valueAccessor: (o: QOrigin) => o.depth.value,
+    textAccessor: (o: QOrigin) => prettyDepth(o.depth),
     enabled: true
   },
   {
     label: 'Phases',
-    valueAccessor: (o: Origin) => o.quality?.usedPhaseCount,
-    textAccessor: (o: Origin) => `${o.quality?.usedPhaseCount} / ${o.quality?.associatedPhaseCount}`,
+    valueAccessor: (o: QOrigin) => o.quality?.usedPhaseCount,
+    textAccessor: (o: QOrigin) => `${o.quality?.usedPhaseCount} / ${o.quality?.associatedPhaseCount}`,
     enabled: true
   },
   {
     label: 'RMS',
-    valueAccessor: (o: Origin) => o.quality?.standardError,
-    textAccessor: (o: Origin) => `${o.quality?.standardError?.toFixed(2)} s`,
+    valueAccessor: (o: QOrigin) => o.quality?.standardError,
+    textAccessor: (o: QOrigin) => `${o.quality?.standardError?.toFixed(2)} s`,
     enabled: true
   },
   {
     label: 'Az. Gap',
-    valueAccessor: (o: Origin) => o.quality?.azimuthalGap,
-    textAccessor: (o: Origin) => `${o.quality?.azimuthalGap?.toFixed(0)} °`,
+    valueAccessor: (o: QOrigin) => o.quality?.azimuthalGap,
+    textAccessor: (o: QOrigin) => `${o.quality?.azimuthalGap?.toFixed(0)} °`,
     enabled: true
   },
   {
     label: 'Min Dist',
-    valueAccessor: (o: Origin) => o.quality?.minimumDistance,
-    textAccessor: (o: Origin) => `${o.quality?.minimumDistance?.toFixed(2)} °`,
+    valueAccessor: (o: QOrigin) => o.quality?.minimumDistance,
+    textAccessor: (o: QOrigin) => `${o.quality?.minimumDistance?.toFixed(2)} °`,
     enabled: true
   },
   {
     label: 'Method',
-    valueAccessor: (o: Origin) => o.methodID,
-    textAccessor: (o: Origin) => o.methodID,
+    valueAccessor: (o: QOrigin) => o.methodID,
+    textAccessor: (o: QOrigin) => o.methodID,
     enabled: false
   },
   {
     label: 'Earth Model',
-    valueAccessor: (o: Origin) => o.earthModelID,
-    textAccessor: (o: Origin) => o.earthModelID,
+    valueAccessor: (o: QOrigin) => o.earthModelID,
+    textAccessor: (o: QOrigin) => o.earthModelID,
     enabled: false
   }
 ] as ColObject[])
@@ -87,26 +87,26 @@ const originCols = ref([
 const magnitudeCols = ref([
   {
     label: 'Value',
-    valueAccessor: (m: Magnitude) => m.mag,
-    textAccessor: (m: Magnitude) => m.mag.value.toFixed(2),
+    valueAccessor: (m: QMagnitude) => m.mag,
+    textAccessor: (m: QMagnitude) => m.mag.value.toFixed(2),
     enabled: true
   },
   {
     label: 'Type',
-    valueAccessor: (m: Magnitude) => m.type,
-    textAccessor: (m: Magnitude) => m.type,
+    valueAccessor: (m: QMagnitude) => m.type,
+    textAccessor: (m: QMagnitude) => m.type,
     enabled: true
   },
   {
     label: 'Nb Station',
-    valueAccessor: (m: Magnitude) => m.stationCount,
-    textAccessor: (m: Magnitude) => m.stationCount,
+    valueAccessor: (m: QMagnitude) => m.stationCount,
+    textAccessor: (m: QMagnitude) => m.stationCount,
     enabled: true
   },
   {
     label: 'Method',
-    valueAccessor: (m: Magnitude) => m.methodID,
-    textAccessor: (m: Magnitude) => m.methodID,
+    valueAccessor: (m: QMagnitude) => m.methodID,
+    textAccessor: (m: QMagnitude) => m.methodID,
     enabled: true
   }
 ] as ColObject[])
@@ -118,11 +118,11 @@ const magnitudes = computed(() => {
   return store.currentEvent.magnitude.filter(x => x.originID.id === activeOrigin.value!.publicID)
 })
 
-function setActiveOrigin(origin: Origin) {
+function setActiveOrigin(origin: QOrigin) {
   activeOrigin.value = origin
 }
 
-function setActiveMagnitude(magnitude: Magnitude) {
+function setActiveMagnitude(magnitude: QMagnitude) {
   activeMagnitude.value = magnitude
 }
 
@@ -130,51 +130,51 @@ function prettyTime(t: string) {
   return t.slice(0, 19).replace('T', ' ')
 }
 
-function prettyLatitude(lat: RealQuantity) {
+function prettyLatitude(lat: QRealQuantity) {
   return lat.value > 0
     ? `${lat.value.toFixed(2)}°N`
     : `${-lat.value.toFixed(2)}°S`
 }
 
-function prettyLongitude(lon: RealQuantity) {
+function prettyLongitude(lon: QRealQuantity) {
   return lon.value > 0
     ? `${lon.value.toFixed(2)}°E`
     : `${-lon.value.toFixed(2)}°W`
 }
 
-function prettyDepth(depth: RealQuantity) {
+function prettyDepth(depth: QRealQuantity) {
   return `${(depth.value / 1e3).toFixed(2)} km`
 }
 
-function isOriginPreferred(o: Origin) {
+function isOriginPreferred(o: QOrigin) {
   return store.currentEvent != null && store.currentEvent.preferredOriginID.id === o.publicID
 }
 
-function isOriginActive(o: Origin) {
+function isOriginActive(o: QOrigin) {
   return activeOrigin.value != null && activeOrigin.value.publicID === o.publicID
 }
 
-function handleOriginColor(o: Origin) {
+function handleOriginColor(o: QOrigin) {
   return isOriginPreferred(o) ? store.settings['color.activeRowColor'] : ''
 }
 
-function handleOriginClass(o: Origin) {
+function handleOriginClass(o: QOrigin) {
   return isOriginActive(o) ? 'font-weight-bold' : ''
 }
 
-function isMagnitudePreferred(m: Magnitude) {
+function isMagnitudePreferred(m: QMagnitude) {
   return store.currentEvent != null && store.currentEvent.preferredMagnitudeID.id === m.publicID
 }
 
-function isMagnitudeActive(m: Magnitude) {
+function isMagnitudeActive(m: QMagnitude) {
   return activeMagnitude.value != null && activeMagnitude.value.publicID === m.publicID
 }
 
-function handleMagnitudeClass(m: Magnitude) {
+function handleMagnitudeClass(m: QMagnitude) {
   return isMagnitudeActive(m) ? 'font-weight-bold' : ''
 }
 
-function handleMagnitudeColor(m: Magnitude) {
+function handleMagnitudeColor(m: QMagnitude) {
   return isMagnitudePreferred(m) ? store.settings['color.activeRowColor'] : ''
 }
 

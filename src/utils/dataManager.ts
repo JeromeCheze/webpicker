@@ -2,7 +2,7 @@ import type { FDSNStationBulkItem, FDSNWaveformBulkItem, Inventory } from '@/lib
 import type { Detection, DetectionResult, TTT, WPNotificationOptions } from '@/types'
 import { Stream, type Trace } from "@/lib/sismojs/src/core/waveform"
 import { getDistanceAzimuth, pushUnique, toNetSta } from '@/utils'
-import { type Arrival } from '@/lib/sismojs/src/core/event/types'
+import { type QArrival } from '@/lib/sismojs/src/core/event/types'
 import { Client } from "@/lib/sismojs/src/fdsn"
 
 const CHUNK_LENGTH = 12
@@ -189,7 +189,7 @@ export default class DataManager {
     time: number,
     latitude: number,
     longitude: number,
-    arrivals: Arrival[],
+    arrivals: QArrival[],
     notification: (opt: WPNotificationOptions) => void
   ): Promise<Inventory> {
     return new Promise((resolve, reject) => {

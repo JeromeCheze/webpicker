@@ -1,4 +1,4 @@
-import { Event, Origin, Magnitude, Pick, Arrival, FocalMechanism, type EvaluationMode } from '@/lib/sismojs/src/core/event/types'
+import { QEvent, QOrigin, QMagnitude, QPick, QArrival, QFocalMechanism, type QEvaluationMode } from '@/lib/sismojs/src/core/event/types'
 import { shortcutString, getId, deepCopy, getDefault, kmToDeg, getLocalStorageDefault, setLocalStorage } from '@/utils'
 import type { Activity, EventViewStatus, PickMap, WPNotificationOptions } from '@/types'
 import defaultSettings from '@/utils/defaultSettings'
@@ -16,7 +16,7 @@ const author = ref(getLocalStorageDefault('author', null) as string | null)
 
 const notification = ref([] as WPNotificationOptions[])
 
-const cacheEventList = ref([] as Event[])
+const cacheEventList = ref([] as QEvent[])
 
 // Utilities for keybind actions
 const keydownEvent = ref(null as KeyboardEvent | null)
@@ -31,12 +31,12 @@ function preventDefault() {
 const dataManager = new DataManager('.')
 
 // EventView states
-const currentEvent = shallowRef(null as Event | null)
-const currentOrigin = shallowRef(null as Origin | null)
-const currentArrivals = shallowRef([] as Arrival[])
-const currentMagnitude = shallowRef(null as Magnitude | null)
-const currentFocalMechanism = shallowRef(null as FocalMechanism | null)
-const currentOriginMagnitudes = shallowRef([] as Magnitude[])
+const currentEvent = shallowRef(null as QEvent | null)
+const currentOrigin = shallowRef(null as QOrigin | null)
+const currentArrivals = shallowRef([] as QArrival[])
+const currentMagnitude = shallowRef(null as QMagnitude | null)
+const currentFocalMechanism = shallowRef(null as QFocalMechanism | null)
+const currentOriginMagnitudes = shallowRef([] as QMagnitude[])
 const originDirty = ref(false)
 const pickMap = shallowRef({} as PickMap)
 const additionalPickMap = shallowRef({} as PickMap)
@@ -60,7 +60,7 @@ function updatePickMap() {
   console.log('[updatePickMap]', result)
   pickMap.value = result
 }
-function setEvent(event: Event) {
+function setEvent(event: QEvent) {
   console.log('[app.setEvent]', event)
   currentEvent.value = event
   currentOrigin.value = event.preferredOriginID != null ? event.preferredOriginID.referredObject : null
@@ -91,7 +91,7 @@ function cloneOrigin() {
   if (currentOrigin.value == null) {
     return
   }
-  currentOrigin.value = new Origin(
+  currentOrigin.value = new QOrigin(
     Object.assign(
       deepCopy(currentOrigin.value.desc),
       { publicID: getId('Origin') }
@@ -104,7 +104,7 @@ function cloneOrigin() {
   originDirty.value = true
   console.log('[app.cloneOrigin]', currentOrigin.value)
 }
-function createArrival(p: Pick) {
+function createArrival(p: QPick) {
   const netsta = p.waveformID.netsta
   const ttt = dataManager.getStationPhaseTime(currentOrigin.value!.time.object.getTime(), netsta, p.phaseHint as 'P' | 'S')
   const pTime = p.time.object.getTime()
@@ -122,7 +122,7 @@ function createArrival(p: Pick) {
   currentArrivals.value = currentOrigin.value!.arrival.map(x => x)
   console.log('[app.createArrivals]', arrivalDesc)
 }
-function createPick(phase: string, pickTime: number, seedid: string, filter: string | undefined): Pick {
+function createPick(phase: string, pickTime: number, seedid: string, filter: string | undefined): QPick {
   if (!originDirty.value) {
     cloneOrigin()
   }
@@ -140,7 +140,7 @@ function createPick(phase: string, pickTime: number, seedid: string, filter: str
       '@channelCode': channelCode
     },
     phaseHint: phase,
-    evaluationMode: 'manual' as EvaluationMode,
+    evaluationMode: 'manual' as QEvaluationMode,
     creationInfo: {
       author: author.value != null ? author.value : '',
       agencyID: 'OCA',
@@ -154,7 +154,7 @@ function createPick(phase: string, pickTime: number, seedid: string, filter: str
   updatePickMap()
   return pick
 }
-function deletePick(pick: Pick) {
+function deletePick(pick: QPick) {
   const arrival = currentArrivals.value!.find(x => x.pickID.id === pick.publicID)
   if (arrival != null) {
     currentOrigin.value!.deleteArrival(arrival)
@@ -176,7 +176,7 @@ function deletePick(pick: Pick) {
   currentArrivals.value = currentOrigin.value!.arrival.map(x => x)
   updatePickMap()
 }
-function selectArrivals(selectedArrivals: Arrival[]) {
+function selectArrivals(selectedArrivals: QArrival[]) {
   if (!originDirty.value) {
     cloneOrigin()
   }
@@ -192,7 +192,7 @@ function selectArrivals(selectedArrivals: Arrival[]) {
   currentArrivals.value = currentArrivals.value.map(x => x)
 }
 function createFocalMechanism(strike: number, dip: number, rake: number, nbStation: number) {
-  currentFocalMechanism.value = new FocalMechanism({
+  currentFocalMechanism.value = new QFocalMechanism({
     '@publicID': getId('FocalMechanism'),
     triggeringOriginID: currentOrigin.value!.publicID,
     stationPolarityCount: nbStation,

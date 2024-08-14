@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ScatterOptions } from '@/lib/lichen/src/types'
-import type { Arrival } from '@/lib/sismojs/src/core/event/types'
+import type { QArrival } from '@/lib/sismojs/src/core/event/types'
 import { ref, watch, onBeforeUnmount, onMounted } from 'vue'
 import { useAppStore } from '@/stores/app'
 import Lichen from '@/lib/lichen/src'
@@ -9,7 +9,7 @@ const store = useAppStore()
 const chartContainer = ref()
 const chart = ref(null as Lichen | null)
 
-function getColor(arrival: Arrival) {
+function getColor(arrival: QArrival) {
   return arrival.timeWeight == 0
     ? 'grey'
     : arrival.pickID.referredObject.evaluationMode === 'manual'
@@ -17,7 +17,7 @@ function getColor(arrival: Arrival) {
       : 'red'
 }
 
-function traveltime(a: Arrival) {
+function traveltime(a: QArrival) {
   if (store.currentOrigin == null) {
     return null
   }
@@ -64,7 +64,7 @@ function handleChartSelection(x: [number | null, number | null], y: [number | nu
   }
   const manualOnly = store.keydown === 'shift+shift'
   const series = chart.value.opt.series as ScatterOptions[]
-  const result: Arrival[] = []
+  const result: QArrival[] = []
   for (const serie of series) {
     for (const point of serie.data) {
       const inXRange = x[0] == null && x[1] == null
@@ -77,7 +77,7 @@ function handleChartSelection(x: [number | null, number | null], y: [number | nu
         : y[0] != null && y[1] != null && point.y >= y[0] && point.y <= y[1]
           ? true
           : false
-      const arrival = getArrival(point.extra) as Arrival
+      const arrival = getArrival(point.extra) as QArrival
       if (inXRange && inYRange) {
         if (manualOnly) {
           if (arrival.pickID.referredObject.evaluationMode === 'manual') {

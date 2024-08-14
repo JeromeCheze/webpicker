@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FilterOptions, PickerToolbarOptions, PickMap, StationRefTimes, WPNotificationOptions } from '@/types'
-import { ResourceIdentifier, Pick, type PickOnset, type PickPolarity } from '@/lib/sismojs/src/core/event/types'
+import { QResourceIdentifier, QPick, type QPickOnset, type QPickPolarity } from '@/lib/sismojs/src/core/event/types'
 import { ref, shallowRef, watch, onMounted, computed } from 'vue'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
 import { Client } from '@/lib/sismojs/src/fdsn'
@@ -29,13 +29,13 @@ console.log(store.dataManager)
 const client = new Client('..')
 
 const contextMenu = ref(false)
-const contextMenuPos = ref([0, 0])
+const contextMenuPos = ref([0, 0] as [number, number])
 const controller = shallowRef(new AbortController())
 const data = ref([] as Trace[])
 
 const pickerStation = ref(null as string | null)
 const activeChannel = ref(null as string | null)
-const selectedPicks = shallowRef([] as Pick[])
+const selectedPicks = shallowRef([] as QPick[])
 const pickerTime = ref(null as number | null)
 const pickerTimeWindow = ref([0, 0] as [number, number])
 
@@ -138,7 +138,7 @@ function displayWaveforms() {
     return
   }
   stationRefTimes.value = {}
-  const pickList: Pick[] = store.currentArrivals.map(x => x.pickID.referredObject)
+  const pickList: QPick[] = store.currentArrivals.map(x => x.pickID.referredObject)
   pickList.sort((a, b) => {
     const aa = a.time.object
     const bb = b.time.object
@@ -194,7 +194,7 @@ function handleSelectPicks(pickids: string[]) {
   if (pickids.length === 0) {
     contextMenu.value = false
   }
-  const picks: Pick[] = store.currentArrivals!
+  const picks: QPick[] = store.currentArrivals!
     .map(a => a.pickID.referredObject)
     .filter(p => pickids.indexOf(p.publicID) >= 0)
   selectedPicks.value = picks
@@ -247,7 +247,7 @@ function handleContextMenu(e: MouseEvent) {
   contextMenu.value = true
 }
 
-function setPickPolarity(value?: PickPolarity) {
+function setPickPolarity(value?: QPickPolarity) {
   if (selectedPicks.value.length > 0) {
     if (selectedPicks.value[0].polarity === value) {
       selectedPicks.value[0].polarity = undefined
@@ -259,7 +259,7 @@ function setPickPolarity(value?: PickPolarity) {
   store.updatePickMap()
 }
 
-function setPickOnset(value: PickOnset) {
+function setPickOnset(value: QPickOnset) {
   if (selectedPicks.value.length > 0) {
     if (selectedPicks.value[0].onset === value) {
       selectedPicks.value[0].onset = undefined
@@ -292,8 +292,8 @@ function setPickUncertainty(value: number) {
 function loadAdditionalPicks() {
   // The mainKey of ResourceIdentifier MUST be set to an other value
   // to prevent modified objects to be overwritten by new load
-  const saveMainKey = ResourceIdentifier.mainKey
-  ResourceIdentifier.mainKey = 'sandbox'
+  const saveMainKey = QResourceIdentifier.mainKey
+  QResourceIdentifier.mainKey = 'sandbox'
   client.getEvents({
     format: 'xml',
     starttime: new Date(props.time - 3600e3).toISOString().slice(0, 19),
@@ -321,7 +321,7 @@ function loadAdditionalPicks() {
     store.additionalPickMap = additionalPickMap
   }).finally(() => {
     // Restore the original mainKey of ResourceIdentifier
-    ResourceIdentifier.mainKey = saveMainKey
+    QResourceIdentifier.mainKey = saveMainKey
   })
 }
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FilterOptions, PickerToolbarOptions, StationRefTimes, ChartData, WaveformProcessInterface } from '@/types'
 import type { LineOptions, VLine } from '@/lib/lichen/src/types'
-import type { Pick } from '@/lib/sismojs/src/core/event/types'
+import type { QPick } from '@/lib/sismojs/src/core/event/types'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
 import { FilterProcessor } from '@/utils/waveformProcessor'
 import { ref, watch, computed, onMounted } from 'vue'
@@ -96,7 +96,7 @@ function updateTimeWindow(seedid: string, t1: number, t2: number) {
   end.value = t2 - refTime
 }
 
-function pickToVLine(p: Pick, additional: boolean) {
+function pickToVLine(p: QPick, additional: boolean) {
   const range: [number, number] | undefined = p.time.uncertainty != null
     ? [p.time.uncertainty * 1e3, p.time.uncertainty * 1e3]
     : undefined

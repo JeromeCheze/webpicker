@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Arrival } from '@/lib/sismojs/src/core/event/types'
+import type { QArrival } from '@/lib/sismojs/src/core/event/types'
 import FirstMotion from '@/components/FirstMotion.vue'
 import { Client } from '@/lib/sismojs/src/fdsn'
 import { ref, onMounted, watch } from 'vue'
@@ -26,15 +26,15 @@ function select(value: string) {
   if (store.currentArrivals == null) {
     return
   }
-  let selection: Arrival[] = []
+  let selection: QArrival[] = []
   if (value === 'all') {
     selection = store.currentArrivals
   } else if (value === 'manual') {
-    selection = store.currentArrivals.filter((x: Arrival) => x.pickID.referredObject.evaluationMode === 'manual')
+    selection = store.currentArrivals.filter((x: QArrival) => x.pickID.referredObject.evaluationMode === 'manual')
   } else if (value === 'automatic') {
-    selection = store.currentArrivals.filter((x: Arrival) => x.pickID.referredObject.evaluationMode === 'automatic')
+    selection = store.currentArrivals.filter((x: QArrival) => x.pickID.referredObject.evaluationMode === 'automatic')
   } else if (value === 'p') {
-    selection = store.currentArrivals.filter((x: Arrival) => x.phase === 'P')
+    selection = store.currentArrivals.filter((x: QArrival) => x.phase === 'P')
   }
   store.selectArrivals(selection)
 }

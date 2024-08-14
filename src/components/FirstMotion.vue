@@ -2,7 +2,7 @@
 import BeachballEngine from '@/lib/beachball'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useAppStore } from '@/stores/app'
-import type { Pick } from '@/lib/sismojs/src/core/event/types';
+import type { QPick } from '@/lib/sismojs/src/core/event/types';
 
 const store = useAppStore()
 
@@ -29,7 +29,7 @@ let mouseX: number | null = null
 let mouseY: number | null = null
 
 const stationCtx = ref(null as CanvasRenderingContext2D | null)
-const stationPos = ref({} as {[netsta: string]: { pos: [number, number], pick: Pick } })
+const stationPos = ref({} as {[netsta: string]: { pos: [number, number], pick: QPick } })
 let stationPopup: HTMLElement | null = null
 const stationPopupStyle = {
   position: 'absolute',
@@ -114,7 +114,7 @@ function updateStationLayer(center: number, radius: number) {
   const ctx = stationCtx.value as CanvasRenderingContext2D
   ctx.save()
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
-  const result: {[netsta: string]: { pos: [number, number], pick: Pick } } = {}
+  const result: {[netsta: string]: { pos: [number, number], pick: QPick } } = {}
   for (const a of store.currentArrivals) {
     if (a.phase !== 'P' || a.takeoffAngle == null || a.azimuth == null) {
       continue
@@ -132,7 +132,7 @@ function updateStationLayer(center: number, radius: number) {
     const dist = radius * Math.sqrt(2.0) * Math.sin(0.5 * deg2rad(beta))
     const xPos = center + dist * Math.sin(deg2rad(azi))
     const yPos = center - dist * Math.cos(deg2rad(azi))
-    const pick: Pick = a.pickID.referredObject
+    const pick: QPick = a.pickID.referredObject
     const netsta = pick.waveformID.netsta
     result[netsta] = { pos: [xPos, yPos], pick }
     if (pick.polarity == null) {

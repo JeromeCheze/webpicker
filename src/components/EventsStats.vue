@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { type ScatterOptions } from '@/lib/lichen/src/types'
-import { Magnitude, Origin } from '@/lib/sismojs/src/core/event/types'
+import { QMagnitude, QOrigin } from '@/lib/sismojs/src/core/event/types'
 import { ref, onMounted } from 'vue'
 import { useAppStore } from '@/stores/app'
 import Lichen from '@/lib/lichen/src'
@@ -21,8 +21,8 @@ function drawMagScatter() {
     if (event.preferredMagnitudeID.id == null) {
       continue
     }
-    const po = event.preferredOriginID.referredObject as Origin
-    const pm = event.preferredMagnitudeID.referredObject as Magnitude
+    const po = event.preferredOriginID.referredObject as QOrigin
+    const pm = event.preferredMagnitudeID.referredObject as QMagnitude
     data.push({ name: event.publicID, x: po.time.object.getTime(), y: pm.mag.value })
   }
   const serie: ScatterOptions = { name: '', shape: 'circle', enabled: true, color: 'blue', data }

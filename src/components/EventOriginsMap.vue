@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Origin } from '@/lib/sismojs/src/core/event/types'
+import type { QOrigin } from '@/lib/sismojs/src/core/event/types'
 import type { WPNotificationOptions } from '@/types'
 import { ref, watch, onMounted } from 'vue'
 import { useAppStore } from '@/stores/app'
@@ -8,7 +8,7 @@ import * as L from 'leaflet'
 const store = useAppStore()
 
 const props = defineProps<{
-  activeOrigin: Origin | null
+  activeOrigin: QOrigin | null
 }>()
 
 const emit = defineEmits(['activeOrigin'])
@@ -38,7 +38,7 @@ function initMap() {
   map.value.setView([0, 0], 5)
 }
 
-function bindOriginClick(m: L.CircleMarker, origin: Origin) {
+function bindOriginClick(m: L.CircleMarker, origin: QOrigin) {
   m.on('click', () => {
     emit('activeOrigin', origin)
   })

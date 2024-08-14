@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { getLocalStorageDefault, setLocalStorage, getId } from '@/utils'
-import { Event, Origin, type TimeQuantityDescription } from '@/lib/sismojs/src/core/event/types'
+import { QEvent, QOrigin } from '@/lib/sismojs/src/core/event/types'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ref, onMounted, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
@@ -40,7 +40,7 @@ function handleSubmit(seedids: string[]) {
       longitude: longitude.value,
       duration: duration.value
     })
-    const origin = new Origin({
+    const origin = new QOrigin({
       '@publicID': getId('Origin'),
       time: { value: starttime.value.toISOString() },
       latitude: { value: latitude.value, uncertainty: 1 },
@@ -54,7 +54,7 @@ function handleSubmit(seedids: string[]) {
       depth: { value: 5 * 1e3 },
       arrival: []
     })
-    const event = new Event({
+    const event = new QEvent({
       '@publicID': getId('Event'),
       pick: [],
       amplitude: [],

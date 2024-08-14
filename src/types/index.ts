@@ -1,5 +1,5 @@
 import type { LineOptions, VLine } from '@/lib/lichen/src/types'
-import type { Pick } from '@/lib/sismojs/src/core/event/types'
+import type { QPick } from '@/lib/sismojs/src/core/event/types'
 import type Lichen from '@/lib/lichen/src'
 
 export interface WPNotificationOptions {
@@ -136,7 +136,7 @@ export interface DetectionResult {
 
 export interface PickMap {
   [netsta: string]: {
-    [seedid: string]: Pick[]
+    [seedid: string]: QPick[]
   }
 }
 

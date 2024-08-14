@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Event, EventDescription, ArrivalDescription, PickDescription } from '@/lib/sismojs/src/core/event/types'
+import type { QEvent, QEventDescription, QArrivalDescription, QPickDescription } from '@/lib/sismojs/src/core/event/types'
 import { parse } from '@/lib/sismojs/src/core/event/quakeml'
 import { computed, ref, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
@@ -36,8 +36,8 @@ function relocate() {
   locked.value = true
   store.notification.push({ type: 'progress', value: { text: 'Relocate...', percent: -1 } })
   const origin = deepCopy(store.currentOrigin!.desc)
-  const pickIds = origin.arrival.map((x: ArrivalDescription) => x.pickID)
-  const event: EventDescription = Object.assign(deepCopy(store.currentEvent!.desc), {
+  const pickIds = origin.arrival.map((x: QArrivalDescription) => x.pickID)
+  const event: QEventDescription = Object.assign(deepCopy(store.currentEvent!.desc), {
     origin: [origin],
     magnitude: undefined,
     stationMagnitude: undefined,
@@ -46,7 +46,7 @@ function relocate() {
     preferredMagnitudeID: undefined
   })
   // Keep only pick referred by arrivals
-  event.pick = event.pick.filter((x: PickDescription) => pickIds.indexOf(x['@publicID']) >= 0)
+  event.pick = event.pick.filter((x: QPickDescription) => pickIds.indexOf(x['@publicID']) >= 0)
   fetch(`../api/relocate?locator=${locator.value}&profile=${profile.value}`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -61,7 +61,7 @@ function relocate() {
         }
         if (statusResponse.quakeml !== '') {
           const doc = new DOMParser().parseFromString(statusResponse.quakeml, 'application/xml')
-          const result = parse(doc) as Event[]
+          const result = parse(doc) as QEvent[]
           const newOrigin = result[0].origin[0]
           for (const arrival of newOrigin.arrival) {
             arrival.desc['@publicID'] = getId('Arrival')

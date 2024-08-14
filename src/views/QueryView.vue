@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Event } from '@/lib/sismojs/src/core/event/types'
+import { QEvent } from '@/lib/sismojs/src/core/event/types'
 import { Client } from '@/lib/sismojs/src/fdsn'
 import { useAppStore } from '@/stores/app'
 import { onBeforeRouteUpdate, useRoute } from 'vue-router'
@@ -12,7 +12,7 @@ const client = new Client('.')
 
 const height = document.body.getBoundingClientRect().height - 90
 const currentView = ref('list' as 'list' | 'map' | 'stats')
-const eventList = ref([] as Event[])
+const eventList = ref([] as QEvent[])
 const loading = ref(false)
 const form = ref(true)
 

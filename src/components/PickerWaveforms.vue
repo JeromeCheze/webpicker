@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { DenoiseProcessor, RotateProcessor, FilterProcessor, SpectrogramProcessor, IntegrationProcessor } from '@/utils/waveformProcessor'
 import type { FilterOptions, StationRefTimes, ChartData, WaveformProcessInterface, PickerToolbarOptions } from '@/types'
-import type { Pick } from '@/lib/sismojs/src/core/event/types'
+import type { QPick } from '@/lib/sismojs/src/core/event/types'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
 import type { VLine } from '@/lib/lichen/src/types'
 import { toNetSta } from '@/utils'
@@ -120,7 +120,7 @@ function updateTimeWindow(seedid: string, t1: number, t2: number) {
   end.value = t2 - refTime
 }
 
-function getPickTooltip(p: Pick) {
+function getPickTooltip(p: QPick) {
   return `<table class="pick-tooltip"><tbody>
     <tr><th>Creation time</th><td>${p.creationInfo?.creationTime}</td></tr>
     <tr><th>WFID</th><td>${p.waveformID.seedid}</td></tr>
@@ -129,7 +129,7 @@ function getPickTooltip(p: Pick) {
   </tbody></table>`
 }
 
-function pickToVLine(p: Pick, selectable: boolean) {
+function pickToVLine(p: QPick, selectable: boolean) {
   const text = [p.phaseHint]
   if (p.onset != null) {
     text.push(`(${p.onset})`)

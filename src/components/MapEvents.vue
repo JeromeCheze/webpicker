@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import * as L from 'leaflet'
-import { Event } from '@/lib/sismojs/src/core/event/types'
+import { QEvent } from '@/lib/sismojs/src/core/event/types'
 import { ref, onMounted, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 import router from '@/router'
@@ -14,7 +14,7 @@ const props = defineProps<{
 const mapContainer = ref()
 const map = ref(null as L.Map | null)
 const layers = {} as { [eventid: string]: L.CircleMarker }
-const activeEvent = ref(undefined as Event | undefined)
+const activeEvent = ref(undefined as QEvent | undefined)
 
 watch(() => activeEvent.value, () => {
   setTimeout(() => {
@@ -22,7 +22,7 @@ watch(() => activeEvent.value, () => {
   }, 500)
 })
 
-function getEventMarker(pos: L.LatLngTuple, event: Event) {
+function getEventMarker(pos: L.LatLngTuple, event: QEvent) {
   const marker = L.circleMarker(pos, {
     weight: 1,
     radius: event.preferredMagnitudeID.id != null ? 3 + event.preferredMagnitudeID.referredObject.mag.value * 2 : 5,

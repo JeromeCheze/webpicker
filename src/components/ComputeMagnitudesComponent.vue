@@ -3,7 +3,7 @@ import { useAppStore } from '@/stores/app'
 import { deepCopy } from '@/utils'
 import { ref, watch } from 'vue'
 import { parse } from '@/lib/sismojs/src/core/event/quakeml'
-import { Event, Origin } from '@/lib/sismojs/src/core/event/types'
+import { QEvent, QOrigin } from '@/lib/sismojs/src/core/event/types'
 
 const MAG_TYPE_WEIGHT = ['M', 'MLv']
 
@@ -33,7 +33,7 @@ function computeMagnitudes() {
   locked.value = true
   store.notification.push({ type: 'progress', value: { text: 'Compute magnitudes...', percent: -1 } })
   const origin = deepCopy(store.currentOrigin!.desc)
-  const event = new Event(Object.assign(deepCopy(store.currentEvent!.desc), {
+  const event = new QEvent(Object.assign(deepCopy(store.currentEvent!.desc), {
     origin: [origin],
     magnitude: [],
     amplitude: [],
@@ -41,7 +41,7 @@ function computeMagnitudes() {
     preferredOriginID: store.currentOrigin!.publicID,
     preferredMagnitudeID: undefined
   }))
-  const po = event.preferredOriginID.referredObject as Origin
+  const po = event.preferredOriginID.referredObject as QOrigin
   const arrivalsToRemove = po.arrival.filter(arrival => !computeMagnitudeStations.value[arrival.pickID.referredObject.waveformID.netsta])
   for (const arrival of arrivalsToRemove) {
     po.deleteArrival(arrival)
@@ -62,7 +62,7 @@ function computeMagnitudes() {
         if (statusResponse.quakeml !== '') {
           try {
             const doc = new DOMParser().parseFromString(statusResponse.quakeml, 'application/xml')
-            const result = parse(doc) as Event[]
+            const result = parse(doc) as QEvent[]
             console.log(result)
             result[0].magnitude.sort((a, b) => {
               const aa = MAG_TYPE_WEIGHT.indexOf(a.type!)

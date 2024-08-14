@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { getDefault, getLocalStorageDefault } from '@/utils'
-import { Event } from '@/lib/sismojs/src/core/event/types'
+import { QEvent } from '@/lib/sismojs/src/core/event/types'
 import { useAppStore } from '@/stores/app'
 import type { ColObject } from '@/types'
 import { ref, watch } from 'vue'
@@ -19,104 +19,104 @@ const usersEventMap = ref({} as Record<string, string[]>)
 const header = ref([
   {
     label: '',
-    valueAccessor: (e: Event) => getDefault(usersEventMap.value, e.publicID, []).length > 0,
-    textAccessor: (e: Event) => getDefault(usersEventMap.value, e.publicID, []).join(', '),
+    valueAccessor: (e: QEvent) => getDefault(usersEventMap.value, e.publicID, []).length > 0,
+    textAccessor: (e: QEvent) => getDefault(usersEventMap.value, e.publicID, []).join(', '),
     icon: 'mdi-account',
     enabled: true
   },
   {
     label: 'Time',
-    valueAccessor: (e: Event) => e.preferredOriginID.referredObject.time.object,
-    textAccessor: (e: Event) => e.preferredOriginID.referredObject.time.pretty,
+    valueAccessor: (e: QEvent) => e.preferredOriginID.referredObject.time.object,
+    textAccessor: (e: QEvent) => e.preferredOriginID.referredObject.time.pretty,
     enabled: true
   },
   {
     label: 'M',
-    valueAccessor: (e: Event) => e.preferredMagnitudeID.referredObject?.mag.value,
-    textAccessor: (e: Event) => e.preferredMagnitudeID.referredObject?.mag.value.toFixed(2),
+    valueAccessor: (e: QEvent) => e.preferredMagnitudeID.referredObject?.mag.value,
+    textAccessor: (e: QEvent) => e.preferredMagnitudeID.referredObject?.mag.value.toFixed(2),
     enabled: true
   },
   {
     label: 'MT',
-    valueAccessor: (e: Event) => e.preferredMagnitudeID.referredObject?.type,
-    textAccessor: (e: Event) => e.preferredMagnitudeID.referredObject?.type,
+    valueAccessor: (e: QEvent) => e.preferredMagnitudeID.referredObject?.type,
+    textAccessor: (e: QEvent) => e.preferredMagnitudeID.referredObject?.type,
     enabled: false
   },
   {
     label: 'Ph.',
-    valueAccessor: (e: Event) => e.preferredOriginID.referredObject.quality?.usedPhaseCount,
-    textAccessor: (e: Event) => e.preferredOriginID.referredObject.quality?.usedPhaseCount,
+    valueAccessor: (e: QEvent) => e.preferredOriginID.referredObject.quality?.usedPhaseCount,
+    textAccessor: (e: QEvent) => e.preferredOriginID.referredObject.quality?.usedPhaseCount,
     class: () => 'text-right',
     enabled: true
   },
   {
     label: 'Lat',
-    valueAccessor: (e: Event) => e.preferredOriginID.referredObject.latitude.value,
-    textAccessor: (e: Event) => e.preferredOriginID.referredObject.latitude.value.toFixed(2),
+    valueAccessor: (e: QEvent) => e.preferredOriginID.referredObject.latitude.value,
+    textAccessor: (e: QEvent) => e.preferredOriginID.referredObject.latitude.value.toFixed(2),
     enabled: true
   },
   {
     label: 'Lon',
-    valueAccessor: (e: Event) => e.preferredOriginID.referredObject.longitude.value,
-    textAccessor: (e: Event) => e.preferredOriginID.referredObject.longitude.value.toFixed(2),
+    valueAccessor: (e: QEvent) => e.preferredOriginID.referredObject.longitude.value,
+    textAccessor: (e: QEvent) => e.preferredOriginID.referredObject.longitude.value.toFixed(2),
     enabled: true
   },
   {
     label: 'Depth',
-    valueAccessor: (e: Event) => e.preferredOriginID.referredObject.depth.value,
-    textAccessor: (e: Event) => (e.preferredOriginID.referredObject.depth.value / 1e3).toFixed(2),
+    valueAccessor: (e: QEvent) => e.preferredOriginID.referredObject.depth.value,
+    textAccessor: (e: QEvent) => (e.preferredOriginID.referredObject.depth.value / 1e3).toFixed(2),
     enabled: true
   },
   {
     label: 'RMS',
-    valueAccessor: (e: Event) => e.preferredOriginID.referredObject.quality?.standardError,
-    textAccessor: (e: Event) => e.preferredOriginID.referredObject.quality?.standardError?.toFixed(2),
+    valueAccessor: (e: QEvent) => e.preferredOriginID.referredObject.quality?.standardError,
+    textAccessor: (e: QEvent) => e.preferredOriginID.referredObject.quality?.standardError?.toFixed(2),
     enabled: true
   },
   {
     label: 'Mode',
-    valueAccessor: (e: Event) => e.preferredOriginID.referredObject.evaluationMode,
-    textAccessor: (e: Event) => e.preferredOriginID.referredObject.evaluationMode === 'manual' ? 'M' : 'A',
-    class: (e: Event) => e.preferredOriginID.referredObject.evaluationMode === 'manual' ? 'text-green' : 'text-red',
+    valueAccessor: (e: QEvent) => e.preferredOriginID.referredObject.evaluationMode,
+    textAccessor: (e: QEvent) => e.preferredOriginID.referredObject.evaluationMode === 'manual' ? 'M' : 'A',
+    class: (e: QEvent) => e.preferredOriginID.referredObject.evaluationMode === 'manual' ? 'text-green' : 'text-red',
     enabled: true
   },
   {
     label: 'Status',
-    valueAccessor: (e: Event) => e.preferredOriginID.referredObject.evaluationStatus,
-    textAccessor: (e: Event) => e.preferredOriginID.referredObject.evaluationStatus,
+    valueAccessor: (e: QEvent) => e.preferredOriginID.referredObject.evaluationStatus,
+    textAccessor: (e: QEvent) => e.preferredOriginID.referredObject.evaluationStatus,
     enabled: false
   },
   {
     label: 'Type',
-    valueAccessor: (e: Event) => e.type,
-    textAccessor: (e: Event) => e.type,
+    valueAccessor: (e: QEvent) => e.type,
+    textAccessor: (e: QEvent) => e.type,
     enabled: true
   },
   {
     label: 'Region',
-    valueAccessor: (e: Event) => e.preferredOriginID.referredObject.region,
-    textAccessor: (e: Event) => e.preferredOriginID.referredObject.region.toUpperCase(),
+    valueAccessor: (e: QEvent) => e.preferredOriginID.referredObject.region,
+    textAccessor: (e: QEvent) => e.preferredOriginID.referredObject.region.toUpperCase(),
     enabled: true
   },
   {
     label: 'Author',
-    valueAccessor: (e: Event) => e.preferredOriginID.referredObject.creationInfo?.author,
-    textAccessor: (e: Event) => e.preferredOriginID.referredObject.creationInfo?.author,
+    valueAccessor: (e: QEvent) => e.preferredOriginID.referredObject.creationInfo?.author,
+    textAccessor: (e: QEvent) => e.preferredOriginID.referredObject.creationInfo?.author,
     enabled: true
   },
   {
     label: 'ID',
-    valueAccessor: (e: Event) => e.publicID,
-    textAccessor: (e: Event) => e.publicID,
+    valueAccessor: (e: QEvent) => e.publicID,
+    textAccessor: (e: QEvent) => e.publicID,
     enabled: true
   }
 ] as ColObject[])
 
-function handleRowClick(event: Event) {
+function handleRowClick(event: QEvent) {
   router.push({ name: 'event', params: { eventid: event.publicID } })
 }
 
-function handleRowColor(event: Event) {
+function handleRowColor(event: QEvent) {
   return store.currentEvent != null && store.currentEvent.publicID === event.publicID
     ? store.settings['color.activeRowColor']
     : ''

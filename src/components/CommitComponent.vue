@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Event, StationMagnitude } from '@/lib/sismojs/src/core/event/types'
+import { QEvent, QStationMagnitude } from '@/lib/sismojs/src/core/event/types'
 import { useAppStore } from '@/stores/app'
 import { deepCopy } from '@/utils'
 import { ref, watch } from 'vue'
@@ -28,7 +28,7 @@ function commit() {
   }
   locked.value = true
   store.notification.push({ type: 'progress', value: { text: 'Commit...', percent: -1 } })
-  const event = new Event(deepCopy(store.currentEvent!.desc))
+  const event = new QEvent(deepCopy(store.currentEvent!.desc))
   if (event.origin.find(x => x.publicID === store.currentOrigin!.publicID) == null) {
     event.addOrigin(store.currentOrigin!.desc)
     event.setPreferredOriginID(store.currentOrigin!.publicID)
@@ -38,7 +38,7 @@ function commit() {
       event.addMagnitude(m.desc)
       if (m.stationMagnitudeContribution != null) {
         for (const smc of m.stationMagnitudeContribution) {
-          const staMag: StationMagnitude = smc.stationMagnitudeID.referredObject
+          const staMag: QStationMagnitude = smc.stationMagnitudeID.referredObject
           if (event.stationMagnitude.find(x => x.publicID === staMag.publicID) == null) {
             event.addStationMagnitude(staMag.desc)
           }

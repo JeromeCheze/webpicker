@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Event, Origin } from '@/lib/sismojs/src/core/event/types'
+import { QEvent, QOrigin } from '@/lib/sismojs/src/core/event/types'
 import { useAppStore } from '@/stores/app'
 import { deepCopy, getId } from '@/utils'
 import { ref, watch } from 'vue'
@@ -63,7 +63,7 @@ function createEvent() {
   t.setUTCMinutes(minutes.value)
   t.setUTCSeconds(seconds.value)
   const originID = getId('Origin')
-  const origin = new Origin({
+  const origin = new QOrigin({
     '@publicID': originID,
     time: { value: t.toISOString() },
     latitude: { value: lat.value, uncertainty: 1 },
@@ -71,7 +71,7 @@ function createEvent() {
     depth: { value: depth.value * 1e3 },
     arrival: []
   })
-  const event = new Event({
+  const event = new QEvent({
     '@publicID': getId('Event'),
     pick: [],
     amplitude: [],
