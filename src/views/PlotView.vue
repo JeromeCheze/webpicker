@@ -67,9 +67,6 @@ function handleSubmit(seedids: string[]) {
     store.currentEvent = event
     store.currentOrigin = origin
     store.currentArrivals = origin.arrival
-    store.eventViewStatus.relocateStatus = 'enabled'
-    store.eventViewStatus.computeMagnitudesStatus = 'disabled'
-    store.eventViewStatus.commitStatus = 'enabled'
     store.updatePickMap()
     seedidList.value = seedids
     const query = Object.assign({
@@ -89,6 +86,10 @@ watch(() => picker.value, () => {
 })
 
 onMounted(() => {
+  store.currentEvent = null
+  store.currentOrigin = null
+  store.currentArrivals = []
+  store.updatePickMap()
   stationRadiusState.value = true
   if (Object.keys(route.query).length > 0) {
     stationRadius.value.ready(() => {
@@ -103,7 +104,13 @@ onBeforeRouteLeave(async (to, from) => {
   if (store.currentOrigin != null && store.currentEvent != null && store.currentEvent.pick.length > 0) {
     const minPickTime = Math.min.apply(null, store.currentEvent.pick.map(p => p.time.object.getTime()))
     store.currentOrigin.setTime({ value: new Date(minPickTime).toISOString() })
-    return confirm('Leave picking?')
+    if (confirm('Leave picking?')) {
+      store.eventViewStatus.relocateStatus = 'enabled'
+      store.eventViewStatus.computeMagnitudesStatus = 'disabled'
+      store.eventViewStatus.commitStatus = 'enabled'
+      return true
+    }
+    return false
   }
 })
 </script>
