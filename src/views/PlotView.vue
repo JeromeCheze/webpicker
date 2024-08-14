@@ -32,6 +32,14 @@ function checkDuration(v: number) {
   return v > 0 || 'Value must be > 0'
 }
 
+function reset() {
+  store.currentEvent = null
+  store.currentOrigin = null
+  store.currentArrivals = []
+  store.updatePickMap()
+  stationRadiusState.value = true
+}
+
 function handleSubmit(seedids: string[]) {
   if (form.value.validate()) {
     setLocalStorage('plotOptions', {
@@ -81,16 +89,14 @@ function handleSubmit(seedids: string[]) {
   }
 }
 
-watch(() => picker.value, () => {
-  stationRadiusState.value = true
+watch(() => picker.value, (value) => {
+  if (!value) {
+    reset()
+  }
 })
 
 onMounted(() => {
-  store.currentEvent = null
-  store.currentOrigin = null
-  store.currentArrivals = []
-  store.updatePickMap()
-  stationRadiusState.value = true
+  reset()
   if (Object.keys(route.query).length > 0) {
     stationRadius.value.ready(() => {
       setTimeout(() => {
