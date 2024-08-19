@@ -22,7 +22,8 @@ const progressNotification = ref(false)
 const progressNotificationValue = ref({ percent: 0, text: '' })
 
 
-function handleSetAuthor() {
+function handleSetAuthor(e: SubmitEvent) {
+  e.preventDefault()
   setLocalStorage('author', authorValue.value)
   store.author = authorValue.value
   store.activityManager.author = store.author
@@ -80,7 +81,7 @@ watch(() => store.notification, (value) => {
 onMounted(() => {
   setBackground()
   document.body.addEventListener('keydown', ev => {
-    if (!settingsDialog.value) {
+    if (!settingsDialog.value && !authorDialog.value) {
       store.keydownEvent = ev
     }
   })
@@ -153,18 +154,20 @@ onMounted(() => {
       </v-list>
     </v-navigation-drawer>
     <v-dialog v-model="authorDialog" persistent width="500" attach>
-      <v-card>
-        <v-card-title>
-          <div class="text-h5 text-medium-emphasis ps-2">Set author</div>
-        </v-card-title>
-        <v-card-text>
-          <v-text-field label="Author" required v-model="authorValue"></v-text-field>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="primary" @click="handleSetAuthor" :disabled="authorValue == ''">OK</v-btn>
-        </v-card-actions>
-      </v-card>
+      <v-form @submit="handleSetAuthor">
+        <v-card>
+          <v-card-title>
+            <div class="text-h5 text-medium-emphasis ps-2">Set author</div>
+          </v-card-title>
+          <v-card-text>
+            <v-text-field label="Author" required v-model="authorValue"></v-text-field>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn color="primary" type="submit" :disabled="authorValue == ''">OK</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-form>
     </v-dialog>
     <SettingsPanel v-model="settingsDialog"/>
     <CreateEvent v-model="createEventDialog"/>

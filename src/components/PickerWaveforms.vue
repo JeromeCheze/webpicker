@@ -376,13 +376,12 @@ watch([
   () => props.rotation,
   () => props.filter,
   () => props.spectrogram,
-  () => store.settings
+  () => store.settings,
+  () => props.commonScale
 ], () => {
   reset()
   update(true)
 })
-
-watch(() => props.commonScale, () => update(true))
 
 watch(() => props.data, (value, oldValue) => {
   const currSeedIds = value.map(x => x.stats.id).filter(x => toNetSta(x) === props.activeStation)
