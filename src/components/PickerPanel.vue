@@ -293,7 +293,7 @@ function setPickUncertainty(value: number) {
       if (value === 0) {
         p.time.uncertainty = undefined
       } else {
-        p.time.uncertainty = value
+        p.time.uncertainty = parseFloat(value.toPrecision(5))
       }
     }
   }
