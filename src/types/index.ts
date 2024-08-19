@@ -86,13 +86,6 @@ export interface FiliFilterOptions {
 //   chart?: Lichen
 // }
 
-export interface ChartData {
-  index: number
-  container: HTMLElement
-  type: 'waveform' | 'spectrogram'
-  chart: Lichen
-}
-
 export interface WaveformProcessInterface {
   id: string
   start: number
@@ -105,6 +98,13 @@ export interface WaveformProcessInterface {
     zMin: number
     zMax: number
   }
+}
+
+export interface ChartData {
+  index: number
+  container: HTMLElement
+  chart: Lichen
+  spectrogram?: WaveformProcessInterface['spectrogram']
 }
 
 export interface TTT {
