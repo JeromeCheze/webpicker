@@ -3,8 +3,8 @@ import { DenoiseProcessor, RotateProcessor, FilterProcessor, SpectrogramProcesso
 import type { FilterOptions, StationRefTimes, ChartData, WaveformProcessInterface, PickerToolbarOptions } from '@/types'
 import type { QPick } from '@/lib/sismojs/src/core/event/types'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
-import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue'
 import type { VLine } from '@/lib/lichen/src/types'
+import { ref, watch, computed } from 'vue'
 import { useAppStore } from '@/stores/app'
 import Lichen from '@/lib/lichen/src'
 import { toNetSta } from '@/utils'
@@ -37,13 +37,13 @@ const charts: Record<number, Lichen> = {}
 let chartData: Record<string, ChartData> = {}
 const chartWidth = ref(800)
 const pickerTime = ref('')
+const spectrogramRange = ref([0, 100] as [number, number])
 
 const denoiseProcessor = new DenoiseProcessor(store.dataManager, props.controller.signal)
 const integrationProcessor = new IntegrationProcessor()
 const rotateProcessor = new RotateProcessor()
 const filterProcessor = new FilterProcessor()
 const spectrogramProcessor = new SpectrogramProcessor()
-let ctrlAltFlag = false
 
 const loading = ref(false)
 
@@ -291,7 +291,7 @@ function createWaveform(chartContainer: HTMLElement, index: number, dataLength: 
 
 function updateVlines() {
   for (const [netsta, currChartData] of Object.entries(chartData)) {
-    if (currChartData.type === 'waveform') {
+    if (currChartData.spectrogram == null) {
       const chartFrontPanel = currChartData.chart.master.getRegistered('FRONT_PANEL')
       currChartData.chart.opt.vLines = getVLines(currChartData.index, Object.keys(chartData).length, netsta)
       chartFrontPanel.update(null)
@@ -301,7 +301,7 @@ function updateVlines() {
 
 function updateCrosshair() {
   for (const currChartData of Object.values(chartData)) {
-    if (currChartData.type === 'waveform') {
+    if (currChartData.spectrogram == null) {
       const chart = currChartData.chart
       chart.opt.crosshair!.enabled = props.phase != null
       chart.opt.crosshair!.text = currChartData.index === 0 ? props.phase : ''
@@ -328,10 +328,8 @@ async function update(redraw=false) {
         const chartBuilder = currData.spectrogram != null ? createSpectrogram : createWaveform
         const chart = chartBuilder(div, index, data.length, currData)
         chart.setXRange(x1, x2, false)
-        if (currData.spectrogram == null) {
-          chartData[currData.id] = { index, chart, container: div, type: 'waveform' }
-        } else {
-          chartData[currData.id] = { index, chart, container: div, type: 'spectrogram' }
+        chartData[currData.id] = { index, chart, container: div, spectrogram: currData.spectrogram }
+        if (currData.spectrogram != null) {
           chart.setYRange(null, null)
         }
         // const [x1, x2] = getXRange(currData.id)
@@ -364,6 +362,7 @@ async function update(redraw=false) {
     }
     updateVlines()
     updateCrosshair()
+    updateSpectrogramRange()
   }
 }
 
@@ -375,26 +374,24 @@ function reset() {
   chartData = {}
 }
 
-function handleWheel(e: WheelEvent) {
-  if (ctrlAltFlag) {
-    e.preventDefault()
-    const delta = Math.abs(e.deltaY) > 1 ? e.deltaY : Math.abs(e.deltaX) > 1 ? e.deltaX : 0
-    const sign = Math.sign(delta)
-    for (const currChart of Object.values(chartData)) {
-      if (currChart.type === 'spectrogram') {
-        const cs = currChart.chart.opt.colorScale
-        if (cs != null) {
-          const amp = cs.max! - cs.min!
-          cs.max = cs.max! + sign * 0.1 * amp
-          currChart.chart.master.getRegistered('PLOT').update(true)
-        }
+function updateSpectrogramRange() {
+  for (const currChart of Object.values(chartData)) {
+    if (currChart.spectrogram != null) {
+      const [min, max] = [currChart.spectrogram.zMin, currChart.spectrogram.zMax]
+      const amp = max - min
+      if (currChart.chart.opt.colorScale) {
+        currChart.chart.opt.colorScale.min = min + amp * spectrogramRange.value[0] / 100
+        currChart.chart.opt.colorScale.max = min + amp * spectrogramRange.value[1] / 100
+        currChart.chart.master.getRegistered('PLOT').update(true)
       }
     }
   }
 }
 
-watch(() => store.keydown, (value) => {
-  ctrlAltFlag = value == 'ctrl+control'
+watch(() => spectrogramRange.value, (value, oldValue) => {
+  if (value[0] != oldValue[0] || value[1] != oldValue[1]) {
+    updateSpectrogramRange()
+  }
 })
 
 watch([
@@ -438,14 +435,6 @@ watch(() => props.refTimeKey, () => {
     chart.setXRange(t1, t2)
   }
 })
-
-onMounted(() => {
-  container.value.addEventListener('wheel', handleWheel, { passive: false })
-})
-
-onBeforeUnmount(() => {
-  container.value.removeEventListener('wheel', handleWheel)
-})
 </script>
 
 <template>
@@ -456,6 +445,11 @@ onBeforeUnmount(() => {
     <v-progress-circular v-if="loading" indeterminate="disable-shrink" size="20" class="ml-4"/>
   </div>
   <div ref="container"></div>
+  <v-row v-if="props.spectrogram" class="justify-end mt-4 mx-4">
+    <v-col cols="4">
+      <v-range-slider label="Spectrogram color range" v-model="spectrogramRange" step="5" thumb-label></v-range-slider>
+    </v-col>
+  </v-row>
 </template>
 
 <style>

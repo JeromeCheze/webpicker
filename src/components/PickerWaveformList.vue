@@ -269,7 +269,7 @@ async function update(redraw=false) {
       const div = document.createElement('div')
       container.value.appendChild(div)
       const chart = createChart(div, currData)
-      chartData[netsta] = { index, chart, container: div, type: 'waveform' }
+      chartData[netsta] = { index, chart, container: div }
       const [x1, x2] = getXRange(netsta)
       chart.setXRange(x1, x2)
     } else {
