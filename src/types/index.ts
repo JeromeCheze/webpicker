@@ -79,16 +79,17 @@ export interface FiliFilterOptions {
   BW?: number
 }
 
-export interface WaveformData {
-  name: string
-  serie: LineOptions
-  vlines: VLine[]
-  chart?: Lichen
-}
+// export interface WaveformData {
+//   name: string
+//   serie: LineOptions
+//   vlines: VLine[]
+//   chart?: Lichen
+// }
 
 export interface ChartData {
   index: number
   container: HTMLElement
+  type: 'waveform' | 'spectrogram'
   chart: Lichen
 }
 

@@ -3,11 +3,11 @@ import { DenoiseProcessor, RotateProcessor, FilterProcessor, SpectrogramProcesso
 import type { FilterOptions, StationRefTimes, ChartData, WaveformProcessInterface, PickerToolbarOptions } from '@/types'
 import type { QPick } from '@/lib/sismojs/src/core/event/types'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
+import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue'
 import type { VLine } from '@/lib/lichen/src/types'
-import { toNetSta } from '@/utils'
-import { ref, watch, computed } from 'vue'
 import { useAppStore } from '@/stores/app'
 import Lichen from '@/lib/lichen/src'
+import { toNetSta } from '@/utils'
 
 const emit = defineEmits(['activeChannel', 'createPick', 'selectPicks', 'pickerTime', 'updateTimeWindow'])
 
@@ -43,6 +43,7 @@ const integrationProcessor = new IntegrationProcessor()
 const rotateProcessor = new RotateProcessor()
 const filterProcessor = new FilterProcessor()
 const spectrogramProcessor = new SpectrogramProcessor()
+let ctrlAltFlag = false
 
 const loading = ref(false)
 
@@ -290,17 +291,21 @@ function createWaveform(chartContainer: HTMLElement, index: number, dataLength: 
 
 function updateVlines() {
   for (const [netsta, currChartData] of Object.entries(chartData)) {
-    const chartFrontPanel = currChartData.chart.master.getRegistered('FRONT_PANEL')
-    currChartData.chart.opt.vLines = getVLines(currChartData.index, Object.keys(chartData).length, netsta)
-    chartFrontPanel.update(null)
+    if (currChartData.type === 'waveform') {
+      const chartFrontPanel = currChartData.chart.master.getRegistered('FRONT_PANEL')
+      currChartData.chart.opt.vLines = getVLines(currChartData.index, Object.keys(chartData).length, netsta)
+      chartFrontPanel.update(null)
+    }
   }
 }
 
 function updateCrosshair() {
   for (const currChartData of Object.values(chartData)) {
-    const chart = currChartData.chart
-    chart.opt.crosshair!.enabled = props.phase != null
-    chart.opt.crosshair!.text = currChartData.index === 0 ? props.phase : ''
+    if (currChartData.type === 'waveform') {
+      const chart = currChartData.chart
+      chart.opt.crosshair!.enabled = props.phase != null
+      chart.opt.crosshair!.text = currChartData.index === 0 ? props.phase : ''
+    }
   }
 }
 
@@ -324,8 +329,9 @@ async function update(redraw=false) {
         const chart = chartBuilder(div, index, data.length, currData)
         chart.setXRange(x1, x2, false)
         if (currData.spectrogram == null) {
-          chartData[currData.id] = { index, chart, container: div }
+          chartData[currData.id] = { index, chart, container: div, type: 'waveform' }
         } else {
+          chartData[currData.id] = { index, chart, container: div, type: 'spectrogram' }
           chart.setYRange(null, null)
         }
         // const [x1, x2] = getXRange(currData.id)
@@ -369,6 +375,28 @@ function reset() {
   chartData = {}
 }
 
+function handleWheel(e: WheelEvent) {
+  if (ctrlAltFlag) {
+    e.preventDefault()
+    const delta = Math.abs(e.deltaY) > 1 ? e.deltaY : Math.abs(e.deltaX) > 1 ? e.deltaX : 0
+    const sign = Math.sign(delta)
+    for (const currChart of Object.values(chartData)) {
+      if (currChart.type === 'spectrogram') {
+        const cs = currChart.chart.opt.colorScale
+        if (cs != null) {
+          const amp = cs.max! - cs.min!
+          cs.max = cs.max! + sign * 0.1 * amp
+          currChart.chart.master.getRegistered('PLOT').update(true)
+        }
+      }
+    }
+  }
+}
+
+watch(() => store.keydown, (value) => {
+  ctrlAltFlag = value == 'ctrl+control'
+})
+
 watch([
   () => props.activeStation,
   () => props.denoiser,
@@ -409,6 +437,14 @@ watch(() => props.refTimeKey, () => {
     const [t1, t2] = getXRange(props.activeStation!)
     chart.setXRange(t1, t2)
   }
+})
+
+onMounted(() => {
+  container.value.addEventListener('wheel', handleWheel, { passive: false })
+})
+
+onBeforeUnmount(() => {
+  container.value.removeEventListener('wheel', handleWheel)
 })
 </script>
 
