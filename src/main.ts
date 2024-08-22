@@ -34,6 +34,7 @@ import StationMagnitudeChart from '@/components/StationMagnitudeChart.vue'
 import AdditionalChannels from '@/components/AdditionalChannels.vue'
 import EventsStats from '@/components/EventsStats.vue'
 import CatalogForm from '@/components/CatalogForm.vue'
+import WaveformSlider from '@/components/WaveformSlider.vue'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import 'vuetify/styles'
@@ -69,7 +70,8 @@ const vuetify = createVuetify({
     StationMagnitudeChart,
     AdditionalChannels,
     EventsStats,
-    CatalogForm
+    CatalogForm,
+    WaveformSlider
   },
   theme: { defaultTheme: 'dark' },
   directives

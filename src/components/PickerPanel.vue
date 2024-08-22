@@ -38,6 +38,7 @@ const activeChannel = ref(null as string | null)
 const selectedPicks = shallowRef([] as QPick[])
 const pickerTime = ref(null as number | null)
 const pickerTimeWindow = ref([0, 0] as [number, number])
+const sliderTimeWindow = ref([0, 0] as [number, number])
 
 let shiftFlag = false
 
@@ -407,6 +408,7 @@ onBeforeUnmount(() => {
         :common-scale="toolbarValue.commonScale"
         :integration="toolbarValue.integration"
         :hide-ref-times="props.noEvent"
+        :time-window="sliderTimeWindow"
         @active-channel="handleActiveChannel"
         @create-pick="createPick"
         @select-picks="handleSelectPicks"
@@ -424,7 +426,8 @@ onBeforeUnmount(() => {
         :filter="filterValue"
         :time-window="pickerTimeWindow"
         :hide-ref-times="props.noEvent"
-        @select-station="handleSelectStation"/>
+        @select-station="handleSelectStation"
+        @sliderTimeWindow="(tw: [number, number]) => sliderTimeWindow = tw"/>
     </v-card-text>
   </v-card>
   <v-menu

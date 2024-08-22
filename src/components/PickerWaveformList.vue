@@ -9,7 +9,7 @@ import { getDefault, toNetSta } from '@/utils'
 import { useAppStore } from '@/stores/app'
 import Lichen from '@/lib/lichen/src'
 
-const emit = defineEmits(['selectStation'])
+const emit = defineEmits(['selectStation', 'sliderTimeWindow'])
 
 const store = useAppStore()
 
@@ -31,6 +31,10 @@ let chartData: Record<string, ChartData> = {}
 const selected = ref(null as string | null)
 const initialized = ref(false)
 const filterProcessor = new FilterProcessor()
+
+const selectedChart = computed(() => {
+  return selected.value != null ? chartData[selected.value].chart : null
+})
 
 const listData = computed(() => {
   const result: WaveformProcessInterface[] = []
@@ -62,6 +66,14 @@ const listData = computed(() => {
     })
   }
   return result
+})
+
+const selectedTimeWindow = computed(() => {
+  if (selected.value == null) {
+    return [0, 0]
+  }
+  const refTime = getRefTime(selected.value)
+  return [start.value + refTime, end.value + refTime]
 })
 
 async function processWaveforms() {
@@ -140,10 +152,6 @@ function getVLines(netsta: string) {
         result.push(pickToVLine(p, true))
       }
     }
-  }
-  if (netsta === selected.value && props.timeWindow[0] !== 0 && props.timeWindow[1] !== 0) {
-    const [t1, t2] = props.timeWindow
-    result.push({ color: store.settings['color.activeTimeWindow'], x: t1, range: [0, t2 - t1], width: 0 })
   }
   return result
 }
@@ -248,12 +256,6 @@ function updateVlines() {
   }
 }
 
-function updateSelectedVlines() {
-  if (selected.value != null) {
-    updateChartVlines(selected.value, chartData[selected.value].chart)
-  }
-}
-
 async function update(redraw=false) {
   const data = await processWaveforms()
   if (!initialized.value && data.length > 0) {
@@ -311,8 +313,6 @@ watch([
 
 watch(() => store.pickMap, () => updateVlines())
 
-watch(() => props.timeWindow, () => updateSelectedVlines())
-
 watch(() => store.keydown, (newValue) => {
   if (newValue === store.settings['keybinding.nextStation']) {
     store.preventDefault()
@@ -335,4 +335,9 @@ onMounted(update)
 
 <template>
   <div ref="container"></div>
+  <WaveformSlider
+    :time-window="props.timeWindow"
+    :list-time-window="selectedTimeWindow"
+    :chart="selectedChart"
+    @update="(tw: [number, number]) => emit('sliderTimeWindow', tw)"/>
 </template>

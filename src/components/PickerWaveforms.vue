@@ -28,6 +28,7 @@ const props = defineProps<{
   commonScale: boolean
   integration: boolean
   hideRefTimes: boolean
+  timeWindow: [number, number]
 }>()
 
 const container = ref()
@@ -433,6 +434,13 @@ watch(() => props.refTimeKey, () => {
   for (const chart of Object.values(charts)) {
     const [t1, t2] = getXRange(props.activeStation!)
     chart.setXRange(t1, t2)
+  }
+})
+
+watch(() => props.timeWindow, () => {
+  const allCharts = Object.values(chartData)
+  if (allCharts.length > 0) {
+    allCharts[0].chart.master.send('xRangeChange', props.timeWindow)
   }
 })
 </script>
