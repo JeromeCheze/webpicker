@@ -32,7 +32,10 @@ class ConnectionManager:
     async def broadcast_activity(self):
         activity_list: list[Activity] = [x.model_dump() for x in self.connection_mapping.values()]
         for websocket in self.connection_mapping.keys():
-            await websocket.send_json(activity_list)
+            try:
+                await websocket.send_json(activity_list)
+            except WebSocketDisconnect:
+                self.disconnect(websocket)
 
 
 manager = ConnectionManager()
@@ -158,6 +161,11 @@ async def relocate(locator: Literal['LOCSAT', 'NonLinLoc'], profile: str, reques
     elif locator == 'NonLinLoc':
         result = processing.relocate_with_nll(jquake, profile)
     return result
+
+@app.post('/api/compute_focal_mechanisms', tags=['api'])
+async def compute_focal_mechanisms(request: Request, username: Annotated[str, Depends(check_authentication)]):
+    jquake = await request.json()
+    return processing.compute_focal_mechanisms_with_skhash(jquake, params=request.query_params)
 
 @app.post('/api/commit', tags=['api'])
 async def commit(request: Request, username: Annotated[str, Depends(check_authentication)]):

@@ -1,7 +1,9 @@
 import os
 import sys
+import json
 import tempfile
 import subprocess
+from datetime import datetime, UTC
 from app import locsat_locator
 from lxml import etree
 from app import utils
@@ -191,3 +193,68 @@ def get_locsat_travel_times(evlat, evlon, evdepth, stalat, stalon, stael=0):
         'P': ttt.compute('P', evlat, evlon, evdepth, stalat, stalon, stael).time,
         'S': ttt.compute('S', evlat, evlon, evdepth, stalat, stalon, stael).time
     }
+
+def compute_focal_mechanisms_with_skhash(jquake, params):
+    dir_path = tempfile.mkdtemp()
+    try:
+        print(dir_path)
+        ctrl_filename = os.path.join(dir_path, 'in.txt')
+        qml_filename = os.path.join(dir_path, 'in.xml')
+        out_filename = os.path.join(dir_path, 'out.txt')
+        ctrl_content = [
+            '$input_format_fpfile', 'quakeml', '',
+            '$fpfile', qml_filename, '',
+            '$outfile1', out_filename, ''
+        ]
+        for key, value in params.items():
+            ctrl_content.append(f'${key}')
+            ctrl_content.append(value)
+            ctrl_content.append('')
+        with open(ctrl_filename, 'w') as f:
+            f.write('\n'.join(ctrl_content))
+        qml = utils.jquake_to_quakeml(jquake)
+        with open(qml_filename, 'w') as f:
+            f.write(qml)
+        skhash = subprocess.Popen(['python', utils.CONFIG.skhash.path, ctrl_filename],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = skhash.communicate()
+        error_message = f'STDOUT:\n{stdout.decode("utf-8")}\n\nSTDERR:\n{stderr.decode("utf-8")}'
+        if not os.path.exists(out_filename):
+            return {'message': error_message, 'quakeml': qml}
+        with open(out_filename, 'r') as f:
+            content = f.read().splitlines()
+        cols = content[0].split(',')
+        fm_list = [dict(zip(cols, x.split(','))) for x in content[1:]]
+        fm_list.sort(key=lambda x: float(x['polarity_misfit']))
+        fms = []
+        now = datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')
+        for fm in fm_list:
+            fms.append({
+                '@publicID': utils.gen_id(),
+                'triggeringOriginID': jquake[0]['preferredOriginID'],
+                'nodalPlanes': {
+                    'nodalPlane1': {
+                        'strike': {'value': fm['strike']},
+                        'dip': {'value': fm['dip']},
+                        'rake': {'value': fm['rake']}
+                    }
+                },
+                'stationPolarityCount': fm['num_p_pol'],
+                'misfit': float(fm['polarity_misfit']) / 100,
+                'stationDistributionRatio': float(fm['sta_distribution_ratio']) / 100,
+                'methodID': 'SKHASH',
+                'evaluationMode': 'automatic',
+                'comment': [{'text': json.dumps(fm)}],
+                'creationInfo': {
+                    'agencyID': 'OCA',
+                    'author': 'SKHASH',
+                    'creationTime': now
+                }
+            })
+        jquake[0]['focalMechanism'] = fms
+        result = utils.jquake_to_quakeml(jquake)
+        return {'message': error_message, 'quakeml': result}
+    finally:
+        for f in os.listdir(dir_path):
+            os.remove(os.path.join(dir_path, f))
+        os.rmdir(dir_path)
