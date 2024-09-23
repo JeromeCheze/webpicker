@@ -36,7 +36,7 @@ def fix_ids(o):
         for k, v in o.items():
             if isinstance(v, str) and k.endswith('ID') and k != 'agencyID':
                 if not v.startswith('smi:'):
-                    o[k] = f'smi:oca/1.0/{v}'
+                    o[k] = f'smi:oca/{v}'
             else:
                 fix_ids(v)
 
@@ -48,7 +48,7 @@ def jquake_to_quakeml(jquake, add_prefix_id=True):
             "@xmlns": "http://quakeml.org/xmlns/bed/1.2",
             "@xmlns:q": "http://quakeml.org/xmlns/quakeml/1.2",
             "eventParameters": {
-                "@publicID": "smi:oca/1.0/NA",
+                "@publicID": "smi:oca/NA",
                 "event": jquake
             }
         }

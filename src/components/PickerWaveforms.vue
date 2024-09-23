@@ -217,7 +217,7 @@ function toSerie(data: WaveformProcessInterface) {
   }
 }
 
-function createSpectrogram(chartContainer: HTMLElement, index: number, dataLength: number, data: WaveformProcessInterface) {
+function createSpectrogram(chartContainer: HTMLElement, index: number, waveformLength: number, dataLength: number, data: WaveformProcessInterface) {
   const fontSize = store.settings['picker.tickFontSize']
   const result = new Lichen(chartContainer, {
     header: { title: data.id.replace('..', '.--.').split('.').slice(2, 4).join('.'), position: 'left', width: 100 },
@@ -251,7 +251,7 @@ function createSpectrogram(chartContainer: HTMLElement, index: number, dataLengt
   return result
 }
 
-function createWaveform(chartContainer: HTMLElement, index: number, dataLength: number, data: WaveformProcessInterface) {
+function createWaveform(chartContainer: HTMLElement, index: number, waveformLength: number, dataLength: number, data: WaveformProcessInterface) {
   const fontSize = store.settings['picker.tickFontSize']
   const result = new Lichen(chartContainer, {
     header: { title: data.id.replace('..', '.--.').split('.').slice(2, 4).join('.'), position: 'left', width: 100 },
@@ -260,7 +260,7 @@ function createWaveform(chartContainer: HTMLElement, index: number, dataLength: 
     xAxis: { enabled: index === dataLength - 1, fontSize }, yAxis: { fontSize },
     selection: null, tooltip: false, autoResize: false,
     type: 'line', height: store.settings['picker.pickerWaveformHeight'], width: chartWidth.value, 
-    vLines: getVLines(index, dataLength, data.id),
+    vLines: getVLines(index, waveformLength, data.id),
     series: [toSerie(data)],
     hooks: {
       onCursorMove: (x: number, y: number) => {
@@ -291,10 +291,11 @@ function createWaveform(chartContainer: HTMLElement, index: number, dataLength: 
 }
 
 function updateVlines() {
+  const waveformLength = Object.values(chartData).filter(x => !x.spectrogram).length
   for (const [netsta, currChartData] of Object.entries(chartData)) {
     if (currChartData.spectrogram == null) {
       const chartFrontPanel = currChartData.chart.master.getRegistered('FRONT_PANEL')
-      currChartData.chart.opt.vLines = getVLines(currChartData.index, Object.keys(chartData).length, netsta)
+      currChartData.chart.opt.vLines = getVLines(currChartData.index, waveformLength, netsta)
       chartFrontPanel.update(null)
     }
   }
@@ -322,12 +323,13 @@ async function update(redraw=false) {
     const [x1, x2] = getXRange(props.activeStation!)
     let maxRange: number = 0
     console.log(data)
+    const waveformLength = Object.values(data).filter(x => !x.spectrogram).length
     for (const [index, currData] of data.entries()) {
       if (chartData[currData.id] == null) {
         const div = document.createElement('div')
         container.value.appendChild(div)
         const chartBuilder = currData.spectrogram != null ? createSpectrogram : createWaveform
-        const chart = chartBuilder(div, index, data.length, currData)
+        const chart = chartBuilder(div, index, waveformLength, data.length, currData)
         chart.setXRange(x1, x2, false)
         chartData[currData.id] = { index, chart, container: div, spectrogram: currData.spectrogram }
         if (currData.spectrogram != null) {

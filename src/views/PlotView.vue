@@ -150,7 +150,7 @@ onBeforeRouteLeave(async (to, from) => {
       <v-row>
         <v-col cols="12">
           <StationRadius
-            ref="stationRadius"
+            ref="stationRadius-v2"
             :time="starttime.getTime()"
             v-model="stationRadiusState"
             v-model:latitude="latitude"

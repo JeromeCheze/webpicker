@@ -8,6 +8,8 @@ const store = useAppStore()
 
 const activeOrigin = ref(null as QOrigin | null)
 const activeMagnitude = ref(null as QMagnitude | null)
+const preferredOriginID = ref(null as string | null)
+const preferredMagnitudeID = ref(null as string | null)
 
 const originCols = ref([
   {
@@ -112,7 +114,7 @@ const magnitudeCols = ref([
 ] as ColObject[])
 
 const magnitudes = computed(() => {
-  if (store.currentEvent == null || store.currentEvent.preferredMagnitudeID == null || activeOrigin.value == null) {
+  if (store.currentEvent == null || activeOrigin.value == null) {
     return []
   }
   return store.currentEvent.magnitude.filter(x => x.originID.id === activeOrigin.value!.publicID)
@@ -146,24 +148,16 @@ function prettyDepth(depth: QRealQuantity) {
   return `${(depth.value / 1e3).toFixed(2)} km`
 }
 
-function isOriginPreferred(o: QOrigin) {
-  return store.currentEvent != null && store.currentEvent.preferredOriginID.id === o.publicID
-}
-
 function isOriginActive(o: QOrigin) {
   return activeOrigin.value != null && activeOrigin.value.publicID === o.publicID
-}
-
-function handleOriginColor(o: QOrigin) {
-  return isOriginPreferred(o) ? store.settings['color.activeRowColor'] : ''
 }
 
 function handleOriginClass(o: QOrigin) {
   return isOriginActive(o) ? 'font-weight-bold' : ''
 }
 
-function isMagnitudePreferred(m: QMagnitude) {
-  return store.currentEvent != null && store.currentEvent.preferredMagnitudeID.id === m.publicID
+function handleOriginStyle(o: QOrigin) {
+  return preferredOriginID.value === o.publicID ? { background: store.settings['color.activeRowColor'] } : {}
 }
 
 function isMagnitudeActive(m: QMagnitude) {
@@ -174,17 +168,19 @@ function handleMagnitudeClass(m: QMagnitude) {
   return isMagnitudeActive(m) ? 'font-weight-bold' : ''
 }
 
-function handleMagnitudeColor(m: QMagnitude) {
-  return isMagnitudePreferred(m) ? store.settings['color.activeRowColor'] : ''
+function handleMagnitudeStyle(m: QMagnitude) {
+  console.log(preferredMagnitudeID.value, m.publicID)
+  return preferredMagnitudeID.value === m.publicID ? { background: store.settings['color.activeRowColor'] } : {}
 }
 
 function setPreferredOrigin() {
   if (store.currentEvent != null && activeOrigin.value != null) {
+    preferredOriginID.value = activeOrigin.value.publicID
     store.currentEvent.setPreferredOriginID(activeOrigin.value.publicID)
     if (
-      store.currentEvent.preferredMagnitudeID.id != null
-      && store.currentEvent.preferredMagnitudeID.referredObject.originID.id !== activeOrigin.value.publicID
+      store.currentEvent.preferredMagnitudeID.referredObject.originID.id !== activeOrigin.value.publicID
     ) {
+      preferredMagnitudeID.value = null
       store.currentEvent.setPreferredMagnitudeID(undefined)
     }
     store.setEvent(store.currentEvent)
@@ -195,9 +191,10 @@ function setPreferredMagnitude() {
   if (
     store.currentEvent != null
     && activeMagnitude.value != null
-    && store.currentEvent.preferredOriginID != null
-    && activeMagnitude.value.originID.id === store.currentEvent.preferredOriginID.id
+    && preferredOriginID.value != null
+    && activeMagnitude.value.originID.id === preferredOriginID.value
   ) {
+    preferredMagnitudeID.value = activeMagnitude.value.publicID
     store.currentEvent.setPreferredMagnitudeID(activeMagnitude.value.publicID)
     store.setEvent(store.currentEvent)
   }
@@ -207,6 +204,12 @@ onMounted(() => {
   if (store.currentEvent != null) {
     setActiveOrigin(store.currentEvent.preferredOriginID.referredObject)
     setActiveMagnitude(store.currentEvent.preferredMagnitudeID.referredObject)
+    if (store.currentEvent.preferredOriginID != null) {
+      preferredOriginID.value = store.currentEvent.preferredOriginID.id!
+    }
+    if (store.currentEvent.preferredMagnitudeID != null) {
+      preferredMagnitudeID.value = store.currentEvent.preferredMagnitudeID.id!
+    }
   }
 })
 </script>
@@ -227,8 +230,8 @@ onMounted(() => {
           :sort-col="0"
           :cols="originCols"
           :items="store.currentEvent.origin"
-          :row-color="handleOriginColor"
           :row-class="handleOriginClass"
+          :row-style="handleOriginStyle"
           @row-click="setActiveOrigin"
           store-key="originList"
         />
@@ -248,7 +251,7 @@ onMounted(() => {
           :cols="magnitudeCols"
           :items="magnitudes"
           :row-class="handleMagnitudeClass"
-          :row-color="handleMagnitudeColor"
+          :row-style="handleMagnitudeStyle"
           @row-click="setActiveMagnitude"
           store-key="magnitudeList"
         />

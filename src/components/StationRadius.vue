@@ -6,6 +6,15 @@ import { useRoute } from 'vue-router'
 import { onMounted, ref, watch } from 'vue'
 import * as L from 'leaflet'
 
+interface OptType {
+  network: string
+  station: string
+  location: string
+  channel: string
+  center: [number, number]
+  radius: number
+}
+
 const route = useRoute()
 
 const emit = defineEmits(['radiusStations', 'update:modelValue', 'update:latitude', 'update:longitude'])
@@ -27,12 +36,13 @@ const opt = getLocalStorageDefault(
     station: '*',
     location: '*',
     channel: '?H?',
+    center: [props.latitude, props.longitude],
     radius: store.settings['miscellaneous.defaultRadius']
   }, route.query)
-)
+) as OptType
 
 const form = ref()
-const radius = ref(parseFloat(opt.radius))
+const radius = ref(opt.radius)
 const netSelector = ref(opt.network)
 const staSelector = ref(opt.station)
 const locSelector = ref(opt.location)
@@ -82,6 +92,7 @@ function validate() {
 function preview(): Promise<void> {
   return new Promise((resolve, reject) => {
     if (form.value.validate()) {
+      const centerLatLon = center.value!.getLatLng()
       setLocalStorage(
         props.storageKey,
         {
@@ -89,6 +100,7 @@ function preview(): Promise<void> {
           station: staSelector.value,
           location: locSelector.value,
           channel: chaSelector.value,
+          center: [centerLatLon.lat, centerLatLon.lng],
           radius: radius.value
         }
       )
@@ -107,7 +119,7 @@ function preview(): Promise<void> {
       }
       const t = new Date(props.time).toISOString().slice(0, 19)
       store.dataManager.getRadiusInventory(
-        '..', t, props.latitude, props.longitude, radius.value,
+        '..', t, centerLatLon.lat, centerLatLon.lng, radius.value,
         netSelector.value, staSelector.value, locSelector.value, chaSelector.value
       ).then(inv => {
         const [lat, lon] = [props.latitude, props.longitude]
@@ -158,7 +170,7 @@ function initMap() {
   const baseLayers = { Plan: plan, Terrain: worldtopomap, Satellite: satmap }
   L.control.layers(baseLayers).addTo(map.value as L.Map)
   plan.addTo(map.value as L.Map)
-  const pos = [props.latitude, props.longitude] as L.LatLngTuple
+  const pos = [opt.center[0], opt.center[1]] as L.LatLngTuple
   circle.value = L.circle(pos, { radius: degToKm(radius.value) * 1e3 }).addTo(map.value as L.Map)
   center.value = L.marker(pos, { icon: L.divIcon({ className: 'circle c-move', iconSize: [10, 10] }), draggable: true }).addTo(map.value as L.Map)
   resize.value = L.marker([pos[0] + radius.value, pos[1]], { icon: L.divIcon({ className: 'circle c-ns-resize', iconSize: [10, 10] }), draggable: true }).addTo(map.value as L.Map)

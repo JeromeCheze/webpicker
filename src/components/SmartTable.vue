@@ -13,7 +13,7 @@ const props = defineProps<{
   selectable?: boolean
   selected?: any[]
   rowClass?: (item: any) => string
-  rowColor?: (item: any) => string
+  rowStyle?: (item: any) => Record<string, any>
 }>()
 
 const emit = defineEmits(['rowClick', 'selection'])
@@ -145,8 +145,8 @@ function getClass(row: any) {
   return props.rowClass != null ? props.rowClass(row[1]) : ''
 }
 
-function getColor(row: any) {
-  return props.rowColor != null ? props.rowColor(row[1]) : ''
+function getStyle(row: any) {
+  return props.rowStyle != null ? props.rowStyle(row[1]) : ''
 }
 
 function storeValue(col: ColObject, value: boolean | null) {
@@ -199,7 +199,7 @@ onMounted(() => {
         v-for="(row, index) in modelValue" 
         @click="handleRowClick(row[1])"
         :class="getClass(row)"
-        :style="{ background: getColor(row) }"
+        :style="getStyle(row)"
       >
         <td v-if="props.selectable">
           <v-checkbox

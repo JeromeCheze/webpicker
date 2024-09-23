@@ -178,7 +178,7 @@ watch(() => sortValue.value, (value: number) => props.modelValue.sort = sortOpti
         <v-card-text>
           <StationRadius
             v-model="stationRadiusMenu"
-            storage-key="pickerStationRadius"
+            storage-key="pickerStationRadius-v2"
             :time="props.time"
             :latitude="props.latitude"
             :longitude="props.longitude"

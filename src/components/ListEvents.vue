@@ -116,10 +116,10 @@ function handleRowClick(event: QEvent) {
   router.push({ name: 'event', params: { eventid: event.publicID } })
 }
 
-function handleRowColor(event: QEvent) {
+function handleRowStyle(event: QEvent) {
   return store.currentEvent != null && store.currentEvent.publicID === event.publicID
-    ? store.settings['color.activeRowColor']
-    : ''
+    ? { background: store.settings['color.activeRowColor'] }
+    : {}
 }
 
 watch(() => store.usersActivity, (value) => {
@@ -144,7 +144,7 @@ watch(() => store.usersActivity, (value) => {
       :sort-col="getLocalStorageDefault('eventList._sortCol', 1)"
       :sort-order="getLocalStorageDefault('eventList._sortOrder', 'desc')"
       @row-click="handleRowClick"
-      :row-color="handleRowColor"
+      :row-style="handleRowStyle"
       store-key="eventList"
     >
       No events to display<br>
