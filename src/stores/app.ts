@@ -95,7 +95,8 @@ function cloneOrigin() {
     Object.assign(
       deepCopy(currentOrigin.value.desc),
       { publicID: getId('Origin') }
-    )
+    ),
+    currentEvent.value!.id
   )
   currentArrivals.value = currentOrigin.value.arrival
   eventViewStatus.value.relocateStatus = 'required'
@@ -191,6 +192,12 @@ function selectArrivals(selectedArrivals: QArrival[]) {
   }
   currentArrivals.value = currentArrivals.value.map(x => x)
 }
+function setArrivals(arrivals: QArrival[]) {
+  if (!originDirty.value) {
+    cloneOrigin()
+  }
+  currentArrivals.value = arrivals
+}
 function createFocalMechanism(strike: number, dip: number, rake: number, nbStation: number) {
   currentFocalMechanism.value = new QFocalMechanism({
     '@publicID': getId('FocalMechanism'),
@@ -204,7 +211,7 @@ function createFocalMechanism(strike: number, dip: number, rake: number, nbStati
         rake: { value: rake }
       }
     }
-  })
+  }, currentEvent.value!.id)
   eventViewStatus.value.commitStatus = 'required'
 }
 
@@ -241,6 +248,7 @@ export const useAppStore = defineStore('app', () => {
     createArrival,
     createFocalMechanism,
     selectArrivals,
+    setArrivals,
     eventViewStatus,
     keydownEvent,
     keydown,

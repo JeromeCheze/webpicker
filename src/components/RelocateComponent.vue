@@ -3,7 +3,7 @@ import type { QEvent, QEventDescription, QArrivalDescription, QPickDescription }
 import { parse } from '@/lib/sismojs/src/core/event/quakeml'
 import { computed, ref, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
-import { deepCopy, getId } from '@/utils'
+import { deepCopy, getId, getLocalStorageDefault, setLocalStorage } from '@/utils'
 
 const store = useAppStore()
 
@@ -12,10 +12,15 @@ const relocateOptions: { [locator: string]: string[] } = {
   NonLinLoc: ['puna_3_35_005', 'iasp91', 'prem']
 }
 
+const relocParams = getLocalStorageDefault('relocateParams', {
+  locator: null,
+  profile: null
+})
+
 const locators = computed(() => Object.keys(relocateOptions))
-const locator = ref(locators.value[0])
+const locator = ref(relocParams.locator != null ? relocParams.locator : locators.value[0])
 const profiles = computed(() => relocateOptions[locator.value])
-const profile = ref(profiles.value[0])
+const profile = ref(relocParams.profile != null ? relocParams.profile : profiles.value[0])
 const locked = ref(false)
 
 watch(() => store.keydown, (newValue) => {
@@ -27,6 +32,13 @@ watch(() => store.keydown, (newValue) => {
 
 watch(() => locator.value, (value) => {
   profile.value = relocateOptions[value][0]
+})
+
+watch(() => profile.value, () => {
+  setLocalStorage('relocateParams', {
+    locator: locator.value,
+    profile: profile.value
+  })
 })
 
 function relocate() {

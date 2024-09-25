@@ -63,14 +63,6 @@ function createEvent() {
   t.setUTCMinutes(minutes.value)
   t.setUTCSeconds(seconds.value)
   const originID = getId('Origin')
-  const origin = new QOrigin({
-    '@publicID': originID,
-    time: { value: t.toISOString() },
-    latitude: { value: lat.value, uncertainty: 1 },
-    longitude: { value: lon.value, uncertainty: 1 },
-    depth: { value: depth.value * 1e3 },
-    arrival: []
-  })
   const event = new QEvent({
     '@publicID': getId('Event'),
     pick: [],
@@ -81,6 +73,14 @@ function createEvent() {
     focalMechanism: [],
     preferredOriginID: originID
   })
+  const origin = new QOrigin({
+    '@publicID': originID,
+    time: { value: t.toISOString() },
+    latitude: { value: lat.value, uncertainty: 1 },
+    longitude: { value: lon.value, uncertainty: 1 },
+    depth: { value: depth.value * 1e3 },
+    arrival: []
+  }, event.id)
   console.log(event)
   store.setEvent(event)
   store.eventViewStatus.relocateStatus = 'enabled'

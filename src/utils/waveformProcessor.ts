@@ -189,13 +189,13 @@ export class RotateProcessor extends BaseProcessor {
           componentGroup[baseId].e = currData
         }
       }
-      const result: WaveformProcessInterface[] = []
+      const result: WaveformProcessInterface[] = data.map(currData => currData)
       const baz = (this.azimuth + 180) % 360
       for (const [baseId, h] of Object.entries(componentGroup)) {
-        for (const currData of data.filter(x => x.id.indexOf(baseId) === 0 && ['N', 'E'].indexOf(x.id.slice(-1)[0]) < 0)) {
-          // push unprocessed data of the current baseId and not horizontal component
-          result.push(currData)
-        }
+        // for (const currData of data.filter(x => x.id.indexOf(baseId) === 0 && ['N', 'E'].indexOf(x.id.slice(-1)[0]) < 0)) {
+        //   // push unprocessed data of the current baseId and not horizontal component
+        //   result.push(currData)
+        // }
         if (h.n == null || h.e == null) {
           continue
         }

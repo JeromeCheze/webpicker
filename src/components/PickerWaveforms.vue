@@ -28,6 +28,7 @@ const props = defineProps<{
   commonScale: boolean
   integration: boolean
   hideRefTimes: boolean
+  tttEnabled: boolean
   timeWindow: [number, number]
 }>()
 
@@ -124,10 +125,14 @@ function updateTimeWindow(seedid: string, t1: number, t2: number) {
 
 function getPickTooltip(p: QPick) {
   return `<table class="pick-tooltip"><tbody>
-    <tr><th>Creation time</th><td>${p.creationInfo?.creationTime}</td></tr>
+    <tr><th>Pick time</th><td>${p.time.value}</td></tr>
     <tr><th>WFID</th><td>${p.waveformID.seedid}</td></tr>
     <tr><th>Filter</th><td>${p.filterID || '-'}</td></tr>
+    <tr><th>Uncertainty</th><td>${p.time.uncertainty || '-'}</td></tr>
+    <tr><th>Creation time</th><td>${p.creationInfo?.creationTime}</td></tr>
     <tr><th>Author</th><td>${p.creationInfo?.author}</td></tr>
+    <tr><th>Pick ID</th><td>${p.publicID}</td></tr>
+    <tr><th>Event ID</th><td>${p.parent.id}</td></tr>
   </tbody></table>`
 }
 
@@ -161,13 +166,15 @@ function getVLines(index: number, dataLength: number, seedid: string) {
   const result: VLine[] = []
   if (!props.hideRefTimes) {
     result.push({ color: store.settings['color.T0'], x: props.stationRefTimes[netsta].O, text: index === dataLength - 1 ? 'T0' : undefined, position: 'bottom' })
-    result.push({ color: store.settings['color.TTT'], x: props.stationRefTimes[netsta].P, text: index === dataLength - 1 ? 'P' : undefined, position: 'bottom' })
-    result.push({ color: store.settings['color.TTT'], x: props.stationRefTimes[netsta].S, text: index === dataLength - 1 ? 'S' : undefined, position: 'bottom' })
-    if (props.stationRefTimes[netsta].P_NLL != null) {
-      result.push({ color: store.settings['color.TTTNLL'], x: props.stationRefTimes[netsta].P_NLL, text: index === dataLength - 1 ? 'P (NLL)' : undefined, position: 'bottom' })
-    }
-    if (props.stationRefTimes[netsta].S_NLL != null) {
-      result.push({ color: store.settings['color.TTTNLL'], x: props.stationRefTimes[netsta].S_NLL, text: index === dataLength - 1 ? 'S (NLL)' : undefined, position: 'bottom' })
+    if (props.tttEnabled) {
+      result.push({ color: store.settings['color.TTT'], x: props.stationRefTimes[netsta].P, text: index === dataLength - 1 ? 'P' : undefined, position: 'bottom' })
+      result.push({ color: store.settings['color.TTT'], x: props.stationRefTimes[netsta].S, text: index === dataLength - 1 ? 'S' : undefined, position: 'bottom' })
+      if (props.stationRefTimes[netsta].P_NLL != null) {
+        result.push({ color: store.settings['color.TTTNLL'], x: props.stationRefTimes[netsta].P_NLL, text: index === dataLength - 1 ? 'P (NLL)' : undefined, position: 'bottom' })
+      }
+      if (props.stationRefTimes[netsta].S_NLL != null) {
+        result.push({ color: store.settings['color.TTTNLL'], x: props.stationRefTimes[netsta].S_NLL, text: index === dataLength - 1 ? 'S (NLL)' : undefined, position: 'bottom' })
+      }
     }
   }
   if (props.detector) {
@@ -186,14 +193,12 @@ function getVLines(index: number, dataLength: number, seedid: string) {
           result.push(pickToVLine(p, true))
         } else if (props.rotation !== 'ZRT' && index === 0 && ['R', 'T'].indexOf(currSeedid.slice(-1)) >= 0) {
           result.push(pickToVLine(p, true))
-        } else if (props.rotation === 'ZRT' && index === 0 && ['Z', 'R', 'T'].indexOf(currSeedid.slice(-1)) < 0) {
-          result.push(pickToVLine(p, true))
         }
+        // else if (props.rotation === 'ZRT' && index === 0 && ['Z', 'R', 'T'].indexOf(currSeedid.slice(-1)) < 0) {
+        //   result.push(pickToVLine(p, true))
+        // }
       }
     }
-    // for (const p of store.pickMap[netsta][seedid]) {
-    //   result.push(pickToVLine(p, true))
-    // }
   }
   if (store.additionalPickMap[netsta] != null && store.additionalPickMap[netsta][seedid] != null) {
     for (const p of store.additionalPickMap[netsta][seedid]) {
@@ -425,7 +430,8 @@ watch(() => props.data, (value, oldValue) => {
 watch([
   () => store.pickMap,
   () => store.additionalPickMap,
-  () => props.detector
+  () => props.detector,
+  () => props.tttEnabled
 ], () => updateVlines())
 
 watch(() => store.dataManager.detectorCache, () => updateVlines(), { deep: true })
@@ -450,8 +456,8 @@ watch(() => props.timeWindow, () => {
 <template>
   <div class="mb-3">
     {{ props.activeStation }}
-    <span class="text-caption float-right">{{ props.phase != null ? pickerTime : '' }}</span>
-    <span class="text-caption">- Dist: {{ distance.toFixed(1) }} km | Az: {{ azimuth.toFixed(1) }}&deg;</span>
+    <span class="float-right">{{ props.phase != null ? pickerTime : '' }}</span>
+    <span >- Dist: {{ distance.toFixed(1) }} km | Az: {{ azimuth.toFixed(1) }}&deg;</span>
     <v-progress-circular v-if="loading" indeterminate="disable-shrink" size="20" class="ml-4"/>
   </div>
   <div ref="container"></div>

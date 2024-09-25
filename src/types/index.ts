@@ -1,4 +1,3 @@
-import type { LineOptions, VLine } from '@/lib/lichen/src/types'
 import type { QPick } from '@/lib/sismojs/src/core/event/types'
 import type Lichen from '@/lib/lichen/src'
 
@@ -62,6 +61,7 @@ export interface PickerToolbarOptions {
   detector: boolean
   commonScale: boolean
   integration: boolean
+  tttEnabled: boolean
 }
 
 export interface FilterOptions {

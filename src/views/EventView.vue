@@ -17,6 +17,8 @@ const picker = ref(false)
 const activeChart = ref('residual' as 'residual' | 'traveltime' | 'firstmotion' | 'magnitude')
 const allOriginDisplay = ref(false)
 
+const contextMenu = ref(false)
+const contextMenuPos = ref([0, 0] as [number, number])
 
 function enablePicker() {
   picker.value = true
@@ -37,6 +39,11 @@ function select(value: string) {
     selection = store.currentArrivals.filter((x: QArrival) => x.phase === 'P')
   }
   store.selectArrivals(selection)
+}
+
+function removeUnselectedArrivals() {
+  const selected = store.currentArrivals.filter((x: QArrival) => x.timeWeight != null && x.timeWeight > 0)
+  store.setArrivals(selected)
 }
 
 function loadEvent() {
@@ -68,6 +75,13 @@ function handleUsers() {
   // } else {
   //   store.notification.push({ type: 'warning', value: null })
   // }
+}
+
+function handleContextMenu(e: MouseEvent) {
+  e.preventDefault()
+  console.log('contextmenu')
+  contextMenuPos.value = [e.clientX, e.clientY]
+  contextMenu.value = true
 }
 
 watch(() => store.keydown, (newValue) => {
@@ -132,19 +146,13 @@ onMounted(() => {
   <EventInspector v-if="allOriginDisplay && !picker"/>
   <template v-if="!allOriginDisplay && !picker">
     <v-row>
-      <v-col cols="9" class="d-flex justify-end align-center">
-        SELECTION:
-        <v-btn class="ml-2" size="small" @click="select('all')">ALL</v-btn>
-        <v-btn class="ml-2" size="small" @click="select('manual')">MANUAL</v-btn>
-        <v-btn class="ml-2" size="small" @click="select('automatic')">AUTOMATIC</v-btn>
-        <v-btn class="mx-2" size="small" @click="select('p')">P ONLY</v-btn>
-      </v-col>
-      <v-col cols="3" class="d-flex justify-end align-center">
-        CHART:
-        <v-btn size="small" class="ml-2" @click="activeChart = 'residual'">Res</v-btn>
-        <v-btn size="small" class="ml-2" @click="activeChart = 'traveltime'">TT</v-btn>
-        <v-btn size="small" class="ml-2" @click="activeChart = 'magnitude'">M</v-btn>
-        <v-btn size="small" class="ml-2" @click="activeChart = 'firstmotion'">FM</v-btn>
+      <v-col cols="12" class="d-flex justify-end align-center">
+        <v-btn-group density="compact" class="ml-2">
+          <v-btn :active="activeChart === 'residual'" @click="activeChart = 'residual'">Res</v-btn>
+          <v-btn :active="activeChart === 'traveltime'" @click="activeChart = 'traveltime'">TT</v-btn>
+          <v-btn :active="activeChart === 'magnitude'" @click="activeChart = 'magnitude'">M</v-btn>
+          <v-btn :active="activeChart === 'firstmotion'" @click="activeChart = 'firstmotion'">FM</v-btn>
+        </v-btn-group>
       </v-col>
     </v-row>
     <v-row>
@@ -154,8 +162,8 @@ onMounted(() => {
       <v-col cols="7">
         <v-card>
           <v-card-text class="pa-0">
-            <ResVsDistChart v-if="activeChart === 'residual'"/>
-            <TraveltimeChart v-if="activeChart === 'traveltime'"/>
+            <ResVsDistChart v-if="activeChart === 'residual'" @contextmenu="handleContextMenu"/>
+            <TraveltimeChart v-if="activeChart === 'traveltime'" @contextmenu="handleContextMenu"/>
             <StationMagnitudeChart v-if="activeChart === 'magnitude'"/>
             <FirstMotion v-if="activeChart === 'firstmotion'"/>
           </v-card-text>
@@ -189,4 +197,24 @@ onMounted(() => {
     :depth="store.currentOrigin.depth.value"
     :seedid-list="[]"
     :no-event="false"/>
+  <v-menu
+    v-model="contextMenu"
+    attach
+    :target="contextMenuPos"
+    z-index="4000"
+    :style="{ position: 'absolute', top: `${contextMenuPos[1]}px`, left: `${contextMenuPos[0]}px` }"
+    :transition="false"
+  >
+    <v-card>
+      <v-list density="compact">
+        <v-list-subheader>Selection</v-list-subheader>
+        <v-list-item class="pl-10" @click="select('all')">all</v-list-item>
+        <v-list-item class="pl-10" @click="select('manual')">manual</v-list-item>
+        <v-list-item class="pl-10" @click="select('automatic')">automatic</v-list-item>
+        <v-list-item class="pl-10" @click="select('p')">P only</v-list-item>
+        <v-list-subheader>Action</v-list-subheader>
+        <v-list-item class="pl-10" @click="removeUnselectedArrivals">remove unselected</v-list-item>
+      </v-list>
+    </v-card>
+  </v-menu>
 </template>

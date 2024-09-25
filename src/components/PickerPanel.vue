@@ -55,7 +55,8 @@ const toolbarValue = ref({
   spectrogram: false,
   detector: false,
   commonScale: false,
-  integration: false
+  integration: false,
+  tttEnabled: true
 } as PickerToolbarOptions)
 
 const stationRefTimes = ref({} as StationRefTimes)
@@ -294,7 +295,7 @@ function setPickUncertainty(value: number) {
       if (value === 0) {
         p.time.uncertainty = undefined
       } else {
-        p.time.uncertainty = parseFloat(value.toPrecision(5))
+        p.time.uncertainty = parseFloat(value.toPrecision(3))
       }
     }
   }
@@ -318,7 +319,12 @@ function loadAdditionalPicks() {
       if (store.currentEvent != null && event.publicID === store.currentEvent.publicID) {
         continue
       }
-      for (const pick of event.pick) {
+      // for (const pick of event.pick) {
+      for (const arrival of event.preferredOriginID.referredObject.arrival) {
+        if (arrival.timeWeight === 0) {
+          continue
+        }
+        const pick = arrival.pickID.referredObject
         const netsta = pick.waveformID.netsta
         const seedid = pick.waveformID.seedid
         if (additionalPickMap[netsta] == null) {
@@ -331,6 +337,7 @@ function loadAdditionalPicks() {
       }
     }
     store.additionalPickMap = additionalPickMap
+    console.log(additionalPickMap)
   }).finally(() => {
     // Restore the original mainKey of ResourceIdentifier
     QResourceIdentifier.mainKey = saveMainKey
@@ -409,6 +416,7 @@ onBeforeUnmount(() => {
         :integration="toolbarValue.integration"
         :hide-ref-times="props.noEvent"
         :time-window="sliderTimeWindow"
+        :ttt-enabled="toolbarValue.tttEnabled"
         @active-channel="handleActiveChannel"
         @create-pick="createPick"
         @select-picks="handleSelectPicks"

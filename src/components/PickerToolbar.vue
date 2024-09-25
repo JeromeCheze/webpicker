@@ -59,6 +59,10 @@ function toggleRotation() {
   props.modelValue.rotation = props.modelValue.rotation === 'ZRT' ? 'ZNE' : 'ZRT'
 }
 
+function toggleTTTEnabled() {
+  props.modelValue.tttEnabled = !props.modelValue.tttEnabled
+}
+
 watch(() => store.keydown, (newValue) => {
   // console.log(newValue)
   if (newValue === store.settings['keybinding.setPhaseP']) {
@@ -186,6 +190,56 @@ watch(() => sortValue.value, (value: number) => props.modelValue.sort = sortOpti
         </v-card-text>
       </v-card>
     </v-menu>
+    <!-- TOGGLE TTT -->
+    <v-btn
+      @click="toggleTTTEnabled"
+      title="Toggle theoretical travel times"
+      :active="props.modelValue.tttEnabled">TTT</v-btn>
+    <!-- EVENT INFO -->
+    <v-dialog max-width="900">
+      <template v-slot:activator="{ props: activatorProps }">
+        <v-btn v-bind="activatorProps" title="Display event info"><v-icon>mdi-information-outline</v-icon></v-btn>
+      </template>
+      <v-card>
+        <v-card-text>
+          <v-row>
+            <v-col cols="12">
+              {{ store.currentEvent?.publicID }}
+              <v-chip
+                label
+                size="x-small"
+                :color="store.currentEvent?.type == null ? 'grey' : 'green'"
+                class="text-uppercase mx-1"
+              >
+                {{ store.currentEvent?.type || 'NO TYPE SET' }}
+              </v-chip>
+              <v-chip
+                label
+                size="x-small"
+                :color="store.currentOrigin?.evaluationStatus == null ? 'grey' : 'blue'"
+                class="text-uppercase mx-1"
+              >
+                {{ store.currentOrigin?.evaluationStatus || 'NO STATUS SET' }}
+              </v-chip>
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col cols="12">
+              <OriginPanel
+                :origin="store.currentOrigin"
+                :status="store.eventViewStatus.relocateStatus"/>
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col cols="12">
+              <MagnitudePanel
+                :magnitude="store.currentMagnitude"
+                :status="store.eventViewStatus.computeMagnitudesStatus"/>
+            </v-col>
+          </v-row>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
     <!-- EXIT -->
     <v-btn @click="emit('leave')" :title="`Exit picker [${store.settings['keybinding.togglePicker']}]`" class="ml-1 mr-2"><v-icon>mdi-exit-to-app</v-icon></v-btn>
   </v-app-bar>

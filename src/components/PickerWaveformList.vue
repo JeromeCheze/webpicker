@@ -311,7 +311,10 @@ watch([
   () => props.data
 ], () => update(false))
 
-watch(() => store.pickMap, () => updateVlines())
+watch([
+  () => store.pickMap,
+  () => store.additionalPickMap
+], () => updateVlines())
 
 watch(() => store.keydown, (newValue) => {
   if (newValue === store.settings['keybinding.nextStation']) {

@@ -48,8 +48,19 @@ function handleSubmit(seedids: string[]) {
       longitude: longitude.value,
       duration: duration.value
     })
+    const originId = getId('Origin')
+    const event = new QEvent({
+      '@publicID': getId('Event'),
+      pick: [],
+      amplitude: [],
+      origin: [],
+      magnitude: [],
+      stationMagnitude: [],
+      focalMechanism: [],
+      preferredOriginID: originId
+    })
     const origin = new QOrigin({
-      '@publicID': getId('Origin'),
+      '@publicID': originId,
       time: { value: starttime.value.toISOString() },
       latitude: { value: latitude.value, uncertainty: 1 },
       longitude: { value: longitude.value, uncertainty: 1 },
@@ -61,17 +72,7 @@ function handleSubmit(seedids: string[]) {
       },
       depth: { value: 5 * 1e3 },
       arrival: []
-    })
-    const event = new QEvent({
-      '@publicID': getId('Event'),
-      pick: [],
-      amplitude: [],
-      origin: [],
-      magnitude: [],
-      stationMagnitude: [],
-      focalMechanism: [],
-      preferredOriginID: origin.publicID
-    })
+    }, event.id)
     store.currentEvent = event
     store.currentOrigin = origin
     store.currentArrivals = origin.arrival
