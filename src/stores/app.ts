@@ -156,6 +156,9 @@ function createPick(phase: string, pickTime: number, seedid: string, filter: str
   return pick
 }
 function deletePick(pick: QPick) {
+  if (!originDirty.value) {
+    cloneOrigin()
+  }
   const arrival = currentArrivals.value!.find(x => x.pickID.id === pick.publicID)
   if (arrival != null) {
     currentOrigin.value!.deleteArrival(arrival)

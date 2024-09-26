@@ -16,8 +16,9 @@ const connectionPopup = ref(false)
 const connectionStatus = ref(false)
 const infoNotification = ref(false)
 const infoNotificationText = ref('')
-const warningNotification = ref(false)
-const warningNotificationText = ref('')
+const persistentNotification = ref(false)
+const persistentNotificationText = ref('')
+const persistentNotificationType = ref('warning')
 const progressNotification = ref(false)
 const progressNotificationValue = ref({ percent: 0, text: '' })
 
@@ -61,11 +62,20 @@ watch(() => store.notification, (value) => {
         infoNotification.value = true
       }
     } else if (curr.type === 'warning') {
+      persistentNotificationType.value = 'warning'
       if (curr.value == null) {
-        warningNotification.value = false
+        persistentNotification.value = false
       } else {
-        warningNotificationText.value = curr.value
-        warningNotification.value = true
+        persistentNotificationText.value = curr.value
+        persistentNotification.value = true
+      }
+    } else if (curr.type === 'error') {
+      persistentNotificationType.value = 'error'
+      if (curr.value == null) {
+        persistentNotification.value = false
+      } else {
+        persistentNotificationText.value = curr.value
+        persistentNotification.value = true
       }
     } else if (curr.type === 'progress') {
       if (curr.value == null) {
@@ -111,10 +121,10 @@ onMounted(() => {
         <v-progress-circular :model-value="progressNotificationValue.percent" :indeterminate="progressNotificationValue.percent === -1" size="16" class="mr-2"/>
         {{ progressNotificationValue.text }}
       </v-snackbar>
-      <v-snackbar v-model="warningNotification" timeout="-1" vertical color="warning">
-        <pre :style="{ maxHeight: '200px', overflowY: 'auto' }">{{ warningNotificationText }}</pre>
+      <v-snackbar v-model="persistentNotification" timeout="-1" vertical :color="persistentNotificationType">
+        <pre :style="{ maxHeight: '200px', overflowY: 'auto' }">{{ persistentNotificationText }}</pre>
         <template v-slot:actions>
-          <v-btn variant="text" @click="warningNotification = false">Close</v-btn>
+          <v-btn variant="text" @click="persistentNotification = false">Close</v-btn>
         </template>
       </v-snackbar>
     </v-main>

@@ -48,18 +48,21 @@ export function parseFilter(f: string) {
   return null
 }
 
+// export function deepCopy(o: any): any {
+//   if (o instanceof Array) {
+//     return o.map(item => deepCopy(item))
+//   } else if (o instanceof Object) {
+//     const dest: Record<string, any> = {}
+//     for (const [k, v] of Object.entries(o as Record<string, any>)) {
+//       dest[k] = deepCopy(v)
+//     }
+//     return dest
+//   } else {
+//     return o
+//   }
+// }
 export function deepCopy(o: any): any {
-  if (o instanceof Array) {
-    return o.map(item => deepCopy(item))
-  } else if (o instanceof Object) {
-    const dest: Record<string, any> = {}
-    for (const [k, v] of Object.entries(o as Record<string, any>)) {
-      dest[k] = deepCopy(v)
-    }
-    return dest
-  } else {
-    return o
-  }
+  return JSON.parse(JSON.stringify(o))
 }
 
 export function getDefault(obj: Record<string, any>, key: string, value: any) {

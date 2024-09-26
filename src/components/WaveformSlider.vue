@@ -98,6 +98,8 @@ onBeforeUnmount(() => {
   document.body.removeEventListener('mousemove', handleMouseMove)
   document.body.removeEventListener('mouseup', handleMouseUp)
 })
+
+defineExpose({ updateSlider })
 </script>
 
 <template>

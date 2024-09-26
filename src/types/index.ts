@@ -2,7 +2,7 @@ import type { QPick } from '@/lib/sismojs/src/core/event/types'
 import type Lichen from '@/lib/lichen/src'
 
 export interface WPNotificationOptions {
-  type: 'progress' | 'info' | 'warning'
+  type: 'progress' | 'info' | 'warning' | 'error'
   value: any
 }
 

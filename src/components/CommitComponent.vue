@@ -76,7 +76,7 @@ function commit() {
     if (response.status === 200) {
       response.json().then(statusResponse => {
         if (statusResponse.message != null) {
-          store.notification.push({ type: 'warning', value: statusResponse.message })
+          store.notification.push({ type: statusResponse.return_code === 0 ? 'warning' : 'error', value: statusResponse.message })
         }
         if (statusResponse.return_code === 0) {
           emit('update')

@@ -46,6 +46,11 @@ function removeUnselectedArrivals() {
   store.setArrivals(selected)
 }
 
+function removeAutomaticArrivals() {
+  const selected = store.currentArrivals.filter((x: QArrival) => x.pickID.referredObject.evaluationMode === 'manual')
+  store.setArrivals(selected)
+}
+
 function loadEvent() {
   store.notification.push({ type: 'progress', value: { text: 'Loading event description...', percent: -1 } })
   client.getEvents({
@@ -214,6 +219,7 @@ onMounted(() => {
         <v-list-item class="pl-10" @click="select('p')">P only</v-list-item>
         <v-list-subheader>Action</v-list-subheader>
         <v-list-item class="pl-10" @click="removeUnselectedArrivals">remove unselected</v-list-item>
+        <v-list-item class="pl-10" @click="removeAutomaticArrivals">remove automatic</v-list-item>
       </v-list>
     </v-card>
   </v-menu>

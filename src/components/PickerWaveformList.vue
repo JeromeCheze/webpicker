@@ -23,6 +23,7 @@ const props = defineProps<{
   hideRefTimes: boolean
 }>()
 
+const slider = ref()
 const container = ref()
 const start = ref(-2e3)
 const end = ref(10e3)
@@ -289,6 +290,7 @@ async function update(redraw=false) {
     selectStation(toNetSta(data[0].id))
     initialized.value = true
   }
+  slider.value.updateSlider()
 }
 
 function reset() {
@@ -339,6 +341,7 @@ onMounted(update)
 <template>
   <div ref="container"></div>
   <WaveformSlider
+    ref="slider"
     :time-window="props.timeWindow"
     :list-time-window="selectedTimeWindow"
     :chart="selectedChart"

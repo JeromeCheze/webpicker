@@ -20,7 +20,7 @@ function setMagnitudeStation() {
   for (const arrival of store.currentArrivals) {
     if (arrival.pickID.referredObject != null) {
       const netsta = arrival.pickID.referredObject.waveformID.netsta
-      stations[netsta] = true
+      stations[netsta] = arrival.timeWeight != null && arrival.timeWeight > 0
     }
   }
   computeMagnitudeStations.value = stations
@@ -31,7 +31,6 @@ function computeMagnitudes() {
     return
   }
   locked.value = true
-  store.notification.push({ type: 'progress', value: { text: 'Compute magnitudes...', percent: -1 } })
   const origin = deepCopy(store.currentOrigin!.desc)
   const event = new QEvent(Object.assign(deepCopy(store.currentEvent!.desc), {
     origin: [origin],
@@ -50,6 +49,11 @@ function computeMagnitudes() {
   for (const pick of picksToRemove) {
     event.deletePick(pick)
   }
+  if (po.arrival.length === 0) {
+    store.notification.push({ type: 'error', value: 'Empty station list to compute magnitudes' })
+    return
+  }
+  store.notification.push({ type: 'progress', value: { text: 'Compute magnitudes...', percent: -1 } })
   fetch(`../api/compute_magnitudes`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},

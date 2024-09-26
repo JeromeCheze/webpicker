@@ -12,7 +12,7 @@ const attrs = useAttrs()
 const emit = defineEmits(['update:modelValue'])
 
 const numberValue = ref(props.modelValue != null ? props.modelValue.toString() : null)
-const reFloat = /^\d+(\.\d+)?$/
+const reFloat = /^-?\d+(\.\d+)?$/
 
 watch(() => props.modelValue, (value) => {
   numberValue.value = value != null ? value.toString() : null
