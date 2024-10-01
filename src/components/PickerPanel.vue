@@ -4,7 +4,7 @@ import { QResourceIdentifier, QPick, type QPickOnset, type QPickPolarity } from 
 import { ref, shallowRef, watch, onMounted, computed } from 'vue'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
 import { Client } from '@/lib/sismojs/src/fdsn'
-import { pushUnique, toNetSta } from '@/utils'
+import { DISCARDED_EVENT_TYPES, pushUnique, toNetSta } from '@/utils'
 import { useAppStore } from '@/stores/app'
 import { onBeforeUnmount } from 'vue'
 
@@ -318,6 +318,9 @@ function loadAdditionalPicks() {
     const additionalPickMap: PickMap = {}
     for (const event of events) {
       if (store.currentEvent != null && event.publicID === store.currentEvent.publicID) {
+        continue
+      }
+      if (event.type != null && DISCARDED_EVENT_TYPES.indexOf(event.type) >= 0) {
         continue
       }
       // for (const pick of event.pick) {
