@@ -263,6 +263,7 @@ function handleClick(e: MouseEvent) {
 function setPickPolarity(value?: QPickPolarity) {
   if (selectedPicks.value.length > 0) {
     const p = store.clonePick(selectedPicks.value[0])
+    selectedPicks.value = [p]
     if (p.polarity === value) {
       p.polarity = undefined
     } else {
@@ -275,6 +276,7 @@ function setPickPolarity(value?: QPickPolarity) {
 function setPickOnset(value: QPickOnset) {
   if (selectedPicks.value.length > 0) {
     const p = store.clonePick(selectedPicks.value[0])
+    selectedPicks.value = [p]
     if (p.onset === value) {
       p.onset = undefined
     } else {
@@ -287,6 +289,7 @@ function setPickOnset(value: QPickOnset) {
 function setPickUncertainty(value: number) {
   if (selectedPicks.value.length > 0) {
     const p = store.clonePick(selectedPicks.value[0])
+    selectedPicks.value = [p]
     if (p.evaluationMode === 'automatic') {
       return
     }

@@ -191,6 +191,7 @@ function clonePick(pick: QPick) {
     creationTime: new Date().toISOString(),
     agencyID: 'OCA'
   }
+  clonedDesc.evaluationMode = 'manual'
   const clonedPick = event.addPick(clonedDesc)
   createArrival(clonedPick)
   console.log('[app.clonePick]', clonedPick)
