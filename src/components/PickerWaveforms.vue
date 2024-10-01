@@ -283,8 +283,8 @@ function createWaveform(chartContainer: HTMLElement, index: number, waveformLeng
           const [yMin, yMax] = [dataUtils.yMin, dataUtils.yMax]
           if (yMin != null && yMax != null && dataUtils.computed.series != null && dataUtils.computed.series[0] != null) {
             const halfAmplitude = (yMax - yMin) / 2
-            dataUtils.yMin = dataUtils.computed.series[0].avgValue - halfAmplitude
-            dataUtils.yMax = dataUtils.computed.series[0].avgValue + halfAmplitude
+            dataUtils.yMin = dataUtils.computed.series[0].quarterLeftAvg - halfAmplitude
+            dataUtils.yMax = dataUtils.computed.series[0].quarterLeftAvg + halfAmplitude
             return true
           }
         }
