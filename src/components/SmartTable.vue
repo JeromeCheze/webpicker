@@ -59,17 +59,15 @@ function applySelection() {
 }
 
 function applySort() {
+  const direction = sortOrder.value === 'desc' ? -1 : 1
   modelValue.value.sort((a, b) => {
     const aa = enabledCols.value[sortCol.value].valueAccessor(a[1])
     const bb = enabledCols.value[sortCol.value].valueAccessor(b[1])
     if (aa == null || bb == null) {
-      return 0
+      return aa == null ? 1 : bb == null ? -1 : 0
     }
-    return aa < bb ? -1 : aa > bb ? 1 : 0
+    return aa < bb ? -1 * direction : aa > bb ? 1 * direction : 0
   })
-  if (sortOrder.value === 'desc') {
-    modelValue.value.reverse()
-  }
 }
 
 function handleSortCol(index: number) {
