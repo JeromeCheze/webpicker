@@ -1,5 +1,11 @@
 const EARTH_RADIUS = 6371
 
+export const DISCARDED_EVENT_TYPES = [
+  'not reported',
+  'not existing',
+  'other event'
+]
+
 export const blurActiveElement = () => {
   if (document.activeElement != null) {
     const e = document.activeElement as HTMLElement

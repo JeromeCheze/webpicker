@@ -11,7 +11,8 @@ interface OptType {
   station: string
   location: string
   channel: string
-  center: [number, number]
+  latitude: number
+  longitude: number
   radius: number
 }
 
@@ -36,7 +37,8 @@ const opt = getLocalStorageDefault(
     station: '*',
     location: '*',
     channel: '?H?',
-    center: [props.latitude, props.longitude],
+    latitude: props.latitude,
+    longitude: props.longitude,
     radius: store.settings['miscellaneous.defaultRadius']
   }, route.query)
 ) as OptType
@@ -100,7 +102,8 @@ function preview(): Promise<void> {
           station: staSelector.value,
           location: locSelector.value,
           channel: chaSelector.value,
-          center: [centerLatLon.lat, centerLatLon.lng],
+          latitude: centerLatLon.lat,
+          longitude: centerLatLon.lng,
           radius: radius.value
         }
       )
@@ -170,7 +173,7 @@ function initMap() {
   const baseLayers = { Plan: plan, Terrain: worldtopomap, Satellite: satmap }
   L.control.layers(baseLayers).addTo(map.value as L.Map)
   plan.addTo(map.value as L.Map)
-  const pos = [opt.center[0], opt.center[1]] as L.LatLngTuple
+  const pos = [opt.latitude, opt.longitude] as L.LatLngTuple
   circle.value = L.circle(pos, { radius: degToKm(radius.value) * 1e3 }).addTo(map.value as L.Map)
   center.value = L.marker(pos, { icon: L.divIcon({ className: 'circle c-move', iconSize: [10, 10] }), draggable: true }).addTo(map.value as L.Map)
   resize.value = L.marker([pos[0] + radius.value, pos[1]], { icon: L.divIcon({ className: 'circle c-ns-resize', iconSize: [10, 10] }), draggable: true }).addTo(map.value as L.Map)

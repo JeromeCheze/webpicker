@@ -5,6 +5,8 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ref, onMounted, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 
+const STORAGE_KEY = 'plotStationRadius-v3'
+
 const store = useAppStore()
 const router = useRouter()
 const route = useRoute()
@@ -33,6 +35,11 @@ function checkDuration(v: number) {
 }
 
 function reset() {
+  store.dataManager.clearDetectorCache()
+  store.dataManager.clearDistanceAzimuth()
+  store.dataManager.clearInventoryCache()
+  store.dataManager.clearTTTCache()
+  store.dataManager.clearWaveformCache()
   store.currentEvent = null
   store.currentOrigin = null
   store.currentArrivals = []
@@ -79,11 +86,16 @@ function handleSubmit(seedids: string[]) {
     store.updatePickMap()
     seedidList.value = seedids
     const query = Object.assign({
-      starttime: starttime.value.toISOString(),
-      duration: duration.value,
+      network: '*',
+      station: '*',
+      location: '*',
+      channel: '?H?',
       latitude: latitude.value,
-      longitude: longitude.value
-    }, getLocalStorageDefault('plotStationRadius', {}))
+      longitude: longitude.value,
+      radius: store.settings['miscellaneous.defaultRadius'],
+      starttime: starttime.value.toISOString(),
+      duration: duration.value
+    }, getLocalStorageDefault(STORAGE_KEY, {}))
     router.push({ name: 'plot', query})
     stationRadiusState.value = false
     picker.value = true
@@ -151,12 +163,12 @@ onBeforeRouteLeave(async (to, from) => {
       <v-row>
         <v-col cols="12">
           <StationRadius
-            ref="stationRadius-v2"
+            ref="stationRadius"
             :time="starttime.getTime()"
             v-model="stationRadiusState"
             v-model:latitude="latitude"
             v-model:longitude="longitude"
-            storage-key="plotStationRadius"
+            :storage-key="STORAGE_KEY"
             @radius-stations="handleSubmit"/>
         </v-col>
       </v-row>

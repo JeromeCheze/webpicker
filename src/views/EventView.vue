@@ -73,7 +73,7 @@ function loadEvent() {
 }
 
 function handleUsers() {
-  const eventUsers = store.activityManager.eventUsers(props.eventid!).filter(x => x !== store.author)
+  const eventUsers = store.webSocketManager.eventUsers(props.eventid!).filter(x => x !== store.author)
   if (eventUsers.length > 0) {
     store.notification.push({ type: 'warning', value: `This event is currently reviewed by some users (${eventUsers.join(', ')})` })
   }
@@ -106,7 +106,7 @@ watch([
 
 onMounted(() => {
   handleUsers()
-  store.activityManager.update('review', props.eventid)
+  store.webSocketManager.update('review', props.eventid)
   if (store.currentEvent == null || store.currentEvent.publicID !== props.eventid) {
     loadEvent()
   }

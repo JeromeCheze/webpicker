@@ -4,6 +4,8 @@ import { blurActiveElement } from '@/utils'
 import { ref, watch, computed } from 'vue'
 import { useAppStore } from '@/stores/app'
 
+const STORAGE_KEY = 'pickerStationRadius-v3'
+
 const emit = defineEmits(['leave', 'downloadChannels'])
 
 const props = defineProps<{
@@ -27,6 +29,7 @@ const filters = computed(() => store.settings['filter'].map((x: FilterOptions) =
 
 const phase = ref()
 const stationRadiusMenu = ref(false)
+const eventInfoDialog = ref(false)
 const alignment = ref(alignments.indexOf(props.modelValue.alignment))
 const sortValue = ref(sortOptions.indexOf(sortOptions.find(x => x.value === props.modelValue.sort)!))
 const lastFilter = ref(filters.value[0])
@@ -89,6 +92,10 @@ watch(() => store.keydown, (newValue) => {
     toggleCommonScale()
   } else if (newValue === store.settings['keybinding.toggleRotation']) {
     toggleRotation()
+  } else if (newValue === store.settings['keybinding.toggleTTT']) {
+    toggleTTTEnabled()
+  } else if (newValue === store.settings['keybinding.toggleEventInfo']) {
+    eventInfoDialog.value = !eventInfoDialog.value
   }
 })
 
@@ -182,7 +189,7 @@ watch(() => sortValue.value, (value: number) => props.modelValue.sort = sortOpti
         <v-card-text>
           <StationRadius
             v-model="stationRadiusMenu"
-            storage-key="pickerStationRadius-v2"
+            :storage-key="STORAGE_KEY"
             :time="props.time"
             :latitude="props.latitude"
             :longitude="props.longitude"
@@ -193,10 +200,10 @@ watch(() => sortValue.value, (value: number) => props.modelValue.sort = sortOpti
     <!-- TOGGLE TTT -->
     <v-btn
       @click="toggleTTTEnabled"
-      title="Toggle theoretical travel times"
+      :title="`Toggle theoretical travel times (${store.settings['keybinding.toggleTTT']})`"
       :active="props.modelValue.tttEnabled">TTT</v-btn>
     <!-- EVENT INFO -->
-    <v-dialog max-width="900">
+    <v-dialog max-width="900" v-model="eventInfoDialog">
       <template v-slot:activator="{ props: activatorProps }">
         <v-btn v-bind="activatorProps" title="Display event info"><v-icon>mdi-information-outline</v-icon></v-btn>
       </template>

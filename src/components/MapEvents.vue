@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import * as L from 'leaflet'
 import { QEvent } from '@/lib/sismojs/src/core/event/types'
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
+import { DISCARDED_EVENT_TYPES } from '@/utils'
 import { useAppStore } from '@/stores/app'
-import router from '@/router'
 
 const store = useAppStore()
 
 const props = defineProps<{
   height: number
+  hideDiscarded: boolean
 }>()
 
 const mapContainer = ref()
@@ -16,10 +17,18 @@ const map = ref(null as L.Map | null)
 const layers = {} as { [eventid: string]: L.CircleMarker }
 const activeEvent = ref(undefined as QEvent | undefined)
 
-watch(() => activeEvent.value, () => {
-  setTimeout(() => {
-    map.value!.invalidateSize()
-  }, 500)
+const filteredEventList = computed(() => {
+  if (props.hideDiscarded === true) {
+    return store.cacheEventList.filter((e) => {
+      const eventType = e.type || ''
+      const poStatus = e.preferredOriginID.referredObject.evaluationStatus || ''
+      if (DISCARDED_EVENT_TYPES.indexOf(eventType) >= 0 || poStatus === 'rejected') {
+        return false
+      }
+      return true
+    })
+  }
+  return store.cacheEventList
 })
 
 function getEventMarker(pos: L.LatLngTuple, event: QEvent) {
@@ -49,6 +58,37 @@ function getEventMarker(pos: L.LatLngTuple, event: QEvent) {
   return marker
 }
 
+function drawEvents() {
+  if (map.value == null) {
+    return
+  }
+  map.value.closePopup()
+  for (const [key, layer] of Object.entries(layers)) {
+    layer.remove()
+    delete layers[key]
+  }
+  const bounds: L.LatLngTuple[] = []
+  for (const event of filteredEventList.value) {
+    if (event.preferredOriginID.id == null) {
+      continue
+    }
+    const pos: L.LatLngTuple = [event.preferredOriginID.referredObject.latitude.value, event.preferredOriginID.referredObject.longitude.value]
+    const worldCenter = store.settings['miscellaneous.longitudeReference']
+    if (worldCenter > 0 && worldCenter - 180 > pos[1]) {
+      pos[1] += 360
+    } else if (worldCenter < 0 && worldCenter + 180 < pos[1]) {
+      pos[1] -= 360
+    }
+    bounds.push(pos)
+    const marker = getEventMarker(pos, event)
+    layers[event.publicID] = marker
+  }
+  map.value.on('click', () => {
+    focusEvent(null)
+  })
+  map.value.fitBounds(bounds)
+}
+
 function initMap() {
   if (mapContainer.value == null) {
     return
@@ -72,26 +112,7 @@ function initMap() {
   L.control.layers(baseLayers).addTo(map.value as L.Map)
   L.control.scale({ imperial: false }).addTo(map.value as L.Map)
   plan.addTo(map.value as L.Map)
-  const bounds: L.LatLngTuple[] = []
-  for (const event of store.cacheEventList) {
-    if (event.preferredOriginID.id == null) {
-      continue
-    }
-    const pos: L.LatLngTuple = [event.preferredOriginID.referredObject.latitude.value, event.preferredOriginID.referredObject.longitude.value]
-    const worldCenter = store.settings['miscellaneous.longitudeReference']
-    if (worldCenter > 0 && worldCenter - 180 > pos[1]) {
-      pos[1] += 360
-    } else if (worldCenter < 0 && worldCenter + 180 < pos[1]) {
-      pos[1] -= 360
-    }
-    bounds.push(pos)
-    const marker = getEventMarker(pos, event)
-    layers[event.publicID] = marker
-  }
-  map.value.on('click', () => {
-    focusEvent(null)
-  })
-  map.value.fitBounds(bounds)
+  drawEvents()
 }
 
 function focusEvent(eventid: string | null) {
@@ -119,11 +140,13 @@ function focusEvent(eventid: string | null) {
   }
 }
 
-function goToEvent() {
-  if (activeEvent.value != null) {
-    router.push({ name: 'event', params: { eventid: activeEvent.value.publicID } })
-  }
-}
+watch(() => activeEvent.value, () => {
+  setTimeout(() => {
+    map.value!.invalidateSize()
+  }, 500)
+})
+
+watch(() => filteredEventList.value, drawEvents)
 
 onMounted(() => {
   initMap()

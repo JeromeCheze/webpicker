@@ -6,10 +6,31 @@ export interface WPNotificationOptions {
   value: any
 }
 
-export interface Activity {
+
+export interface ChatData {
+  id: string
+  time: string
+  expeditor: string
+  recipient: string
+  broadcast: boolean
+  message: string
+}
+
+export interface ActivityData {
+  id: string
   author: string
   state: string
   event: string
+}
+
+export interface WebSocketMessage {
+  type: 'activity' | 'chat'
+  data: ActivityData | ChatData
+}
+
+export interface WebSocketResponse {
+  type: 'activity' | 'chat' | 'version'
+  data: ActivityData[] | ChatData | string
 }
 
 export interface CommitOptions {

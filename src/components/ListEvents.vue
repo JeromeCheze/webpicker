@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { getDefault, getLocalStorageDefault } from '@/utils'
+import { getDefault, getLocalStorageDefault, DISCARDED_EVENT_TYPES } from '@/utils'
 import { QEvent } from '@/lib/sismojs/src/core/event/types'
 import { useAppStore } from '@/stores/app'
 import type { ColObject } from '@/types'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import router from '@/router'
 
 const emit = defineEmits(['openForm'])
@@ -12,6 +12,7 @@ const store = useAppStore()
 
 const props = defineProps<{
   height: number
+  hideDiscarded: boolean
 }>()
 
 const usersEventMap = ref({} as Record<string, string[]>)
@@ -112,6 +113,20 @@ const header = ref([
   }
 ] as ColObject[])
 
+const filteredEventList = computed(() => {
+  if (props.hideDiscarded === true) {
+    return store.cacheEventList.filter((e) => {
+      const eventType = e.type || ''
+      const poStatus = e.preferredOriginID.referredObject.evaluationStatus || ''
+      if (DISCARDED_EVENT_TYPES.indexOf(eventType) >= 0 || poStatus === 'rejected') {
+        return false
+      }
+      return true
+    })
+  }
+  return store.cacheEventList
+})
+
 function handleRowClick(event: QEvent) {
   router.push({ name: 'event', params: { eventid: event.publicID } })
 }
@@ -139,7 +154,7 @@ watch(() => store.usersActivity, (value) => {
   <v-card>
     <SmartTable
       :table-height="props.height"
-      :items="store.cacheEventList"
+      :items="filteredEventList"
       :cols="header"
       :sort-col="getLocalStorageDefault('eventList._sortCol', 1)"
       :sort-order="getLocalStorageDefault('eventList._sortOrder', 'desc')"

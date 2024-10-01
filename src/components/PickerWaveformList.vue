@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { FilterOptions, PickerToolbarOptions, StationRefTimes, ChartData, WaveformProcessInterface } from '@/types'
+import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue'
 import type { LineOptions, VLine } from '@/lib/lichen/src/types'
 import type { QPick } from '@/lib/sismojs/src/core/event/types'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
 import { FilterProcessor } from '@/utils/waveformProcessor'
-import { ref, watch, computed, onMounted } from 'vue'
 import { getDefault, toNetSta } from '@/utils'
 import { useAppStore } from '@/stores/app'
 import Lichen from '@/lib/lichen/src'
@@ -336,6 +336,7 @@ watch(() => props.refTimeKey, () => {
 })
 
 onMounted(update)
+onBeforeUnmount(reset)
 </script>
 
 <template>

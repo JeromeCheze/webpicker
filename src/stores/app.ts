@@ -1,8 +1,8 @@
-import { QEvent, QOrigin, QMagnitude, QPick, QArrival, QFocalMechanism, type QEvaluationMode } from '@/lib/sismojs/src/core/event/types'
+import { QEvent, QOrigin, QMagnitude, QPick, QArrival, QFocalMechanism, type QEvaluationMode, type QPickDescription, type QOriginDescription } from '@/lib/sismojs/src/core/event/types'
 import { shortcutString, getId, deepCopy, getDefault, kmToDeg, getLocalStorageDefault, setLocalStorage } from '@/utils'
-import type { Activity, EventViewStatus, PickMap, WPNotificationOptions } from '@/types'
+import type { ActivityData, ChatData, EventViewStatus, PickMap, WPNotificationOptions } from '@/types'
 import defaultSettings from '@/utils/defaultSettings'
-import ActivityManager from '@/utils/activityManager'
+import WebSocketManager from '@/utils/webSocketManager'
 import DataManager from '@/utils/dataManager'
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
@@ -91,13 +91,12 @@ function cloneOrigin() {
   if (currentOrigin.value == null) {
     return
   }
-  currentOrigin.value = new QOrigin(
-    Object.assign(
-      deepCopy(currentOrigin.value.desc),
-      { publicID: getId('Origin') }
-    ),
-    currentEvent.value!.id
-  )
+  const clonedOriginDesc = deepCopy(currentOrigin.value.desc) as QOriginDescription
+  clonedOriginDesc['@publicID'] = getId('Origin')
+  for (const arrival of clonedOriginDesc.arrival) [
+    arrival['@publicID'] = getId('Arrival')
+  ]
+  currentOrigin.value = new QOrigin(clonedOriginDesc, currentEvent.value!.id)
   currentArrivals.value = currentOrigin.value.arrival
   eventViewStatus.value.relocateStatus = 'required'
   eventViewStatus.value.computeMagnitudesStatus = 'disabled'
@@ -118,7 +117,6 @@ function createArrival(p: QPick) {
     distance: kmToDeg(dataManager.getStationDistance(netsta)),
     azimuth: dataManager.getStationAzimuth(netsta)
   }
-  console.log('create arrival', arrivalDesc)
   currentOrigin.value!.addArrival(arrivalDesc)
   currentArrivals.value = currentOrigin.value!.arrival.map(x => x)
   console.log('[app.createArrivals]', arrivalDesc)
@@ -180,6 +178,25 @@ function deletePick(pick: QPick) {
   currentArrivals.value = currentOrigin.value!.arrival.map(x => x)
   updatePickMap()
 }
+function clonePick(pick: QPick) {
+  if (!originDirty.value) {
+    cloneOrigin()
+  }
+  const event = pick.parent.referredObject as QEvent
+  deletePick(pick)
+  const clonedDesc = deepCopy(pick.desc) as QPickDescription
+  clonedDesc['@publicID'] = getId('Pick')
+  clonedDesc.creationInfo = {
+    author: author.value!,
+    creationTime: new Date().toISOString(),
+    agencyID: 'OCA'
+  }
+  const clonedPick = event.addPick(clonedDesc)
+  createArrival(clonedPick)
+  console.log('[app.clonePick]', clonedPick)
+  // updatePickMap()
+  return clonedPick
+}
 function selectArrivals(selectedArrivals: QArrival[]) {
   if (!originDirty.value) {
     cloneOrigin()
@@ -221,16 +238,25 @@ function createFocalMechanism(strike: number, dip: number, rake: number, nbStati
 // Load application settings
 const settings = Object.assign(deepCopy(defaultSettings), getLocalStorageDefault('settings', {}))
 
-const usersActivity = ref([] as Activity[])
+const authorId = getId('author')
+const newVersion = ref(false)
+const usersActivity = ref([] as ActivityData[])
 const connected = ref(false)
-const activityManager = new ActivityManager(
+const chatMessages = ref([] as ChatData[])
+const webSocketManager = new WebSocketManager(
   author.value || 'unknown user',
+  authorId,
+  value => newVersion.value = value,
   value => usersActivity.value = value,
-  value => connected.value = value
+  value => connected.value = value,
+  value => chatMessages.value.push(value)
 )
 
 export const useAppStore = defineStore('app', () => {
   return {
+    authorId,
+    chatMessages,
+    newVersion,
     connected,
     author,
     notification,
@@ -248,6 +274,7 @@ export const useAppStore = defineStore('app', () => {
     cloneOrigin,
     createPick,
     deletePick,
+    clonePick,
     createArrival,
     createFocalMechanism,
     selectArrivals,
@@ -257,7 +284,7 @@ export const useAppStore = defineStore('app', () => {
     keydown,
     preventDefault,
     dataManager,
-    activityManager,
+    webSocketManager,
     usersActivity,
     settings
   }

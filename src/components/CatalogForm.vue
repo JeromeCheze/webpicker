@@ -207,7 +207,7 @@ onMounted(() => {
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn @click="handleSubmit" type="submit" color="blue">Submit</v-btn>
+        <v-btn type="submit" color="blue">Submit</v-btn>
       </v-card-actions>
     </v-card>
   </v-form>

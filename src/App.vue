@@ -9,11 +9,12 @@ const authorDialog = ref(store.author == null)
 const authorValue = ref(store.author || '')
 const settingsDialog = ref(false)
 const createEventDialog = ref(false)
+const chatMenu = ref(false)
 const drawer = ref(true)
 const rail = ref(getLocalStorageDefault('navDrawer', false) as boolean)
 const logDialog = ref(false)
 const connectionPopup = ref(false)
-const connectionStatus = ref(false)
+const connectionStatus = ref('error' as 'success' | 'error' | 'info')
 const infoNotification = ref(false)
 const infoNotificationText = ref('')
 const persistentNotification = ref(false)
@@ -27,7 +28,7 @@ function handleSetAuthor(e: SubmitEvent) {
   e.preventDefault()
   setLocalStorage('author', authorValue.value)
   store.author = authorValue.value
-  store.activityManager.author = store.author
+  store.webSocketManager.author = store.author
   authorDialog.value = false
 }
 
@@ -38,8 +39,27 @@ function setBackground() {
   }
 }
 
-watch(() => store.connected, (value) => {
-  connectionStatus.value = value
+function checkAuthor(value: string) {
+  return value !== '' && value[0] !== '@' || 'Invalid value.'
+}
+
+function reload() {
+  location.reload()
+}
+
+watch([
+  () => store.connected,
+  () => store.newVersion
+], () => {
+  if (store.connected) {
+    if (store.newVersion) {
+      connectionStatus.value = 'info'
+    } else {
+      connectionStatus.value = 'success'
+    }
+  } else {
+    connectionStatus.value = 'error'
+  }
   connectionPopup.value = true
 })
 
@@ -91,7 +111,7 @@ watch(() => store.notification, (value) => {
 onMounted(() => {
   setBackground()
   document.body.addEventListener('keydown', ev => {
-    if (!settingsDialog.value && !authorDialog.value) {
+    if (!settingsDialog.value && !authorDialog.value && !chatMenu.value) {
       store.keydownEvent = ev
     }
   })
@@ -112,8 +132,13 @@ onMounted(() => {
       <v-container fluid>
         <RouterView />
       </v-container>
-      <v-snackbar v-model="connectionPopup" :color="connectionStatus ? 'success' : 'error'" :timeout="connectionStatus ? 2000 : -1">
-        <div class="text-center" v-if="connectionStatus"><v-icon>mdi-thumb-up</v-icon> Connected.</div>
+      <v-snackbar
+        v-model="connectionPopup"
+        :color="connectionStatus"
+        :timeout="connectionStatus === 'success' ? 2000 : -1"
+      >
+        <div v-if="connectionStatus === 'success'"><v-icon>mdi-check</v-icon> Connected.<br><v-icon>mdi-check</v-icon> Version is up to date.</div>
+        <div class="text-center" v-else-if="connectionStatus === 'info'"><v-icon>mdi-alert-circle-outline</v-icon> New version available.<br><v-btn prepend-icon="mdi-cloud-sync" @click="reload">click to update</v-btn></div>
         <div class="text-center" v-else><v-icon>mdi-cloud-off-outline</v-icon> Disconnected from server...</div>
       </v-snackbar>
       <v-snackbar v-model="infoNotification" timeout="2000">{{ infoNotificationText }}</v-snackbar>
@@ -161,6 +186,7 @@ onMounted(() => {
           :active="settingsDialog"></v-list-item>
         <!-- <v-list-item title="Logs" prepend-icon="mdi-console"></v-list-item> -->
         <v-list-item :title="store.author || 'undefined'" prepend-icon="mdi-account" @click="authorDialog = true"></v-list-item>
+        <ChatPanel v-model="chatMenu"/>
       </v-list>
     </v-navigation-drawer>
     <v-dialog v-model="authorDialog" persistent width="500" attach>
@@ -170,7 +196,7 @@ onMounted(() => {
             <div class="text-h5 text-medium-emphasis ps-2">Set author</div>
           </v-card-title>
           <v-card-text>
-            <v-text-field label="Author" required v-model="authorValue"></v-text-field>
+            <v-text-field label="Author" required v-model="authorValue" :rules="[checkAuthor]"></v-text-field>
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>

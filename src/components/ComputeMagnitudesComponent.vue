@@ -3,7 +3,7 @@ import { useAppStore } from '@/stores/app'
 import { deepCopy } from '@/utils'
 import { ref, watch } from 'vue'
 import { parse } from '@/lib/sismojs/src/core/event/quakeml'
-import { QEvent, QOrigin } from '@/lib/sismojs/src/core/event/types'
+import { QEvent, QOrigin, QResourceIdentifier } from '@/lib/sismojs/src/core/event/types'
 
 const MAG_TYPE_WEIGHT = ['M', 'MLv']
 

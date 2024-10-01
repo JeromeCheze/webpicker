@@ -1,10 +1,33 @@
 from pydantic import BaseModel, Field
-from typing import Literal, Optional
+from typing import Literal, Optional, Union
+from enum import Enum
 
-class Activity(BaseModel):
+class ActivityData(BaseModel):
+    id: str
     author: str
     state: str
     event: str
+
+class ChatData(BaseModel):
+    id: str
+    time: str
+    expeditor: str
+    recipient: str
+    broadcast: bool
+    message: str
+
+class WebSocketMessageType(str, Enum):
+    activity = 'activity'
+    chat = 'chat'
+    version = 'version'
+
+class WebSocketResponse(BaseModel):
+    type: WebSocketMessageType
+    data: Union[list[ActivityData], ChatData, str]
+
+class WebSocketMessage(BaseModel):
+    type: WebSocketMessageType
+    data: Union[ActivityData, ChatData]
 
 class WSDetectorArgs(BaseModel):
     network: str

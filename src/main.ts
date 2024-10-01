@@ -35,6 +35,7 @@ import AdditionalChannels from '@/components/AdditionalChannels.vue'
 import EventsStats from '@/components/EventsStats.vue'
 import CatalogForm from '@/components/CatalogForm.vue'
 import WaveformSlider from '@/components/WaveformSlider.vue'
+import ChatPanel from '@/components/ChatPanel.vue'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import 'vuetify/styles'
@@ -71,7 +72,8 @@ const vuetify = createVuetify({
     AdditionalChannels,
     EventsStats,
     CatalogForm,
-    WaveformSlider
+    WaveformSlider,
+    ChatPanel
   },
   theme: { defaultTheme: 'dark' },
   directives

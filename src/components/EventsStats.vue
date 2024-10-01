@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { type ScatterOptions } from '@/lib/lichen/src/types'
 import { QMagnitude, QOrigin } from '@/lib/sismojs/src/core/event/types'
-import { ref, onMounted } from 'vue'
+import { DISCARDED_EVENT_TYPES } from '@/utils'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 import Lichen from '@/lib/lichen/src'
+
+const props = defineProps<{
+  hideDiscarded: boolean
+}>()
 
 const store = useAppStore()
 
@@ -12,12 +17,26 @@ const gutenbergRichter = ref()
 const magScatterChart = ref(null as Lichen | null)
 const gutenbergRichterChart = ref(null as Lichen | null)
 
+const filteredEventList = computed(() => {
+  if (props.hideDiscarded === true) {
+    return store.cacheEventList.filter((e) => {
+      const eventType = e.type || ''
+      const poStatus = e.preferredOriginID.referredObject.evaluationStatus || ''
+      if (DISCARDED_EVENT_TYPES.indexOf(eventType) >= 0 || poStatus === 'rejected') {
+        return false
+      }
+      return true
+    })
+  }
+  return store.cacheEventList
+})
+
 function drawMagScatter() {
   if (magScatterChart.value != null) {
     magScatterChart.value.destroy()
   }
   const data: ScatterOptions['data'] = []
-  for (const event of store.cacheEventList) {
+  for (const event of filteredEventList.value) {
     if (event.preferredMagnitudeID.id == null) {
       continue
     }
@@ -38,19 +57,19 @@ function drawMagScatter() {
 }
 
 function drawGutenbergRichter() {
-  console.log(store.cacheEventList)
+  if (gutenbergRichterChart.value != null) {
+    gutenbergRichterChart.value.destroy()
+  }
   const allMags = [...new Set(
-    store.cacheEventList
+    filteredEventList.value
       .filter(e => e.preferredMagnitudeID.id != null)
       .map(e => e.preferredMagnitudeID.referredObject.mag.value)
   )]
   allMags.sort()
-  console.log(allMags)
   const data: ScatterOptions['data'] = []
   for (const mag of allMags) {
     data.push({ x: mag, y: allMags.filter(m => m >= mag).length, name: '' })
   }
-  console.log(data)
   const serie: ScatterOptions = { name: '', shape: 'circle', enabled: true, color: 'blue', data }
   const fontSize = store.settings['picker.tickFontSize']
   gutenbergRichterChart.value = new Lichen(gutenbergRichter.value, {
@@ -71,8 +90,15 @@ function drawGutenbergRichter() {
   })
 }
 
+watch(() => filteredEventList.value, () => {
+  if (filteredEventList.value.length > 1) {
+    drawMagScatter()
+    drawGutenbergRichter()
+  }
+})
+
 onMounted(() => {
-  if (store.cacheEventList.length > 1) {
+  if (filteredEventList.value.length > 1) {
     drawMagScatter()
     drawGutenbergRichter()
   }

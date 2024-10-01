@@ -3,8 +3,8 @@ import { DenoiseProcessor, RotateProcessor, FilterProcessor, SpectrogramProcesso
 import type { FilterOptions, StationRefTimes, ChartData, WaveformProcessInterface, PickerToolbarOptions } from '@/types'
 import type { QPick } from '@/lib/sismojs/src/core/event/types'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
+import { ref, watch, computed, onBeforeUnmount } from 'vue'
 import type { VLine } from '@/lib/lichen/src/types'
-import { ref, watch, computed } from 'vue'
 import { useAppStore } from '@/stores/app'
 import Lichen from '@/lib/lichen/src'
 import { toNetSta } from '@/utils'
@@ -451,6 +451,8 @@ watch(() => props.timeWindow, () => {
     allCharts[0].chart.master.send('xRangeChange', props.timeWindow)
   }
 })
+
+onBeforeUnmount(reset)
 </script>
 
 <template>

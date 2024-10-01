@@ -52,6 +52,8 @@ function commit() {
   }
   if (store.currentMagnitude != null) {
     event.setPreferredMagnitudeID(store.currentMagnitude.publicID)
+  } else {
+    event.setPreferredMagnitudeID(undefined)
   }
   if (store.currentFocalMechanism != null) {
     if (event.focalMechanism.find(x => x.publicID === store.currentFocalMechanism!.publicID) == null) {

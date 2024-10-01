@@ -81,7 +81,7 @@ function relocate() {
           newOrigin.creationInfo.author = store.author
           store.eventViewStatus.relocateStatus = 'enabled'
           store.eventViewStatus.computeMagnitudesStatus = 'required'
-          store.eventViewStatus.commitStatus = 'disabled'
+          store.eventViewStatus.commitStatus = 'enabled'
           store.currentMagnitude = null
           store.currentOriginMagnitudes = []
           store.dataManager.updateStationDistanceAzimuth(newOrigin.latitude.value, newOrigin.longitude.value)

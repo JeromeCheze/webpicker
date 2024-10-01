@@ -79,6 +79,8 @@ const struct = [
       { label: 'Toggle Rotation (ZNE/ZRT)', key: 'keybinding.toggleRotation', type: 'text' },
       { label: 'Toggle Detector', key: 'keybinding.toggleDetector', type: 'text' },
       { label: 'Toggle Common Scale', key: 'keybinding.toggleCommonScale', type: 'text' },
+      { label: 'Toggle TTT', key: 'keybinding.toggleTTT', type: 'text' },
+      { label: 'Toggle Event Info', key: 'keybinding.toggleEventInfo', type: 'text' },
       { label: 'Create Pick', key: 'keybinding.createPick', type: 'text' },
       { label: 'Delete Pick', key: 'keybinding.deletePick', type: 'text' },
       { label: 'Set Polarity Positive', key: 'keybinding.polarityPositive', type: 'text' },

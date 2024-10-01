@@ -15,6 +15,7 @@ const currentView = ref('list' as 'list' | 'map' | 'stats')
 const eventList = ref([] as QEvent[])
 const loading = ref(false)
 const form = ref(true)
+const hideDiscarded = ref(false)
 
 function handleQuery(params: FDSNEventParams) {
   loading.value = true
@@ -48,7 +49,8 @@ onBeforeRouteUpdate(async (to, from) => {
 <template>
   <v-row>
     <v-col cols="12" class="d-flex justify-end align-center">
-      <v-btn size="small" @click="form = !form" :active="form === true"><v-icon>mdi-pencil</v-icon></v-btn>
+      <v-btn class="ml-2" size="small" @click="form = !form" :active="form === true"><v-icon>mdi-pencil</v-icon></v-btn>
+      <v-btn class="ml-2" size="small" @click="hideDiscarded = !hideDiscarded" :active="hideDiscarded === true">hide discarded</v-btn>
       <v-spacer></v-spacer>
       <v-btn class="ml-2" size="small" @click="currentView = 'list'" :active="currentView === 'list'"><v-icon>mdi-view-list</v-icon></v-btn>
       <v-btn class="ml-2" size="small" @click="currentView = 'map'" :active="currentView === 'map'"><v-icon>mdi-map</v-icon></v-btn>
@@ -62,9 +64,9 @@ onBeforeRouteUpdate(async (to, from) => {
   </v-row>
   <v-row v-else>
     <v-col cols="12">
-      <ListEvents :height="height" v-if="currentView === 'list'" @open-form="form = true"/>
-      <MapEvents :height="height" v-if="currentView === 'map'"/>
-      <EventsStats v-if="currentView === 'stats'"/>
+      <ListEvents :height="height" v-if="currentView === 'list'" @open-form="form = true" :hide-discarded="hideDiscarded"/>
+      <MapEvents :height="height" v-if="currentView === 'map'" :hide-discarded="hideDiscarded"/>
+      <EventsStats v-if="currentView === 'stats'" :hide-discarded="hideDiscarded"/>
     </v-col>
   </v-row>
   <v-overlay v-model="loading" class="align-center justify-center text-black">

@@ -39,6 +39,8 @@ export default {
   'keybinding.toggleIntegration': 'i',
   'keybinding.toggleDetector': 'p',
   'keybinding.toggleCommonScale': '=',
+  'keybinding.toggleTTT': 't',
+  'keybinding.toggleEventInfo': 'e',
   'keybinding.createPick': 'space',
   'keybinding.deletePick': 'delete',
   'keybinding.polarityPositive': 'shift+up',
