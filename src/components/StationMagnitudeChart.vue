@@ -23,6 +23,12 @@ function drawChart() {
   }
   const magMap: Record<string, any> = {}
   const magColor: Record<string, string> = {}
+  const stats = {
+    min: null,
+    max: null,
+    sum: 0,
+    count: 0
+  }
   for (const [index, mag] of store.currentOriginMagnitudes.entries()) {
     if (mag.stationMagnitudeContribution == null) {
       console.log(`skip magnitude type ${mag.type}`)
@@ -50,10 +56,17 @@ function drawChart() {
         name: staMag.waveformID.seedid,
         color
       })
+      stats.min = stats.min == null ? staMag.mag.value : Math.min(stats.min, staMag.mag.value)
+      stats.max = stats.max == null ? staMag.mag.value : Math.max(stats.max, staMag.mag.value)
+      stats.sum += staMag.mag.value
+      stats.count++
     }
   }
   if (chart.value != null) {
     chart.value.destroy()
+  }
+  if (stats.count === 0) {
+    return
   }
   const series: ScatterOptions[] = []
   for (const [name, data] of Object.entries(magMap)) {
@@ -65,7 +78,12 @@ function drawChart() {
     crosshair: { enabled: false },
     legend: { enabled: true, position: 'right' },
     xAxis: { datetime: false, title: 'Distance [°]', min: 0, tooltipFormatter: x => x.toFixed(2), fontSize },
-    yAxis: { title: 'Magnitude', fontSize },
+    yAxis: {
+      title: 'Magnitude',
+      fontSize,
+      min: Math.min(stats.min!, -3 + stats.sum / stats.count),
+      max: Math.max(stats.max!, 3 + stats.sum / stats.count)
+    },
     height: 238,
     type: 'scatter',
     zoom: null,
