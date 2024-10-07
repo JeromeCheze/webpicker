@@ -193,6 +193,7 @@ watch(() => sortValue.value, (value: number) => props.modelValue.sort = sortOpti
             :time="props.time"
             :latitude="props.latitude"
             :longitude="props.longitude"
+            :use-saved-lat-lon="false"
             @radius-stations="(seedidList: string[]) => emit('downloadChannels', seedidList)"/>
         </v-card-text>
       </v-card>

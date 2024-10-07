@@ -26,6 +26,7 @@ const props = defineProps<{
   longitude: number
   storageKey: string
   time: number
+  useSavedLatLon: boolean
 }>()
 
 const store = useAppStore()
@@ -39,9 +40,14 @@ const opt = getLocalStorageDefault(
     channel: '?H?',
     latitude: props.latitude,
     longitude: props.longitude,
-    radius: store.settings['miscellaneous.defaultRadius']
+    radius: store.settings['miscellaneous.defaultRadius'],
   }, route.query)
 ) as OptType
+
+if (!props.useSavedLatLon) {
+  opt.latitude = props.latitude
+  opt.longitude = props.longitude
+}
 
 const form = ref()
 const radius = ref(opt.radius)
@@ -125,8 +131,7 @@ function preview(): Promise<void> {
         '..', t, centerLatLon.lat, centerLatLon.lng, radius.value,
         netSelector.value, staSelector.value, locSelector.value, chaSelector.value
       ).then(inv => {
-        const [lat, lon] = [props.latitude, props.longitude]
-        store.dataManager.updateStationDistanceAzimuth(lat, lon)
+        store.dataManager.updateStationDistanceAzimuth(opt.latitude, opt.longitude)
         displayStations()
         resolve()
       })

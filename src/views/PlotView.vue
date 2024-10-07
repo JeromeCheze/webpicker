@@ -169,6 +169,7 @@ onBeforeRouteLeave(async (to, from) => {
             v-model:latitude="latitude"
             v-model:longitude="longitude"
             :storage-key="STORAGE_KEY"
+            :use-saved-lat-lon="false"
             @radius-stations="handleSubmit"/>
         </v-col>
       </v-row>
