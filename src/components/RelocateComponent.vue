@@ -9,7 +9,7 @@ const store = useAppStore()
 
 const relocateOptions: { [locator: string]: string[] } = {
   LOCSAT: ['iasp91', 'tab'],
-  NonLinLoc: ['puna_3_35_005', 'iasp91', 'prem']
+  NonLinLoc: ['puna_3_35_005', 'iasp91', 'prem', 'virtual']
 }
 
 const relocParams = getLocalStorageDefault('relocateParams', {
@@ -71,7 +71,7 @@ function relocate() {
         if (statusResponse.message !== '') {
           alert(statusResponse.message)
         }
-        if (statusResponse.quakeml !== '') {
+        if (statusResponse.quakeml !== '' && statusResponse.message === '') {
           const doc = new DOMParser().parseFromString(statusResponse.quakeml, 'application/xml')
           const result = parse(doc) as QEvent[]
           const newOrigin = result[0].origin[0]
@@ -89,6 +89,10 @@ function relocate() {
           store.currentOrigin = newOrigin
           store.dataManager.clearTTTCache()
           store.updatePickMap()
+        } else {
+          store.eventViewStatus.relocateStatus = 'enabled'
+          store.eventViewStatus.computeMagnitudesStatus = 'disabled'
+          store.eventViewStatus.commitStatus = 'disabled'
         }
       })
     } else {

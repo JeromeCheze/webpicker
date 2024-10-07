@@ -31,7 +31,10 @@ function computeMagnitudes() {
     return
   }
   locked.value = true
+  const saveMainKey = QResourceIdentifier.mainKey
+  QResourceIdentifier.mainKey = 'sandbox'
   const origin = deepCopy(store.currentOrigin!.desc)
+  delete origin.evaluationStatus
   const event = new QEvent(Object.assign(deepCopy(store.currentEvent!.desc), {
     origin: [origin],
     magnitude: [],
@@ -54,6 +57,7 @@ function computeMagnitudes() {
     return
   }
   store.notification.push({ type: 'progress', value: { text: 'Compute magnitudes...', percent: -1 } })
+  QResourceIdentifier.mainKey = saveMainKey
   fetch(`../api/compute_magnitudes`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},

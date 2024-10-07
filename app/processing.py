@@ -124,6 +124,7 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
         sys.stderr.write('initial sc3ml file from jquake: %s\n' % sc3ml)
         # sys.stderr.write('mseed data: %s\n' % data)
         sys.stderr.write('scamp cmd: %s\n' % ' '.join(scamp_cmd))
+        sys.stderr.write('scamp return code: %s\n' % scamp.returncode)
         sys.stderr.write('scamp result: %s\n' % scamp_result)
     else:
         os.remove(sc3ml)
@@ -136,11 +137,12 @@ def compute_magnitudes_with_scamp_and_scmag(jquake):
         '--config-db', utils.CONFIG.seiscomp.config_filename,
         '--ep', scamp_result
     ]
-    if utils.DEBUG:
-        sys.stderr.write('scmag cmd: %s\n' % ' '.join(scmag_cmd))
     scmag = subprocess.Popen(scmag_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     result, error_message2 = scmag.communicate()
     error_message += error_message2
+    if utils.DEBUG:
+        sys.stderr.write('scmag cmd: %s\n' % ' '.join(scmag_cmd))
+        sys.stderr.write('scmag return code: %s\n' % scmag.returncode)
     if utils.PYTHON3:
         result = result.decode('utf-8')
         result = result.replace(' encoding="UTF-8"', '')
