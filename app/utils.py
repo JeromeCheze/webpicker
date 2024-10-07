@@ -204,7 +204,7 @@ def apply_user_rules(method, username, data):
     elif method == 'POST':
         parameters = []
         selection = []
-        for line in data.splitlines():
+        for line in data.decode('utf-8').splitlines():
             if line == '':
                 continue
             if '=' in line:
