@@ -495,6 +495,7 @@ export default class DataManager {
     seedidList: string[],
     maxTrace: number | null,
     timewindow: [number, number],
+    noEvent: boolean,
     signal: AbortSignal,
     callback: (data: Trace[]) => void,
     notification: (opt: WPNotificationOptions) => void
@@ -504,15 +505,9 @@ export default class DataManager {
       pushUnique(netstaList, toNetSta(seedid))
     }
     this.getInventory(baseUrl, seedidList, time, notification).then(() => {
-      this.loadTTT(baseUrl, latitude, longitude, depth, netstaList, notification).then(() => {
+      if (noEvent) {
         const t1 = new Date(time - timewindow[0] * 1e3)
-        let maxTime = time + 120e3
-        for (const netstaTTT of Object.values(this.tttCache)) {
-          for (const ttt of Object.values(netstaTTT.ttt)) {
-            maxTime = Math.max(maxTime, time + ttt * 1e3)
-          }
-        }
-        const t2 = new Date(maxTime + timewindow[1] * 1e3)
+        const t2 = new Date(time + timewindow[1] * 1e3)
         let reqSeedidList: string[] = []
         for (const seedid of seedidList) {
           const [net, sta, loc, chaPrefix] = seedid.slice(0, -1).split('.')
@@ -525,7 +520,30 @@ export default class DataManager {
           reqSeedidList = reqSeedidList.slice(0, maxTrace)
         }
         this.getWaveforms(baseUrl, reqSeedidList, t1, t2, signal, callback, notification)
-      })
+      } else {
+        this.loadTTT(baseUrl, latitude, longitude, depth, netstaList, notification).then(() => {
+          const t1 = new Date(time - timewindow[0] * 1e3)
+          let maxTime = time + 120e3
+          for (const netstaTTT of Object.values(this.tttCache)) {
+            for (const ttt of Object.values(netstaTTT.ttt)) {
+              maxTime = Math.max(maxTime, time + ttt * 1e3)
+            }
+          }
+          const t2 = new Date(maxTime + timewindow[1] * 1e3)
+          let reqSeedidList: string[] = []
+          for (const seedid of seedidList) {
+            const [net, sta, loc, chaPrefix] = seedid.slice(0, -1).split('.')
+            for (const seedid of this._getChannels(net, sta, loc, chaPrefix)) {
+              pushUnique(reqSeedidList, seedid)
+            }
+          }
+          if (maxTrace != null && reqSeedidList.length > maxTrace) {
+            notification({ type: 'warning', value: `Max number of channels reached: ${maxTrace} will be downloaded instead of ${reqSeedidList.length}` })
+            reqSeedidList = reqSeedidList.slice(0, maxTrace)
+          }
+          this.getWaveforms(baseUrl, reqSeedidList, t1, t2, signal, callback, notification)
+        })
+      }
     })
   }
 }

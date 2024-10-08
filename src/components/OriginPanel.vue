@@ -161,9 +161,9 @@ function depthColor(o: QOrigin) {
         <v-col :cols="props.compact ? 6 : 3" v-for="col in originCols" :class="{ 'ma-0': props.compact, 'py-0': props.compact }">
           <v-list density="compact" v-if="props.origin != null" :bg-color="store.settings['color.surface']">
             <v-list-item
-             
               :title="col.label"
               :subtitle="col.textAccessor(props.origin)"
+              class="text-no-wrap"
               :class="col.class != null ? col.class(props.origin) : ''"/>
           </v-list>
         </v-col>

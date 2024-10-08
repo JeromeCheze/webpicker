@@ -21,12 +21,13 @@ const props = defineProps<{
   longitude: number
   depth: number
   timeWindow: [number, number]
+  baseUrl: string
 }>()
 
 const store = useAppStore()
 console.log(store.dataManager)
 
-const client = new Client('..')
+const client = new Client(props.baseUrl)
 
 const contextMenu = ref(false)
 const contextMenuPos = ref([0, 0] as [number, number])
@@ -86,7 +87,7 @@ function handleDetector() {
   }
   if (start != null && end != null) {
     store.dataManager.getDetection(
-      '..', store.settings['detector.model'], wfid!,
+      props.baseUrl, store.settings['detector.model'], wfid!,
       new Date(start).toISOString().slice(0, 19),
       new Date(end).toISOString().slice(0, 19),
       store.settings['detector.pThreshold'],
@@ -153,9 +154,10 @@ function displayWaveforms() {
     pushUnique(seedidList, `${pick.waveformID.seedid.slice(0, -1)}?`)
   }
   store.dataManager.getData(
-    '..', props.time, props.latitude, props.longitude, props.depth, seedidList,
+    props.baseUrl, props.time, props.latitude, props.longitude, props.depth, seedidList,
     store.settings['miscellaneous.maxTrace'],
     [store.settings['miscellaneous.timewindow1'], store.settings['miscellaneous.timewindow2']],
+    props.noEvent === true,
     controller.value.signal,
     processDataCallback, handleNotification
   )
@@ -166,9 +168,10 @@ function downloadChannels(seedidList: string[]) {
     return
   }
   store.dataManager.getData(
-    '..', props.time, props.latitude, props.longitude, props.depth, seedidList,
+    props.baseUrl, props.time, props.latitude, props.longitude, props.depth, seedidList,
     store.settings['miscellaneous.maxTrace'],
     [props.timeWindow[0], props.timeWindow[1]],
+    props.noEvent === true,
     controller.value.signal,
     processDataCallback, handleNotification
   )

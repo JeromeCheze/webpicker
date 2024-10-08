@@ -54,6 +54,7 @@ const magnitudeCols = ref([
             <v-list-item
               :title="col.label"
               :subtitle="col.textAccessor(props.magnitude)"
+              class="text-no-wrap"
               :class="col.class != null ? col.class(props.magnitude) : ''"/>
           </v-list>
         </v-col>

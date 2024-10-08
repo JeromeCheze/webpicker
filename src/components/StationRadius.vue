@@ -27,6 +27,7 @@ const props = defineProps<{
   storageKey: string
   time: number
   useSavedLatLon: boolean
+  baseUrl: string
 }>()
 
 const store = useAppStore()
@@ -128,7 +129,7 @@ function preview(): Promise<void> {
       }
       const t = new Date(props.time).toISOString().slice(0, 19)
       store.dataManager.getRadiusInventory(
-        '..', t, centerLatLon.lat, centerLatLon.lng, radius.value,
+        props.baseUrl, t, centerLatLon.lat, centerLatLon.lng, radius.value,
         netSelector.value, staSelector.value, locSelector.value, chaSelector.value
       ).then(inv => {
         store.dataManager.updateStationDistanceAzimuth(opt.latitude, opt.longitude)

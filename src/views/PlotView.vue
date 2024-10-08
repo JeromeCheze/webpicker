@@ -147,6 +147,7 @@ onBeforeRouteLeave(async (to, from) => {
     :longitude="longitude"
     :depth="5"
     :seedid-list="seedidList"
+    base-url="."
     no-event/>
   <v-card max-width="500" :style="{ marginLeft: 'auto', marginRight: 'auto' }" v-else>
     <v-card-title>
@@ -171,6 +172,7 @@ onBeforeRouteLeave(async (to, from) => {
             v-model="stationRadiusState"
             v-model:latitude="latitude"
             v-model:longitude="longitude"
+            base-url="."
             :storage-key="STORAGE_KEY"
             :use-saved-lat-lon="false"
             @radius-stations="handleSubmit"/>

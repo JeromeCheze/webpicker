@@ -201,7 +201,8 @@ onMounted(() => {
     :longitude="store.currentOrigin.longitude.value"
     :depth="store.currentOrigin.depth.value"
     :seedid-list="[]"
-    :no-event="false"/>
+    :no-event="false"
+    base-url=".."/>
   <v-menu
     v-model="contextMenu"
     attach
