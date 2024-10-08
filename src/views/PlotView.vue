@@ -78,6 +78,7 @@ function handleSubmit(seedids: string[]) {
         creationTime: new Date().toISOString()
       },
       depth: { value: 5 * 1e3 },
+      methodID: 'free_placement',
       arrival: []
     }, event.id)
     store.currentEvent = event

@@ -48,7 +48,7 @@ function updateSlider() {
     plot.dataUtils.xPosFromValue(props.timeWindow[1]),
     plot.dataUtils.xPosFromValue(props.listTimeWindow[1])
   )
-  const width = xPos2 - xPos1
+  const width = Math.max(2, xPos2 - xPos1)
   Object.assign(style.value, {
     top: `${bcr.top - parent.top}px`,
     left: `${xPos1 + bcr.left - parent.left}px`,
