@@ -42,6 +42,8 @@ function reset() {
   store.dataManager.clearWaveformCache()
   store.currentEvent = null
   store.currentOrigin = null
+  store.currentMagnitude = null
+  store.currentOriginMagnitudes = []
   store.currentArrivals = []
   store.updatePickMap()
   stationRadiusState.value = true

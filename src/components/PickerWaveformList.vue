@@ -325,7 +325,8 @@ watch([
 
 watch([
   () => store.pickMap,
-  () => store.additionalPickMap
+  () => store.additionalPickMap,
+  () => props.detector
 ], () => updateVlines())
 
 watch(() => store.keydown, (newValue) => {
