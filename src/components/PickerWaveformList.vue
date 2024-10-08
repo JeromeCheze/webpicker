@@ -329,6 +329,8 @@ watch([
   () => props.detector
 ], () => updateVlines())
 
+watch(() => store.dataManager.detectorCache, () => updateVlines(), { deep: true })
+
 watch(() => store.keydown, (newValue) => {
   if (newValue === store.settings['keybinding.nextStation']) {
     store.preventDefault()
