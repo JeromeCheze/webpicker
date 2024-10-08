@@ -138,7 +138,7 @@ onMounted(() => {
         :timeout="connectionStatus === 'success' ? 2000 : -1"
       >
         <div v-if="connectionStatus === 'success'"><v-icon>mdi-check</v-icon> Connected.<br><v-icon>mdi-check</v-icon> Version is up to date.</div>
-        <div class="text-center" v-else-if="connectionStatus === 'info'"><v-icon>mdi-alert-circle-outline</v-icon> New version available.<br><v-btn prepend-icon="mdi-cloud-sync" @click="reload">click to update</v-btn></div>
+        <div class="text-center" v-else-if="connectionStatus === 'info'"><v-icon>mdi-alert-circle-outline</v-icon> New version available.<br><v-btn light prepend-icon="mdi-cloud-sync" @click="reload">click to update</v-btn></div>
         <div class="text-center" v-else><v-icon>mdi-cloud-off-outline</v-icon> Disconnected from server...</div>
       </v-snackbar>
       <v-snackbar v-model="infoNotification" timeout="2000">{{ infoNotificationText }}</v-snackbar>

@@ -441,6 +441,7 @@ onBeforeUnmount(() => {
         :filter="filterValue"
         :time-window="pickerTimeWindow"
         :hide-ref-times="props.noEvent"
+        :detector="toolbarValue.detector"
         @select-station="handleSelectStation"
         @sliderTimeWindow="(tw: [number, number]) => sliderTimeWindow = tw"/>
     </v-card-text>

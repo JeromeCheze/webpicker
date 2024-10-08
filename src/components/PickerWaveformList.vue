@@ -21,6 +21,7 @@ const props = defineProps<{
   stationRefTimes: StationRefTimes
   timeWindow: [number, number]
   hideRefTimes: boolean
+  detector: boolean
 }>()
 
 const slider = ref()
@@ -140,6 +141,15 @@ function getVLines(netsta: string) {
   // if (props.stationRefTimes[netsta].S_NLL != null) {
   //   result.push({ color: store.settings['color.TTTNLL'], x: props.stationRefTimes[netsta].S_NLL, text: 'S (NLL)', position: 'bottom' })
   // }
+  if (props.detector) {
+    const key = `${netsta}-${store.settings['detector.model']}-${store.settings['detector.pThreshold']}-${store.settings['detector.sThreshold']}`
+    const detection = store.dataManager.detectorCache[key]
+    if (detection != null) {
+      for (const d of detection) {
+        result.push({ color: store.settings['color.detector'], x: d.time, text: d.phase, position: 'bottom' })
+      }
+    }
+  }
   if (store.pickMap[netsta] != null) {
     for (const picks of Object.values(store.pickMap[netsta])) {
       for (const p of picks) {
