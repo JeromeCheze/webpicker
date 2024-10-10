@@ -20,7 +20,8 @@ function setMagnitudeStation() {
   for (const arrival of store.currentArrivals) {
     if (arrival.pickID.referredObject != null) {
       const netsta = arrival.pickID.referredObject.waveformID.netsta
-      stations[netsta] = arrival.timeWeight != null && arrival.timeWeight > 0
+      // stations[netsta] = arrival.timeWeight != null && arrival.timeWeight > 0
+      stations[netsta] = true
     }
   }
   computeMagnitudeStations.value = stations
