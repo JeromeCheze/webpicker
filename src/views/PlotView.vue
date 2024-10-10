@@ -73,6 +73,7 @@ function handleSubmit(seedids: string[]) {
       time: { value: starttime.value.toISOString() },
       latitude: { value: latitude.value, uncertainty: 1 },
       longitude: { value: longitude.value, uncertainty: 1 },
+      evaluationMode: 'manual',
       evaluationStatus: 'preliminary',
       creationInfo: {
         author: store.author!,
