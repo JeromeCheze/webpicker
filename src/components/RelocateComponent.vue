@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { type QEvent, type QEventDescription, type QArrivalDescription, type QPickDescription, QResourceIdentifier } from '@/lib/sismojs/src/core/event/types'
+import { type QEvent, type QEventDescription, type QArrivalDescription, type QPickDescription, QResourceIdentifier, QOrigin } from '@/lib/sismojs/src/core/event/types'
 import { parse } from '@/lib/sismojs/src/core/event/quakeml'
 import { computed, ref, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
@@ -81,7 +81,6 @@ function relocate() {
           for (const arrival of newOrigin.arrival) {
             arrival.desc['@publicID'] = getId('Arrival')
           }
-          store.currentEvent!.addOrigin(newOrigin.desc)
           newOrigin.creationInfo.author = store.author
           store.eventViewStatus.relocateStatus = 'enabled'
           store.eventViewStatus.computeMagnitudesStatus = 'required'
@@ -90,7 +89,7 @@ function relocate() {
           store.currentOriginMagnitudes = []
           store.dataManager.updateStationDistanceAzimuth(newOrigin.latitude.value, newOrigin.longitude.value)
           store.currentArrivals = newOrigin.arrival
-          store.currentOrigin = newOrigin
+          store.currentOrigin = new QOrigin(newOrigin.desc, store.currentEvent!.id)
           store.dataManager.clearTTTCache()
           store.updatePickMap()
         } else {

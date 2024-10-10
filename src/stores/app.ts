@@ -73,6 +73,7 @@ function setEvent(event: QEvent) {
   eventViewStatus.value.relocateStatus = 'enabled'
   eventViewStatus.value.computeMagnitudesStatus = 'enabled'
   eventViewStatus.value.commitStatus = 'enabled'
+  originDirty.value = false
   dataManager.clearWaveformCache()
   dataManager.clearInventoryCache()
   dataManager.clearDistanceAzimuth()
@@ -88,10 +89,7 @@ function setEvent(event: QEvent) {
   }
 }
 function cloneOrigin() {
-  if (currentOrigin.value == null) {
-    return
-  }
-  const clonedOriginDesc = deepCopy(currentOrigin.value.desc) as QOriginDescription
+  const clonedOriginDesc = deepCopy(currentOrigin.value!.desc) as QOriginDescription
   clonedOriginDesc['@publicID'] = getId('Origin')
   for (const arrival of clonedOriginDesc.arrival) [
     arrival['@publicID'] = getId('Arrival')

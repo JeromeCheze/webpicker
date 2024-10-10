@@ -3,7 +3,7 @@ import { useAppStore } from '@/stores/app'
 import { deepCopy } from '@/utils'
 import { ref, watch } from 'vue'
 import { parse } from '@/lib/sismojs/src/core/event/quakeml'
-import { QEvent, QMagnitude, QOrigin, QResourceIdentifier } from '@/lib/sismojs/src/core/event/types'
+import { QAmplitude, QEvent, QMagnitude, QOrigin, QResourceIdentifier, QStationMagnitude } from '@/lib/sismojs/src/core/event/types'
 
 const MAG_TYPE_WEIGHT = ['M', 'MLv']
 
@@ -81,14 +81,14 @@ function computeMagnitudes() {
               return aa < bb ? -1 : aa > bb ? 1 : 0
             })
             for (const amplitude of result[0].amplitude) {
-              store.currentEvent!.addAmplitude(amplitude.desc)
+              new QAmplitude(amplitude.desc, store.currentEvent!.id)
             }
             for (const staMag of result[0].stationMagnitude) {
-              store.currentEvent!.addStationMagnitude(staMag.desc)
+              new QStationMagnitude(staMag.desc, store.currentEvent!.id)
             }
             const originMagnitudes: QMagnitude[] = []
             for (const magnitude of result[0].magnitude) {
-              originMagnitudes.push(store.currentEvent!.addMagnitude(magnitude.desc))
+              originMagnitudes.push(new QMagnitude(magnitude.desc, store.currentEvent!.id))
             }
             store.currentMagnitude = originMagnitudes.slice(-1)[0]
             store.currentOriginMagnitudes = originMagnitudes
