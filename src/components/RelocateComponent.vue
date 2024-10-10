@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { QEvent, QEventDescription, QArrivalDescription, QPickDescription } from '@/lib/sismojs/src/core/event/types'
+import { type QEvent, type QEventDescription, type QArrivalDescription, type QPickDescription, QResourceIdentifier } from '@/lib/sismojs/src/core/event/types'
 import { parse } from '@/lib/sismojs/src/core/event/quakeml'
 import { computed, ref, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
@@ -73,11 +73,15 @@ function relocate() {
         }
         if (statusResponse.quakeml !== '' && statusResponse.message === '') {
           const doc = new DOMParser().parseFromString(statusResponse.quakeml, 'application/xml')
+          const saveMainKey = QResourceIdentifier.mainKey
+          QResourceIdentifier.mainKey = 'sandbox'
           const result = parse(doc) as QEvent[]
+          QResourceIdentifier.mainKey = saveMainKey
           const newOrigin = result[0].origin[0]
           for (const arrival of newOrigin.arrival) {
             arrival.desc['@publicID'] = getId('Arrival')
           }
+          store.currentEvent!.addOrigin(newOrigin.desc)
           newOrigin.creationInfo.author = store.author
           store.eventViewStatus.relocateStatus = 'enabled'
           store.eventViewStatus.computeMagnitudesStatus = 'required'

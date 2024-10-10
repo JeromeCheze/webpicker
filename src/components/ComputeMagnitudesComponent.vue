@@ -3,7 +3,7 @@ import { useAppStore } from '@/stores/app'
 import { deepCopy } from '@/utils'
 import { ref, watch } from 'vue'
 import { parse } from '@/lib/sismojs/src/core/event/quakeml'
-import { QEvent, QOrigin, QResourceIdentifier } from '@/lib/sismojs/src/core/event/types'
+import { QEvent, QMagnitude, QOrigin, QResourceIdentifier } from '@/lib/sismojs/src/core/event/types'
 
 const MAG_TYPE_WEIGHT = ['M', 'MLv']
 
@@ -70,15 +70,28 @@ function computeMagnitudes() {
         if (statusResponse.quakeml !== '') {
           try {
             const doc = new DOMParser().parseFromString(statusResponse.quakeml, 'application/xml')
+            const saveMainKey = QResourceIdentifier.mainKey
+            QResourceIdentifier.mainKey = 'sandbox'
             const result = parse(doc) as QEvent[]
+            QResourceIdentifier.mainKey = saveMainKey
             console.log(result)
             result[0].magnitude.sort((a, b) => {
               const aa = MAG_TYPE_WEIGHT.indexOf(a.type!)
               const bb = MAG_TYPE_WEIGHT.indexOf(b.type!)
               return aa < bb ? -1 : aa > bb ? 1 : 0
             })
-            store.currentMagnitude = result[0].magnitude.slice(-1)[0]
-            store.currentOriginMagnitudes = result[0].magnitude
+            for (const amplitude of result[0].amplitude) {
+              store.currentEvent!.addAmplitude(amplitude.desc)
+            }
+            for (const staMag of result[0].stationMagnitude) {
+              store.currentEvent!.addStationMagnitude(staMag.desc)
+            }
+            const originMagnitudes: QMagnitude[] = []
+            for (const magnitude of result[0].magnitude) {
+              originMagnitudes.push(store.currentEvent!.addMagnitude(magnitude.desc))
+            }
+            store.currentMagnitude = originMagnitudes.slice(-1)[0]
+            store.currentOriginMagnitudes = originMagnitudes
             store.eventViewStatus.computeMagnitudesStatus = 'enabled'
             store.eventViewStatus.commitStatus = 'required'
           } catch (error) {

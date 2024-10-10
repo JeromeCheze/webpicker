@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { QArrival } from '@/lib/sismojs/src/core/event/types'
+import type { QArrival, QMagnitude } from '@/lib/sismojs/src/core/event/types'
 import FirstMotion from '@/components/FirstMotion.vue'
 import { Client } from '@/lib/sismojs/src/fdsn'
 import { ref, onMounted, watch } from 'vue'
@@ -89,6 +89,11 @@ function handleContextMenu(e: MouseEvent) {
   contextMenu.value = true
 }
 
+function setCurrentMagnitude(m: QMagnitude) {
+  store.currentMagnitude = m
+  store.eventViewStatus.commitStatus = 'required'
+}
+
 watch(() => store.keydown, (newValue) => {
   if (newValue === store.settings['keybinding.togglePicker']) {
     if (picker.value) {
@@ -152,7 +157,7 @@ onMounted(() => {
   <template v-if="!allOriginDisplay && !picker">
     <v-row>
       <v-col cols="12" class="d-flex justify-end align-center">
-        <v-btn-group density="compact" class="ml-2">
+        <v-btn-group density="compact">
           <v-btn :active="activeChart === 'residual'" @click="activeChart = 'residual'">Res</v-btn>
           <v-btn :active="activeChart === 'traveltime'" @click="activeChart = 'traveltime'">TT</v-btn>
           <v-btn :active="activeChart === 'magnitude'" @click="activeChart = 'magnitude'">M</v-btn>
@@ -182,9 +187,24 @@ onMounted(() => {
           :status="store.eventViewStatus.relocateStatus"/>
       </v-col>
       <v-col cols="4">
-        <MagnitudePanel
-          :magnitude="store.currentMagnitude"
-          :status="store.eventViewStatus.computeMagnitudesStatus"/>
+        <v-row>
+          <v-col cols="12"  class="d-flex justify-end align-center">
+            <v-btn-group density="compact">
+              <v-btn
+                v-for="magnitude in store.currentOriginMagnitudes"
+                :active="magnitude.publicID === store.currentMagnitude?.publicID"
+                @click="setCurrentMagnitude(magnitude)"
+              >{{ magnitude.type }}</v-btn>
+            </v-btn-group>
+          </v-col>
+        </v-row>
+        <v-row>
+          <v-col cols="12">
+            <MagnitudePanel
+              :magnitude="store.currentMagnitude"
+              :status="store.eventViewStatus.computeMagnitudesStatus"/>
+          </v-col>
+        </v-row>
       </v-col>
     </v-row>
     <v-row>

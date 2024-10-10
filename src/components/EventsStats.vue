@@ -73,7 +73,7 @@ function drawGutenbergRichter() {
   const serie: ScatterOptions = { name: '', shape: 'circle', enabled: true, color: 'blue', data }
   const fontSize = store.settings['picker.tickFontSize']
   gutenbergRichterChart.value = new Lichen(gutenbergRichter.value, {
-    header: { position: 'top', title: 'Temporal distribution' },
+    header: { position: 'top', title: 'Gutenberg-Richter' },
     legend: { enabled: false },
     xAxis: { datetime: false, fontSize },
     yAxis: { logarithmic: true, min: 1, max: data[0].y * 2, fontSize },
