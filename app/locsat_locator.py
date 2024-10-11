@@ -67,10 +67,17 @@ def get_inventory(fdsnws_host, pick_map):
         'format=text',
         'level=channel'
     ]
+    net_sta_loc = []
     for _, j_pick in pick_map.items():
         wfid = j_pick['waveformID']
+        loc = wfid.get("@locationCode", "")
+        if loc == '':
+            loc = '--'
+        key = '%s.%s.%s' % (wfid['@networkCode'], wfid['@stationCode'], loc)
+        if key in net_sta_loc:
+            continue
         t = j_pick['time']['value'][:19]
-        req_data.append('%s %s %s %s %s %s' % (wfid["@networkCode"], wfid["@stationCode"], wfid.get("@locationCode", "--"), wfid["@channelCode"], t, t))
+        req_data.append('%s %s %s * %s %s' % (wfid["@networkCode"], wfid["@stationCode"], loc, t, t))
     r = Request('http://%s/fdsnws/station/1/query' % fdsnws_host, data='\r\n'.join(req_data).encode('utf-8'), headers={'Content-Type': 'text/plain'})
     resp = urlopen(r).read().decode('utf-8')
     scp_inv = Inventory()
