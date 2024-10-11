@@ -452,6 +452,25 @@ watch(() => props.timeWindow, () => {
   }
 })
 
+watch(() => store.keydown, (value) => {
+  const allCharts = Object.values(chartData)
+  if (allCharts.length > 0) {
+    const dataUtils = allCharts[0].chart.master.getRegistered('DATA_UTILS')
+    const range = dataUtils.yMax - dataUtils.yMin
+    if (value === store.settings['keybinding.yZoomIn']) {
+      allCharts[0].chart.master.send('yRangeChange', [
+        dataUtils.yMin - 0.1 * range,
+        dataUtils.yMax + 0.1 * range
+      ])
+    }  else if (value === store.settings['keybinding.yZoomOut']) {
+      allCharts[0].chart.master.send('yRangeChange', [
+        dataUtils.yMin + 0.1 * range,
+        dataUtils.yMax - 0.1 * range
+      ])
+    }
+  }
+})
+
 onBeforeUnmount(reset)
 </script>
 

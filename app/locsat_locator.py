@@ -232,7 +232,7 @@ def relocate(jquake, profile, fdsnws_host):
                 sloc.longitude(),
                 sloc.elevation()
             ).time
-            j_arrival['time_residual'] = p_time - t_time
+            j_arrival['timeResidual'] = p_time - t_time
             new_origin['arrival'].append(j_arrival)
         pick_station_map = {}
         for pick in jquake[0]['pick']:

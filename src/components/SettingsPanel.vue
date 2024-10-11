@@ -66,6 +66,10 @@ const struct = [
   {
     title: 'Keybindings',
     fields: [
+      { label: 'Picker X Zoom In', key: 'keybinding.xZoomIn', type: 'text' },
+      { label: 'Picker X Zoom Out', key: 'keybinding.xZoomOut', type: 'text' },
+      { label: 'Picker Y Zoom In', key: 'keybinding.yZoomIn', type: 'text' },
+      { label: 'Picker Y Zoom Out', key: 'keybinding.yZoomOut', type: 'text' },
       { label: 'Toggle Picker', key: 'keybinding.togglePicker', type: 'text' },
       { label: 'Set Phase P', key: 'keybinding.setPhaseP', type: 'text' },
       { label: 'Set Phase S', key: 'keybinding.setPhaseS', type: 'text' },

@@ -368,6 +368,22 @@ watch(() => store.keydown, (value) => {
     setPickPolarity('negative')
   } else if (value === store.settings['keybinding.resetPolarity']) {
     setPickPolarity()
+  } else if (value === store.settings['keybinding.xZoomIn']) {
+    const range = pickerTimeWindow.value[1] - pickerTimeWindow.value[0]
+    const tw = [
+      pickerTimeWindow.value[0] + 0.1 * range,
+      pickerTimeWindow.value[1] - 0.1 * range
+    ]
+    pickerTimeWindow.value = tw as [number, number]
+    sliderTimeWindow.value = tw as [number, number]
+  }  else if (value === store.settings['keybinding.xZoomOut']) {
+    const range = pickerTimeWindow.value[1] - pickerTimeWindow.value[0]
+    const tw = [
+      pickerTimeWindow.value[0] - 0.1 * range,
+      pickerTimeWindow.value[1] + 0.1 * range
+    ]
+    pickerTimeWindow.value = tw as [number, number]
+    sliderTimeWindow.value = tw as [number, number]
   }
 })
 
