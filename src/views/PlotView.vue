@@ -2,6 +2,10 @@
 import { getLocalStorageDefault, setLocalStorage, getId } from '@/utils'
 import { QEvent, QOrigin } from '@/lib/sismojs/src/core/event/types'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import StationRadius from '@/components/StationRadius.vue'
+import NumberField from '@/components/NumberField.vue'
+import PickerPanel from '@/components/PickerPanel.vue'
+import DateField from '@/components/DateField.vue'
 import { ref, onMounted, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 
@@ -17,8 +21,6 @@ const opt = Object.assign(getLocalStorageDefault('plotOptions', {
   longitude: 0,
   duration: 300
 }), route.query)
-
-console.log(opt)
 
 const form = ref()
 const picker = ref(false)
@@ -113,6 +115,7 @@ watch(() => picker.value, (value) => {
 })
 
 onMounted(() => {
+  console.log(`[PlotView.onMounted] ${JSON.stringify(route.query)}`)
   reset()
   if (Object.keys(route.query).length > 0) {
     stationRadius.value.ready(() => {

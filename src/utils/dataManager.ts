@@ -63,6 +63,7 @@ export default class DataManager {
   }
 
   updateStationDistanceAzimuth(oLat: number, oLon: number) {
+    console.log('[dataManager.updateStationDistanceAzimuth]')
     for (const [net, staMap] of Object.entries(this.inventoryCache)) {
       for (const [sta, staObj] of Object.entries(staMap)) {
         const netsta = `${net}.${sta}`
@@ -118,6 +119,7 @@ export default class DataManager {
     notification: (opt: WPNotificationOptions) => void
   ): Promise<Inventory> {
     const t = new Date(time)
+    console.log(`[dataManager.getInventory] ${new Date(time).toISOString()} | ${JSON.stringify(seedidList)}`)
     return new Promise((resolve, reject) => {
       notification({ type: 'progress', value: { text: 'Loading inventory...', percent: -1 } })
       const bulk: FDSNStationBulkItem[] = []
@@ -167,8 +169,8 @@ export default class DataManager {
   ): Promise<Inventory> {
     return new Promise((resolve, reject) => {
       this.client.baseURL = baseUrl
-      this.client.getStations({
-        level: 'channel',
+      const params = {
+        level: 'channel' as 'channel',
         format: 'text',
         latitude,
         longitude,
@@ -177,7 +179,9 @@ export default class DataManager {
         starttime: time,
         endtime: time,
         network, station, location, channel
-      }).then((inv) => {
+      }
+      console.log(`[dataManager.getStationRadius] ${JSON.stringify(params)}`)
+      this.client.getStations(params).then((inv) => {
         this.mergeInventory(inv as Inventory)
         resolve(this.inventoryCache)
       })
@@ -325,6 +329,7 @@ export default class DataManager {
         }
       }
       if (Object.keys(stationQuery).length > 0) {
+        console.log(`[dataManager.loadTTT] ${JSON.stringify(query)}`)
         fetch(`${baseUrl}/api/ttt`, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -464,6 +469,7 @@ export default class DataManager {
     callback: (data: Trace[]) => void,
     notification: (opt: WPNotificationOptions) => void
   ) {
+    console.log(`[dataManager.getWaveforms] ${t1.toISOString()} - ${t2.toISOString()} | ${JSON.stringify(seedidList)}`)
     const bulk: FDSNWaveformBulkItem[] = []
     const result: Trace[] = []
     const cacheKey = `${t1.toISOString().slice(0, 19)}-${t2.toISOString().slice(0, 19)}`

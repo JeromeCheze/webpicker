@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import type { FilterOptions, PickerToolbarOptions, PickMap, StationRefTimes, WPNotificationOptions } from '@/types'
 import { QResourceIdentifier, QPick, type QPickOnset, type QPickPolarity } from '@/lib/sismojs/src/core/event/types'
+import { DISCARDED_EVENT_TYPES, pushUnique, toNetSta } from '@/utils'
 import { ref, shallowRef, watch, onMounted, computed } from 'vue'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
+import PickerWaveformList from './PickerWaveformList.vue'
+import PickerWaveforms from './PickerWaveforms.vue'
+import PickerToolbar from './PickerToolbar.vue'
 import { Client } from '@/lib/sismojs/src/fdsn'
-import { DISCARDED_EVENT_TYPES, pushUnique, toNetSta } from '@/utils'
 import { useAppStore } from '@/stores/app'
 import { onBeforeUnmount } from 'vue'
 
@@ -25,7 +28,7 @@ const props = defineProps<{
 }>()
 
 const store = useAppStore()
-console.log(store.dataManager)
+// console.log(store.dataManager)
 
 const client = new Client(props.baseUrl)
 
@@ -206,7 +209,6 @@ function handleSelectPicks(pickids: string[]) {
       .map(a => a.pickID.referredObject)
       .filter(p => pickids.indexOf(p.publicID) >= 0)
     selectedPicks.value = picks
-    console.log('selectedPicks', picks[0])
   }
 }
 
@@ -251,7 +253,6 @@ function deleteSelectedPicks() {
 
 function handleContextMenu(e: MouseEvent) {
   e.preventDefault()
-  console.log('contextmenu')
   contextMenuPos.value = [e.clientX, e.clientY]
   contextMenu.value = true
 }
@@ -273,7 +274,7 @@ function setPickPolarity(value?: QPickPolarity) {
       p.polarity = value
     }
   }
-  store.updatePickMap()
+  // store.updatePickMap()
 }
 
 function setPickOnset(value: QPickOnset) {
@@ -286,7 +287,7 @@ function setPickOnset(value: QPickOnset) {
       p.onset = value
     }
   }
-  store.updatePickMap()
+  // store.updatePickMap()
 }
 
 function setPickUncertainty(value: number) {
@@ -306,7 +307,7 @@ function setPickUncertainty(value: number) {
       }
     }
   }
-  store.updatePickMap()
+  // store.updatePickMap()
 }
 
 function loadAdditionalPicks() {
@@ -314,13 +315,17 @@ function loadAdditionalPicks() {
   // to prevent modified objects to be overwritten by new load
   const saveMainKey = QResourceIdentifier.mainKey
   QResourceIdentifier.mainKey = 'sandbox'
-  client.getEvents({
+  const saveWarn = console.warn
+  console.warn = () => {}
+  const params = {
     format: 'xml',
     starttime: new Date(props.time - 3600e3).toISOString().slice(0, 19),
     endtime: new Date(props.time + 3600e3).toISOString().slice(0, 19),
     includeallorigins: true,
     includearrivals: true
-  }).then((events) => {
+  }
+  console.log(`[PickerPanel.loadAdditionalPicks] load events: ${JSON.stringify(params)}`)
+  client.getEvents(params).then((events) => {
     const additionalPickMap: PickMap = {}
     for (const event of events) {
       if (store.currentEvent != null && event.publicID === store.currentEvent.publicID) {
@@ -347,10 +352,10 @@ function loadAdditionalPicks() {
       }
     }
     store.additionalPickMap = additionalPickMap
-    console.log(additionalPickMap)
   }).finally(() => {
     // Restore the original mainKey of ResourceIdentifier
     QResourceIdentifier.mainKey = saveMainKey
+    console.warn = saveWarn
   })
 }
 
@@ -393,6 +398,7 @@ watch([
 ], () => handleDetector())
 
 onMounted(() => {
+  console.log('[PickerPanel.onMounted]')
   pickerStation.value = null
   document.body.addEventListener('contextmenu', handleContextMenu)
   document.body.addEventListener('click', handleClick)
@@ -406,6 +412,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  console.log('[PickerPanel.onBeforeUnmount]')
   document.body.removeEventListener('contextmenu', handleContextMenu)
   document.body.removeEventListener('click', handleClick)
   if (controller.value != null) {

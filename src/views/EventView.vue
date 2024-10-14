@@ -1,6 +1,18 @@
 <script setup lang="ts">
+import ComputeMagnitudesComponent from '@/components/ComputeMagnitudesComponent.vue'
 import type { QArrival, QMagnitude } from '@/lib/sismojs/src/core/event/types'
+import StationMagnitudeChart from '@/components/StationMagnitudeChart.vue'
+import RelocateComponent from '@/components/RelocateComponent.vue'
+import CommitComponent from '@/components/CommitComponent.vue'
+import TraveltimeChart from '@/components/TraveltimeChart.vue'
+import EventInspector from '@/components/EventInspector.vue'
+import ResVsDistChart from '@/components/ResVsDistChart.vue'
+import MagnitudePanel from '@/components/MagnitudePanel.vue'
+import ArrivalPanel from '@/components/ArrivalPanel.vue'
 import FirstMotion from '@/components/FirstMotion.vue'
+import OriginPanel from '@/components/OriginPanel.vue'
+import PickerPanel from '@/components/PickerPanel.vue'
+import OriginMap from '@/components/OriginMap.vue'
 import { Client } from '@/lib/sismojs/src/fdsn'
 import { ref, onMounted, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
@@ -53,14 +65,16 @@ function removeAutomaticArrivals() {
 
 function loadEvent() {
   store.notification.push({ type: 'progress', value: { text: 'Loading event description...', percent: -1 } })
-  client.getEvents({
+  const params = {
     eventid: props.eventid,
     includearrivals: true,
     includeallorigins: true,
     includeallmagnitudes: true,
     includefocalmechanism: true,
     includestationmagnitudes: true
-  }).then((catalog) => {
+  }
+  console.log(`[loadEvent] load events: ${JSON.stringify(params)}`)
+  client.getEvents(params).then((catalog) => {
     if (catalog.length > 0) {
       const event = catalog[0]
       store.setEvent(event)
@@ -110,6 +124,7 @@ watch([
 ], handleUsers)
 
 onMounted(() => {
+  console.log(`[EventView.onMounted] ${props.eventid}`)
   handleUsers()
   store.webSocketManager.update('review', props.eventid)
   if (store.currentEvent == null || store.currentEvent.publicID !== props.eventid) {

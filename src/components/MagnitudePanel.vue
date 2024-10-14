@@ -7,7 +7,7 @@ import { ref } from 'vue'
 const store = useAppStore()
 
 const props = defineProps<{
-  magnitude?: QMagnitude
+  magnitude?: QMagnitude | null
   status?: EventViewStatus['computeMagnitudesStatus']
   compact?: boolean
 }>()

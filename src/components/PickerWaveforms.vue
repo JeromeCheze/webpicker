@@ -327,7 +327,6 @@ async function update(redraw=false) {
     }
     const [x1, x2] = getXRange(props.activeStation!)
     let maxRange: number = 0
-    console.log(data)
     const waveformLength = Object.values(data).filter(x => !x.spectrogram).length
     for (const [index, currData] of data.entries()) {
       if (chartData[currData.id] == null) {
@@ -353,7 +352,6 @@ async function update(redraw=false) {
         const chart = chartData[currData.id].chart
         chart.setYRange(null, null, false)
         const dataUtils = chart.master.getRegistered('DATA_UTILS')
-        console.log(currData.id, dataUtils.yMax - dataUtils.yMin)
         maxRange = Math.max(maxRange, dataUtils.yMax - dataUtils.yMin)
       }
     }

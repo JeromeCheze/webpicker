@@ -2,6 +2,7 @@
 // import type { Arrival } from '@/lib/sismojs/src/types'
 import { QArrival } from '@/lib/sismojs/src/core/event/types'
 import { useAppStore } from '@/stores/app'
+import SmartTable from './SmartTable.vue'
 import type { ColObject } from '@/types'
 import { ref, watch } from 'vue'
 

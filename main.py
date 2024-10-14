@@ -152,11 +152,14 @@ def get_ttt(args: TTTQuery, username: Annotated[str, Depends(check_authenticatio
         data=nll_ttt_data,
         headers={'Content-Type': 'application/json'}
     )
-    nll_ttt = json.load(urllib.request.urlopen(nll_ttt_req))
-    for netsta, ttt in nll_ttt.items():
-        if netsta not in result:
-            result[netsta] = {}
-        result[netsta]['nll_ttt'] = ttt['ttt']
+    try:
+        nll_ttt = json.load(urllib.request.urlopen(nll_ttt_req))
+        for netsta, ttt in nll_ttt.items():
+            if netsta not in result:
+                result[netsta] = {}
+            result[netsta]['nll_ttt'] = ttt['ttt']
+    except:
+        pass
     return result
 
 @app.post('/api/takeoffangle', tags=['api'])

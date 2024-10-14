@@ -7,7 +7,7 @@ import { ref } from 'vue'
 const store = useAppStore()
 
 const props = defineProps<{
-  origin?: QOrigin
+  origin?: QOrigin | null
   status?: EventViewStatus['relocateStatus']
   compact?: boolean
 }>()

@@ -2,8 +2,11 @@
 import * as L from 'leaflet'
 import { QEvent } from '@/lib/sismojs/src/core/event/types'
 import { ref, onMounted, watch, computed } from 'vue'
+import MagnitudePanel from './MagnitudePanel.vue'
 import { DISCARDED_EVENT_TYPES } from '@/utils'
+import OriginPanel from './OriginPanel.vue'
 import { useAppStore } from '@/stores/app'
+
 
 const store = useAppStore()
 

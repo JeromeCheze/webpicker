@@ -58,7 +58,6 @@ export default class WebSocketManager {
   }
 
   update(state: string, event='') {
-    console.warn('update')
     this._state = state
     this._event = event
     if (this.ws != null && this.ws.readyState === this.ws.OPEN) {

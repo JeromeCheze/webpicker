@@ -31,7 +31,7 @@ function drawChart() {
   }
   for (const [index, mag] of store.currentOriginMagnitudes.entries()) {
     if (mag.stationMagnitudeContribution == null) {
-      console.log(`skip magnitude type ${mag.type}`)
+      // console.log(`skip magnitude type ${mag.type}`)
       continue
     }
     magMap[mag.type] = []

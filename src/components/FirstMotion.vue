@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { QEvent, QEventDescription, QFocalMechanism, QPick } from '@/lib/sismojs/src/core/event/types'
+import { QResourceIdentifier, type QEvent, type QEventDescription, type QFocalMechanism, type QPick } from '@/lib/sismojs/src/core/event/types'
 import { setLocalStorage, getLocalStorageDefault } from '@/utils'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { parse } from '@/lib/sismojs/src/core/event/quakeml'
@@ -375,7 +375,7 @@ function handleCompute() {
       pick.waveformID['@locationCode'] = ''
     }
   }
-  console.log(event)
+  console.log(`[FirstMotion] POST: ${JSON.stringify([event])}`)
   const args = Object.entries(params).map(o => `${o[0]}=${o[1]}`).join('&')
   fetch(`../api/compute_focal_mechanisms?${args}`, {
     method: 'POST',
@@ -384,21 +384,24 @@ function handleCompute() {
   }).then(response => {
     loading.value = false
     store.notification.push({ type: 'progress', value: null })
+    console.log(`[FirstMotion] response status: ${response.status}`)
     if (response.status === 200) {
       response.json().then(statusResponse => {
+        console.log(`[FirstMotion] result: ${JSON.stringify(statusResponse)}`)
         if (statusResponse.message !== '') {
           alert(statusResponse.message)
         }
         if (statusResponse.quakeml !== '') {
           const doc = new DOMParser().parseFromString(statusResponse.quakeml, 'application/xml')
-          console.log(doc)
+          const saveMainKey = QResourceIdentifier.mainKey
+          QResourceIdentifier.mainKey = 'sandbox'
           const result = parse(doc) as QEvent[]
+          QResourceIdentifier.mainKey = saveMainKey
           store.currentEvent!.clearFocalMechanism()
           for (const fm of result[0].focalMechanism) {
             store.currentEvent!.addFocalMechanism(fm.desc)
           }
           nbFM.value = store.currentEvent!.focalMechanism.length
-          console.log(store.currentEvent!.focalMechanism)
         }
       })
     }

@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { QEvent, QOrigin } from '@/lib/sismojs/src/core/event/types'
+import NumberField from './NumberField.vue'
 import { useAppStore } from '@/stores/app'
-import { deepCopy, getId } from '@/utils'
 import { ref, watch } from 'vue'
+import { getId } from '@/utils'
 import router from '@/router'
 import * as L from 'leaflet'
+
 
 const store = useAppStore()
 
@@ -81,7 +83,8 @@ function createEvent() {
     depth: { value: depth.value * 1e3 },
     arrival: []
   }, event.id)
-  console.log(event)
+  console.log(`[CreateEvent] event: ${JSON.stringify(event.desc)}`)
+  console.log(`[CreateEvent] origin: ${JSON.stringify(origin.desc)}`)
   store.setEvent(event)
   store.eventViewStatus.relocateStatus = 'enabled'
   store.eventViewStatus.computeMagnitudesStatus = 'disabled'

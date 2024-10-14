@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { getDefault, getLocalStorageDefault, DISCARDED_EVENT_TYPES } from '@/utils'
 import { QEvent } from '@/lib/sismojs/src/core/event/types'
-import { useAppStore } from '@/stores/app'
-import type { ColObject } from '@/types'
 import { computed, ref, watch } from 'vue'
+import { useAppStore } from '@/stores/app'
+import SmartTable from './SmartTable.vue'
+import type { ColObject } from '@/types'
 import router from '@/router'
+
 
 const emit = defineEmits(['openForm'])
 
@@ -94,9 +96,15 @@ const header = ref([
     enabled: true
   },
   {
+    label: 'Type Certainty',
+    valueAccessor: (e: QEvent) => e.typeCertainty,
+    textAccessor: (e: QEvent) => e.typeCertainty,
+    enabled: false
+  },
+  {
     label: 'Region',
     valueAccessor: (e: QEvent) => e.preferredOriginID.referredObject.region,
-    textAccessor: (e: QEvent) => e.preferredOriginID.referredObject.region.toUpperCase(),
+    textAccessor: (e: QEvent) => e.preferredOriginID.referredObject.region?.toUpperCase(),
     enabled: true
   },
   {

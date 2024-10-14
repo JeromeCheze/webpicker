@@ -57,11 +57,11 @@ function updatePickMap() {
       getDefault(result[netsta], p.waveformID.seedid, []).push(p)
     }
   }
-  console.log('[updatePickMap]', result)
+  console.log('[app.updatePickMap]')
   pickMap.value = result
 }
 function setEvent(event: QEvent) {
-  console.log('[app.setEvent]', event)
+  console.log(`[app.setEvent] ${JSON.stringify(event.desc)}`)
   currentEvent.value = event
   currentOrigin.value = event.preferredOriginID != null ? event.preferredOriginID.referredObject : null
   if (currentOrigin.value != null) {
@@ -100,9 +100,10 @@ function cloneOrigin() {
   eventViewStatus.value.computeMagnitudesStatus = 'disabled'
   eventViewStatus.value.commitStatus = 'disabled'
   originDirty.value = true
-  console.log('[app.cloneOrigin]', currentOrigin.value)
+  console.log(`[app.cloneOrigin] ${JSON.stringify(currentOrigin.value.desc)}`)
 }
 function createArrival(p: QPick) {
+  console.log(`[app.createArrivals]`)
   const netsta = p.waveformID.netsta
   const ttt = dataManager.getStationPhaseTime(currentOrigin.value!.time.object.getTime(), netsta, p.phaseHint as 'P' | 'S')
   const pTime = p.time.object.getTime()
@@ -117,9 +118,9 @@ function createArrival(p: QPick) {
   }
   currentOrigin.value!.addArrival(arrivalDesc)
   currentArrivals.value = currentOrigin.value!.arrival.map(x => x)
-  console.log('[app.createArrivals]', arrivalDesc)
 }
 function createPick(phase: string, pickTime: number, seedid: string, filter: string | undefined): QPick {
+  console.log('[app.createPick]')
   if (!originDirty.value) {
     cloneOrigin()
   }
@@ -145,13 +146,13 @@ function createPick(phase: string, pickTime: number, seedid: string, filter: str
     },
     filterID: filter?.replace(' ', '_').replace(':', '_')
   }
-  console.log('create pick', pickDesc)
   const pick = currentEvent.value!.addPick(pickDesc)
   createArrival(pick)
   updatePickMap()
   return pick
 }
 function deletePick(pick: QPick) {
+  console.log('[app.deletePick]')
   if (!originDirty.value) {
     cloneOrigin()
   }
@@ -170,7 +171,6 @@ function deletePick(pick: QPick) {
   }
   // delete pick only if it is not referred by another arrival
   if (canBeDeleted) {
-    console.log('[app.deletePick]', pick)
     currentEvent.value!.deletePick(pick)
   }
   currentArrivals.value = currentOrigin.value!.arrival.map(x => x)
@@ -192,26 +192,27 @@ function clonePick(pick: QPick) {
   clonedDesc.evaluationMode = 'manual'
   const clonedPick = event.addPick(clonedDesc)
   createArrival(clonedPick)
-  console.log('[app.clonePick]', clonedPick)
-  // updatePickMap()
+  console.log(`[app.clonePick] ${JSON.stringify(clonedPick.desc)}`)
+  updatePickMap()
   return clonedPick
 }
 function selectArrivals(selectedArrivals: QArrival[]) {
+  console.log('[app.selectArrivals]')
   if (!originDirty.value) {
     cloneOrigin()
   }
   const pickIdList = selectedArrivals.map(x => x.pickID.id)
   if (currentArrivals.value == null) {
-    console.warn('no arrivals')
+    console.warn('app.selectArrivals] no arrivals')
     return
   }
-  console.log('[app.selectedArrivals]', selectedArrivals)
   for (const arrival of currentArrivals.value) {
     arrival.timeWeight = pickIdList.indexOf(arrival.pickID.id) < 0 ? 0 : 1
   }
   currentArrivals.value = currentArrivals.value.map(x => x)
 }
 function setArrivals(arrivals: QArrival[]) {
+  console.log('[app.setArrivals]')
   if (!originDirty.value) {
     cloneOrigin()
   }
@@ -232,6 +233,7 @@ function createFocalMechanism(strike: number, dip: number, rake: number, nbStati
     }
   }, currentEvent.value!.id)
   eventViewStatus.value.commitStatus = 'required'
+  console.log(`[app.createFocalMechanism] ${JSON.stringify(currentFocalMechanism.value.desc)}`)
 }
 
 // Load application settings

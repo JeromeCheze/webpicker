@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { degToKm, kmToDeg, pushUnique, getLocalStorageDefault, setLocalStorage } from '@/utils'
 import type { Inventory } from '@/lib/sismojs/src/types'
+import { onMounted, ref, watch } from 'vue'
+import NumberField from './NumberField.vue'
 import { useAppStore } from '@/stores/app'
 import { useRoute } from 'vue-router'
-import { onMounted, ref, watch } from 'vue'
 import * as L from 'leaflet'
 
 interface OptType {
@@ -171,7 +172,6 @@ function initMap() {
   if (mapContainer.value == null || map.value != null) {
     return
   }
-  console.log('initMap')
   map.value = L.map(mapContainer.value, { trackResize: false, attributionControl: false })
   const plan = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}')
   const worldtopomap = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}')

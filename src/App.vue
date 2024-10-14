@@ -4,6 +4,10 @@ import { ref, onMounted, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 import { RouterView } from 'vue-router'
 
+import SettingsPanel from '@/components/SettingsPanel.vue'
+import ChatPanel from '@/components/ChatPanel.vue'
+import CreateEvent from '@/components/CreateEvent.vue'
+
 const store = useAppStore()
 const authorDialog = ref(store.author == null)
 const authorValue = ref(store.author || '')
@@ -13,6 +17,8 @@ const chatMenu = ref(false)
 const drawer = ref(true)
 const rail = ref(getLocalStorageDefault('navDrawer', false) as boolean)
 const logDialog = ref(false)
+const logStack = ref([] as string[])
+const logCopySuccess = ref(false)
 const connectionPopup = ref(false)
 const connectionStatus = ref('error' as 'success' | 'error' | 'info')
 const infoNotification = ref(false)
@@ -45,6 +51,29 @@ function checkAuthor(value: string) {
 
 function reload() {
   location.reload()
+}
+
+function initLogger() {
+  const saveConsole = {
+    log: console.log,
+    warn: console.warn
+  }
+  console.log = function(msg) {
+    logStack.value.push(`${new Date().toISOString()} INFO ${msg}`)
+    saveConsole.log(msg)
+  }
+  console.warn = function(msg) {
+    logStack.value.push(`${new Date().toISOString()} WARNING ${msg}`)
+    saveConsole.warn(msg)
+  }
+}
+
+function copyLogToClipboard() {
+  navigator.clipboard.writeText(logStack.value.join('\n'))
+  logCopySuccess.value = true
+  setTimeout(() => {
+    logCopySuccess.value = false
+  }, 3000)
 }
 
 watch([
@@ -109,6 +138,7 @@ watch(() => store.notification, (value) => {
 }, { deep: true })
 
 onMounted(() => {
+  initLogger()
   setBackground()
   document.body.addEventListener('keydown', ev => {
     if (!settingsDialog.value && !authorDialog.value && !chatMenu.value) {
@@ -184,8 +214,14 @@ onMounted(() => {
           prepend-icon="mdi-cog"
           @click="settingsDialog = !settingsDialog"
           :active="settingsDialog"></v-list-item>
-        <!-- <v-list-item title="Logs" prepend-icon="mdi-console"></v-list-item> -->
-        <v-list-item :title="store.author || 'undefined'" prepend-icon="mdi-account" @click="authorDialog = true"></v-list-item>
+        <v-list-item
+          title="Log"
+          prepend-icon="mdi-stethoscope"
+          @click="logDialog = true"></v-list-item>
+        <v-list-item
+          :title="store.author || 'undefined'"
+          prepend-icon="mdi-account"
+          @click="authorDialog = true"></v-list-item>
         <ChatPanel v-model="chatMenu"/>
       </v-list>
     </v-navigation-drawer>
@@ -204,6 +240,25 @@ onMounted(() => {
           </v-card-actions>
         </v-card>
       </v-form>
+    </v-dialog>
+    <v-dialog v-model="logDialog" width="1000" attach scrollable>
+      <v-card :style="{ fontSize: '0.8em' }">
+        <v-card-title class="d-flex justify-space-between align-center">
+          <div class="text-h5 text-medium-emphasis">Log</div>
+          <v-btn icon="mdi-close" variant="text" @click="logDialog = false"></v-btn>
+        </v-card-title>
+        <v-card-text :style="{ height: '80vh' }">
+          <pre v-for="line in logStack">{{ line }}</pre>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            :prepend-icon="logCopySuccess ? 'mdi-check-circle-outline' : 'mdi-content-copy'"
+            :color="logCopySuccess ? 'success' : ''"
+            @click="copyLogToClipboard"
+          >copy to clipboard</v-btn>
+        </v-card-actions>
+      </v-card>
     </v-dialog>
     <SettingsPanel v-model="settingsDialog"/>
     <CreateEvent v-model="createEventDialog"/>

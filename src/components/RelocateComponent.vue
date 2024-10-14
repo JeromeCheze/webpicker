@@ -59,6 +59,7 @@ function relocate() {
   })
   // Keep only pick referred by arrivals
   event.pick = event.pick.filter((x: QPickDescription) => pickIds.indexOf(x['@publicID']) >= 0)
+  console.log(`[RelocateComponent] POST: ${JSON.stringify([event])}`)
   fetch(`../api/relocate?locator=${locator.value}&profile=${profile.value}`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -66,8 +67,10 @@ function relocate() {
   }).then(response => {
     locked.value = false
     store.notification.push({ type: 'progress', value: null })
+    console.log(`[RelocateComponent] response status: ${response.status}`)
     if (response.status === 200) {
       response.json().then(statusResponse => {
+        console.log(`[RelocateComponent] result: ${JSON.stringify(statusResponse)}`)
         if (statusResponse.message !== '') {
           alert(statusResponse.message)
         }
@@ -99,6 +102,7 @@ function relocate() {
         }
       })
     } else {
+      console.log(`[RelocateComponent] error message: ${response.statusText}`)
       store.notification.push({ type: 'warning', value: `Error: ${response.status} (${response.statusText})` })
     }
   })

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { QMagnitude, QOrigin, QRealQuantity } from '@/lib/sismojs/src/core/event/types'
+import EventOriginsMap from './EventOriginsMap.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useAppStore } from '@/stores/app'
+import SmartTable from './SmartTable.vue'
 import type { ColObject } from '@/types'
 
 const store = useAppStore()
@@ -169,13 +171,13 @@ function handleMagnitudeClass(m: QMagnitude) {
 }
 
 function handleMagnitudeStyle(m: QMagnitude) {
-  console.log(preferredMagnitudeID.value, m.publicID)
   return preferredMagnitudeID.value === m.publicID ? { background: store.settings['color.activeRowColor'] } : {}
 }
 
 function setPreferredOrigin() {
   if (store.currentEvent != null && activeOrigin.value != null) {
     preferredOriginID.value = activeOrigin.value.publicID
+    console.log(`[EventInspector] set preferred origin: ${preferredOriginID.value}`)
     store.currentEvent.setPreferredOriginID(activeOrigin.value.publicID)
     if (
       store.currentEvent.preferredMagnitudeID.referredObject.originID.id !== activeOrigin.value.publicID
@@ -195,6 +197,7 @@ function setPreferredMagnitude() {
     && activeMagnitude.value.originID.id === preferredOriginID.value
   ) {
     preferredMagnitudeID.value = activeMagnitude.value.publicID
+    console.log(`[EventInspector] set preferred magnitude: ${preferredMagnitudeID.value}`)
     store.currentEvent.setPreferredMagnitudeID(activeMagnitude.value.publicID)
     store.setEvent(store.currentEvent)
   }

@@ -5,9 +5,11 @@ import type { LineOptions, VLine } from '@/lib/lichen/src/types'
 import type { QPick } from '@/lib/sismojs/src/core/event/types'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
 import { FilterProcessor } from '@/utils/waveformProcessor'
+import WaveformSlider from './WaveformSlider.vue'
 import { getDefault, toNetSta } from '@/utils'
 import { useAppStore } from '@/stores/app'
 import Lichen from '@/lib/lichen/src'
+
 
 const emit = defineEmits(['selectStation', 'sliderTimeWindow'])
 
@@ -70,7 +72,7 @@ const listData = computed(() => {
   return result
 })
 
-const selectedTimeWindow = computed(() => {
+const selectedTimeWindow = computed<[number, number]>(() => {
   if (selected.value == null) {
     return [0, 0]
   }

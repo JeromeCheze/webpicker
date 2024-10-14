@@ -68,6 +68,7 @@ function commit() {
   if (evaluationStatus.value != null) {
     event.preferredOriginID.referredObject.evaluationStatus = evaluationStatus.value
   }
+  console.log(`[CommitComponent] POST: ${JSON.stringify([event.desc])}`)
   fetch(`../api/commit`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -77,6 +78,7 @@ function commit() {
     store.notification.push({ type: 'progress', value: null })
     if (response.status === 200) {
       response.json().then(statusResponse => {
+        console.log(`[CommitComponent] result: ${JSON.stringify(statusResponse)}`)
         if (statusResponse.message != null) {
           store.notification.push({ type: statusResponse.return_code === 0 ? 'warning' : 'error', value: statusResponse.message })
         }
@@ -84,6 +86,8 @@ function commit() {
           emit('update')
         }
       })
+    } else {
+      console.log(`[CommitComponent] error message: ${response.statusText}`)
     }
   })
 }

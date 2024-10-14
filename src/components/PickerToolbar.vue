@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import type { FilterOptions, PickerToolbarOptions } from '@/types'
+import AdditionalChannels from './AdditionalChannels.vue'
+import MagnitudePanel from './MagnitudePanel.vue'
+import StationRadius from './StationRadius.vue'
+import OriginPanel from './OriginPanel.vue'
 import { blurActiveElement } from '@/utils'
 import { ref, watch, computed } from 'vue'
 import { useAppStore } from '@/stores/app'

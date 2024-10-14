@@ -2,8 +2,10 @@
 import { deepCopy, getLocalStorageDefault, parseFilter, setLocalStorage } from '@/utils';
 import defaultSettings from '@/utils/defaultSettings'
 import type { FilterOptions } from '@/types'
+import NumberField from './NumberField.vue'
 import { useAppStore } from '@/stores/app'
 import { ref, onMounted } from 'vue'
+
 
 const emit = defineEmits(['update:modelValue'])
 

@@ -59,6 +59,7 @@ function computeMagnitudes() {
   }
   store.notification.push({ type: 'progress', value: { text: 'Compute magnitudes...', percent: -1 } })
   QResourceIdentifier.mainKey = saveMainKey
+  console.log(`[ComputeMagnitudeComponent] POST: ${JSON.stringify([event.desc])}`)
   fetch(`../api/compute_magnitudes`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -66,8 +67,10 @@ function computeMagnitudes() {
   }).then(response => {
     locked.value = false
     store.notification.push({ type: 'progress', value: null })
+    console.log(`[ComputeMagnitudeComponent] response status: ${response.status}`)
     if (response.status === 200) {
       response.json().then(statusResponse => {
+        console.log(`[ComputeMagnitudeComponent] result: ${JSON.stringify(statusResponse)}`)
         if (statusResponse.quakeml !== '') {
           try {
             const doc = new DOMParser().parseFromString(statusResponse.quakeml, 'application/xml')
@@ -75,7 +78,6 @@ function computeMagnitudes() {
             QResourceIdentifier.mainKey = 'sandbox'
             const result = parse(doc) as QEvent[]
             QResourceIdentifier.mainKey = saveMainKey
-            console.log(result)
             result[0].magnitude.sort((a, b) => {
               const aa = MAG_TYPE_WEIGHT.indexOf(a.type!)
               const bb = MAG_TYPE_WEIGHT.indexOf(b.type!)
@@ -96,9 +98,11 @@ function computeMagnitudes() {
             store.eventViewStatus.computeMagnitudesStatus = 'enabled'
             store.eventViewStatus.commitStatus = 'required'
           } catch (error) {
+            console.log(`[ComputeMagnitudeComponent] error: ${error}`)
             alert(statusResponse.message)
           }
         } else {
+          console.log(`[ComputeMagnitudeComponent] result: ${statusResponse.message}`)
           alert(statusResponse.message)
         }
       })
