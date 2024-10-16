@@ -16,9 +16,9 @@ const createEventDialog = ref(false)
 const chatMenu = ref(false)
 const drawer = ref(true)
 const rail = ref(getLocalStorageDefault('navDrawer', false) as boolean)
+const downloadLogLink = ref()
 const logDialog = ref(false)
 const logStack = ref([] as string[])
-const logCopySuccess = ref(false)
 const connectionPopup = ref(false)
 const connectionStatus = ref('error' as 'success' | 'error' | 'info')
 const infoNotification = ref(false)
@@ -68,12 +68,9 @@ function initLogger() {
   }
 }
 
-function copyLogToClipboard() {
-  navigator.clipboard.writeText(logStack.value.join('\n'))
-  logCopySuccess.value = true
-  setTimeout(() => {
-    logCopySuccess.value = false
-  }, 3000)
+function downloadLog() {
+  downloadLogLink.value.href = `data:text/plain;base64,${btoa(logStack.value.join('\n'))}`
+  downloadLogLink.value.click()
 }
 
 watch([
@@ -178,7 +175,7 @@ onMounted(() => {
       </v-snackbar>
       <v-snackbar v-model="persistentNotification" timeout="-1" vertical :color="persistentNotificationType">
         <pre :style="{ maxHeight: '200px', overflowY: 'auto' }">{{ persistentNotificationText }}</pre>
-        <template v-slot:actions>
+        <template #actions>
           <v-btn variant="text" @click="persistentNotification = false">Close</v-btn>
         </template>
       </v-snackbar>
@@ -187,7 +184,7 @@ onMounted(() => {
       <v-list nav>
         <v-list-item prepend-avatar="@/assets/wp.png" class="font-weight-bold" @click.stop="rail = !rail">
           WebPicker
-          <template v-slot:append>
+          <template #append>
             <v-btn variant="text" icon="mdi-chevron-left" @click.stop="rail = !rail"></v-btn>
           </template>
         </v-list-item>
@@ -248,15 +245,15 @@ onMounted(() => {
           <v-btn icon="mdi-close" variant="text" @click="logDialog = false"></v-btn>
         </v-card-title>
         <v-card-text :style="{ height: '80vh' }">
+          <a ref="downloadLogLink" download="webpicker.log" style="display: none;"></a>
           <pre v-for="line in logStack">{{ line }}</pre>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn
-            :prepend-icon="logCopySuccess ? 'mdi-check-circle-outline' : 'mdi-content-copy'"
-            :color="logCopySuccess ? 'success' : ''"
-            @click="copyLogToClipboard"
-          >copy to clipboard</v-btn>
+            prepend-icon="mdi-download"
+            @click="downloadLog"
+          >download</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

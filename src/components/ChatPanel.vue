@@ -134,9 +134,9 @@ onBeforeUnmount(() => {
     attach
     v-model="model"
   >
-    <template v-slot:activator="{ props }">
+    <template #activator="{ props }">
       <v-list-item title="Chat" v-bind="props">
-        <template v-slot:prepend>
+        <template #prepend>
           <v-badge dot v-if="unseenStatusMain" color="red"><v-icon>mdi-message</v-icon></v-badge>
           <v-icon v-else>mdi-message</v-icon>
         </template>
@@ -149,7 +149,7 @@ onBeforeUnmount(() => {
             <v-list>
               <v-list-item @click="selectedAuthor = '@everyone'" :active="selectedAuthor === '@everyone'">
                 <span>@everyone</span>
-                <template v-slot:append>
+                <template #append>
                   <v-badge dot inline color="red" v-if="unseenStatusByDiscussion['@everyone']"></v-badge>
                 </template>
               </v-list-item>
@@ -159,7 +159,7 @@ onBeforeUnmount(() => {
                 :active="selectedAuthor === author.id"
               >
                 @{{ author.author }}
-                <template v-slot:append>
+                <template #append>
                   <v-badge dot inline color="red" v-if="unseenStatusByDiscussion[author.id]"></v-badge>
                 </template>
               </v-list-item>

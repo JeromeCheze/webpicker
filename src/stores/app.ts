@@ -87,6 +87,12 @@ function setEvent(event: QEvent) {
   } else {
     cacheEventList.value.push(event)
   }
+  console.log(`[app.setEvent] currentEvent: ${currentEvent.value.publicID}`)
+  console.log(`[app.setEvent] currentOrigin: ${currentOrigin.value?.publicID}`)
+  console.log(`[app.setEvent] currentOriginMagnitudes: ${currentOriginMagnitudes.value.map(x => x.publicID).join(', ')}`)
+  console.log(`[app.setEvent] currentMagnitude: ${currentMagnitude.value?.publicID}`)
+  console.log(`[app.setEvent] currentFocalMechanism: ${currentFocalMechanism.value?.publicID}`)
+  console.log(`[app.setEvent] eventViewStatus: ${JSON.stringify(eventViewStatus.value)}`)
 }
 function cloneOrigin() {
   const clonedOriginDesc = deepCopy(currentOrigin.value!.desc) as QOriginDescription

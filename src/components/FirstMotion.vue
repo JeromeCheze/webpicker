@@ -471,7 +471,7 @@ onBeforeUnmount(() => {
         </tbody>
       </table>
       <v-menu location="start" :close-on-content-click="false">
-        <template v-slot:activator="{ props }">
+        <template #activator="{ props }">
           <v-btn v-bind="props" density="compact" variant="text" icon="mdi-dots-horizontal"></v-btn>
         </template>
         <v-card>
@@ -492,12 +492,12 @@ onBeforeUnmount(() => {
         class="ma-1">COMPUTE</v-btn>
       <br>
       <v-dialog max-width="700">
-        <template v-slot:activator="{ props: activatorProps }">
+        <template #activator="{ props: activatorProps }">
           <v-badge :content="nbFM">
             <v-btn v-bind="activatorProps" density="compact" class="ma-1">BROWSE</v-btn>
           </v-badge>
         </template>
-        <template v-slot:default="{ isActive }">
+        <template #default="{ isActive }">
           <v-card>
             <v-table>
               <thead>

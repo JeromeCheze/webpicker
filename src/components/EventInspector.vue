@@ -180,7 +180,8 @@ function setPreferredOrigin() {
     console.log(`[EventInspector] set preferred origin: ${preferredOriginID.value}`)
     store.currentEvent.setPreferredOriginID(activeOrigin.value.publicID)
     if (
-      store.currentEvent.preferredMagnitudeID.referredObject.originID.id !== activeOrigin.value.publicID
+      store.currentEvent.preferredMagnitudeID.referredObject != null 
+      && store.currentEvent.preferredMagnitudeID.referredObject.originID.id !== activeOrigin.value.publicID
     ) {
       preferredMagnitudeID.value = null
       store.currentEvent.setPreferredMagnitudeID(undefined)

@@ -186,7 +186,7 @@ watch(() => sortValue.value, (value: number) => props.modelValue.sort = sortOpti
     <AdditionalChannels :seedids="props.modelValue.seedids" @additional-channels="(seedidList: string[]) => emit('downloadChannels', seedidList)"/>
     <!-- STATION RADIUS -->
     <v-menu v-model="stationRadiusMenu" :close-on-content-click="false" attach>
-      <template v-slot:activator="{ props }">
+      <template #activator="{ props }">
         <v-btn class="mx-1" v-bind="props" title="Add station radius"><v-icon>mdi-less-than-or-equal</v-icon></v-btn>
       </template>
       <v-card min-width="500">
@@ -210,7 +210,7 @@ watch(() => sortValue.value, (value: number) => props.modelValue.sort = sortOpti
       :active="props.modelValue.tttEnabled">TTT</v-btn>
     <!-- EVENT INFO -->
     <v-dialog max-width="900" v-model="eventInfoDialog">
-      <template v-slot:activator="{ props: activatorProps }">
+      <template #activator="{ props: activatorProps }">
         <v-btn v-bind="activatorProps" title="Display event info"><v-icon>mdi-information-outline</v-icon></v-btn>
       </template>
       <v-card>

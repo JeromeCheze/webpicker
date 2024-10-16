@@ -111,7 +111,7 @@ function relocate() {
 
 <template>
   <v-menu width="300" offset="18" :close-on-content-click="false" attach>
-    <template v-slot:activator="{ props }">
+    <template #activator="{ props }">
       <v-btn
         v-bind="props"
         :title="`relocate (${store.settings['keybinding.relocate']})`"
@@ -119,7 +119,7 @@ function relocate() {
         :disabled="store.currentArrivals!.length === 0"
       >
         <v-icon>mdi-crosshairs-gps</v-icon>
-        <template v-slot:append>
+        <template #append>
           <v-icon>mdi-triangle-small-down</v-icon>
         </template>
       </v-btn>

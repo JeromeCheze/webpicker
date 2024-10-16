@@ -147,7 +147,7 @@ watch(() => store.currentOrigin, () => {
           <v-col cols="5">
             <div>
               <v-menu offset-y :close-on-content-click="false" v-model="dateMenu">
-                <template v-slot:activator="{ props }">
+                <template #activator="{ props }">
                   <v-text-field density="compact" v-bind="props" v-model="date" label="Date [YYYY-mm-dd]"></v-text-field>
                 </template>
                 <v-date-picker v-model="pickerTime" :allowed-dates="allowedTime"></v-date-picker>

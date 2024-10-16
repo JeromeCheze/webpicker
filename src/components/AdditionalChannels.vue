@@ -41,13 +41,13 @@ function handleValidate() {
 
 <template>
   <v-menu v-model="menu" :close-on-content-click="false" attach>
-    <template v-slot:activator="{ props }">
+    <template #activator="{ props }">
       <v-btn class="mx-1" v-bind="props" :disabled="channels.length === 0" title="Add additional channels"><v-icon>mdi-playlist-plus</v-icon></v-btn>
     </template>
     <v-card>
       <v-list>
         <v-list-item v-for="seedid in channels" :title="seedid">
-          <template v-slot:prepend>
+          <template #prepend>
             <v-checkbox-btn v-model="selectedChannels[seedid]"></v-checkbox-btn>
           </template>
         </v-list-item>

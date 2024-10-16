@@ -123,7 +123,7 @@ watch(() => store.keydown, (newValue) => {
 
 <template>
   <v-menu width="400" offset="18" :close-on-content-click="false" attach>
-    <template v-slot:activator="{ props }">
+    <template #activator="{ props }">
       <v-btn
         v-bind="props"
         :title="`compute magnitudes (${store.settings['keybinding.computeMagnitudes']})`"
@@ -131,7 +131,7 @@ watch(() => store.keydown, (newValue) => {
         :disabled="store.eventViewStatus.computeMagnitudesStatus === 'disabled'"
       >
         M
-        <template v-slot:append>
+        <template #append>
           <v-icon>mdi-triangle-small-down</v-icon>
         </template>
       </v-btn>

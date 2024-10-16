@@ -1,11 +1,23 @@
 <script setup lang="ts">
-import { deepCopy, getLocalStorageDefault, parseFilter, setLocalStorage } from '@/utils';
+import { deepCopy, getLocalStorageDefault, parseFilter, setLocalStorage, shortcutString } from '@/utils'
 import defaultSettings from '@/utils/defaultSettings'
 import type { FilterOptions } from '@/types'
 import NumberField from './NumberField.vue'
 import { useAppStore } from '@/stores/app'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 
+interface StructItemField {
+  label: string
+  key: string
+  type: 'select' | 'text' | 'number' | 'color'
+  items?: string[]
+  mode?: 'rgb' | 'rgba' | 'hsl' | 'hsla' | 'hex' | 'hexa'
+}
+
+interface StructItem {
+  title: string
+  fields: StructItemField[]
+}
 
 const emit = defineEmits(['update:modelValue'])
 
@@ -19,28 +31,29 @@ const values = ref(deepCopy(store.settings))
 const filtersDirty = ref(false)
 const form = ref()
 const settingsStatus = ref(null as 'success' | 'error' | null)
+const captureKeybindingKey = ref('')
 
-const struct = [
+const struct: StructItem[] = [
   {
     title: 'Appearance',
     fields: [
       { label: 'Theme', key: 'color.theme', type: 'select', items: ['light', 'dark'] },
       { label: 'Background', key: 'color.background', type: 'text' },
       { label: 'Surface [R,G,B]', key: 'color.surface', type: 'text' },
-      { label: 'Active Row Color', key: 'color.activeRowColor', type: 'text' },
-      { label: 'Color Waveform', key: 'color.waveform', type: 'text' },
-      { label: 'Color Active Waveform', key: 'color.activeWaveform', type: 'text' },
-      { label: 'Color Active TimeWindow', key: 'color.activeTimeWindow', type: 'text' },
+      { label: 'Active Row Color', key: 'color.activeRowColor', type: 'color', mode: 'hex' },
+      { label: 'Color Waveform', key: 'color.waveform', type: 'color', mode: 'rgb' },
+      { label: 'Color Active Waveform', key: 'color.activeWaveform', type: 'color', mode: 'hex' },
+      { label: 'Color Active TimeWindow', key: 'color.activeTimeWindow', type: 'color', mode: 'hex' },
       { label: 'Spectrogram Colormap', key: 'color.spectrogram', type: 'select', items: ['PARULA' ,'VIRIDIS' ,'PLASMA' ,'INFERNO' ,'MAGMA' ,'CIVIDIS'] },
       { label: 'Spectrogram Height', key: 'picker.spectrogramHeight', type: 'number' },
       { label: 'Color T0', key: 'color.T0', type: 'text' },
-      { label: 'Color TTT', key: 'color.TTT', type: 'text' },
-      { label: 'Color TTT (NLL)', key: 'color.TTTNLL', type: 'text' },
-      { label: 'Color Pick Automatic', key: 'color.pickAutomatic', type: 'text' },
-      { label: 'Color Pick Manual', key: 'color.pickManual', type: 'text' },
-      { label: 'Color Pick Automatic (other)', key: 'color.additionalPickAutomatic', type: 'text' },
-      { label: 'Color Pick Manual (other)', key: 'color.additionalPickManual', type: 'text' },
-      { label: 'Color Detector', key: 'color.detector', type: 'text' },
+      { label: 'Color TTT', key: 'color.TTT', type: 'color', mode: 'hex' },
+      { label: 'Color TTT (NLL)', key: 'color.TTTNLL', type: 'color', mode: 'hex' },
+      { label: 'Color Pick Automatic', key: 'color.pickAutomatic', type: 'color', mode: 'hex' },
+      { label: 'Color Pick Manual', key: 'color.pickManual', type: 'color', mode: 'hex' },
+      { label: 'Color Pick Automatic (other)', key: 'color.additionalPickAutomatic', type: 'color', mode: 'hex' },
+      { label: 'Color Pick Manual (other)', key: 'color.additionalPickManual', type: 'color', mode: 'hex' },
+      { label: 'Color Detector', key: 'color.detector', type: 'color', mode: 'hex' },
       { label: 'Tick Font Size', key: 'picker.tickFontSize', type: 'number' },
       { label: 'Picker Waveform Height', key: 'picker.pickerWaveformHeight', type: 'number' },
       { label: 'List Waveform Height', key: 'picker.listWaveformHeight', type: 'number' },
@@ -112,6 +125,14 @@ function checkKeybinding(key: string, value: string) {
     return `Conflict with ${conflicts.join(', ')}`
   }
   return true
+}
+
+function captureKeybinding(key: string) {
+  if (key === captureKeybindingKey.value) {
+    captureKeybindingKey.value = ''
+  } else {
+    captureKeybindingKey.value = key
+  }
 }
 
 function resetDefault(key: string) {
@@ -191,9 +212,20 @@ async function handleSave() {
   }
 }
 
+function handleKeydown(e: KeyboardEvent) {
+  if (captureKeybindingKey.value !== '') {
+    values.value[captureKeybindingKey.value] = shortcutString(e)
+  }
+}
+
 onMounted(() => {
   const settings = getLocalStorageDefault('settings', {})
   filtersDirty.value = settings.filter != null
+  document.addEventListener('keydown', handleKeydown)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', handleKeydown)
 })
 </script>
 
@@ -221,9 +253,47 @@ onMounted(() => {
                     <tr v-for="field in section.fields">
                       <th>{{ field.label }}</th>
                       <td>
-                        <v-select v-if="field.type === 'select'" density="compact" hide-details="auto" :items="field.items" v-model="values[field.key]"/>
-                        <v-text-field v-else-if="field.type === 'text'" density="compact" hide-details="auto" v-model="values[field.key]" :rules="section.title === 'Keybindings' ? [checkKeybinding(field.key, values[field.key])] : []"/>
-                        <NumberField v-else-if="field.type === 'number'" density="compact" hide-details="auto" v-model="values[field.key]" required/>
+                        <v-menu v-if="field.type === 'color'" :close-on-content-click="false">
+                          <template #activator="{ props }">
+                            <v-text-field readonly hide-details="auto" v-model="values[field.key]" density="compact" v-bind="props">
+                              <template #prepend-inner>
+                                <div class="color-picker__box-color" :style="{ background: values[field.key] }"></div>
+                              </template>
+                            </v-text-field>
+                          </template>
+                          <v-color-picker v-model="values[field.key]" :mode="field.mode" :modes="[field.mode!]"></v-color-picker>
+                        </v-menu>
+                        <v-select
+                          v-else-if="field.type === 'select'"
+                          density="compact"
+                          hide-details="auto"
+                          :items="field.items"
+                          v-model="values[field.key]"/>
+                        <v-text-field
+                          v-else-if="section.title === 'Keybindings'"
+                          readonly
+                          density="compact"
+                          hide-details="auto"
+                          v-model="values[field.key]"
+                          :rules="[checkKeybinding(field.key, values[field.key])]">
+                          <template #append>
+                            <v-icon
+                              title="click to capture keybinding"
+                              :color="field.key === captureKeybindingKey ? 'red' : ''"
+                              @click="captureKeybinding(field.key)">mdi-record</v-icon>
+                          </template>
+                        </v-text-field>
+                        <v-text-field
+                          v-else-if="field.type === 'text'"
+                          density="compact"
+                          hide-details="auto"
+                          v-model="values[field.key]"/>
+                        <NumberField
+                          v-else-if="field.type === 'number'"
+                          density="compact"
+                          hide-details="auto"
+                          v-model="values[field.key]"
+                          required/>
                       </td>
                       <td><v-btn variant="plain" v-if="!isDefaultValue(field.key)" @click="resetDefault(field.key)"><v-icon>mdi-backup-restore</v-icon></v-btn></td>
                     </tr>
@@ -278,7 +348,7 @@ onMounted(() => {
 </template>
 
 <style>
-.settings-table,
+/*.settings-table,
 .filter-table {
   width: 100%;
   margin-bottom: 30px;
@@ -300,5 +370,14 @@ onMounted(() => {
 .draggable-row {
   cursor: move;
   width: 40px;
+}*/
+.color-picker__box-color {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid gray;
+  margin: 4px;
+  cursor: pointer;
 }
 </style>

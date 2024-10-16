@@ -95,7 +95,7 @@ function commit() {
 
 <template>
   <v-menu width="300" offset="18" :close-on-content-click="false" attach>
-    <template v-slot:activator="{ props }">
+    <template #activator="{ props }">
       <v-btn
         v-bind="props"
         :title="`commit (${store.settings['keybinding.commit']})`"
@@ -103,7 +103,7 @@ function commit() {
         :disabled="store.eventViewStatus.commitStatus === 'disabled'"
       >
         <v-icon>mdi-content-save-edit</v-icon>
-        <template v-slot:append>
+        <template #append>
           <v-icon>mdi-triangle-small-down</v-icon>
         </template>
       </v-btn>
