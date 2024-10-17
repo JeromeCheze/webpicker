@@ -19,6 +19,7 @@ const notification = ref([] as WPNotificationOptions[])
 const cacheEventList = ref([] as QEvent[])
 
 // Utilities for keybind actions
+const keydownDisabled = ref(false)
 const keydownEvent = ref(null as KeyboardEvent | null)
 const keydown = computed(() => keydownEvent.value != null ? shortcutString(keydownEvent.value) : '')
 function preventDefault() {
@@ -287,6 +288,7 @@ export const useAppStore = defineStore('app', () => {
     selectArrivals,
     setArrivals,
     eventViewStatus,
+    keydownDisabled,
     keydownEvent,
     keydown,
     preventDefault,

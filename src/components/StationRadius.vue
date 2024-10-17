@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { degToKm, kmToDeg, pushUnique, getLocalStorageDefault, setLocalStorage } from '@/utils'
 import type { Inventory } from '@/lib/sismojs/src/types'
-import { onMounted, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import NumberField from './NumberField.vue'
 import { useAppStore } from '@/stores/app'
 import { useRoute } from 'vue-router'
@@ -223,7 +223,12 @@ watch(() => props.modelValue, (value) => {
 })
 
 onMounted(() => {
+  store.keydownDisabled = true
   initMap()
+})
+
+onBeforeUnmount(() => {
+  store.keydownDisabled = false
 })
 
 defineExpose({ validate, ready })

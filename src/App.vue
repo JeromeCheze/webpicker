@@ -138,7 +138,7 @@ onMounted(() => {
   initLogger()
   setBackground()
   document.body.addEventListener('keydown', ev => {
-    if (!settingsDialog.value && !authorDialog.value && !chatMenu.value) {
+    if (!settingsDialog.value && !authorDialog.value && !chatMenu.value && !store.keydownDisabled) {
       store.keydownEvent = ev
     }
   })
