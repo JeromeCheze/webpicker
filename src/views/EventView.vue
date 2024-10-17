@@ -207,6 +207,7 @@ onMounted(() => {
             <v-btn-group density="compact">
               <v-btn
                 v-for="magnitude in store.currentOriginMagnitudes"
+                class="text-none"
                 :active="magnitude.publicID === store.currentMagnitude?.publicID"
                 @click="setCurrentMagnitude(magnitude)"
               >{{ magnitude.type }}</v-btn>

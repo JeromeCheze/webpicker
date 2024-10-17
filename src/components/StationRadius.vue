@@ -201,11 +201,11 @@ function initMap() {
 }
 
 function checkValue(value: string) {
-  return reValue.test(value) || 'Invalid'
+  return reValue.test(value) || 'Invalid value'
 }
 
 function checkChannel(value: string) {
-  return reChannel.test(value) || 'Invalid'
+  return reChannel.test(value) || 'Invalid value'
 }
 
 watch(() => radius.value, (value) => {
@@ -234,16 +234,16 @@ defineExpose({ validate, ready })
   <v-form ref="form">
     <v-row>
       <v-col cols="3">
-        <v-text-field v-model="netSelector" label="Network" density="compact" hide-details :rules="[checkValue]"/>
+        <v-text-field v-model="netSelector" label="Network" density="compact" hide-details="auto" :rules="[checkValue]"/>
       </v-col>
       <v-col cols="3">
-        <v-text-field v-model="staSelector" label="Station" density="compact" hide-details :rules="[checkValue]"/>
+        <v-text-field v-model="staSelector" label="Station" density="compact" hide-details="auto" :rules="[checkValue]"/>
       </v-col>
       <v-col cols="3">
-        <v-text-field v-model="locSelector" label="Location" density="compact" hide-details :rules="[checkValue]"/>
+        <v-text-field v-model="locSelector" label="Location" density="compact" hide-details="auto" :rules="[checkValue]"/>
       </v-col>
       <v-col cols="3">
-        <v-text-field v-model="chaSelector" label="Channel" density="compact" hide-details :rules="[checkChannel]"/>
+        <v-text-field v-model="chaSelector" label="Channel" density="compact" hide-details="auto" :rules="[checkChannel]"/>
       </v-col>
     </v-row>
     <v-row>

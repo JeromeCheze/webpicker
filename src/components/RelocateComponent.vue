@@ -32,6 +32,10 @@ watch(() => store.keydown, (newValue) => {
 
 watch(() => locator.value, (value) => {
   profile.value = relocateOptions[value][0]
+  setLocalStorage('relocateParams', {
+    locator: locator.value,
+    profile: profile.value
+  })
 })
 
 watch(() => profile.value, () => {
