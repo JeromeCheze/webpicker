@@ -95,8 +95,8 @@ function relocate() {
           store.currentMagnitude = null
           store.currentOriginMagnitudes = []
           store.dataManager.updateStationDistanceAzimuth(newOrigin.latitude.value, newOrigin.longitude.value)
-          store.currentArrivals = newOrigin.arrival
           store.currentOrigin = new QOrigin(newOrigin.desc, store.currentEvent!.id)
+          store.currentArrivals = store.currentOrigin.arrival
           store.dataManager.clearTTTCache()
           store.updatePickMap()
         } else {
