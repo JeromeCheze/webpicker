@@ -83,7 +83,11 @@ function commit() {
           store.notification.push({ type: statusResponse.return_code === 0 ? 'warning' : 'error', value: statusResponse.message })
         }
         if (statusResponse.return_code === 0) {
-          emit('update')
+          store.notification.push({ type: 'progress', value: { text: 'Reloading event...', percent: -1 } })
+          setTimeout(() => {
+            store.notification.push({ type: 'progress', value: null })
+            emit('update')
+          }, 3000)
         }
       })
     } else {

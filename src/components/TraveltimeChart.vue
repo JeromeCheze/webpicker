@@ -29,8 +29,8 @@ function drawChart() {
     return
   }
   chartContainer.value.innerHTML = ''
-  const serieP: ScatterOptions = { name: 'P', color: 'black', shape: 'circle', data: [], tooltipFormatter: v => v.toFixed(2) }
-  const serieS: ScatterOptions = { name: 'S', color: 'black', shape: 'diamond', data: [], tooltipFormatter: v => v.toFixed(2) }
+  const serieP: ScatterOptions = { name: 'P', color: 'black', shape: 'circle', data: [], tooltipFormatter: p => p.y.toFixed(2) }
+  const serieS: ScatterOptions = { name: 'S', color: 'black', shape: 'diamond', data: [], tooltipFormatter: p => p.y.toFixed(2) }
   let max = 0
   for (const arrival of store.currentArrivals) {
     const serie = arrival.phase === 'P' ? serieP : serieS

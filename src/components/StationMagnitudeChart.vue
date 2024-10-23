@@ -53,6 +53,7 @@ function drawChart() {
       magMap[mag.type].push({
         x: arrival.distance,
         y: staMag.mag.value,
+        extra: { weight: smc.weight },
         name: staMag.waveformID.seedid,
         color
       })
@@ -70,7 +71,7 @@ function drawChart() {
   }
   const series: ScatterOptions[] = []
   for (const [name, data] of Object.entries(magMap)) {
-    series.push({ name, shape: 'circle', data, color: magColor[name], tooltipFormatter: v => v.toFixed(2) })
+    series.push({ name, shape: 'circle', data, color: magColor[name], tooltipFormatter: p => `${p.y.toFixed(2)} | <strong>weight</strong>: ${p.extra.weight.toFixed(2)}` })
   }
   const fontSize = store.settings['picker.tickFontSize']
   chart.value = new Lichen(chartContainer.value as HTMLElement, {
