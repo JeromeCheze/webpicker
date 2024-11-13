@@ -217,37 +217,37 @@ watch(() => sortValue.value, (value: number) => props.modelValue.sort = sortOpti
         <v-card-text>
           <v-row>
             <v-col cols="12">
-              {{ store.currentEvent?.publicID }}
+              {{ store.eventManager.current.event?.publicID }}
               <v-chip
                 label
                 size="x-small"
-                :color="store.currentEvent?.type == null ? 'grey' : 'green'"
+                :color="store.eventManager.current.event?.type == null ? 'grey' : 'green'"
                 class="text-uppercase mx-1"
               >
-                {{ store.currentEvent?.type || 'NO TYPE SET' }}
+                {{ store.eventManager.current.event?.type || 'NO TYPE SET' }}
               </v-chip>
               <v-chip
                 label
                 size="x-small"
-                :color="store.currentOrigin?.evaluationStatus == null ? 'grey' : 'blue'"
+                :color="store.eventManager.current.origin?.evaluationStatus == null ? 'grey' : 'blue'"
                 class="text-uppercase mx-1"
               >
-                {{ store.currentOrigin?.evaluationStatus || 'NO STATUS SET' }}
+                {{ store.eventManager.current.origin?.evaluationStatus || 'NO STATUS SET' }}
               </v-chip>
             </v-col>
           </v-row>
           <v-row>
             <v-col cols="12">
               <OriginPanel
-                :origin="store.currentOrigin"
-                :status="store.eventViewStatus.relocateStatus"/>
+                :origin="store.eventManager.current.origin"
+                :status="store.eventManager.status.relocate"/>
             </v-col>
           </v-row>
           <v-row>
             <v-col cols="12">
               <MagnitudePanel
-                :magnitude="store.currentMagnitude"
-                :status="store.eventViewStatus.computeMagnitudesStatus"/>
+                :magnitude="store.eventManager.current.magnitude"
+                :status="store.eventManager.status.computeMagnitudes"/>
             </v-col>
           </v-row>
         </v-card-text>

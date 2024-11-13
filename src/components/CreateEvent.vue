@@ -16,7 +16,7 @@ const props = defineProps<{
   modelValue: boolean
 }>()
 
-const t = store.currentOrigin != null ? store.currentOrigin.time.object : new Date()
+const t = store.eventManager.current.origin != null ? store.eventManager.current.origin.time.object : new Date()
 
 const mapContainer = ref()
 const map = ref(null as L.Map | null)
@@ -26,9 +26,9 @@ const date = ref(t.toISOString().split('T')[0])
 const hours = ref(t.getUTCHours())
 const minutes = ref(t.getUTCMinutes())
 const seconds = ref(t.getUTCSeconds())
-const pickerTime = ref(store.currentOrigin != null ? store.currentOrigin.time.object : new Date())
-const lat = ref(store.currentOrigin != null ? store.currentOrigin.latitude.value : 43.6113)
-const lon = ref(store.currentOrigin != null ? store.currentOrigin.longitude.value : 7.0538)
+const pickerTime = ref(store.eventManager.current.origin != null ? store.eventManager.current.origin.time.object : new Date())
+const lat = ref(store.eventManager.current.origin != null ? store.eventManager.current.origin.latitude.value : 43.6113)
+const lon = ref(store.eventManager.current.origin != null ? store.eventManager.current.origin.longitude.value : 7.0538)
 const depth = ref(5)
 
 function initMap() {
@@ -85,10 +85,10 @@ function createEvent() {
   }, event.id)
   console.log(`[CreateEvent] event: ${JSON.stringify(event.desc)}`)
   console.log(`[CreateEvent] origin: ${JSON.stringify(origin.desc)}`)
-  store.setEvent(event)
-  store.eventViewStatus.relocateStatus = 'enabled'
-  store.eventViewStatus.computeMagnitudesStatus = 'disabled'
-  store.eventViewStatus.commitStatus = 'disabled'
+  store.eventManager.setEvent(event)
+  store.eventManager.status.relocate = 'enabled'
+  store.eventManager.status.computeMagnitudes = 'disabled'
+  store.eventManager.status.commit = 'disabled'
   emit('update:modelValue', false)
   router.push({ name: 'event', params: { eventid: event.publicID } })
 }
@@ -113,16 +113,16 @@ watch(() => props.modelValue, (value) => {
   }
 })
 
-watch(() => store.currentOrigin, () => {
-  if (store.currentOrigin != null) {
-    const t = store.currentOrigin.time.object
+watch(() => store.eventManager.current.origin, () => {
+  if (store.eventManager.current.origin != null) {
+    const t = store.eventManager.current.origin.time.object
     date.value = t.toISOString().split('T')[0]
     hours.value = t.getUTCHours()
     minutes.value = t.getUTCMinutes()
     seconds.value = t.getUTCSeconds()
-    lat.value = store.currentOrigin.latitude.value
-    lon.value = store.currentOrigin.longitude.value
-    depth.value = store.currentOrigin.depth.value / 1e3
+    lat.value = store.eventManager.current.origin.latitude.value
+    lon.value = store.eventManager.current.origin.longitude.value
+    depth.value = store.eventManager.current.origin.depth.value / 1e3
   }
 }, { immediate: true })
 </script>

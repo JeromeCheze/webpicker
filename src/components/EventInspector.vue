@@ -116,10 +116,10 @@ const magnitudeCols = ref([
 ] as ColObject[])
 
 const magnitudes = computed(() => {
-  if (store.currentEvent == null || activeOrigin.value == null) {
+  if (store.eventManager.current.event == null || activeOrigin.value == null) {
     return []
   }
-  return store.currentEvent.magnitude.filter(x => x.originID.id === activeOrigin.value!.publicID)
+  return store.eventManager.current.event.magnitude.filter(x => x.originID.id === activeOrigin.value!.publicID)
 })
 
 function setActiveOrigin(origin: QOrigin) {
@@ -175,44 +175,44 @@ function handleMagnitudeStyle(m: QMagnitude) {
 }
 
 function setPreferredOrigin() {
-  if (store.currentEvent != null && activeOrigin.value != null) {
+  if (store.eventManager.current.event != null && activeOrigin.value != null) {
     preferredOriginID.value = activeOrigin.value.publicID
     console.log(`[EventInspector] set preferred origin: ${preferredOriginID.value}`)
-    store.currentEvent.setPreferredOriginID(activeOrigin.value.publicID)
+    store.eventManager.current.event.setPreferredOriginID(activeOrigin.value.publicID)
     if (
-      store.currentEvent.preferredMagnitudeID.referredObject != null 
-      && store.currentEvent.preferredMagnitudeID.referredObject.originID.id !== activeOrigin.value.publicID
+      store.eventManager.current.event.preferredMagnitudeID.referredObject != null 
+      && store.eventManager.current.event.preferredMagnitudeID.referredObject.originID.id !== activeOrigin.value.publicID
     ) {
       preferredMagnitudeID.value = null
-      store.currentEvent.setPreferredMagnitudeID(undefined)
+      store.eventManager.current.event.setPreferredMagnitudeID(undefined)
     }
-    store.setEvent(store.currentEvent)
+    store.eventManager.setEvent(store.eventManager.current.event)
   }
 }
 
 function setPreferredMagnitude() {
   if (
-    store.currentEvent != null
+    store.eventManager.current.event != null
     && activeMagnitude.value != null
     && preferredOriginID.value != null
     && activeMagnitude.value.originID.id === preferredOriginID.value
   ) {
     preferredMagnitudeID.value = activeMagnitude.value.publicID
     console.log(`[EventInspector] set preferred magnitude: ${preferredMagnitudeID.value}`)
-    store.currentEvent.setPreferredMagnitudeID(activeMagnitude.value.publicID)
-    store.setEvent(store.currentEvent)
+    store.eventManager.current.event.setPreferredMagnitudeID(activeMagnitude.value.publicID)
+    store.eventManager.setEvent(store.eventManager.current.event)
   }
 }
 
 onMounted(() => {
-  if (store.currentEvent != null) {
-    setActiveOrigin(store.currentEvent.preferredOriginID.referredObject)
-    setActiveMagnitude(store.currentEvent.preferredMagnitudeID.referredObject)
-    if (store.currentEvent.preferredOriginID != null) {
-      preferredOriginID.value = store.currentEvent.preferredOriginID.id!
+  if (store.eventManager.current.event != null) {
+    setActiveOrigin(store.eventManager.current.event.preferredOriginID.referredObject)
+    setActiveMagnitude(store.eventManager.current.event.preferredMagnitudeID.referredObject)
+    if (store.eventManager.current.event.preferredOriginID != null) {
+      preferredOriginID.value = store.eventManager.current.event.preferredOriginID.id!
     }
-    if (store.currentEvent.preferredMagnitudeID != null) {
-      preferredMagnitudeID.value = store.currentEvent.preferredMagnitudeID.id!
+    if (store.eventManager.current.event.preferredMagnitudeID != null) {
+      preferredMagnitudeID.value = store.eventManager.current.event.preferredMagnitudeID.id!
     }
   }
 })
@@ -229,11 +229,11 @@ onMounted(() => {
       <v-card>
         <v-card-title>Origins</v-card-title>
         <SmartTable
-          v-if="store.currentEvent != null"
+          v-if="store.eventManager.current.event != null"
           sort-order="desc"
           :sort-col="0"
           :cols="originCols"
-          :items="store.currentEvent.origin"
+          :items="store.eventManager.current.event.origin"
           :row-class="handleOriginClass"
           :row-style="handleOriginStyle"
           @row-click="setActiveOrigin"
@@ -249,7 +249,7 @@ onMounted(() => {
       <v-card>
         <v-card-title>Magnitudes</v-card-title>
         <SmartTable
-          v-if="activeOrigin != null && store.currentEvent != null"
+          v-if="activeOrigin != null && store.eventManager.current.event != null"
           sort-order="asc"
           :sort-col="2"
           :cols="magnitudeCols"

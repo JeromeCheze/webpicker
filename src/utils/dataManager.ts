@@ -17,8 +17,8 @@ export default class DataManager {
   stationAzimuth: { [netsta: string]: number }
   detectorCache: Record<string, Detection[]>
 
-  constructor(baseUrl: string) {
-    this.client = new Client(baseUrl)
+  constructor() {
+    this.client = new Client('.')
     this.inventoryCache = {}
     this.waveformCache = {}
     this.tttCache = {}
@@ -62,8 +62,16 @@ export default class DataManager {
     this.detectorCache = {}
   }
 
+  reset() {
+    this.clearWaveformCache()
+    this.clearDetectorCache()
+    this.clearInventoryCache()
+    this.clearDistanceAzimuth()
+    this.clearTTTCache()
+  }
+
   updateStationDistanceAzimuth(oLat: number, oLon: number) {
-    console.log('[dataManager.updateStationDistanceAzimuth]')
+    console.log('[DataManager.updateStationDistanceAzimuth]')
     for (const [net, staMap] of Object.entries(this.inventoryCache)) {
       for (const [sta, staObj] of Object.entries(staMap)) {
         const netsta = `${net}.${sta}`
@@ -119,7 +127,7 @@ export default class DataManager {
     notification: (opt: WPNotificationOptions) => void
   ): Promise<Inventory> {
     const t = new Date(time)
-    console.log(`[dataManager.getInventory] ${new Date(time).toISOString()} | ${JSON.stringify(seedidList)}`)
+    console.log(`[DataManager.getInventory] ${new Date(time).toISOString()} | ${JSON.stringify(seedidList)}`)
     return new Promise((resolve, reject) => {
       notification({ type: 'progress', value: { text: 'Loading inventory...', percent: -1 } })
       const bulk: FDSNStationBulkItem[] = []
@@ -180,7 +188,7 @@ export default class DataManager {
         endtime: time,
         network, station, location, channel
       }
-      console.log(`[dataManager.getStationRadius] ${JSON.stringify(params)}`)
+      console.log(`[DataManager.getStationRadius] ${JSON.stringify(params)}`)
       this.client.getStations(params).then((inv) => {
         this.mergeInventory(inv as Inventory)
         resolve(this.inventoryCache)
@@ -329,7 +337,7 @@ export default class DataManager {
         }
       }
       if (Object.keys(stationQuery).length > 0) {
-        console.log(`[dataManager.loadTTT] ${JSON.stringify(query)}`)
+        console.log(`[DataManager.loadTTT] ${JSON.stringify(query)}`)
         fetch(`${baseUrl}/api/ttt`, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -469,7 +477,7 @@ export default class DataManager {
     callback: (data: Trace[]) => void,
     notification: (opt: WPNotificationOptions) => void
   ) {
-    console.log(`[dataManager.getWaveforms] ${t1.toISOString()} - ${t2.toISOString()} | ${JSON.stringify(seedidList)}`)
+    console.log(`[DataManager.getWaveforms] ${t1.toISOString()} - ${t2.toISOString()} | ${JSON.stringify(seedidList)}`)
     const bulk: FDSNWaveformBulkItem[] = []
     const result: Trace[] = []
     const cacheKey = `${t1.toISOString().slice(0, 19)}-${t2.toISOString().slice(0, 19)}`

@@ -68,16 +68,16 @@ const isDirty = computed(() => {
 })
 
 const polarizedArrivals = computed(() => {
-  if (store.currentArrivals == null) {
+  if (store.eventManager.current.arrivals == null) {
     return []
   }
-  return store.currentArrivals.filter(a => {
+  return store.eventManager.current.arrivals.filter(a => {
     const p = a.pickID.referredObject
     return a.phase === 'P' && p.polarity != null
   })
 })
 
-const nbFM = ref(store.currentEvent!.focalMechanism.length)
+const nbFM = ref(store.eventManager.current.event!.focalMechanism.length)
 
 function deg2rad(a: number) {
   return a * Math.PI / 180
@@ -91,12 +91,12 @@ function handleReset() {
   sdr.value = [oldS, oldD, oldR]
   bbe.value.drawFocal(oldR, oldD, oldR, COLOR)
   hiresbbe.value.drawFocal(oldR, oldD, oldR, COLOR)
-  store.currentFocalMechanism = null
+  store.eventManager.current.focalMechanism = null
 }
 
 function handleValidate() {
   const [s, d, r] = sdr.value
-  store.createFocalMechanism(s, d, r, polarizedArrivals.value.length)
+  store.eventManager.createFocalMechanism(s, d, r, polarizedArrivals.value.length)
   oldSdr.value = [s, d, r]
 }
 
@@ -137,7 +137,7 @@ function updateStationLayer(center: number, radius: number) {
   ctx.save()
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
   const result: {[netsta: string]: { pos: [number, number], pick: QPick } } = {}
-  for (const a of store.currentArrivals) {
+  for (const a of store.eventManager.current.arrivals) {
     if (a.phase !== 'P' || a.takeoffAngle == null || a.azimuth == null) {
       continue
     }
@@ -312,14 +312,14 @@ function init() {
   loading.value = true
   loadStoredValues()
   imagebbe.init()
-  if (store.currentFocalMechanism != null) {
-    const np = store.currentFocalMechanism.nodalPlanes.nodalPlane1
+  if (store.eventManager.current.focalMechanism != null) {
+    const np = store.eventManager.current.focalMechanism.nodalPlanes.nodalPlane1
     const [s, d, r] = [np.strike.value, np.dip.value, np.rake.value]
     sdr.value = [s, d, r]
     oldSdr.value = [s, d, r]
   }
   const stationDistance: {[index: string]: number} = {}
-  for (const a of store.currentArrivals) {
+  for (const a of store.eventManager.current.arrivals) {
     if (a.takeoffAngle == null && a.distance != null && a.phase === 'P') {
       const netsta = a.pickID.referredObject.waveformID.netsta
       stationDistance[netsta] = a.distance
@@ -328,18 +328,18 @@ function init() {
   if (Object.keys(stationDistance).length > 0) {
     fetch('../api/takeoffangle', {
       method: 'POST',
-      body: JSON.stringify({ depth: store.currentOrigin!.depth.value / 1000, station: stationDistance }),
+      body: JSON.stringify({ depth: store.eventManager.current.origin!.depth.value / 1000, station: stationDistance }),
       headers: { 'Content-Type': 'application/json' }
     }).then(response => {
       if (response.status === 200) {
         response.json().then(toa => {
-          for (const a of store.currentArrivals) {
+          for (const a of store.eventManager.current.arrivals) {
             if (a.phase === 'P') {
               const netsta = a.pickID.referredObject.waveformID.netsta
               a.takeoffAngle = toa[netsta]
             }
           }
-          store.currentArrivals = store.currentArrivals.map(x => x)
+          store.eventManager.current.arrivals = store.eventManager.current.arrivals.map(x => x)
           createBeachBall()
         })
       }
@@ -354,20 +354,20 @@ function handleCompute() {
   const params = storeParams()
   const picks = []
   const arrivals = []
-  for (const arrival of store.currentOrigin!.arrival) {
+  for (const arrival of store.eventManager.current.origin!.arrival) {
     const pick = arrival.pickID.referredObject
     if (arrival.takeoffAngle != null && arrival.azimuth != null && pick.polarity != null) {
       picks.push(pick.desc)
       arrivals.push(arrival.desc)
     }
   }
-  const clonedOrigin = JSON.parse(JSON.stringify(store.currentOrigin!.desc))
+  const clonedOrigin = JSON.parse(JSON.stringify(store.eventManager.current.origin!.desc))
   clonedOrigin.arrival = arrivals
   const event: QEventDescription = {
-    '@publicID': store.currentEvent!.publicID,
+    '@publicID': store.eventManager.current.event!.publicID,
     origin: [clonedOrigin],
-    preferredOriginID: store.currentOrigin!.publicID,
-    magnitude: [store.currentMagnitude!.desc], stationMagnitude: [], amplitude: [],
+    preferredOriginID: store.eventManager.current.origin!.publicID,
+    magnitude: [store.eventManager.current.magnitude!.desc], stationMagnitude: [], amplitude: [],
     focalMechanism: [], pick: picks
   }
   for (const pick of event.pick) {
@@ -397,11 +397,11 @@ function handleCompute() {
           QResourceIdentifier.mainKey = 'sandbox'
           const result = parse(doc) as QEvent[]
           QResourceIdentifier.mainKey = saveMainKey
-          store.currentEvent!.clearFocalMechanism()
+          store.eventManager.current.event!.clearFocalMechanism()
           for (const fm of result[0].focalMechanism) {
-            store.currentEvent!.addFocalMechanism(fm.desc)
+            store.eventManager.current.event!.addFocalMechanism(fm.desc)
           }
-          nbFM.value = store.currentEvent!.focalMechanism.length
+          nbFM.value = store.eventManager.current.event!.focalMechanism.length
         }
       })
     }
@@ -429,9 +429,9 @@ function getFMImage(fm: QFocalMechanism) {
 function setFM(fm: QFocalMechanism) {
   const np = fm.nodalPlanes.nodalPlane1
   sdr.value = oldSdr.value = [np.strike.value, np.dip.value, np.rake.value]
-  store.currentFocalMechanism = fm
-  store.currentEvent!.setPreferredFocalMechanismID(fm.publicID)
-  store.eventViewStatus.commitStatus = 'required'
+  store.eventManager.current.focalMechanism = fm
+  store.eventManager.current.event!.setPreferredFocalMechanismID(fm.publicID)
+  store.eventManager.status.commit = 'required'
   updateBeachball()
 }
 
@@ -488,7 +488,7 @@ onBeforeUnmount(() => {
       <v-btn
         density="compact"
         @click="handleCompute"
-        :disabled="!initialized || loading || store.currentMagnitude == null"
+        :disabled="!initialized || loading || store.eventManager.current.magnitude == null"
         class="ma-1">COMPUTE</v-btn>
       <br>
       <v-dialog max-width="700">
@@ -514,7 +514,7 @@ onBeforeUnmount(() => {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="fm in store.currentEvent!.focalMechanism">
+                <tr v-for="fm in store.eventManager.current.event!.focalMechanism">
                   <td><img :src="getFMImage(fm)"></td>
                   <td>{{ getFMQuality(fm) }}</td>
                   <td>{{ fm.nodalPlanes.nodalPlane1.strike.value }}</td>

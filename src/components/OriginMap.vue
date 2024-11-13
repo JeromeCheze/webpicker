@@ -14,15 +14,15 @@ const map = ref(null as L.Map | null)
 const layers = [] as L.Layer[]
 
 const originLatLng = computed(() => {
-  if (store.currentOrigin != null) {
-    return L.latLng([store.currentOrigin.latitude.value, store.currentOrigin.longitude.value])
+  if (store.eventManager.current.origin != null) {
+    return L.latLng([store.eventManager.current.origin.latitude.value, store.eventManager.current.origin.longitude.value])
   }
 })
 
 const originUncertainty = computed(() => {
-  if (store.currentOrigin != null) {
-    const latUncertainty = store.currentOrigin.latitude.uncertainty
-    const lonUncertainty = store.currentOrigin.longitude.uncertainty
+  if (store.eventManager.current.origin != null) {
+    const latUncertainty = store.eventManager.current.origin.latitude.uncertainty
+    const lonUncertainty = store.eventManager.current.origin.longitude.uncertainty
     if (latUncertainty != null && lonUncertainty != null) {
       return [lonUncertainty * 1e3, latUncertainty * 1e3]
     }
@@ -68,25 +68,25 @@ function handleNotification(opt: WPNotificationOptions) {
 }
 
 function displayStations() {
-  if (store.currentOrigin == null || store.currentArrivals == null) {
+  if (store.eventManager.current.origin == null || store.eventManager.current.arrivals == null) {
     return
   }
   store.dataManager.getOriginStationInventory(
     '..',
-    store.currentOrigin.time.object.getTime(),
-    store.currentOrigin.latitude.value,
-    store.currentOrigin.longitude.value,
-    store.currentArrivals,
+    store.eventManager.current.origin.time.object.getTime(),
+    store.eventManager.current.origin.latitude.value,
+    store.eventManager.current.origin.longitude.value,
+    store.eventManager.current.arrivals,
     handleNotification
   ).then((inv) => {
-    if (store.currentOrigin == null || store.currentArrivals == null || map.value == null) {
+    if (store.eventManager.current.origin == null || store.eventManager.current.arrivals == null || map.value == null) {
       return
     }
-    const oPos = [store.currentOrigin.latitude.value, store.currentOrigin.longitude.value] as L.LatLngTuple
+    const oPos = [store.eventManager.current.origin.latitude.value, store.eventManager.current.origin.longitude.value] as L.LatLngTuple
     const bounds: L.LatLngTuple[] = [oPos]
     const stationMap: Record<string, number | null> = {}
     let maxRes = 0
-    for (const arrival of store.currentArrivals) {
+    for (const arrival of store.eventManager.current.arrivals) {
       if (arrival.timeWeight != null) {
         const netsta = arrival.pickID.referredObject.waveformID.netsta
         const v = stationMap[netsta]
@@ -119,7 +119,7 @@ function displayStations() {
       max: maxRes,
       logarithmic: false
     }
-    const oLon = store.currentOrigin.longitude.value
+    const oLon = store.eventManager.current.origin.longitude.value
     for (const [netsta, residual] of Object.entries(stationMap)) {
       const pos = store.dataManager.getStationPos(netsta)
       if (pos == null) {
@@ -163,17 +163,17 @@ function reset() {
 function update() {
   initMap()
   reset()
-  if (store.currentOrigin != null) {
+  if (store.eventManager.current.origin != null) {
     displayOrigin()
     displayStations()
   }
 }
 
-// watch(() => store.currentOrigin, () => {
+// watch(() => store.eventManager.current.origin, () => {
 //   update()
 // })
 
-watch(() => store.currentArrivals, () => {
+watch(() => store.eventManager.current.arrivals, () => {
   update()
 })
 

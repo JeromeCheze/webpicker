@@ -13,11 +13,11 @@ const computeMagnitudeStations = ref({} as { [netsta: string]: boolean })
 const locked = ref(false)
 
 function setMagnitudeStation() {
-  if (store.currentArrivals == null) {
+  if (store.eventManager.current.arrivals == null) {
     return
   }
   const stations: { [netsta: string]: boolean } = {}
-  for (const arrival of store.currentArrivals) {
+  for (const arrival of store.eventManager.current.arrivals) {
     if (arrival.pickID.referredObject != null) {
       const netsta = arrival.pickID.referredObject.waveformID.netsta
       // stations[netsta] = arrival.timeWeight != null && arrival.timeWeight > 0
@@ -28,34 +28,38 @@ function setMagnitudeStation() {
 }
 
 function computeMagnitudes() {
-  if (store.eventViewStatus.computeMagnitudesStatus === 'disabled' || locked.value) {
+  if (store.eventManager.status.computeMagnitudes === 'disabled' || locked.value) {
     return
   }
+  console.log('[ComputeMagnitudesComponent.computeMagnitudes]')
   locked.value = true
   const saveMainKey = QResourceIdentifier.mainKey
   QResourceIdentifier.mainKey = 'sandbox'
-  const origin = deepCopy(store.currentOrigin!.desc)
+  const origin = deepCopy(store.eventManager.current.origin!.desc)
   delete origin.evaluationStatus
-  const event = new QEvent(Object.assign(deepCopy(store.currentEvent!.desc), {
+  const event = new QEvent(Object.assign(deepCopy(store.eventManager.current.event!.desc), {
     origin: [origin],
     magnitude: [],
     amplitude: [],
     stationMagnitude: [],
-    preferredOriginID: store.currentOrigin!.publicID,
+    preferredOriginID: store.eventManager.current.origin!.publicID,
     preferredMagnitudeID: undefined
   }))
+  for (const pick of store.eventManager.current.userPicks) {
+    event.addPick(pick.desc)
+  }
   const po = event.preferredOriginID.referredObject as QOrigin
   const arrivalsToRemove = po.arrival.filter(arrival => !computeMagnitudeStations.value[arrival.pickID.referredObject.waveformID.netsta])
   for (const arrival of arrivalsToRemove) {
     po.deleteArrival(arrival)
   }
-  const picksToRemove = event.pick.filter(pick => !computeMagnitudeStations.value[pick.waveformID.netsta])
-  for (const pick of picksToRemove) {
-    event.deletePick(pick)
-  }
   if (po.arrival.length === 0) {
     store.notification.push({ type: 'error', value: 'Empty station list to compute magnitudes' })
     return
+  }
+  const picksToRemove = event.pick.filter(pick => !computeMagnitudeStations.value[pick.waveformID.netsta])
+  for (const pick of picksToRemove) {
+    event.deletePick(pick)
   }
   store.notification.push({ type: 'progress', value: { text: 'Compute magnitudes...', percent: -1 } })
   QResourceIdentifier.mainKey = saveMainKey
@@ -84,19 +88,19 @@ function computeMagnitudes() {
               return aa < bb ? -1 : aa > bb ? 1 : 0
             })
             for (const amplitude of result[0].amplitude) {
-              new QAmplitude(amplitude.desc, store.currentEvent!.id)
+              new QAmplitude(amplitude.desc, store.eventManager.current.event!.id)
             }
             for (const staMag of result[0].stationMagnitude) {
-              new QStationMagnitude(staMag.desc, store.currentEvent!.id)
+              new QStationMagnitude(staMag.desc, store.eventManager.current.event!.id)
             }
             const originMagnitudes: QMagnitude[] = []
             for (const magnitude of result[0].magnitude) {
-              originMagnitudes.push(new QMagnitude(magnitude.desc, store.currentEvent!.id))
+              originMagnitudes.push(new QMagnitude(magnitude.desc, store.eventManager.current.event!.id))
             }
-            store.currentMagnitude = originMagnitudes.slice(-1)[0]
-            store.currentOriginMagnitudes = originMagnitudes
-            store.eventViewStatus.computeMagnitudesStatus = 'enabled'
-            store.eventViewStatus.commitStatus = 'required'
+            store.eventManager.current.magnitude = originMagnitudes.slice(-1)[0]
+            store.eventManager.current.originMagnitudes = originMagnitudes
+            store.eventManager.status.computeMagnitudes = 'enabled'
+            store.eventManager.status.commit = 'required'
           } catch (error) {
             console.log(`[ComputeMagnitudeComponent] error: ${error}`)
             alert(statusResponse.message)
@@ -110,7 +114,7 @@ function computeMagnitudes() {
   })
 }
 
-watch(() => store.currentArrivals, () => {
+watch(() => store.eventManager.current.arrivals, () => {
   setMagnitudeStation()
 }, { immediate: true })
 
@@ -127,8 +131,8 @@ watch(() => store.keydown, (newValue) => {
       <v-btn
         v-bind="props"
         :title="`compute magnitudes (${store.settings['keybinding.computeMagnitudes']})`"
-        :color="store.eventViewStatus.computeMagnitudesStatus === 'required' ? 'orange' : undefined"
-        :disabled="store.eventViewStatus.computeMagnitudesStatus === 'disabled'"
+        :color="store.eventManager.status.computeMagnitudes === 'required' ? 'orange' : undefined"
+        :disabled="store.eventManager.status.computeMagnitudes === 'disabled'"
       >
         M
         <template #append>

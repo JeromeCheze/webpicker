@@ -16,10 +16,11 @@ const magScatter = ref()
 const gutenbergRichter = ref()
 const magScatterChart = ref(null as Lichen | null)
 const gutenbergRichterChart = ref(null as Lichen | null)
+const magCompl = ref(null as number | null)
 
 const filteredEventList = computed(() => {
   if (props.hideDiscarded === true) {
-    return store.cacheEventList.filter((e) => {
+    return store.eventManager.events.filter((e) => {
       const eventType = e.type || ''
       const poStatus = e.preferredOriginID.referredObject.evaluationStatus || ''
       if (DISCARDED_EVENT_TYPES.indexOf(eventType) >= 0 || poStatus === 'rejected') {
@@ -28,7 +29,19 @@ const filteredEventList = computed(() => {
       return true
     })
   }
-  return store.cacheEventList
+  return store.eventManager.events
+})
+
+const cumulativeMagsCount = computed(() => {
+  const allMags = filteredEventList.value
+    .filter(e => e.preferredMagnitudeID.id != null)
+    .map(e => e.preferredMagnitudeID.referredObject.mag.value)
+  allMags.sort()
+  const data: ScatterOptions['data'] = []
+  for (const mag of allMags) {
+    data.push({ x: mag, y: allMags.filter(m => m >= mag).length, name: '' })
+  }
+  return data
 })
 
 function drawMagScatter() {
@@ -56,20 +69,82 @@ function drawMagScatter() {
   })
 }
 
+function linearRegression(data: { x: number; y:number }[]) {
+  const csv = ['x,y']
+  let sumX = 0
+  let sumY = 0
+  for (const point of data) {
+    sumX += point.x
+    sumY += point.y
+    csv.push(`${point.x},${point.y}`)
+  }
+  const avgX = sumX / data.length
+  const avgY = sumY / data.length
+  let tauXY = 0
+  let tauX = 0
+  for (const point of data) {
+    tauXY += point.x * point.y - avgX * avgY
+    tauX += point.x * point.x - avgX * avgX
+  }
+  tauX = Math.sqrt(tauX / data.length)
+  tauXY = tauXY / data.length
+
+  const b = tauXY / (tauX * tauX)
+  const a = avgY - b * avgX
+  // console.log(csv.join('\n'))
+  return { a, b }
+}
+
+function bValueLikelihoodMaximization(mags: number[]) {
+  // mags is all magnitudes that are superior to the magnitude of completude
+  let magSum = 0
+  let minMag = null
+  for (const mag of mags) {
+    magSum += mag
+    minMag = minMag == null ? mag : Math.min(mag, minMag)
+  }
+  const avgMag = magSum / mags.length
+  const b = Math.log10(Math.exp(1)) / (avgMag - minMag!)
+  const sigma = b * (1.96 / Math.sqrt(mags.length))
+  return { b, sigma }
+}
+
+function setAutomaticMagnitudeOfCompletude() {
+  const data = cumulativeMagsCount.value
+  let regrData = data.filter(point => point.y >= 5).map(point => ({ x: point.x, y: Math.log10(point.y) }))
+  let delta = 1
+  let i = 0
+  let ab = null
+  for (; delta > 0.1 && i < regrData.length - 10; i++) {
+    ab = linearRegression(regrData.slice(i))
+    delta = Math.abs(ab.b * regrData[0].x + ab.a - regrData[0].y)
+    console.log({i, ab, delta, m: regrData[i].x})
+  }
+  if (ab != null) {
+    magCompl.value = regrData[i - 1].x
+    console.log({ mc: magCompl.value, a: ab.a, b: ab.b })
+  }
+  // console.log(ab)
+  // let delta = Math.abs(ab.b * regrData[0].x + ab.a - regrData[0].y)
+  // console.log(delta)
+  // while(delta > 0.1) {
+  //   regrData = regrData.slice(1)
+  //   ab = linearRegression(regrData)
+  //   console.log(ab)
+  //   delta = Math.abs(ab.b * regrData[0].x + ab.a - regrData[0].y)
+  //   console.log(delta)
+  // }
+  // console.log(regrData[0].x)
+  // console.log(`0,${ab.a}`)
+  // console.log(`${data.slice(-1)[0].x},${data.slice(-1)[0].x * ab.b + ab.a}`)
+  console.log(bValueLikelihoodMaximization(regrData.slice(i - 1).map(point => point.x)))
+}
+
 function drawGutenbergRichter() {
   if (gutenbergRichterChart.value != null) {
     gutenbergRichterChart.value.destroy()
   }
-  const allMags = [...new Set(
-    filteredEventList.value
-      .filter(e => e.preferredMagnitudeID.id != null)
-      .map(e => e.preferredMagnitudeID.referredObject.mag.value)
-  )]
-  allMags.sort()
-  const data: ScatterOptions['data'] = []
-  for (const mag of allMags) {
-    data.push({ x: mag, y: allMags.filter(m => m >= mag).length, name: '' })
-  }
+  const data = cumulativeMagsCount.value
   const serie: ScatterOptions = { name: '', shape: 'circle', enabled: true, color: 'blue', data }
   const fontSize = store.settings['picker.tickFontSize']
   gutenbergRichterChart.value = new Lichen(gutenbergRichter.value, {
@@ -101,6 +176,7 @@ onMounted(() => {
   if (filteredEventList.value.length > 1) {
     drawMagScatter()
     drawGutenbergRichter()
+    // setAutomaticMagnitudeOfCompletude()
   }
 })
 </script>

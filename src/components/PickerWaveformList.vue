@@ -89,8 +89,8 @@ function getRefTime(seedid: string) {
     return props.stationRefTimes[toNetSta(seedid)][props.refTimeKey]
   }
   const netsta = toNetSta(seedid)
-  if (store.pickMap[netsta] != null) {
-    for (const pickList of Object.values(store.pickMap[netsta])) {
+  if (store.eventManager.pickMap[netsta] != null) {
+    for (const pickList of Object.values(store.eventManager.pickMap[netsta])) {
       for (const pick of pickList) {
         if (pick.phaseHint === props.refTimeKey) {
           return pick.time.object.getTime()
@@ -152,8 +152,8 @@ function getVLines(netsta: string) {
       }
     }
   }
-  if (store.pickMap[netsta] != null) {
-    for (const picks of Object.values(store.pickMap[netsta])) {
+  if (store.eventManager.pickMap[netsta] != null) {
+    for (const picks of Object.values(store.eventManager.pickMap[netsta])) {
       for (const p of picks) {
         result.push(pickToVLine(p, false))
       }
@@ -326,7 +326,7 @@ watch([
 ], () => update(false))
 
 watch([
-  () => store.pickMap,
+  () => store.eventManager.pickMap,
   () => store.additionalPickMap,
   () => props.detector
 ], () => updateVlines())

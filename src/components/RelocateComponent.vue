@@ -46,14 +46,15 @@ watch(() => profile.value, () => {
 })
 
 function relocate() {
-  if (store.currentArrivals.length === 0 || locked.value) {
+  if (store.eventManager.current.arrivals.length === 0 || locked.value) {
     return
   }
+  console.log('[RelocateComponent.relocate]')
   locked.value = true
   store.notification.push({ type: 'progress', value: { text: 'Relocate...', percent: -1 } })
-  const origin = deepCopy(store.currentOrigin!.desc)
+  const origin = deepCopy(store.eventManager.current.origin!.desc)
   const pickIds = origin.arrival.map((x: QArrivalDescription) => x.pickID)
-  const event: QEventDescription = Object.assign(deepCopy(store.currentEvent!.desc), {
+  const event: QEventDescription = Object.assign(deepCopy(store.eventManager.current.event!.desc), {
     origin: [origin],
     magnitude: undefined,
     stationMagnitude: undefined,
@@ -61,6 +62,9 @@ function relocate() {
     preferredOriginID: origin['@publicID'],
     preferredMagnitudeID: undefined
   })
+  for (const pick of store.eventManager.current.userPicks) {
+    event.pick.push(deepCopy(pick.desc))
+  }
   // Keep only pick referred by arrivals
   event.pick = event.pick.filter((x: QPickDescription) => pickIds.indexOf(x['@publicID']) >= 0)
   console.log(`[RelocateComponent] POST: ${JSON.stringify([event])}`)
@@ -89,20 +93,20 @@ function relocate() {
             arrival.desc['@publicID'] = getId('Arrival')
           }
           newOrigin.creationInfo.author = store.author
-          store.eventViewStatus.relocateStatus = 'enabled'
-          store.eventViewStatus.computeMagnitudesStatus = 'required'
-          store.eventViewStatus.commitStatus = 'enabled'
-          store.currentMagnitude = null
-          store.currentOriginMagnitudes = []
+          store.eventManager.status.relocate = 'enabled'
+          store.eventManager.status.computeMagnitudes = 'required'
+          store.eventManager.status.commit = 'enabled'
+          store.eventManager.current.magnitude = null
+          store.eventManager.current.originMagnitudes = []
           store.dataManager.updateStationDistanceAzimuth(newOrigin.latitude.value, newOrigin.longitude.value)
-          store.currentOrigin = new QOrigin(newOrigin.desc, store.currentEvent!.id)
-          store.currentArrivals = store.currentOrigin.arrival
+          store.eventManager.current.origin = new QOrigin(newOrigin.desc, store.eventManager.current.event!.id)
+          store.eventManager.current.arrivals = store.eventManager.current.origin.arrival
           store.dataManager.clearTTTCache()
-          store.updatePickMap()
+          store.eventManager.updatePickMap()
         } else {
-          store.eventViewStatus.relocateStatus = 'enabled'
-          store.eventViewStatus.computeMagnitudesStatus = 'disabled'
-          store.eventViewStatus.commitStatus = 'disabled'
+          store.eventManager.status.relocate = 'enabled'
+          store.eventManager.status.computeMagnitudes = 'disabled'
+          store.eventManager.status.commit = 'disabled'
         }
       })
     } else {
@@ -119,8 +123,8 @@ function relocate() {
       <v-btn
         v-bind="props"
         :title="`relocate (${store.settings['keybinding.relocate']})`"
-        :color="store.eventViewStatus.relocateStatus === 'required' ? 'orange' : undefined"
-        :disabled="store.currentArrivals!.length === 0"
+        :color="store.eventManager.status.relocate === 'required' ? 'orange' : undefined"
+        :disabled="store.eventManager.current.arrivals!.length === 0"
       >
         <v-icon>mdi-crosshairs-gps</v-icon>
         <template #append>

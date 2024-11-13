@@ -8,7 +8,7 @@ const store = useAppStore()
 
 const props = defineProps<{
   magnitude?: QMagnitude | null
-  status?: EventViewStatus['computeMagnitudesStatus']
+  status?: EventViewStatus['computeMagnitudes']
   compact?: boolean
 }>()
 

@@ -13,7 +13,6 @@ import FirstMotion from '@/components/FirstMotion.vue'
 import OriginPanel from '@/components/OriginPanel.vue'
 import PickerPanel from '@/components/PickerPanel.vue'
 import OriginMap from '@/components/OriginMap.vue'
-import { Client } from '@/lib/sismojs/src/fdsn'
 import { ref, onMounted, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 
@@ -22,8 +21,6 @@ const store = useAppStore()
 const props = defineProps({
   eventid: String
 })
-
-const client = new Client('..')
 
 const picker = ref(false)
 const activeChart = ref('residual' as 'residual' | 'traveltime' | 'firstmotion' | 'magnitude')
@@ -37,50 +34,47 @@ function enablePicker() {
 }
 
 function select(value: string) {
-  if (store.currentArrivals == null) {
+  const currentArrivals = store.eventManager.current.arrivals
+  if (currentArrivals == null) {
     return
   }
   let selection: QArrival[] = []
   if (value === 'all') {
-    selection = store.currentArrivals
+    selection = currentArrivals
   } else if (value === 'manual') {
-    selection = store.currentArrivals.filter((x: QArrival) => x.pickID.referredObject.evaluationMode === 'manual')
+    selection = currentArrivals.filter((x: QArrival) => x.pickID.referredObject.evaluationMode === 'manual')
   } else if (value === 'automatic') {
-    selection = store.currentArrivals.filter((x: QArrival) => x.pickID.referredObject.evaluationMode === 'automatic')
+    selection = currentArrivals.filter((x: QArrival) => x.pickID.referredObject.evaluationMode === 'automatic')
   } else if (value === 'p') {
-    selection = store.currentArrivals.filter((x: QArrival) => x.phase === 'P')
+    selection = currentArrivals.filter((x: QArrival) => x.phase === 'P')
   }
-  store.selectArrivals(selection)
+  store.eventManager.selectArrivals(selection)
 }
 
 function removeUnselectedArrivals() {
-  const selected = store.currentArrivals.filter((x: QArrival) => x.timeWeight != null && x.timeWeight > 0)
-  store.setArrivals(selected)
+  if (store.eventManager.current.origin == null) {
+    return
+  }
+  const toRemove = store.eventManager.current.origin.arrival.filter((x: QArrival) => x.timeWeight != null && x.timeWeight === 0)
+  for (const arrival of toRemove) {
+    store.eventManager.deleteArrival(arrival.pickID.referredObject)
+  }
 }
 
 function removeAutomaticArrivals() {
-  const selected = store.currentArrivals.filter((x: QArrival) => x.pickID.referredObject.evaluationMode === 'manual')
-  store.setArrivals(selected)
+  if (store.eventManager.current.origin == null) {
+    return
+  }
+  const toRemove = store.eventManager.current.origin.arrival.filter((x: QArrival) => x.pickID.referredObject.evaluationMode === 'automatic')
+  for (const arrival of toRemove) {
+    store.eventManager.deleteArrival(arrival.pickID.referredObject)
+  }
 }
 
 function loadEvent() {
   store.notification.push({ type: 'progress', value: { text: 'Loading event description...', percent: -1 } })
-  const params = {
-    eventid: props.eventid,
-    includearrivals: true,
-    includeallorigins: true,
-    includeallmagnitudes: true,
-    includefocalmechanism: true,
-    includestationmagnitudes: true
-  }
-  console.log(`[loadEvent] load events: ${JSON.stringify(params)}`)
-  client.getEvents(params).then((catalog) => {
-    if (catalog.length > 0) {
-      const event = catalog[0]
-      store.setEvent(event)
-    } else {
-      store.notification.push({ type: 'warning', value: 'Event not found' })
-    }
+  store.eventManager.loadEvent('..', props.eventid!).catch(msg => {
+    store.notification.push({ type: 'warning', value: msg })
   }).finally(() => {
     store.notification.push({ type: 'progress', value: null })
   })
@@ -104,8 +98,8 @@ function handleContextMenu(e: MouseEvent) {
 }
 
 function setCurrentMagnitude(m: QMagnitude) {
-  store.currentMagnitude = m
-  store.eventViewStatus.commitStatus = 'required'
+  store.eventManager.current.magnitude = m
+  store.eventManager.status.commit = 'required'
 }
 
 watch(() => store.keydown, (newValue) => {
@@ -120,14 +114,14 @@ watch(() => store.keydown, (newValue) => {
 
 watch([
   () => store.usersActivity,
-  () => store.currentEvent
+  () => store.eventManager.current.event
 ], handleUsers)
 
 onMounted(() => {
   console.log(`[EventView.onMounted] ${props.eventid}`)
   handleUsers()
   store.webSocketManager.update('review', props.eventid)
-  if (store.currentEvent == null || store.currentEvent.publicID !== props.eventid) {
+  if (store.eventManager.current.event == null || store.eventManager.current.event.publicID !== props.eventid) {
     loadEvent()
   }
 })
@@ -142,30 +136,30 @@ onMounted(() => {
 <template>
   <v-app-bar density="compact" v-if="!picker">
     <v-app-bar-title>
-      {{ store.currentEvent?.publicID }}
+      {{ store.eventManager.current.event?.publicID }}
       <v-chip
         label
         size="x-small"
-        :color="store.currentEvent?.type == null ? 'grey' : 'green'"
+        :color="store.eventManager.current.event?.type == null ? 'grey' : 'green'"
         class="text-uppercase mx-1"
       >
-        {{ store.currentEvent?.type || 'NO TYPE SET' }}
+        {{ store.eventManager.current.event?.type || 'NO TYPE SET' }}
       </v-chip>
       <v-chip
         label
         size="x-small"
-        :color="store.currentOrigin?.evaluationStatus == null ? 'grey' : 'blue'"
+        :color="store.eventManager.current.origin?.evaluationStatus == null ? 'grey' : 'blue'"
         class="text-uppercase mx-1"
       >
-        {{ store.currentOrigin?.evaluationStatus || 'NO STATUS SET' }}
+        {{ store.eventManager.current.origin?.evaluationStatus || 'NO STATUS SET' }}
       </v-chip>
     </v-app-bar-title>
     <v-spacer></v-spacer>
     <v-btn @click="enablePicker" :title="`picker (${store.settings['keybinding.togglePicker']})`"><v-icon>mdi-pulse</v-icon></v-btn>
-    <v-btn @click="allOriginDisplay = !allOriginDisplay" title="Inspect event" :active="allOriginDisplay" :disabled="store.currentEvent != null && store.currentEvent.origin.length === 0"><v-icon>mdi-list-box-outline</v-icon></v-btn>
+    <v-btn @click="allOriginDisplay = !allOriginDisplay" title="Inspect event" :active="allOriginDisplay" :disabled="store.eventManager.current.event != null && store.eventManager.current.event.origin.length === 0"><v-icon>mdi-list-box-outline</v-icon></v-btn>
     <v-divider vertical class="mx-2"></v-divider>
     <RelocateComponent/>
-    <ComputeMagnitudesComponent v-if="store.currentOrigin != null"/>
+    <ComputeMagnitudesComponent v-if="store.eventManager.current.origin != null"/>
     <CommitComponent @update="loadEvent"/>
   </v-app-bar>
   <EventInspector v-if="allOriginDisplay && !picker"/>
@@ -198,17 +192,17 @@ onMounted(() => {
     <v-row>
       <v-col cols="8">
         <OriginPanel
-          :origin="store.currentOrigin"
-          :status="store.eventViewStatus.relocateStatus"/>
+          :origin="store.eventManager.current.origin"
+          :status="store.eventManager.status.relocate"/>
       </v-col>
       <v-col cols="4">
         <v-row>
           <v-col cols="12"  class="d-flex justify-end align-center">
             <v-btn-group density="compact">
               <v-btn
-                v-for="magnitude in store.currentOriginMagnitudes"
+                v-for="magnitude in store.eventManager.current.originMagnitudes"
                 class="text-none"
-                :active="magnitude.publicID === store.currentMagnitude?.publicID"
+                :active="magnitude.publicID === store.eventManager.current.magnitude?.publicID"
                 @click="setCurrentMagnitude(magnitude)"
               >{{ magnitude.type }}</v-btn>
             </v-btn-group>
@@ -217,8 +211,8 @@ onMounted(() => {
         <v-row>
           <v-col cols="12">
             <MagnitudePanel
-              :magnitude="store.currentMagnitude"
-              :status="store.eventViewStatus.computeMagnitudesStatus"/>
+              :magnitude="store.eventManager.current.magnitude"
+              :status="store.eventManager.status.computeMagnitudes"/>
           </v-col>
         </v-row>
       </v-col>
@@ -230,12 +224,12 @@ onMounted(() => {
     </v-row>
   </template>
   <PickerPanel
-    v-model="picker" v-if="picker && store.currentOrigin != null"
+    v-model="picker" v-if="picker && store.eventManager.current.origin != null"
     :time-window="[store.settings['miscellaneous.timewindow1'], store.settings['miscellaneous.timewindow2']]"
-    :time="store.currentOrigin.time.object.getTime()"
-    :latitude="store.currentOrigin.latitude.value"
-    :longitude="store.currentOrigin.longitude.value"
-    :depth="store.currentOrigin.depth.value"
+    :time="store.eventManager.current.origin.time.object.getTime()"
+    :latitude="store.eventManager.current.origin.latitude.value"
+    :longitude="store.eventManager.current.origin.longitude.value"
+    :depth="store.eventManager.current.origin.depth.value"
     :seedid-list="[]"
     :no-event="false"
     base-url=".."/>

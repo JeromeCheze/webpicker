@@ -11,13 +11,13 @@ const chart = ref(null as Lichen | null)
 
 
 function drawChart() {
-  if (store.currentArrivals == null || store.currentEvent == null || store.currentOrigin == null || chartContainer.value == null) {
+  if (store.eventManager.current.arrivals == null || store.eventManager.current.event == null || store.eventManager.current.origin == null || chartContainer.value == null) {
     return
   }
   chartContainer.value.innerHTML = ''
   const colorScale = {
     min: 0,
-    max: store.currentOriginMagnitudes.length - 1,
+    max: store.eventManager.current.originMagnitudes.length - 1,
     stops: Lichen.getColorScale('PARULA'),
     logarithmic: false
   }
@@ -29,7 +29,7 @@ function drawChart() {
     sum: 0,
     count: 0
   }
-  for (const [index, mag] of store.currentOriginMagnitudes.entries()) {
+  for (const [index, mag] of store.eventManager.current.originMagnitudes.entries()) {
     if (mag.stationMagnitudeContribution == null) {
       // console.log(`skip magnitude type ${mag.type}`)
       continue
@@ -42,7 +42,7 @@ function drawChart() {
         continue
       }
       const pick = staMag.amplitudeID.referredObject.pickID.referredObject
-      const arrival = store.currentArrivals.find(a => a.pickID.id === pick.publicID)
+      const arrival = store.eventManager.current.arrivals.find(a => a.pickID.id === pick.publicID)
       if (arrival == null) {
         console.warn(`Failed to retreive corresponding arrival for station magnitude of channel ${staMag.waveformID.seedid}`)
         continue
@@ -92,7 +92,7 @@ function drawChart() {
   })
 }
 
-watch(() => store.currentOriginMagnitudes, drawChart)
+watch(() => store.eventManager.current.originMagnitudes, drawChart)
 
 onMounted(drawChart)
 

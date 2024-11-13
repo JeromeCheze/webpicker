@@ -74,7 +74,7 @@ function validate() {
     for (const [net, staMap] of Object.entries(store.dataManager.inventoryCache as Inventory)) {
       for (const [sta, staObj] of Object.entries(staMap)) {
         const netsta = `${net}.${sta}`
-        if (store.pickMap[netsta] == null) {
+        if (store.eventManager.pickMap[netsta] == null) {
           const locchaWeight: [string, number][] = []
           for (const [loc, chaMap] of Object.entries(staObj.location)) {
             for (const [cha, chaList] of Object.entries(chaMap)) {
@@ -119,7 +119,7 @@ function preview(): Promise<void> {
       for (const [net, staMap] of Object.entries(store.dataManager.inventoryCache as Inventory)) {
         for (const sta of Object.keys(staMap)) {
           const netsta = `${net}.${sta}`
-          if (store.pickMap[netsta] == null) {
+          if (store.eventManager.pickMap[netsta] == null) {
             toRemove.push(netsta)
           }
         }
@@ -153,7 +153,7 @@ function displayStations() {
       const netsta = `${net}.${sta}`
       const m = L.circleMarker([staObj.lat, staObj.lon], {
         radius: 3,
-        color: store.pickMap[netsta] != null ? 'green' : 'blue',
+        color: store.eventManager.pickMap[netsta] != null ? 'green' : 'blue',
         weight: 1,
         fillOpacity: 0.5
       }).addTo(map.value as L.Map)

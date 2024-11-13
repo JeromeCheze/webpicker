@@ -98,33 +98,33 @@ const arrivalCols = ref([
   }
 ] as ColObject[])
 
-watch(() => store.currentArrivals, setSelected, { immediate: true })
+watch(() => store.eventManager.current.arrivals, setSelected, { immediate: true })
 
 function traveltime(a: QArrival) {
-  if (store.currentOrigin == null) {
+  if (store.eventManager.current.origin == null) {
     return null
   }
-  return new Date(a.pickID.referredObject.time.object.getTime() - store.currentOrigin.time.object.getTime()).toISOString().slice(0, 19).split('T')[1]
+  return new Date(a.pickID.referredObject.time.object.getTime() - store.eventManager.current.origin.time.object.getTime()).toISOString().slice(0, 19).split('T')[1]
 }
 
 function handleSelection (selected: QArrival[]) {
-  store.selectArrivals(selected)
+  store.eventManager.selectArrivals(selected)
 }
 
 function setSelected() {
-  if (store.currentArrivals == null) {
+  if (store.eventManager.current.arrivals == null) {
     return
   }
-  selected.value = store.currentArrivals.filter(x => x.timeWeight != null && x.timeWeight > 0) as QArrival[]
+  selected.value = store.eventManager.current.arrivals.filter(x => x.timeWeight != null && x.timeWeight > 0) as QArrival[]
 }
 </script>
 
 <template>
-  <v-card v-if="store.currentArrivals != null">
+  <v-card v-if="store.eventManager.current.arrivals != null">
     <v-card-title>Phases</v-card-title>
     <SmartTable
       :cols="arrivalCols"
-      :items="store.currentArrivals"
+      :items="store.eventManager.current.arrivals"
       :table-height="300"
       :sort-col="9"
       sort-order="asc"

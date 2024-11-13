@@ -123,7 +123,7 @@ const header = ref([
 
 const filteredEventList = computed(() => {
   if (props.hideDiscarded === true) {
-    return store.cacheEventList.filter((e) => {
+    return store.eventManager.events.filter((e) => {
       const eventType = e.type || ''
       const poStatus = e.preferredOriginID.referredObject.evaluationStatus || ''
       if (DISCARDED_EVENT_TYPES.indexOf(eventType) >= 0 || poStatus === 'rejected') {
@@ -132,7 +132,7 @@ const filteredEventList = computed(() => {
       return true
     })
   }
-  return store.cacheEventList
+  return store.eventManager.events
 })
 
 function handleRowClick(event: QEvent) {
@@ -140,7 +140,7 @@ function handleRowClick(event: QEvent) {
 }
 
 function handleRowStyle(event: QEvent) {
-  return store.currentEvent != null && store.currentEvent.publicID === event.publicID
+  return store.eventManager.current.event != null && store.eventManager.current.event.publicID === event.publicID
     ? { background: store.settings['color.activeRowColor'] }
     : {}
 }

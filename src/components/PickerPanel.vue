@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import type { FilterOptions, PickerToolbarOptions, PickMap, StationRefTimes, WPNotificationOptions } from '@/types'
-import { QResourceIdentifier, QPick, type QPickOnset, type QPickPolarity } from '@/lib/sismojs/src/core/event/types'
-import { DISCARDED_EVENT_TYPES, pushUnique, toNetSta } from '@/utils'
+import { QPick, type QPickOnset, type QPickPolarity } from '@/lib/sismojs/src/core/event/types'
+import { pushUnique, toNetSta } from '@/utils'
 import { ref, shallowRef, watch, onMounted, computed } from 'vue'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
 import PickerWaveformList from './PickerWaveformList.vue'
 import PickerWaveforms from './PickerWaveforms.vue'
 import PickerToolbar from './PickerToolbar.vue'
-import { Client } from '@/lib/sismojs/src/fdsn'
 import { useAppStore } from '@/stores/app'
 import { onBeforeUnmount } from 'vue'
 
@@ -29,8 +28,6 @@ const props = defineProps<{
 
 const store = useAppStore()
 // console.log(store.dataManager)
-
-const client = new Client(props.baseUrl)
 
 const contextMenu = ref(false)
 const contextMenuPos = ref([0, 0] as [number, number])
@@ -142,11 +139,11 @@ function handleNotification(opt: WPNotificationOptions) {
 }
 
 function displayWaveforms() {
-  if (store.currentArrivals == null || controller.value == null) {
+  if (store.eventManager.current.arrivals == null || controller.value == null) {
     return
   }
   stationRefTimes.value = {}
-  const pickList: QPick[] = store.currentArrivals.map(x => x.pickID.referredObject)
+  const pickList: QPick[] = store.eventManager.current.arrivals.map(x => x.pickID.referredObject)
   pickList.sort((a, b) => {
     const aa = a.time.object
     const bb = b.time.object
@@ -205,7 +202,7 @@ function handleSelectPicks(pickids: string[]) {
     contextMenu.value = false
   }
   if (!shiftFlag) {
-    const picks: QPick[] = store.currentArrivals!
+    const picks: QPick[] = store.eventManager.current.arrivals!
       .map(a => a.pickID.referredObject)
       .filter(p => pickids.indexOf(p.publicID) >= 0)
     selectedPicks.value = picks
@@ -217,11 +214,11 @@ function createPick() {
     return
   }
   const netsta = toNetSta(activeChannel.value)
-  if (store.pickMap[netsta] != null) {
-    for (const pickList of Object.values(store.pickMap[netsta])) {
+  if (store.eventManager.pickMap[netsta] != null) {
+    for (const pickList of Object.values(store.eventManager.pickMap[netsta])) {
       for (const pick of pickList) {
         if (pick.phaseHint === toolbarValue.value.phase) {
-          store.deletePick(pick)
+          store.eventManager.deletePick(pick)
         }
       }
     }
@@ -236,18 +233,19 @@ function createPick() {
   if (filterValue.value != null) {
     filter.push(filterValue.value.expression.replace(/ /g, ''))
   }
-  const newPick = store.createPick(
+  const newPick = store.eventManager.createPick(
     toolbarValue.value.phase,
     pickerTime.value,
     activeChannel.value,
-    filter.length > 0 ? filter.join('+') : undefined
+    filter.length > 0 ? filter.join('+') : undefined,
+    store.author!
   )
   selectedPicks.value = [newPick]
 }
 
 function deleteSelectedPicks() {
   for (const pick of selectedPicks.value) {
-    store.deletePick(pick)
+    store.eventManager.deletePick(pick)
   }
 }
 
@@ -266,7 +264,8 @@ function handleClick(e: MouseEvent) {
 
 function setPickPolarity(value?: QPickPolarity) {
   if (selectedPicks.value.length > 0) {
-    const p = store.clonePick(selectedPicks.value[0])
+    console.log(`[PickerPanel.setPickPolarity] value = ${value}`)
+    const p = store.eventManager.clonePick(selectedPicks.value[0], store.author!)
     selectedPicks.value = [p]
     if (p.polarity === value) {
       p.polarity = undefined
@@ -274,12 +273,12 @@ function setPickPolarity(value?: QPickPolarity) {
       p.polarity = value
     }
   }
-  // store.updatePickMap()
 }
 
 function setPickOnset(value: QPickOnset) {
   if (selectedPicks.value.length > 0) {
-    const p = store.clonePick(selectedPicks.value[0])
+    console.log(`[PickerPanel.setPickOnset] value = ${value}`)
+    const p = store.eventManager.clonePick(selectedPicks.value[0], store.author!)
     selectedPicks.value = [p]
     if (p.onset === value) {
       p.onset = undefined
@@ -287,12 +286,12 @@ function setPickOnset(value: QPickOnset) {
       p.onset = value
     }
   }
-  // store.updatePickMap()
 }
 
 function setPickUncertainty(value: number) {
   if (selectedPicks.value.length > 0) {
-    const p = store.clonePick(selectedPicks.value[0])
+    console.log(`[PickerPanel.setPickUncertainty] value = ${value}`)
+    const p = store.eventManager.clonePick(selectedPicks.value[0], store.author!)
     selectedPicks.value = [p]
     if (p.evaluationMode === 'automatic') {
       return
@@ -307,56 +306,6 @@ function setPickUncertainty(value: number) {
       }
     }
   }
-  // store.updatePickMap()
-}
-
-function loadAdditionalPicks() {
-  // The mainKey of ResourceIdentifier MUST be set to an other value
-  // to prevent modified objects to be overwritten by new load
-  const saveMainKey = QResourceIdentifier.mainKey
-  QResourceIdentifier.mainKey = 'sandbox'
-  const saveWarn = console.warn
-  console.warn = () => {}
-  const params = {
-    format: 'xml',
-    starttime: new Date(props.time - 3600e3).toISOString().slice(0, 19),
-    endtime: new Date(props.time + 3600e3).toISOString().slice(0, 19),
-    includeallorigins: true,
-    includearrivals: true
-  }
-  console.log(`[PickerPanel.loadAdditionalPicks] load events: ${JSON.stringify(params)}`)
-  client.getEvents(params).then((events) => {
-    const additionalPickMap: PickMap = {}
-    for (const event of events) {
-      if (store.currentEvent != null && event.publicID === store.currentEvent.publicID) {
-        continue
-      }
-      if (event.type != null && DISCARDED_EVENT_TYPES.indexOf(event.type) >= 0) {
-        continue
-      }
-      // for (const pick of event.pick) {
-      for (const arrival of event.preferredOriginID.referredObject.arrival) {
-        if (arrival.timeWeight === 0) {
-          continue
-        }
-        const pick = arrival.pickID.referredObject
-        const netsta = pick.waveformID.netsta
-        const seedid = pick.waveformID.seedid
-        if (additionalPickMap[netsta] == null) {
-          additionalPickMap[netsta] = {}
-        }
-        if (additionalPickMap[netsta][seedid] == null) {
-          additionalPickMap[netsta][seedid] = []
-        }
-        additionalPickMap[netsta][seedid].push(pick)
-      }
-    }
-    store.additionalPickMap = additionalPickMap
-  }).finally(() => {
-    // Restore the original mainKey of ResourceIdentifier
-    QResourceIdentifier.mainKey = saveMainKey
-    console.warn = saveWarn
-  })
 }
 
 watch(() => store.keydown, (value) => {
@@ -408,7 +357,7 @@ onMounted(() => {
   } else {
     displayWaveforms()
   }
-  loadAdditionalPicks()
+  store.eventManager.loadAdditionalPicks(props.baseUrl, props.time)
 })
 
 onBeforeUnmount(() => {

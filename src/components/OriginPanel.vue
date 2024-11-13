@@ -8,7 +8,7 @@ const store = useAppStore()
 
 const props = defineProps<{
   origin?: QOrigin | null
-  status?: EventViewStatus['relocateStatus']
+  status?: EventViewStatus['relocate']
   compact?: boolean
 }>()
 

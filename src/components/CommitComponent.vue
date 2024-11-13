@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { QEvent, QStationMagnitude } from '@/lib/sismojs/src/core/event/types'
+import { QEvent, QResourceIdentifier, QStationMagnitude } from '@/lib/sismojs/src/core/event/types'
 import { useAppStore } from '@/stores/app'
 import { deepCopy } from '@/utils'
 import { ref, watch } from 'vue'
@@ -23,17 +23,23 @@ watch(() => store.keydown, (newValue) => {
 })
 
 function commit() {
-  if (store.eventViewStatus.commitStatus === 'disabled' || locked.value) {
+  if (store.eventManager.status.commit === 'disabled' || locked.value) {
     return
   }
+  console.log('[CommitComponent.commit]')
   locked.value = true
   store.notification.push({ type: 'progress', value: { text: 'Commit...', percent: -1 } })
-  const event = new QEvent(deepCopy(store.currentEvent!.desc))
-  if (event.origin.find(x => x.publicID === store.currentOrigin!.publicID) == null) {
-    event.addOrigin(store.currentOrigin!.desc)
-    event.setPreferredOriginID(store.currentOrigin!.publicID)
+  const saveMainKey = QResourceIdentifier.mainKey
+  QResourceIdentifier.mainKey = 'sandbox'
+  const event = new QEvent(deepCopy(store.eventManager.current.event!.desc))
+  for (const pick of store.eventManager.current.userPicks) {
+    event.addPick(pick.desc)
   }
-  for (const m of store.currentOriginMagnitudes) {
+  if (event.origin.find(x => x.publicID === store.eventManager.current.origin!.publicID) == null) {
+    event.addOrigin(store.eventManager.current.origin!.desc)
+    event.setPreferredOriginID(store.eventManager.current.origin!.publicID)
+  }
+  for (const m of store.eventManager.current.originMagnitudes) {
     if (event.magnitude.find(x => x.publicID === m.publicID) == null) {
       event.addMagnitude(m.desc)
       if (m.stationMagnitudeContribution != null) {
@@ -50,16 +56,16 @@ function commit() {
       }
     }
   }
-  if (store.currentMagnitude != null) {
-    event.setPreferredMagnitudeID(store.currentMagnitude.publicID)
+  if (store.eventManager.current.magnitude != null) {
+    event.setPreferredMagnitudeID(store.eventManager.current.magnitude.publicID)
   } else {
     event.setPreferredMagnitudeID(undefined)
   }
-  if (store.currentFocalMechanism != null) {
-    if (event.focalMechanism.find(x => x.publicID === store.currentFocalMechanism!.publicID) == null) {
-      event.addFocalMechanism(store.currentFocalMechanism.desc)
+  if (store.eventManager.current.focalMechanism != null) {
+    if (event.focalMechanism.find(x => x.publicID === store.eventManager.current.focalMechanism!.publicID) == null) {
+      event.addFocalMechanism(store.eventManager.current.focalMechanism.desc)
     }
-    event.setPreferredFocalMechanismID(store.currentFocalMechanism.publicID)
+    event.setPreferredFocalMechanismID(store.eventManager.current.focalMechanism.publicID)
   }
   event.type = eventType.value
   if (eventTypeCertainty.value != null) {
@@ -68,6 +74,7 @@ function commit() {
   if (evaluationStatus.value != null) {
     event.preferredOriginID.referredObject.evaluationStatus = evaluationStatus.value
   }
+  QResourceIdentifier.mainKey = saveMainKey
   console.log(`[CommitComponent] POST: ${JSON.stringify([event.desc])}`)
   fetch(`../api/commit`, {
     method: 'POST',
@@ -103,8 +110,8 @@ function commit() {
       <v-btn
         v-bind="props"
         :title="`commit (${store.settings['keybinding.commit']})`"
-        :color="store.eventViewStatus.commitStatus === 'required' ? 'orange' : undefined"
-        :disabled="store.eventViewStatus.commitStatus === 'disabled'"
+        :color="store.eventManager.status.commit === 'required' ? 'orange' : undefined"
+        :disabled="store.eventManager.status.commit === 'disabled'"
       >
         <v-icon>mdi-content-save-edit</v-icon>
         <template #append>

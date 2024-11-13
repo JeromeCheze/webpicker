@@ -22,7 +22,7 @@ const activeEvent = ref(undefined as QEvent | undefined)
 
 const filteredEventList = computed(() => {
   if (props.hideDiscarded === true) {
-    return store.cacheEventList.filter((e) => {
+    return store.eventManager.events.filter((e) => {
       const eventType = e.type || ''
       const poStatus = e.preferredOriginID.referredObject.evaluationStatus || ''
       if (DISCARDED_EVENT_TYPES.indexOf(eventType) >= 0 || poStatus === 'rejected') {
@@ -31,7 +31,7 @@ const filteredEventList = computed(() => {
       return true
     })
   }
-  return store.cacheEventList
+  return store.eventManager.events
 })
 
 function getEventMarker(pos: L.LatLngTuple, event: QEvent) {
@@ -123,7 +123,7 @@ function focusEvent(eventid: string | null) {
     eventid = null
   }
   if (eventid != null) {
-    activeEvent.value = store.cacheEventList.find(x => x.publicID === eventid)
+    activeEvent.value = store.eventManager.events.find(x => x.publicID === eventid)
   } else {
     activeEvent.value = undefined
   }
@@ -153,15 +153,15 @@ watch(() => filteredEventList.value, drawEvents)
 
 onMounted(() => {
   initMap()
-  if (store.currentEvent != null) {
-    focusEvent(store.currentEvent.publicID)
+  if (store.eventManager.current.event != null) {
+    focusEvent(store.eventManager.current.event.publicID)
   }
 })
 </script>
 
 <template>
   <v-card>
-    <v-card-text v-if="store.cacheEventList.length === 0">
+    <v-card-text v-if="store.eventManager.events.length === 0">
       No events to display<br>
       Go to <router-link :to="{ name: 'form' }">form</router-link> to define query parameters
     </v-card-text>

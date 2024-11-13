@@ -45,14 +45,14 @@ function bindOriginClick(m: L.CircleMarker, origin: QOrigin) {
 }
 
 function displayOrigins() {
-  if (store.currentEvent == null) {
+  if (store.eventManager.current.event == null) {
     return
   }
   for (const layer of layers) {
     layer.remove()
   }
   layers = []
-  for (const origin of store.currentEvent.origin) {
+  for (const origin of store.eventManager.current.event.origin) {
     const pos = [origin.latitude.value, origin.longitude.value] as L.LatLngTuple
     const m = L.circleMarker(pos, {
       color: 'red',
@@ -118,7 +118,7 @@ watch(() => props.activeOrigin, () => {
 
 onMounted(() => {
   initMap()
-  if (store.currentEvent != null) {
+  if (store.eventManager.current.event != null) {
     displayOrigins()
   }
 })

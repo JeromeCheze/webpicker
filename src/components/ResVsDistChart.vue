@@ -18,14 +18,14 @@ function getColor(arrival: QArrival) {
 }
 
 function drawChart() {
-  if (store.currentArrivals == null || chartContainer.value == null) {
+  if (store.eventManager.current.arrivals == null || chartContainer.value == null) {
     return
   }
   chartContainer.value.innerHTML = ''
   const serieP: ScatterOptions = { name: 'P', color: 'black', shape: 'circle', data: [], tooltipFormatter: p => p.y.toFixed(2) }
   const serieS: ScatterOptions = { name: 'S', color: 'black', shape: 'diamond', data: [], tooltipFormatter: p => p.y.toFixed(2) }
   let max = 0
-  for (const arrival of store.currentArrivals) {
+  for (const arrival of store.eventManager.current.arrivals) {
     if (arrival.distance != null && arrival.timeResidual != null) {
       const serie = arrival.phase === 'P' ? serieP : serieS
       const color = getColor(arrival)
@@ -83,15 +83,15 @@ function handleChartSelection(x: [number | null, number | null], y: [number | nu
       }
     }
   }
-  store.selectArrivals(result)
+  store.eventManager.selectArrivals(result)
   return false
 }
 
 function getArrival(pickId: string) {
-  return store.currentArrivals!.find(x => x.pickID.id === pickId)
+  return store.eventManager.current.arrivals!.find(x => x.pickID.id === pickId)
 }
 
-watch(() => store.currentArrivals, drawChart)
+watch(() => store.eventManager.current.arrivals, drawChart)
 
 onMounted(drawChart)
 

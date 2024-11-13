@@ -64,9 +64,9 @@ export interface WebpickerForm {
 }
 
 export interface EventViewStatus {
-  relocateStatus: 'enabled' | 'required'
-  computeMagnitudesStatus: 'enabled' | 'disabled' | 'required'
-  commitStatus: 'enabled' | 'disabled' | 'required'
+  relocate: 'enabled' | 'required'
+  computeMagnitudes: 'enabled' | 'disabled' | 'required'
+  commit: 'enabled' | 'disabled' | 'required'
 }
 
 export interface PickerToolbarOptions {

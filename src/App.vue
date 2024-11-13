@@ -193,10 +193,10 @@ onMounted(() => {
           title="Query"
           prepend-icon="mdi-database"></v-list-item>
         <v-list-item
-          :to="{ name: 'event', params: { eventid: store.currentEvent.publicID } }"
-          :title="store.currentEvent.publicID"
+          :to="{ name: 'event', params: { eventid: store.eventManager.current.event.publicID } }"
+          :title="store.eventManager.current.event.publicID"
           prepend-icon="mdi-bullseye"
-          v-if="store.currentEvent != null"></v-list-item>
+          v-if="store.eventManager.current.event != null"></v-list-item>
         <v-list-item
           title="Create event"
           prepend-icon="mdi-plus-circle-outline"

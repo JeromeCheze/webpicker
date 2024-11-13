@@ -101,7 +101,7 @@ function handleSubmit() {
     } else {
       localStorage.removeItem('form')
     }
-    store.cacheEventList = []
+    store.eventManager.events = []
     router.push({ name: 'query', query })
   }
 }

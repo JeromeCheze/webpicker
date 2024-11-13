@@ -37,17 +37,13 @@ function checkDuration(v: number) {
 }
 
 function reset() {
-  store.dataManager.clearDetectorCache()
-  store.dataManager.clearDistanceAzimuth()
-  store.dataManager.clearInventoryCache()
-  store.dataManager.clearTTTCache()
-  store.dataManager.clearWaveformCache()
-  store.currentEvent = null
-  store.currentOrigin = null
-  store.currentMagnitude = null
-  store.currentOriginMagnitudes = []
-  store.currentArrivals = []
-  store.updatePickMap()
+  store.dataManager.reset()
+  store.eventManager.current.event = null
+  store.eventManager.current.origin = null
+  store.eventManager.current.magnitude = null
+  store.eventManager.current.originMagnitudes = []
+  store.eventManager.current.arrivals = []
+  store.eventManager.updatePickMap()
   stationRadiusState.value = true
 }
 
@@ -86,10 +82,10 @@ function handleSubmit(seedids: string[]) {
       methodID: 'free_placement',
       arrival: []
     }, event.id)
-    store.currentEvent = event
-    store.currentOrigin = origin
-    store.currentArrivals = origin.arrival
-    store.updatePickMap()
+    store.eventManager.current.event = event
+    store.eventManager.current.origin = origin
+    store.eventManager.current.arrivals = origin.arrival
+    store.eventManager.updatePickMap()
     seedidList.value = seedids
     const query = Object.assign({
       network: '*',
@@ -127,13 +123,13 @@ onMounted(() => {
 })
 
 onBeforeRouteLeave(async (to, from) => {
-  if (store.currentOrigin != null && store.currentEvent != null && store.currentEvent.pick.length > 0) {
-    const minPickTime = Math.min.apply(null, store.currentEvent.pick.map(p => p.time.object.getTime()))
-    store.currentOrigin.setTime({ value: new Date(minPickTime).toISOString() })
+  if (store.eventManager.current.origin != null && store.eventManager.current.event != null && store.eventManager.current.event.pick.length > 0) {
+    const minPickTime = Math.min.apply(null, store.eventManager.current.event.pick.map(p => p.time.object.getTime()))
+    store.eventManager.current.origin.setTime({ value: new Date(minPickTime).toISOString() })
     if (confirm('Leave picking?')) {
-      store.eventViewStatus.relocateStatus = 'enabled'
-      store.eventViewStatus.computeMagnitudesStatus = 'disabled'
-      store.eventViewStatus.commitStatus = 'enabled'
+      store.eventManager.status.relocate = 'enabled'
+      store.eventManager.status.computeMagnitudes = 'disabled'
+      store.eventManager.status.commit = 'enabled'
       return true
     }
     return false

@@ -1,10 +1,10 @@
-import { QEvent, QOrigin, QMagnitude, QPick, QArrival, QFocalMechanism, type QEvaluationMode, type QPickDescription, type QOriginDescription } from '@/lib/sismojs/src/core/event/types'
-import { shortcutString, getId, deepCopy, getDefault, kmToDeg, getLocalStorageDefault, setLocalStorage } from '@/utils'
-import type { ActivityData, ChatData, EventViewStatus, PickMap, WPNotificationOptions } from '@/types'
-import defaultSettings from '@/utils/defaultSettings'
+import { shortcutString, getId, deepCopy, getLocalStorageDefault, setLocalStorage } from '@/utils'
+import type { ActivityData, ChatData, PickMap, WPNotificationOptions } from '@/types'
 import WebSocketManager from '@/utils/webSocketManager'
-import DataManager from '@/utils/dataManager'
+import defaultSettings from '@/utils/defaultSettings'
 import { computed, ref, shallowRef } from 'vue'
+import EventManager from '@/utils/eventManager'
+import DataManager from '@/utils/dataManager'
 import { defineStore } from 'pinia'
 
 if (getLocalStorageDefault('version', null) !== 2) {
@@ -15,8 +15,6 @@ if (getLocalStorageDefault('version', null) !== 2) {
 const author = ref(getLocalStorageDefault('author', null) as string | null)
 
 const notification = ref([] as WPNotificationOptions[])
-
-const cacheEventList = ref([] as QEvent[])
 
 // Utilities for keybind actions
 const keydownDisabled = ref(false)
@@ -29,219 +27,9 @@ function preventDefault() {
 }
 
 // Class handling inventory and waveforms data management
-const dataManager = new DataManager('.')
-
-// EventView states
-const currentEvent = shallowRef(null as QEvent | null)
-const currentOrigin = shallowRef(null as QOrigin | null)
-const currentArrivals = shallowRef([] as QArrival[])
-const currentMagnitude = shallowRef(null as QMagnitude | null)
-const currentFocalMechanism = shallowRef(null as QFocalMechanism | null)
-const currentOriginMagnitudes = shallowRef([] as QMagnitude[])
-const originDirty = ref(false)
-const pickMap = shallowRef({} as PickMap)
+const dataManager = new DataManager()
+const eventManager = new EventManager(dataManager)
 const additionalPickMap = shallowRef({} as PickMap)
-const eventViewStatus = ref({
-  relocateStatus: 'enabled',
-  computeMagnitudesStatus: 'enabled',
-  commitStatus: 'enabled'
-} as EventViewStatus)
-
-// Event management
-function updatePickMap() {
-  const result: PickMap = {}
-  for (const arrival of currentArrivals.value!) {
-    const p = arrival.pickID.referredObject
-    if (p != null) {
-      const netsta = p.waveformID.netsta
-      getDefault(result, netsta, {})
-      getDefault(result[netsta], p.waveformID.seedid, []).push(p)
-    }
-  }
-  console.log('[app.updatePickMap]')
-  pickMap.value = result
-}
-function setEvent(event: QEvent) {
-  console.log(`[app.setEvent] ${JSON.stringify(event.desc)}`)
-  currentEvent.value = event
-  currentOrigin.value = event.preferredOriginID != null ? event.preferredOriginID.referredObject : null
-  if (currentOrigin.value != null) {
-    currentArrivals.value = currentOrigin.value.arrival
-  }
-  currentOriginMagnitudes.value = event.magnitude.filter(m => m.originID.id === currentOrigin.value!.publicID)
-  currentMagnitude.value = event.preferredMagnitudeID != null ? event.preferredMagnitudeID.referredObject : null
-  currentFocalMechanism.value = event.preferredFocalMechanismID != null ? event.preferredFocalMechanismID.referredObject : null
-  eventViewStatus.value.relocateStatus = 'enabled'
-  eventViewStatus.value.computeMagnitudesStatus = 'enabled'
-  eventViewStatus.value.commitStatus = 'enabled'
-  originDirty.value = false
-  dataManager.clearWaveformCache()
-  dataManager.clearInventoryCache()
-  dataManager.clearDistanceAzimuth()
-  dataManager.clearTTTCache()
-  dataManager.clearDetectorCache()
-  updatePickMap()
-  const e = cacheEventList.value.find(x => x.publicID === event.publicID)
-  if (e != null) {
-    const i = cacheEventList.value.indexOf(e)
-    cacheEventList.value.splice(i, 1, event)
-  } else {
-    cacheEventList.value.push(event)
-  }
-  console.log(`[app.setEvent] currentEvent: ${currentEvent.value.publicID}`)
-  console.log(`[app.setEvent] currentOrigin: ${currentOrigin.value?.publicID}`)
-  console.log(`[app.setEvent] currentOriginMagnitudes: ${currentOriginMagnitudes.value.map(x => x.publicID).join(', ')}`)
-  console.log(`[app.setEvent] currentMagnitude: ${currentMagnitude.value?.publicID}`)
-  console.log(`[app.setEvent] currentFocalMechanism: ${currentFocalMechanism.value?.publicID}`)
-  console.log(`[app.setEvent] eventViewStatus: ${JSON.stringify(eventViewStatus.value)}`)
-}
-function cloneOrigin() {
-  const clonedOriginDesc = deepCopy(currentOrigin.value!.desc) as QOriginDescription
-  clonedOriginDesc['@publicID'] = getId('Origin')
-  for (const arrival of clonedOriginDesc.arrival) [
-    arrival['@publicID'] = getId('Arrival')
-  ]
-  currentOrigin.value = new QOrigin(clonedOriginDesc, currentEvent.value!.id)
-  currentArrivals.value = currentOrigin.value.arrival
-  eventViewStatus.value.relocateStatus = 'required'
-  eventViewStatus.value.computeMagnitudesStatus = 'disabled'
-  eventViewStatus.value.commitStatus = 'disabled'
-  originDirty.value = true
-  console.log(`[app.cloneOrigin] ${JSON.stringify(currentOrigin.value.desc)}`)
-}
-function createArrival(p: QPick) {
-  console.log(`[app.createArrivals]`)
-  const netsta = p.waveformID.netsta
-  const ttt = dataManager.getStationPhaseTime(currentOrigin.value!.time.object.getTime(), netsta, p.phaseHint as 'P' | 'S')
-  const pTime = p.time.object.getTime()
-  const arrivalDesc = {
-    '@publicID': getId('Arrival'),
-    timeWeight: 1,
-    pickID: p.publicID,
-    phase: p.phaseHint,
-    timeResidual: (pTime - ttt) / 1e3,
-    distance: kmToDeg(dataManager.getStationDistance(netsta)),
-    azimuth: dataManager.getStationAzimuth(netsta)
-  }
-  currentOrigin.value!.addArrival(arrivalDesc)
-  currentArrivals.value = currentOrigin.value!.arrival.map(x => x)
-}
-function createPick(phase: string, pickTime: number, seedid: string, filter: string | undefined): QPick {
-  console.log('[app.createPick]')
-  if (!originDirty.value) {
-    cloneOrigin()
-  }
-  const ct = new Date()
-  const t = new Date(pickTime)
-  const [networkCode, stationCode, loc, channelCode] = seedid.split('.')
-  const locationCode = loc === '' ? undefined : loc
-  const pickDesc = {
-    '@publicID': getId('Pick'),
-    time: { value: t.toISOString() },
-    waveformID: {
-      '@networkCode': networkCode,
-      '@stationCode': stationCode,
-      '@locationCode': locationCode,
-      '@channelCode': channelCode
-    },
-    phaseHint: phase,
-    evaluationMode: 'manual' as QEvaluationMode,
-    creationInfo: {
-      author: author.value != null ? author.value : '',
-      agencyID: 'OCA',
-      creationTime: ct.toISOString()
-    },
-    filterID: filter?.replace(' ', '_').replace(':', '_')
-  }
-  const pick = currentEvent.value!.addPick(pickDesc)
-  createArrival(pick)
-  updatePickMap()
-  return pick
-}
-function deletePick(pick: QPick) {
-  console.log('[app.deletePick]')
-  if (!originDirty.value) {
-    cloneOrigin()
-  }
-  const arrival = currentArrivals.value!.find(x => x.pickID.id === pick.publicID)
-  if (arrival != null) {
-    currentOrigin.value!.deleteArrival(arrival)
-  }
-  let canBeDeleted = true
-  for (const origin of currentEvent.value!.origin) {
-    for (const arrival of origin.arrival) {
-      if (arrival.pickID.id === pick.publicID) {
-        canBeDeleted = false
-        break
-      }
-    }
-  }
-  // delete pick only if it is not referred by another arrival
-  if (canBeDeleted) {
-    currentEvent.value!.deletePick(pick)
-  }
-  currentArrivals.value = currentOrigin.value!.arrival.map(x => x)
-  updatePickMap()
-}
-function clonePick(pick: QPick) {
-  if (!originDirty.value) {
-    cloneOrigin()
-  }
-  const event = pick.parent.referredObject as QEvent
-  deletePick(pick)
-  const clonedDesc = deepCopy(pick.desc) as QPickDescription
-  clonedDesc['@publicID'] = getId('Pick')
-  clonedDesc.creationInfo = {
-    author: author.value!,
-    creationTime: new Date().toISOString(),
-    agencyID: 'OCA'
-  }
-  clonedDesc.evaluationMode = 'manual'
-  const clonedPick = event.addPick(clonedDesc)
-  createArrival(clonedPick)
-  console.log(`[app.clonePick] ${JSON.stringify(clonedPick.desc)}`)
-  updatePickMap()
-  return clonedPick
-}
-function selectArrivals(selectedArrivals: QArrival[]) {
-  console.log('[app.selectArrivals]')
-  if (!originDirty.value) {
-    cloneOrigin()
-  }
-  const pickIdList = selectedArrivals.map(x => x.pickID.id)
-  if (currentArrivals.value == null) {
-    console.warn('app.selectArrivals] no arrivals')
-    return
-  }
-  for (const arrival of currentArrivals.value) {
-    arrival.timeWeight = pickIdList.indexOf(arrival.pickID.id) < 0 ? 0 : 1
-  }
-  currentArrivals.value = currentArrivals.value.map(x => x)
-}
-function setArrivals(arrivals: QArrival[]) {
-  console.log('[app.setArrivals]')
-  if (!originDirty.value) {
-    cloneOrigin()
-  }
-  currentArrivals.value = arrivals
-}
-function createFocalMechanism(strike: number, dip: number, rake: number, nbStation: number) {
-  currentFocalMechanism.value = new QFocalMechanism({
-    '@publicID': getId('FocalMechanism'),
-    triggeringOriginID: currentOrigin.value!.publicID,
-    stationPolarityCount: nbStation,
-    evaluationMode: 'manual',
-    nodalPlanes: {
-      nodalPlane1: {
-        strike: { value: strike },
-        dip: { value: dip },
-        rake: { value: rake }
-      }
-    }
-  }, currentEvent.value!.id)
-  eventViewStatus.value.commitStatus = 'required'
-  console.log(`[app.createFocalMechanism] ${JSON.stringify(currentFocalMechanism.value.desc)}`)
-}
 
 // Load application settings
 const settings = Object.assign(deepCopy(defaultSettings), getLocalStorageDefault('settings', {}))
@@ -268,31 +56,13 @@ export const useAppStore = defineStore('app', () => {
     connected,
     author,
     notification,
-    cacheEventList,
-    currentEvent,
-    currentOrigin,
-    currentArrivals,
-    currentMagnitude,
-    currentFocalMechanism,
-    currentOriginMagnitudes,
-    pickMap,
     additionalPickMap,
-    updatePickMap,
-    setEvent, 
-    cloneOrigin,
-    createPick,
-    deletePick,
-    clonePick,
-    createArrival,
-    createFocalMechanism,
-    selectArrivals,
-    setArrivals,
-    eventViewStatus,
     keydownDisabled,
     keydownEvent,
     keydown,
     preventDefault,
     dataManager,
+    eventManager,
     webSocketManager,
     usersActivity,
     settings

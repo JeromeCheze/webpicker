@@ -1,23 +1,19 @@
 <script setup lang="ts">
 import type { FDSNEventParams } from '@/lib/sismojs/src/types'
-import { QEvent } from '@/lib/sismojs/src/core/event/types'
 import { onBeforeRouteUpdate, useRoute } from 'vue-router'
 import EventsStats from '@/components/EventsStats.vue'
 import CatalogForm from '@/components/CatalogForm.vue'
 import ListEvents from '@/components/ListEvents.vue'
 import MapEvents from '@/components/MapEvents.vue'
-import { Client } from '@/lib/sismojs/src/fdsn'
 import { useAppStore } from '@/stores/app'
 import { ref, onMounted } from 'vue'
 
 
 const store = useAppStore()
 const route = useRoute()
-const client = new Client('.')
 
 const height = document.body.getBoundingClientRect().height - 90
 const currentView = ref('list' as 'list' | 'map' | 'stats')
-const eventList = ref([] as QEvent[])
 const loading = ref(false)
 const form = ref(true)
 const hideDiscarded = ref(false)
@@ -25,11 +21,8 @@ const hideDiscarded = ref(false)
 function handleQuery(params: FDSNEventParams) {
   if (Object.keys(params).length > 1) {
     loading.value = true
-    console.log(`[QueryView.handleQuery] load events: ${JSON.stringify(params)}`)
-    client.getEvents(params).then(response => {
+    store.eventManager.loadEvents('.', params).then(() => {
       form.value = false
-      store.cacheEventList = response
-      eventList.value = response
     }).finally(() => {
       loading.value = false
     })
@@ -39,8 +32,7 @@ function handleQuery(params: FDSNEventParams) {
 }
 
 onMounted(() => {
-  if (store.cacheEventList.length > 0) {
-    eventList.value = store.cacheEventList
+  if (store.eventManager.events.length > 0) {
     form.value = false
   } else {
     if (Object.keys(route.query).length > 0) {
