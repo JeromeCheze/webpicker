@@ -195,6 +195,12 @@ export default class EventManager {
   }
 
   cloneOrigin() {
+    this.current.magnitude = null
+    this.current.originMagnitudes = []
+    this.current.focalMechanism = null
+    this.status.relocate = 'required'
+    this.status.computeMagnitudes = 'disabled'
+    this.status.commit = 'disabled'
     if (this.current.event!.origin.find(o => o.publicID === this.current.origin!.publicID) == null) {
       // origin is already dirty, no need to clone
       return
@@ -206,13 +212,7 @@ export default class EventManager {
     }
     console.log(`[EventManager.cloneOrigin] ${JSON.stringify(clonedDesc)}`)
     this.current.origin = new QOrigin(clonedDesc, this.current.event!.id)
-    this.current.magnitude = null
-    this.current.originMagnitudes = []
     this.current.arrivals = this.current.origin.arrival.map(a => a)
-    this.current.focalMechanism = null
-    this.status.relocate = 'required'
-    this.status.computeMagnitudes = 'disabled'
-    this.status.commit = 'disabled'
   }
 
   deleteArrival(pick: QPick) {
@@ -278,7 +278,7 @@ export default class EventManager {
       },
       filterID: filter?.replace(' ', '_').replace(':', '_')
     }, this.current.event!.id)
-    console.log(`[EventManager.createPick] ${pick.desc}`)
+    console.log(`[EventManager.createPick] ${JSON.stringify(pick.desc)}`)
     this.current.userPicks.push(pick)
     this.createArrival(pick)
     this.updatePickMap()
