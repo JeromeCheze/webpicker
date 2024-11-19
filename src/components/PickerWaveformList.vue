@@ -159,8 +159,8 @@ function getVLines(netsta: string) {
       }
     }
   }
-  if (store.additionalPickMap[netsta] != null) {
-    for (const picks of Object.values(store.additionalPickMap[netsta])) {
+  if (store.eventManager.additionalPickMap[netsta] != null) {
+    for (const picks of Object.values(store.eventManager.additionalPickMap[netsta])) {
       for (const p of picks) {
         result.push(pickToVLine(p, true))
       }
@@ -327,7 +327,7 @@ watch([
 
 watch([
   () => store.eventManager.pickMap,
-  () => store.additionalPickMap,
+  () => store.eventManager.additionalPickMap,
   () => props.detector
 ], () => updateVlines())
 

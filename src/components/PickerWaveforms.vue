@@ -200,8 +200,8 @@ function getVLines(index: number, dataLength: number, seedid: string) {
       }
     }
   }
-  if (store.additionalPickMap[netsta] != null && store.additionalPickMap[netsta][seedid] != null) {
-    for (const p of store.additionalPickMap[netsta][seedid]) {
+  if (store.eventManager.additionalPickMap[netsta] != null && store.eventManager.additionalPickMap[netsta][seedid] != null) {
+    for (const p of store.eventManager.additionalPickMap[netsta][seedid]) {
       result.push(pickToVLine(p, false))
     }
   }
@@ -427,7 +427,7 @@ watch(() => props.data, (value, oldValue) => {
 
 watch([
   () => store.eventManager.pickMap,
-  () => store.additionalPickMap,
+  () => store.eventManager.additionalPickMap,
   () => props.detector,
   () => props.tttEnabled
 ], () => updateVlines())

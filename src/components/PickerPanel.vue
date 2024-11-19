@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { FilterOptions, PickerToolbarOptions, PickMap, StationRefTimes, WPNotificationOptions } from '@/types'
+import type { FilterOptions, PickerToolbarOptions, StationRefTimes, WPNotificationOptions } from '@/types'
 import { QPick, type QPickOnset, type QPickPolarity } from '@/lib/sismojs/src/core/event/types'
-import { pushUnique, toNetSta } from '@/utils'
 import { ref, shallowRef, watch, onMounted, computed } from 'vue'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
 import PickerWaveformList from './PickerWaveformList.vue'
 import PickerWaveforms from './PickerWaveforms.vue'
 import PickerToolbar from './PickerToolbar.vue'
+import { pushUnique, toNetSta } from '@/utils'
 import { useAppStore } from '@/stores/app'
 import { onBeforeUnmount } from 'vue'
 
