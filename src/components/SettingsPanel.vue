@@ -64,8 +64,10 @@ const struct: StructItem[] = [
     title: 'Detector',
     fields: [
       { label: 'Model', key: 'detector.model', type: 'select', items: ['phasenet', 'eqt'] },
+      { label: 'Dataset', key: 'detector.dataset', type: 'select', items: ['original', 'instance', 'obs'] },
       { label: 'P Threshold', key: 'detector.pThreshold', type: 'number' },
-      { label: 'S Threshold', key: 'detector.sThreshold', type: 'number' }
+      { label: 'S Threshold', key: 'detector.sThreshold', type: 'number' },
+
     ]
   },
   {

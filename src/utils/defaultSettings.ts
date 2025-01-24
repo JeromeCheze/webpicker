@@ -25,6 +25,7 @@ export default {
   'picker.listWaveformHeight': 40,
   'picker.listMode': 'line',
   'detector.model': 'phasenet',
+  'detector.dataset': 'original',
   'detector.pThreshold': 0.3,
   'detector.sThreshold': 0.3,
   'keybinding.setPhaseP': 'w',

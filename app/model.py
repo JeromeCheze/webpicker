@@ -36,6 +36,8 @@ class WSDetectorArgs(BaseModel):
     channel: str
     starttime: str
     endtime: str
+    model: str
+    dataset: str
     url: str
     p_threshold: float
     s_threshold: float

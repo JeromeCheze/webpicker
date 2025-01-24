@@ -87,7 +87,10 @@ function handleDetector() {
   }
   if (start != null && end != null) {
     store.dataManager.getDetection(
-      props.baseUrl, store.settings['detector.model'], wfid!,
+      props.baseUrl,
+      store.settings['detector.model'],
+      store.settings['detector.dataset'],
+      wfid!,
       new Date(start).toISOString().slice(0, 19),
       new Date(end).toISOString().slice(0, 19),
       store.settings['detector.pThreshold'],
@@ -343,7 +346,9 @@ watch(() => store.keydown, (value) => {
 
 watch([
   () => pickerStation.value,
-  () => toolbarValue.value.detector
+  () => toolbarValue.value.detector,
+  () => store.settings['detector.model'],
+  () => store.settings['detector.dataset']
 ], () => handleDetector())
 
 onMounted(() => {

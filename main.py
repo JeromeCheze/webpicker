@@ -110,16 +110,16 @@ async def websocket_endpoint(websocket: WebSocket):
         await manager.broadcast_activity()
 
 @app.get('/api/detector', tags=['api'])
-def get_detector_picks(wfid: str, model: str, start: str, end: str, p_thresh: float, s_thresh: float, username: Annotated[str, Depends(check_authentication)]):
+def get_detector_picks(wfid: str, model: str, start: str, end: str, p_thresh: float, s_thresh: float, dataset: str, username: Annotated[str, Depends(check_authentication)]):
     net, sta, loc, cha = wfid.split('.')
     req_args = WSDetectorArgs(
         network=net, station=sta, location=loc if loc != '' else '--', channel=cha,
         starttime=start, endtime=end, p_threshold=p_thresh, s_threshold=s_thresh,
-        url=f'http://{utils.CONFIG.fdsnws.dataselect_host}',
+        url=f'http://{utils.CONFIG.fdsnws.dataselect_host}', model=model, dataset=dataset,
         get_probability=False
     )
     # print(req_args.model_dump_json())
-    req = urllib.request.Request(utils.CONFIG.detector.url.replace('<model>', model),
+    req = urllib.request.Request(utils.CONFIG.detector.url,
                                  data=req_args.model_dump_json().encode('utf-8'),
                                  headers={'Content-Type': 'application/json'})
     return Response(content=urllib.request.urlopen(req).read(), media_type='application/json')

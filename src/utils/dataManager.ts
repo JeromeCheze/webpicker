@@ -399,6 +399,7 @@ export default class DataManager {
   getDetection(
     baseUrl: string,
     model: string,
+    dataset: string,
     wfid: string,
     start: string,
     end: string,
@@ -408,11 +409,11 @@ export default class DataManager {
   ): Promise<Detection[]> {
     return new Promise((resolve, reject) => {
       const netsta = toNetSta(wfid)
-      const key = `${netsta}-${model}-${p_thresh}-${s_thresh}`
+      const key = `${netsta}-${model}-${dataset}-${p_thresh}-${s_thresh}`
       if (this.detectorCache[key] != null) {
         resolve(this.detectorCache[key])
       } else {
-        const args = Object.entries({ model, wfid, start, end, p_thresh, s_thresh }).map(x => `${x[0]}=${x[1]}`).join('&')
+        const args = Object.entries({ model, wfid, start, end, p_thresh, s_thresh, dataset }).map(x => `${x[0]}=${x[1]}`).join('&')
         fetch(`${baseUrl}/api/detector?${args}`, { method: 'GET', signal }).then(response => {
           if (response.status === 200) {
             response.json().then((data: DetectionResult[]) => {
