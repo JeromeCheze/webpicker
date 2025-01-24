@@ -16,12 +16,6 @@ const eventTypeCertainty = ref()
 const evaluationStatus = ref()
 const locked = ref(false)
 
-watch(() => store.keydown, (newValue) => {
-  if (newValue === store.settings['keybinding.commit']) {
-    commit()
-  }
-})
-
 function commit() {
   if (store.eventManager.status.commit === 'disabled' || locked.value) {
     return
@@ -102,6 +96,19 @@ function commit() {
     }
   })
 }
+
+watch(() => store.keydown, (newValue) => {
+  if (newValue === store.settings['keybinding.commit']) {
+    commit()
+  }
+})
+
+watch(() => store.eventManager.current.event, () => {
+  const typeCertainty = store.eventManager.current.event?.typeCertainty
+  const evalStatus = store.eventManager.current.origin?.evaluationStatus
+  eventTypeCertainty.value = typeCertainty != null ? typeCertainty : null
+  evaluationStatus.value = evalStatus != null ? evalStatus : null
+}, { immediate: true })
 </script>
 
 <template>

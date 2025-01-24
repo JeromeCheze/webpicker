@@ -375,7 +375,7 @@ export default class DataManager {
     const result: string[] = []
     if (inv[net] != null && inv[net][sta] != null && inv[net][sta].location[loc] != null) {
       for (const cha of Object.keys(this.inventoryCache[net][sta].location[loc])) {
-        if (cha.indexOf(chaPrefix) === 0) {
+        if (cha.indexOf(chaPrefix) === 0 || cha === 'HDH') {
           result.push(`${net}.${sta}.${loc}.${cha}`)
         }
       }

@@ -206,9 +206,10 @@ export default class EventManager {
       return
     }
     const clonedDesc = deepCopy(this.current.origin!.desc) as QOriginDescription
-    clonedDesc['@publicID'] = getId('Origin')
+    const newOriginID = getId('Origin')
+    clonedDesc['@publicID'] = newOriginID
     for (const arrival of clonedDesc.arrival) {
-      arrival['@publicID'] = getId('Arrival')
+      arrival['@publicID'] = `${arrival.pickID}_${newOriginID}`
     }
     console.log(`[EventManager.cloneOrigin] ${JSON.stringify(clonedDesc)}`)
     this.current.origin = new QOrigin(clonedDesc, this.current.event!.id)
@@ -244,7 +245,7 @@ export default class EventManager {
     )
     const pTime = pick.time.object.getTime()
     this.current.origin!.addArrival({
-      '@publicID': getId('Arrival'),
+      '@publicID': `${pick.publicID}_${this.current.origin!.publicID}`,
       timeWeight: 1,
       pickID: pick.publicID,
       phase: pick.phaseHint,

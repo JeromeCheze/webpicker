@@ -89,8 +89,10 @@ function relocate() {
           const result = parse(doc) as QEvent[]
           QResourceIdentifier.mainKey = saveMainKey
           const newOrigin = result[0].origin[0]
+          const newOriginID = getId('Origin')
+          newOrigin.desc['@publicID'] = newOriginID
           for (const arrival of newOrigin.arrival) {
-            arrival.desc['@publicID'] = getId('Arrival')
+            arrival.desc['@publicID'] = `${arrival.pickID.id}_${newOriginID}`
           }
           newOrigin.creationInfo.author = store.author
           store.eventManager.status.relocate = 'enabled'
