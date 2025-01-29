@@ -27,7 +27,7 @@ def to_scp_pick(j_pick):
     scp_pick.setTime(TimeQuantity(to_scp_time(j_pick["time"]["value"])))
     uncertainty = j_pick["time"].get('uncertainty')
     if uncertainty is not None:
-        scp_pick.time().setUncertainty(uncertainty)
+        scp_pick.time().setUncertainty(float(uncertainty))
     scp_pick.setEvaluationMode(MANUAL if j_pick.get('evaluationMode') == 'manual' else AUTOMATIC)
     scp_pick.setPhaseHint(Phase(j_pick['phaseHint']))
     if 'filter_id' in j_pick:
@@ -41,25 +41,25 @@ def to_scp_arrival(j_arrival):
     scp_arrival.setPickID(j_arrival['pickID'])
     scp_arrival.setPhase(Phase(j_arrival['phase']))
     if 'azimuth' in j_arrival:
-        scp_arrival.setAzimuth(j_arrival['azimuth'])
+        scp_arrival.setAzimuth(float(j_arrival['azimuth']))
     if 'distance' in j_arrival:
-        scp_arrival.setDistance(j_arrival['distance'])
+        scp_arrival.setDistance(float(j_arrival['distance']))
     if 'time_residual' in j_arrival:
-        scp_arrival.setTimeResidual(j_arrival['timeResidual'])
-    scp_arrival.setWeight(j_arrival['timeWeight'])
+        scp_arrival.setTimeResidual(float(j_arrival['timeResidual']))
+    scp_arrival.setWeight(float(j_arrival['timeWeight']))
     scp_arrival.setTimeUsed(True)
     return scp_arrival
 
 def to_scp_origin(j_origin):
     scp_origin: Origin = Origin.Create(j_origin['@publicID'])
     scp_origin.setTime(TimeQuantity(to_scp_time(j_origin["time"]["value"])))
-    scp_origin.setLatitude(RealQuantity(j_origin['latitude']['value'], j_origin['latitude'].get('uncertainty')))
-    scp_origin.setLongitude(RealQuantity(j_origin['longitude']['value'], j_origin['longitude'].get('uncertainty')))
-    scp_origin.setDepth(RealQuantity(j_origin['depth']['value'], j_origin['depth'].get('uncertainty')))
+    scp_origin.setLatitude(RealQuantity(float(j_origin['latitude']['value']), float(j_origin['latitude'].get('uncertainty'))))
+    scp_origin.setLongitude(RealQuantity(float(j_origin['longitude']['value']), float(j_origin['longitude'].get('uncertainty'))))
+    scp_origin.setDepth(RealQuantity(float(j_origin['depth']['value']), float(j_origin['depth'].get('uncertainty'))))
     for j_arrival in j_origin['arrival']:
-        if j_arrival['timeWeight'] > 0:
+        if float(j_arrival['timeWeight']) > 0:
             scp_origin.add(to_scp_arrival(j_arrival))
-        scp_origin.add(to_scp_arrival(j_arrival))
+        # scp_origin.add(to_scp_arrival(j_arrival))
     return scp_origin
 
 def get_inventory(fdsnws_host, pick_map):
@@ -181,23 +181,24 @@ def to_jquake(scp_origin: Origin):
 #                 print(f'{scp_net.code()}.{scp_sta.code()}.{scp_sl.code()} {scp_sl.start()} -> {end}')
 
 def relocate(jquake, profile, fdsnws_host):
-    t = jquake[0]['origin'][0]['time']['value'][0:19]
+    po = jquake[0]['origin'][0] if isinstance(jquake[0]['origin'], list) else jquake[0]['origin']
+    t = po['time']['value'][0:19]
     pick_map = {}
     pick_list = list()
     keep_arrival = list()
-    save_arrival = jquake[0]['origin'][0]['arrival']
+    save_arrival = po['arrival']
     not_used_arrival = list()
     for j_pick in jquake[0]['pick']:
         pick_map[j_pick['@publicID']] = j_pick
         scp_pick = to_scp_pick(j_pick)
         scp_pick.registerMe()
         pick_list.append(scp_pick)
-    for j_arrival in jquake[0]['origin'][0]['arrival']:
-        if j_arrival['timeWeight'] > 0:
+    for j_arrival in po['arrival']:
+        if float(j_arrival['timeWeight']) > 0:
             keep_arrival.append(j_arrival)
         else:
             not_used_arrival.append(j_arrival)
-    jquake[0]['origin'][0]['arrival'] = keep_arrival
+    po['arrival'] = keep_arrival
     scp_inv = get_inventory(fdsnws_host, pick_map)
     pick_list.sort(key=lambda x: x.time().value().iso())
     locator: LocatorInterface = LocatorInterface.Create('LOCSAT')
@@ -206,7 +207,7 @@ def relocate(jquake, profile, fdsnws_host):
     # for p in pick_list:
     #     print(p.publicID(), p.waveformID().stationCode(), p.time().value().iso())
     sloc = locator.getSensorLocation(pick_list[0])
-    scp_origin = to_scp_origin(jquake[0]['origin'][0])
+    scp_origin = to_scp_origin(po)
     scp_origin.setTime(pick_list[0].time())
     scp_origin.setLatitude(RealQuantity(sloc.latitude()))
     scp_origin.setLongitude(RealQuantity(sloc.longitude()))
@@ -252,7 +253,7 @@ def relocate(jquake, profile, fdsnws_host):
         new_scp_origin.deregisterMe()
         return '', jquake
     except Exception as exception:
-        jquake[0]['origin'][0]['arrival'] = save_arrival
+        po['arrival'] = save_arrival
         error_msg = traceback.format_exc()
         print(error_msg)
         return error_msg, None

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { QEvent, QResourceIdentifier, QStationMagnitude } from '@/lib/sismojs/src/core/event/types'
 import { useAppStore } from '@/stores/app'
-import { deepCopy } from '@/utils'
+import { deepCopy, toQuakeML } from '@/utils'
 import { ref, watch } from 'vue'
 
 const store = useAppStore()
@@ -73,7 +73,8 @@ function commit() {
   fetch(`../api/commit`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify([event.desc])
+    // body: JSON.stringify([event.desc])
+    body: toQuakeML(event.desc)
   }).then(response => {
     locked.value = false
     store.notification.push({ type: 'progress', value: null })

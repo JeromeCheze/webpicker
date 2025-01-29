@@ -3,7 +3,7 @@ import { type QEvent, type QEventDescription, type QArrivalDescription, type QPi
 import { parse } from '@/lib/sismojs/src/core/event/quakeml'
 import { computed, ref, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
-import { deepCopy, getId, getLocalStorageDefault, setLocalStorage } from '@/utils'
+import { deepCopy, getId, getLocalStorageDefault, setLocalStorage, toQuakeML } from '@/utils'
 
 const store = useAppStore()
 
@@ -71,7 +71,8 @@ function relocate() {
   fetch(`../api/relocate?locator=${locator.value}&profile=${profile.value}`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify([event])
+    // body: JSON.stringify([event])
+    body: toQuakeML(event)
   }).then(response => {
     locked.value = false
     store.notification.push({ type: 'progress', value: null })

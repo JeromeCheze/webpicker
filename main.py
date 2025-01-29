@@ -115,7 +115,8 @@ def get_detector_picks(wfid: str, model: str, start: str, end: str, p_thresh: fl
     req_args = WSDetectorArgs(
         network=net, station=sta, location=loc if loc != '' else '--', channel=cha,
         starttime=start, endtime=end, p_threshold=p_thresh, s_threshold=s_thresh,
-        url=f'http://{utils.CONFIG.fdsnws.dataselect_host}', model=model, dataset=dataset,
+        url=f'http://{utils.CONFIG.fdsnws.dataselect_host}',
+        model=model, dataset=dataset,
         get_probability=False
     )
     # print(req_args.model_dump_json())
@@ -175,28 +176,29 @@ def get_region_name(longitude: float, latitude: float, username: Annotated[str, 
 
 @app.post('/api/compute_magnitudes', tags=['api'])
 async def compute_magnitudes(request: Request, username: Annotated[str, Depends(check_authentication)]):
-    jquake = await request.json()
-    return processing.compute_magnitudes_with_scamp_and_scmag(jquake)
+    qml = await request.body()
+    return processing.compute_magnitudes_with_scamp_and_scmag(qml)
 
 @app.post('/api/relocate', tags=['api'])
 async def relocate(locator: Literal['LOCSAT', 'NonLinLoc'], profile: str, request: Request, username: Annotated[str, Depends(check_authentication)]):
-    jquake = await request.json()
+    qml = await request.body()
     if locator == 'LOCSAT':
         # result = relocate_with_screloc(jquake, profile)
-        result = processing.relocate_with_scp_api(jquake, profile)
+        result = processing.relocate_with_scp_api(qml, profile)
     elif locator == 'NonLinLoc':
-        result = processing.relocate_with_nll(jquake, profile)
+        result = processing.relocate_with_nll(qml, profile)
     return result
 
 @app.post('/api/compute_focal_mechanisms', tags=['api'])
 async def compute_focal_mechanisms(request: Request, username: Annotated[str, Depends(check_authentication)]):
-    jquake = await request.json()
-    return processing.compute_focal_mechanisms_with_skhash(jquake, params=request.query_params)
+    qml = await request.body()
+    return processing.compute_focal_mechanisms_with_skhash(qml, params=request.query_params)
 
 @app.post('/api/commit', tags=['api'])
 async def commit(request: Request, username: Annotated[str, Depends(check_authentication)]):
-    jquake = await request.json()
-    result = utils.commit_with_scdispatch(jquake)
+    qml = await request.body()
+    # result = utils.commit_with_scdispatch(jquake)
+    result = { 'message': 'OK', 'return_code': 0 }
     return result
 
 @app.get('/fdsnws/event/1/query', tags=['fdsnws'])

@@ -1,3 +1,5 @@
+import type { QEventDescription } from "@/lib/sismojs/src/core/event/types"
+
 const EARTH_RADIUS = 6371
 
 export const DISCARDED_EVENT_TYPES = [
@@ -20,6 +22,45 @@ export const getLocalStorageDefault = (key: string, defaultValue: any) => {
 
 export const setLocalStorage = (key: string, value: any) => {
   localStorage.setItem(key, JSON.stringify(value))
+}
+
+export const jsonToXml = (tag: string, content: Object, doc: XMLDocument, xmlns: string) => {
+  const el = doc.createElementNS(xmlns, tag)
+  for (const [key, value] of Object.entries(content)) {
+    let v = value
+    if (key.endsWith('ID') && !key.endsWith('agencyID') && !(value instanceof Object)) {
+      v = `smi:oca/${value}`
+    }
+    if (key.startsWith('@')) {
+      el.setAttribute(key.slice(1), v)
+    } else if (value instanceof Array) {
+      for (const item of value) {
+        el.appendChild(jsonToXml(key, item, doc, xmlns))
+      }
+    } else if (value instanceof Object) {
+      el.appendChild(jsonToXml(key, value, doc, xmlns))
+    } else {
+      const child = doc.createElementNS(xmlns, key)
+      child.appendChild(doc.createTextNode(v))
+      el.appendChild(child)
+    }
+  }
+  return el
+}
+
+export const toQuakeML = (e: QEventDescription) => {
+  const parser = new DOMParser()
+  const xmlns = 'http://quakeml.org/xmlns/bed/1.2'
+  const doc = parser.parseFromString(
+    `<q:quakeml xmlns:q="http://quakeml.org/xmlns/quakeml/1.2" xmlns="${xmlns}"></q:quakeml>`,
+    'application/xml'
+  )
+  const ep = doc.createElementNS(xmlns, 'eventParameters')
+  ep.setAttribute('publicID', 'smi:oca/NA')
+  doc.documentElement.appendChild(ep)
+  ep.appendChild(jsonToXml('event', e, doc, xmlns))
+  const serializer = new XMLSerializer()
+  return '<?xml version="1.0"?>' + serializer.serializeToString(doc)
 }
 
 export const shortcutString = (ev: KeyboardEvent) => {

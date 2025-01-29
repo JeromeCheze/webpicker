@@ -16,17 +16,27 @@ else:
     from urllib2 import Request, urlopen
 
 
-def relocate_with_nll(jquake, profile):
-    qml = utils.jquake_to_quakeml(jquake)
+def relocate_with_nll(qml, profile):
     try:
-        req = '%s/nll/%s/%s/' % (utils.CONFIG.nll.url, utils.CONFIG.nll.area, profile)
-        response = urlopen(Request(req, data=qml.encode('utf-8'), headers={'Content-Type': 'application/xml'}))
+        # req = '%s/nll/%s/%s/' % (utils.CONFIG.nll.url, utils.CONFIG.nll.area, profile)
+        # response = urlopen(Request(req, data=qml, headers={'Content-Type': 'application/xml'}))
+        data = {
+            'locator': 'nll',
+            'area': utils.CONFIG.nll.area,
+            'profile': profile,
+            'xml_data': qml.decode('utf-8'),
+            'likelyhood': True,
+            'keep_one_origin': True,
+            'force_preferred_origin': True
+        }
+        response = urlopen(Request('%s/locate/' % utils.CONFIG.nll.url, data=json.dumps(data).encode('utf-8'), headers={'Content-Type': 'application/json'}))
         return_code = response.status if utils.PYTHON3 else response.getcode()
+        result = json.load(response)
         if return_code == 204:
             raise ValueError('NonLinLoc returned no solution')
         return {
-            'message': '',
-            'quakeml': response.read().decode('utf-8') if utils.PYTHON3 else response.read()
+            'message': result['message'],
+            'quakeml': result['data']
         }
     except Exception as exception:
         return {
@@ -34,7 +44,8 @@ def relocate_with_nll(jquake, profile):
             'quakeml': qml
         }
 
-def relocate_with_scp_api(jquake, profile):
+def relocate_with_scp_api(qml, profile):
+    jquake = utils.quakeml_to_jquake(qml, remove_prefix_id=True)
     error, result = locsat_locator.relocate(jquake, profile, utils.CONFIG.fdsnws.station_host)
     if result is None:
         result = jquake
@@ -98,7 +109,8 @@ def relocate_with_screloc(jquake, profile):
         'quakeml': etree.tostring(newdom)
     }
 
-def compute_magnitudes_with_scamp_and_scmag(jquake):
+def compute_magnitudes_with_scamp_and_scmag(qml):
+    jquake = utils.quakeml_to_jquake(qml, remove_prefix_id=True)
     # 1) get inventory
     inventory = utils.get_inventory(jquake)
 
@@ -196,7 +208,8 @@ def get_locsat_travel_times(evlat, evlon, evdepth, stalat, stalon, stael=0):
         'S': ttt.compute('S', evlat, evlon, evdepth, stalat, stalon, stael).time
     }
 
-def compute_focal_mechanisms_with_skhash(jquake, params):
+def compute_focal_mechanisms_with_skhash(qml, params):
+    jquake = utils.quakeml_to_jquake(qml)
     dir_path = tempfile.mkdtemp()
     try:
         print(dir_path)
@@ -214,8 +227,7 @@ def compute_focal_mechanisms_with_skhash(jquake, params):
             ctrl_content.append('')
         with open(ctrl_filename, 'w') as f:
             f.write('\n'.join(ctrl_content))
-        qml = utils.jquake_to_quakeml(jquake)
-        with open(qml_filename, 'w') as f:
+        with open(qml_filename, 'wb') as f:
             f.write(qml)
         skhash = subprocess.Popen(['python', utils.CONFIG.skhash.path, ctrl_filename],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)

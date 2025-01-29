@@ -6,7 +6,6 @@ import xmltodict
 import subprocess
 from lxml import etree
 from random import randint
-from datetime import datetime
 from obspy.core import AttribDict
 from obspy.geodetics import FlinnEngdahl
 
@@ -25,20 +24,23 @@ def load_config(filename):
 
 FE = FlinnEngdahl()
 DEBUG = False
-CONFIG = load_config('/home/sysop/webpicker/config.json')
+CONFIG = load_config('/home/cheze/repositories/webpicker/config.json')
 SEISCOMP_PROGRAM = os.path.join(CONFIG.seiscomp.root, 'bin', 'seiscomp')
 
-def fix_ids(o):
+def fix_ids(o, remove=False):
     if isinstance(o, list):
         for item in o:
-            fix_ids(item)
+            fix_ids(item, remove)
     elif isinstance(o, dict):
         for k, v in o.items():
             if isinstance(v, str) and k.endswith('ID') and k != 'agencyID':
-                if not v.startswith('smi:'):
-                    o[k] = f'smi:oca/{v}'
+                if remove and v.startswith('smi:'):
+                    o[k] = '/'.join(v.split('/')[1:])
+                else:
+                    if not v.startswith('smi:'):
+                        o[k] = f'smi:oca/{v}'
             else:
-                fix_ids(v)
+                fix_ids(v, remove)
 
 def jquake_to_quakeml(jquake, add_prefix_id=True):
     if add_prefix_id:
@@ -54,6 +56,13 @@ def jquake_to_quakeml(jquake, add_prefix_id=True):
         }
     }
     return xmltodict.unparse(qml).replace(' encoding="utf-8"', '')
+
+def quakeml_to_jquake(qml, remove_prefix_id=True):
+    j = xmltodict.parse(qml)
+    jquake = [j['q:quakeml']['eventParameters']['event']]
+    if remove_prefix_id:
+        fix_ids(jquake, remove=True)
+    return jquake
 
 def sc3ml_to_quakeml(sc3ml_str, add_prefix_id=True):
     dom = etree.fromstring(sc3ml_str)
@@ -123,7 +132,8 @@ def get_inventory(jquake):
         'level=response',
         'format=xml'
     ]
-    t = jquake[0]['origin'][0]['time']['value'][0:19]
+    po = jquake[0]['origin'][0] if isinstance(jquake[0]['origin'], list) else jquake[0]['origin']
+    t = po['time']['value'][0:19]
     for pick in jquake[0]['pick']:
         wfid = pick['waveformID']
         loc = wfid['@locationCode'] if '@locationCode' in wfid else '--'
@@ -141,9 +151,10 @@ def get_inventory(jquake):
         f.write(sc3ml.decode('utf-8'))
     return inv_filename
 
-def commit_with_scdispatch(jquake):
+def commit_with_scdispatch(qml):
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
     # print(sc3ml)
+    jquake = quakeml_to_jquake(qml)
     write_sc3ml(jquake, sc3ml)
     scdispatch = subprocess.Popen([
         SEISCOMP_PROGRAM, 'exec', 'scdispatch',
@@ -158,6 +169,19 @@ def commit_with_scdispatch(jquake):
         'message': error_message.decode('utf-8') if PYTHON3 else error_message,
         'return_code': scdispatch.returncode
     }
+
+# def commit_to_pachamama_db(jquake):
+#     qml = jquake_to_quakeml(jquake, add_prefix_id=True)
+#     json_content = xmltodict.parse(qml)
+
+#     connection = psycopg2.connect(
+#         host=CONFIG.pachamama.host,
+#         port=CONFIG.pachamama.port,
+#         user=CONFIG.pachamama.user,
+#         password=CONFIG.pachamama.password,
+#         dbname=CONFIG.pachamama.dbname
+#     )
+#     cursor = connection.cursor()
 
 def get_region(lat, lon):
     return FE.get_region(lat, lon)
