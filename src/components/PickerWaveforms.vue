@@ -178,7 +178,13 @@ function getVLines(index: number, dataLength: number, seedid: string) {
     }
   }
   if (props.detector) {
-    const key = `${netsta}-${store.settings['detector.model']}-${store.settings['detector.dataset']}-${store.settings['detector.pThreshold']}-${store.settings['detector.sThreshold']}`
+    const key = store.dataManager.getDetectionKey(
+      netsta,
+      store.settings['detector.model'],
+      store.settings['detector.dataset'],
+      store.settings['detector.pThreshold'],
+      store.settings['detector.sThreshold']
+    )
     const detection = store.dataManager.detectorCache[key]
     if (detection != null) {
       for (const d of detection) {

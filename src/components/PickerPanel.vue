@@ -348,7 +348,9 @@ watch([
   () => pickerStation.value,
   () => toolbarValue.value.detector,
   () => store.settings['detector.model'],
-  () => store.settings['detector.dataset']
+  () => store.settings['detector.dataset'],
+  () => store.settings['detector.pThreshold'],
+  () => store.settings['detector.sThreshold']
 ], () => handleDetector())
 
 onMounted(() => {

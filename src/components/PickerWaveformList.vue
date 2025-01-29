@@ -144,7 +144,13 @@ function getVLines(netsta: string) {
   //   result.push({ color: store.settings['color.TTTNLL'], x: props.stationRefTimes[netsta].S_NLL, text: 'S (NLL)', position: 'bottom' })
   // }
   if (props.detector) {
-    const key = `${netsta}-${store.settings['detector.model']}-${store.settings['detector.dataset']}-${store.settings['detector.pThreshold']}-${store.settings['detector.sThreshold']}`
+    const key = store.dataManager.getDetectionKey(
+      netsta,
+      store.settings['detector.model'],
+      store.settings['detector.dataset'],
+      store.settings['detector.pThreshold'],
+      store.settings['detector.sThreshold']
+    )
     const detection = store.dataManager.detectorCache[key]
     if (detection != null) {
       for (const d of detection) {

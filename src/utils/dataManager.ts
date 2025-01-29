@@ -396,6 +396,10 @@ export default class DataManager {
     return result
   }
 
+  getDetectionKey( netsta: string, model: string, dataset: string, pThresh: number, sThresh: number) {
+    return `${netsta}-${model}-${dataset}-${pThresh}-${sThresh}`
+  }
+
   getDetection(
     baseUrl: string,
     model: string,
@@ -403,17 +407,17 @@ export default class DataManager {
     wfid: string,
     start: string,
     end: string,
-    p_thresh: number,
-    s_thresh: number,
+    pThresh: number,
+    sThresh: number,
     signal: AbortSignal
   ): Promise<Detection[]> {
     return new Promise((resolve, reject) => {
       const netsta = toNetSta(wfid)
-      const key = `${netsta}-${model}-${dataset}-${p_thresh}-${s_thresh}`
+      const key = this.getDetectionKey(netsta, model, dataset, pThresh, sThresh)
       if (this.detectorCache[key] != null) {
         resolve(this.detectorCache[key])
       } else {
-        const args = Object.entries({ model, wfid, start, end, p_thresh, s_thresh, dataset }).map(x => `${x[0]}=${x[1]}`).join('&')
+        const args = Object.entries({ model, wfid, start, end, p_thresh: pThresh, s_thresh: sThresh, dataset }).map(x => `${x[0]}=${x[1]}`).join('&')
         fetch(`${baseUrl}/api/detector?${args}`, { method: 'GET', signal }).then(response => {
           if (response.status === 200) {
             response.json().then((data: DetectionResult[]) => {
