@@ -61,13 +61,10 @@ function commit() {
     }
     event.setPreferredFocalMechanismID(store.eventManager.current.focalMechanism.publicID)
   }
+
   event.type = eventType.value
-  if (eventTypeCertainty.value != null) {
-    event.typeCertainty = eventTypeCertainty.value
-  }
-  if (evaluationStatus.value != null) {
-    event.preferredOriginID.referredObject.evaluationStatus = evaluationStatus.value
-  }
+  event.typeCertainty = eventTypeCertainty.value
+  event.preferredOriginID.referredObject.evaluationStatus = evaluationStatus.value
   QResourceIdentifier.mainKey = saveMainKey
   console.log(`[CommitComponent] POST: ${JSON.stringify([event.desc])}`)
   fetch(`../api/commit`, {
