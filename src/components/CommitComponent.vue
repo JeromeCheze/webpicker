@@ -129,9 +129,9 @@ watch(() => store.eventManager.current.event, () => {
     </template>
     <v-card>
       <v-card-text>
-        <v-select density="compact" label="Type" :items="eventTypeOptions" v-model="eventType"></v-select>
-        <v-select density="compact" label="Type certainty" :items="eventTypeCertaintyOptions" v-model="eventTypeCertainty"></v-select>
-        <v-select density="compact" label="Status" :items="evaluationStatusOptions" v-model="evaluationStatus"></v-select>
+        <v-select clearable density="compact" label="Type" :items="eventTypeOptions" v-model="eventType"></v-select>
+        <v-select clearable density="compact" label="Type certainty" :items="eventTypeCertaintyOptions" v-model="eventTypeCertainty"></v-select>
+        <v-select clearable density="compact" label="Status" :items="evaluationStatusOptions" v-model="evaluationStatus"></v-select>
       </v-card-text>
       <v-card-actions class="justify-center">
         <v-btn @click="commit" size="small">Commit</v-btn>
