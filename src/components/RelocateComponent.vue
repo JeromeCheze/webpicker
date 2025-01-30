@@ -116,6 +116,11 @@ function relocate() {
       console.log(`[RelocateComponent] error message: ${response.statusText}`)
       store.notification.push({ type: 'warning', value: `Error: ${response.status} (${response.statusText})` })
     }
+  }).catch((e) => {
+    locked.value = false
+    console.log(`[RelocateComponent] ERROR: ${e}`)
+    store.notification.push({ type: 'progress', value: null })
+    store.notification.push({ type: 'error', value: `${e}` })
   })
 }
 </script>

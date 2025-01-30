@@ -92,6 +92,11 @@ function commit() {
     } else {
       console.log(`[CommitComponent] error message: ${response.statusText}`)
     }
+  }).catch((e) => {
+    locked.value = false
+    console.log(`[CommitComponent] ERROR: ${e}`)
+    store.notification.push({ type: 'progress', value: null })
+    store.notification.push({ type: 'error', value: `${e}` })
   })
 }
 
@@ -102,8 +107,10 @@ watch(() => store.keydown, (newValue) => {
 })
 
 watch(() => store.eventManager.current.event, () => {
+  const type = store.eventManager.current.event?.type
   const typeCertainty = store.eventManager.current.event?.typeCertainty
   const evalStatus = store.eventManager.current.origin?.evaluationStatus
+  eventType.value = type != null ? type : 'earthquake'
   eventTypeCertainty.value = typeCertainty != null ? typeCertainty : null
   evaluationStatus.value = evalStatus != null ? evalStatus : null
 }, { immediate: true })

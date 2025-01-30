@@ -112,6 +112,11 @@ function computeMagnitudes() {
         }
       })
     }
+  }).catch((e) => {
+    locked.value = false
+    console.log(`[ComputeMagnitudeComponent] ERROR: ${e}`)
+    store.notification.push({ type: 'progress', value: null })
+    store.notification.push({ type: 'error', value: `${e}` })
   })
 }
 
