@@ -53,9 +53,12 @@ def to_scp_arrival(j_arrival):
 def to_scp_origin(j_origin):
     scp_origin: Origin = Origin.Create(j_origin['@publicID'])
     scp_origin.setTime(TimeQuantity(to_scp_time(j_origin["time"]["value"])))
-    scp_origin.setLatitude(RealQuantity(float(j_origin['latitude']['value']), float(j_origin['latitude'].get('uncertainty'))))
-    scp_origin.setLongitude(RealQuantity(float(j_origin['longitude']['value']), float(j_origin['longitude'].get('uncertainty'))))
-    scp_origin.setDepth(RealQuantity(float(j_origin['depth']['value']), float(j_origin['depth'].get('uncertainty'))))
+    lat_err = j_origin['latitude'].get('uncertainty')
+    lon_err = j_origin['longitude'].get('uncertainty')
+    depth_err = j_origin['depth'].get('uncertainty')
+    scp_origin.setLatitude(RealQuantity(float(j_origin['latitude']['value']), float(lat_err) if lat_err is not None else None))
+    scp_origin.setLongitude(RealQuantity(float(j_origin['longitude']['value']), float(lon_err) if lon_err is not None else None))
+    scp_origin.setDepth(RealQuantity(float(j_origin['depth']['value']), float(depth_err) if depth_err is not None else None))
     for j_arrival in j_origin['arrival']:
         if float(j_arrival['timeWeight']) > 0:
             scp_origin.add(to_scp_arrival(j_arrival))

@@ -3,6 +3,7 @@ import HomeView from '@/views/HomeView.vue'
 import QueryView from '@/views/QueryView.vue'
 import EventView from '@/views/EventView.vue'
 import PlotView from '@/views/PlotView.vue'
+import ConfigView from '@/views/ConfigView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -21,6 +22,11 @@ const router = createRouter({
       path: '/plot',
       name: 'plot',
       component: PlotView
+    },
+    {
+      path: '/config',
+      name: 'config',
+      component: ConfigView
     },
     {
       path: '/event/:eventid',

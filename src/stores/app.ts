@@ -1,5 +1,5 @@
 import { shortcutString, getId, deepCopy, getLocalStorageDefault, setLocalStorage } from '@/utils'
-import type { ActivityData, ChatData, PickMap, WPNotificationOptions } from '@/types'
+import type { ActivityData, ChatData, PickMap, WPNotificationOptions, Config } from '@/types'
 import WebSocketManager from '@/utils/webSocketManager'
 import defaultSettings from '@/utils/defaultSettings'
 import { computed, ref, shallowRef } from 'vue'
@@ -48,12 +48,23 @@ const webSocketManager = new WebSocketManager(
   value => chatMessages.value.push(value)
 )
 
+const config = ref(null as Config | null)
+fetch('/app/config').then(response => {
+  if (response.status === 200) {
+    response.json().then(data => {
+      config.value = data
+      console.debug(data)
+    })
+  }
+})
+
 export const useAppStore = defineStore('app', () => {
   return {
     authorId,
     chatMessages,
     newVersion,
     connected,
+    config,
     author,
     notification,
     additionalPickMap,

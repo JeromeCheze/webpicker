@@ -167,3 +167,46 @@ export interface StationRefTimes {
     [phase: string]: number
   }
 }
+
+export interface Config {
+  access: {
+    restricted: boolean
+    users: {
+      [username: string]: {
+        password: string
+        rules: {
+          [key: string]: any
+        }
+      }
+    }
+  }
+  detector: {
+    enabled: boolean
+    url: string
+  }
+  denoiser: {
+    enabled: boolean
+    url: string
+  }
+  nll: {
+    enabled: boolean
+    url: string
+    area: string
+  }
+  skhash: {
+    enabled: boolean
+    path: string
+  }
+  fdsnws: {
+    event_host: string
+    station_host: string
+    dataselect_host: string
+  }
+  commit_strategy: 'script' | 'scdispatch'
+  commit_script: string
+  seiscomp: {
+    messaging_host: string
+    root: string
+    schema_version: string
+  }
+}

@@ -84,11 +84,11 @@ watch(() => store.keydown, (newValue) => {
     alignment.value = 1
   } else if (!props.noEvent && newValue === store.settings['keybinding.alignToS']) {
     alignment.value = 2
-  } else if (newValue === store.settings['keybinding.toggleDenoiser']) {
+  } else if (newValue === store.settings['keybinding.toggleDenoiser'] && store.config?.denoiser.enabled) {
     toggleDenoiser()
   } else if (newValue === store.settings['keybinding.toggleSpectrogram']) {
     toogleSpectrogram()
-  } else if (newValue === store.settings['keybinding.toggleDetector']) {
+  } else if (newValue === store.settings['keybinding.toggleDetector'] && store.config?.detector.enabled) {
     toggleDetector()
   } else if (newValue === store.settings['keybinding.toggleIntegration']) {
     toggleIntegration()
@@ -124,6 +124,7 @@ watch(() => sortValue.value, (value: number) => props.modelValue.sort = sortOpti
     </v-btn-toggle>
     <!-- DENOISER SWITCH -->
     <v-btn
+      v-if="store.config?.denoiser.enabled"
       :title="`Toggle denoiser (${store.settings['keybinding.toggleDenoiser']})`"
       @click="toggleDenoiser"
       :active="props.modelValue.denoiser"
@@ -160,6 +161,7 @@ watch(() => sortValue.value, (value: number) => props.modelValue.sort = sortOpti
       class="mx-1">Hz</v-btn>
     <!-- DETECTOR -->
     <v-btn
+      v-if="store.config?.detector.enabled"
       :title="`Toggle detector (${store.settings['keybinding.toggleDetector']})`"
       :active="props.modelValue.detector"
       @click="toggleDetector"

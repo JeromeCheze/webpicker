@@ -7,13 +7,16 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from typing import Annotated, Literal
+from obspy.core import AttribDict
 from app import processing
 from app import utils
 import urllib.request
 import urllib.parse
+import hashlib
 import secrets
 import json
 
+ADMIN_PASSWORD = '95a2c6749a7c1a90f6fe6775c1d82a03'
 
 class ConnectionManager:
     def __init__(self):
@@ -67,7 +70,7 @@ def check_credentials(credentials: Annotated[HTTPBasicCredentials, Depends(secur
     password = credentials.password.encode('utf8')
     for user, user_data in utils.CONFIG.access.users.items():
         current_username = user.encode('utf-8')
-        current_password = user_data.password.encode('utf-8')
+        current_password = hashlib.md5(user_data.password.encode('utf-8')).hexdigest()
         if(secrets.compare_digest(username, current_username)
             and secrets.compare_digest(password, current_password)):
             return credentials.username
@@ -109,6 +112,24 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
         await manager.broadcast_activity()
 
+@app.get('/app/config', tags=['app'])
+def get_app_config(username: Annotated[str, Depends(check_authentication)]):
+    return Response(content=json.dumps(utils.CONFIG, default=lambda x: dict(x) if isinstance(x, AttribDict) else x),
+                    media_type='application/json')
+
+@app.post('/app/config', tags=['app'])
+async def set_app_config(password: str, request: Request, username: Annotated[str, Depends(check_authentication)]):
+    if secrets.compare_digest(password, ADMIN_PASSWORD):
+        config = await request.json()
+        utils.update_config(config)
+        return 'ok'
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='Incorrect username or password',
+            headers={'WWWW-Authenticate': 'Basic'}
+        )
+        
 @app.get('/api/detector', tags=['api'])
 def get_detector_picks(wfid: str, model: str, start: str, end: str, p_thresh: float, s_thresh: float, dataset: str, username: Annotated[str, Depends(check_authentication)]):
     net, sta, loc, cha = wfid.split('.')
@@ -147,20 +168,21 @@ def get_ttt(args: TTTQuery, username: Annotated[str, Depends(check_authenticatio
             )}
         except:
             result[netsta] = {'ttt': {'P': 0, 'S': 0}}
-    nll_ttt_data = args.model_dump_json().encode('utf-8')
-    nll_ttt_req = urllib.request.Request(
-        f'{utils.CONFIG.nll.url}/ttt/{utils.CONFIG.nll.area}/iasp91/',
-        data=nll_ttt_data,
-        headers={'Content-Type': 'application/json'}
-    )
-    try:
-        nll_ttt = json.load(urllib.request.urlopen(nll_ttt_req))
-        for netsta, ttt in nll_ttt.items():
-            if netsta not in result:
-                result[netsta] = {}
-            result[netsta]['nll_ttt'] = ttt['ttt']
-    except:
-        pass
+    if utils.CONFIG.nll.enabled:
+        nll_ttt_data = args.model_dump_json().encode('utf-8')
+        nll_ttt_req = urllib.request.Request(
+            f'{utils.CONFIG.nll.url}/ttt/{utils.CONFIG.nll.area}/iasp91/',
+            data=nll_ttt_data,
+            headers={'Content-Type': 'application/json'}
+        )
+        try:
+            nll_ttt = json.load(urllib.request.urlopen(nll_ttt_req))
+            for netsta, ttt in nll_ttt.items():
+                if netsta not in result:
+                    result[netsta] = {}
+                result[netsta]['nll_ttt'] = ttt['ttt']
+        except:
+            pass
     return result
 
 @app.post('/api/takeoffangle', tags=['api'])
@@ -197,8 +219,12 @@ async def compute_focal_mechanisms(request: Request, username: Annotated[str, De
 @app.post('/api/commit', tags=['api'])
 async def commit(request: Request, username: Annotated[str, Depends(check_authentication)]):
     qml = await request.body()
-    # result = utils.commit_with_scdispatch(jquake)
-    result = { 'message': 'OK', 'return_code': 0 }
+    if utils.CONFIG.commit_strategy == 'script':
+        result = utils.commit_script(qml)
+    elif utils.CONFIG.commit_strategy == 'scdispatch':
+        result = utils.commit_with_scdispatch(qml)
+    else:
+        result = { 'message': f'invalid commit strategy: {utils.CONFIG.commit_strategy}', 'return_code': 1 }
     return result
 
 @app.get('/fdsnws/event/1/query', tags=['fdsnws'])

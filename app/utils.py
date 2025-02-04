@@ -17,15 +17,25 @@ else:
     from urllib2 import Request, urlopen
 
 
-def load_config(filename):
+def load_config():
+    curr_dir = os.path.dirname(os.path.abspath(__file__))
+    filename = os.path.join(curr_dir, '..', 'config.json')
     with open(filename, 'r') as f:
         return AttribDict(json.load(f))
 
-
 FE = FlinnEngdahl()
 DEBUG = False
-CONFIG = load_config('/home/cheze/repositories/webpicker/config.json')
+# CONFIG = load_config('/home/cheze/repositories/webpicker/config.json')
+CONFIG = load_config()
 SEISCOMP_PROGRAM = os.path.join(CONFIG.seiscomp.root, 'bin', 'seiscomp')
+
+def update_config(content):
+    curr_dir = os.path.dirname(os.path.abspath(__file__))
+    filename = os.path.join(curr_dir, '..', 'config.json')
+    with open(filename, 'w') as f:
+        json.dump(content, f, indent=2, sort_keys=True)
+    global CONFIG
+    CONFIG = load_config()
 
 def fix_ids(o, remove=False):
     if isinstance(o, list):
@@ -170,18 +180,19 @@ def commit_with_scdispatch(qml):
         'return_code': scdispatch.returncode
     }
 
-# def commit_to_pachamama_db(jquake):
-#     qml = jquake_to_quakeml(jquake, add_prefix_id=True)
-#     json_content = xmltodict.parse(qml)
-
-#     connection = psycopg2.connect(
-#         host=CONFIG.pachamama.host,
-#         port=CONFIG.pachamama.port,
-#         user=CONFIG.pachamama.user,
-#         password=CONFIG.pachamama.password,
-#         dbname=CONFIG.pachamama.dbname
-#     )
-#     cursor = connection.cursor()
+def commit_script(qml):
+    _, qml_filename = tempfile.mkstemp(suffix='.xml')
+    sys.stderr.write(f'{qml_filename}\n')
+    with open(qml_filename, 'wb') as f:
+        f.write(qml)
+    p = subprocess.Popen([CONFIG.commit_script, qml_filename],
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    _, error_message = p.communicate()
+    #os.remove(qml_filename)
+    return {
+        'message': error_message.decode('utf-8') if PYTHON3 else error_message,
+        'return_code': p.returncode
+    }
 
 def get_region(lat, lon):
     return FE.get_region(lat, lon)

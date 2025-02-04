@@ -40,9 +40,13 @@ export const jsonToXml = (tag: string, content: Object, doc: XMLDocument, xmlns:
     } else if (value instanceof Object) {
       el.appendChild(jsonToXml(key, value, doc, xmlns))
     } else if (value != null) {
-      const child = doc.createElementNS(xmlns, key)
-      child.appendChild(doc.createTextNode(v))
-      el.appendChild(child)
+      if (key === '#text') {
+        el.appendChild(doc.createTextNode(v))
+      } else {
+        const child = doc.createElementNS(xmlns, key)
+        child.appendChild(doc.createTextNode(v))
+        el.appendChild(child)
+      }
     }
   }
   return el

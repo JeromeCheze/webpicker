@@ -110,6 +110,8 @@ def relocate_with_screloc(jquake, profile):
     }
 
 def compute_magnitudes_with_scamp_and_scmag(qml):
+    scp_config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config.xml')
+    
     jquake = utils.quakeml_to_jquake(qml, remove_prefix_id=True)
     # 1) get inventory
     inventory = utils.get_inventory(jquake)
@@ -123,7 +125,7 @@ def compute_magnitudes_with_scamp_and_scmag(qml):
     scamp_cmd = [
         utils.SEISCOMP_PROGRAM, 'exec', 'scamp',
         '--inventory-db', inventory,
-        '--config-db', utils.CONFIG.seiscomp.config_filename,
+        '--config-db', scp_config_file,
         '-I', 'fdsnws://%s' % utils.CONFIG.fdsnws.dataselect_host,
         '--ep', sc3ml
     ]
@@ -146,7 +148,7 @@ def compute_magnitudes_with_scamp_and_scmag(qml):
     scmag_cmd = [
         utils.SEISCOMP_PROGRAM, 'exec', 'scmag',
         '--inventory-db', inventory,
-        '--config-db', utils.CONFIG.seiscomp.config_filename,
+        '--config-db', scp_config_file,
         '--ep', scamp_result
     ]
     scmag = subprocess.Popen(scmag_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

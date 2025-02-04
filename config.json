@@ -1,41 +1,43 @@
 {
-    "access": {
-        "restricted": false,
-        "users": {
-            "s2rhai": {
-                "password": "52rh@!",
-                "rules": {}
-            },
-            "test": {
-                "password": "t35t",
-                "rules": {
-                    "starttime": "2021-09-01",
-                    "endtime": "2021-09-07"
-                }
-            }
+  "access": {
+    "restricted": false,
+    "users": {
+      "test": {
+        "password": "178e53e30e576de9400a83a80787e52c",
+        "rules": {
+          "endtime": "2021-09-07",
+          "starttime": "2021-09-01"
         }
-    },
-    "detector": {
-        "url": "http://thesee.unice.fr:9001/<model>/get_pick"
-    },
-    "denoiser": {
-        "url": "http://thesee.unice.fr:9001/deepdenoiser"
-    },
-    "nll": {
-        "url": "http://thesee.unice.fr:10000",
-        "area": "geoazur"
-    },
-    "fdsnws": {
-        "event_host": "event-processor-ayiti.oca:8000",
-        "station_host": "event-processor-ayiti.oca:8000",
-        "dataselect_host": "thufir.unice.fr:28000"
-    },
-    "seiscomp": {
-        "messaging_host": "event-processor-ayiti.oca:18180/webpicker",
-        "root": "/home/sysop/seiscomp",
-        "schema_version": "0.13",
-        "database_uri": "postgresql://sysop:@babel.unice.fr/seiscomp_dev_ayiti",
-        "dump_config": false,
-        "config_filename": "/home/sysop/webpicker/config.xml"
+      }
     }
+  },
+  "commit_script": "/home/cheze/repositories/webpicker/commit_script.sh",
+  "commit_strategy": "script",
+  "denoiser": {
+    "enabled": true,
+    "url": "http://thesee.unice.fr:9000/deepdenoiser"
+  },
+  "detector": {
+    "enabled": true,
+    "url": "http://thesee.unice.fr:9001/get_pick"
+  },
+  "fdsnws": {
+    "dataselect_host": "embiez.unice.fr:9000",
+    "event_host": "embiez.unice.fr:9000",
+    "station_host": "embiez.unice.fr:9000"
+  },
+  "nll": {
+    "area": "hiper2",
+    "enabled": true,
+    "url": "http://thesee.unice.fr:10000"
+  },
+  "seiscomp": {
+    "messaging_host": "event-processor-ayiti.oca:18180/webpicker",
+    "root": "/home/cheze/seiscomp",
+    "schema_version": "0.13"
+  },
+  "skhash": {
+    "enabled": true,
+    "path": "/home/cheze/repositories/SKHASH/SKHASH/SKHASH.py"
+  }
 }
