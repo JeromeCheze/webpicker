@@ -36,6 +36,8 @@ def update_config(content):
         json.dump(content, f, indent=2, sort_keys=True)
     global CONFIG
     CONFIG = load_config()
+    global SEISCOMP_PROGRAM
+    SEISCOMP_PROGRAM = os.path.join(CONFIG.seiscomp.root, 'bin', 'seiscomp')
 
 def fix_ids(o, remove=False):
     if isinstance(o, list):

@@ -27,6 +27,9 @@ export const setLocalStorage = (key: string, value: any) => {
 export const jsonToXml = (tag: string, content: Object, doc: XMLDocument, xmlns: string) => {
   const el = doc.createElementNS(xmlns, tag)
   for (const [key, value] of Object.entries(content)) {
+    if (value == null) {
+      continue
+    }
     let v = value
     if (key.endsWith('ID') && !key.endsWith('agencyID') && !(value instanceof Object)) {
       v = `smi:oca/${value}`
