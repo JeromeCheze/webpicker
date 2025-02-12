@@ -103,6 +103,8 @@ function handleSubmit() {
     }
     store.eventManager.events = []
     router.push({ name: 'query', query })
+  } else {
+    console.debug('form not valid')
   }
 }
 
@@ -190,18 +192,18 @@ onMounted(() => {
               </v-row>
               <v-row>
                 <v-col cols="6">
-                  <NumberField density="compact" hide-details v-model="form.mindepth" label="Depth min" suffix="km"/>
+                  <NumberField density="compact" hide-details="auto" v-model="form.mindepth" label="Depth min" suffix="km"/>
                 </v-col>
                 <v-col cols="6">
-                  <NumberField density="compact" hide-details v-model="form.maxdepth" label="Depth max" suffix="km"/>
+                  <NumberField density="compact" hide-details="auto" v-model="form.maxdepth" label="Depth max" suffix="km"/>
                 </v-col>
               </v-row>
               <v-row>
                 <v-col cols="6">
-                  <NumberField density="compact" hide-details v-model="form.minmag" label="Magnitude min"/>
+                  <NumberField density="compact" hide-details="auto" v-model="form.minmag" label="Magnitude min"/>
                 </v-col>
                 <v-col cols="6">
-                  <NumberField density="compact" hide-details v-model="form.maxmag" label="Magnitude max"/>
+                  <NumberField density="compact" hide-details="auto" v-model="form.maxmag" label="Magnitude max"/>
                 </v-col>
               </v-row>
             </v-col>

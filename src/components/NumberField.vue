@@ -39,7 +39,10 @@ function checkValue(v: string | null) {
   if (v != null) {
     return reFloat.test(v) || 'Invalid value'
   }
-  return props.required === true && v != null || 'Field required'
+  if (props.required) {
+    return v != null || 'Field required'
+  }
+  return true
 }
 </script>
 

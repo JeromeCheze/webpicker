@@ -47,6 +47,7 @@ export default class EventManager {
   pickMap: PickMap
   additionalPickMap: PickMap
   dataManager: DataManager
+  agencyID: string
 
   constructor(dataManager: DataManager) {
     this.dataManager = dataManager
@@ -68,6 +69,7 @@ export default class EventManager {
     }, eventManagerStatusLogHandler)
     this.pickMap = {}
     this.additionalPickMap = {}
+    this.agencyID = 'OCA'
   }
 
   updatePickMap() {
@@ -108,7 +110,6 @@ export default class EventManager {
   }
 
   loadEvents(baseUrl: string, params: FDSNEventParams) {
-    console.log(this.client)
     console.log(`[EventManager.loadEvents] ${JSON.stringify(params)}`)
     return new Promise<void>((resolve, reject) => {
       this.client.baseURL = baseUrl
@@ -274,7 +275,7 @@ export default class EventManager {
       evaluationMode: 'manual' as QEvaluationMode,
       creationInfo: {
         author: author,
-        agencyID: 'OCA',
+        agencyID: this.agencyID,
         creationTime: ct.toISOString()
       },
       filterID: filter?.replace(' ', '_').replace(':', '_')
@@ -293,7 +294,7 @@ export default class EventManager {
     clonedDesc.creationInfo = {
       author: author,
       creationTime: new Date().toISOString(),
-      agencyID: 'OCA'
+      agencyID: this.agencyID
     }
     clonedDesc.evaluationMode = 'manual'
     const newPick = new QPick(clonedDesc, this.current.event!.id)

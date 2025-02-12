@@ -53,7 +53,10 @@ fetch('/app/config').then(response => {
   if (response.status === 200) {
     response.json().then(data => {
       config.value = data
-      console.debug(data)
+      if (config.value != null) {
+        eventManager.agencyID = config.value.agency
+        document.title = config.value.title
+      }
     })
   }
 })

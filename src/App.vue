@@ -182,7 +182,7 @@ onMounted(() => {
     </v-main>
     <v-navigation-drawer v-model="drawer" :rail="rail" permanent>
       <v-list nav>
-        <v-list-item prepend-avatar="@/assets/wp.png" class="font-weight-bold" @click.stop="rail = !rail">
+        <v-list-item prepend-avatar="@/assets/wp_logo.svg" class="font-weight-bold" @click.stop="rail = !rail">
           WebPicker
           <template #append>
             <v-btn variant="text" icon="mdi-chevron-left" @click.stop="rail = !rail"></v-btn>

@@ -55,6 +55,30 @@ function handleApplyConfig() {
     <v-card-text v-if="config != null">
       <v-row>
         <v-col cols="12">
+          <v-table>
+            <tbody>
+              <tr>
+                <td><h4 class="mt-2">Title</h4></td>
+                <td><v-text-field v-model="config.title" density="compact" hide-details="auto"></v-text-field></td>
+              </tr>
+            </tbody>
+          </v-table>
+        </v-col>
+      </v-row>
+      <v-row>
+        <v-col cols="12">
+          <v-table>
+            <tbody>
+              <tr>
+                <td><h4 class="mt-2">Agency</h4></td>
+                <td><v-text-field v-model="config.agency" density="compact" hide-details="auto"></v-text-field></td>
+              </tr>
+            </tbody>
+          </v-table>
+        </v-col>
+      </v-row>
+      <v-row>
+        <v-col cols="12">
           <h4 class="mt-2">Access</h4>
           <v-table density="compact">
             <tbody>

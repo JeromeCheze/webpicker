@@ -2,6 +2,7 @@ export default {
   // 'color.theme': 'dark',
   'color.theme': 'light',
   'color.background': '',
+  // 'color.background': 'conic-gradient(from 90deg at 1px 1px, #0000 25%, gainsboro 0%) -0.5px -0.5px/1em 1em, linear-gradient(45deg, #0000 calc(50% + -1*0.5px), gainsboro 0 calc(50% + 0.5px), #0000 0) 0 0/2em 2em, linear-gradient(-45deg, #0000 calc(50% + -1*0.5px), gainsboro 0 calc(50% + 0.5px), #0000 0) 0 0/2em 2em',
   // 'color.background': 'linear-gradient(153deg, rgba(106,137,184,1) 0%, rgba(57,18,111,1) 100%)',
   'color.surface': '',
   // 'color.surface': '33, 24, 46',

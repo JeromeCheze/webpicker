@@ -470,7 +470,7 @@ onBeforeUnmount(() => {
           </tr>
         </tbody>
       </table>
-      <v-menu location="start" :close-on-content-click="false">
+      <v-menu location="start" :close-on-content-click="false" v-if="store.config?.skhash.enabled">
         <template #activator="{ props }">
           <v-btn v-bind="props" density="compact" variant="text" icon="mdi-dots-horizontal"></v-btn>
         </template>
@@ -486,12 +486,13 @@ onBeforeUnmount(() => {
         </v-card>
       </v-menu>
       <v-btn
+        v-if="store.config?.skhash.enabled"
         density="compact"
         @click="handleCompute"
         :disabled="!initialized || loading || store.eventManager.current.magnitude == null"
         class="ma-1">COMPUTE</v-btn>
       <br>
-      <v-dialog max-width="700">
+      <v-dialog max-width="700" v-if="store.config?.skhash.enabled">
         <template #activator="{ props: activatorProps }">
           <v-badge :content="nbFM">
             <v-btn v-bind="activatorProps" density="compact" class="ma-1">BROWSE</v-btn>

@@ -1,12 +1,13 @@
 import traceback
+from app import utils
 from obspy import UTCDateTime
 from seiscomp.core import Time
 from urllib.request import urlopen, Request
+from obspy.geodetics.base import gps2dist_azimuth, kilometers2degrees
+from seiscomp.seismology import LocatorInterface, TravelTimeTableInterface
 from seiscomp.datamodel import Pick, CreationInfo, WaveformStreamID, Phase, \
     Arrival, Origin, TimeQuantity, RealQuantity, Inventory, Network, Station, \
     SensorLocation, AUTOMATIC, MANUAL
-from seiscomp.seismology import LocatorInterface, TravelTimeTableInterface
-from obspy.geodetics.base import gps2dist_azimuth, kilometers2degrees
 
 def to_scp_time(t):
     if '.' in t:
@@ -151,7 +152,7 @@ def to_jquake(scp_origin: Origin):
         # 'evaluation_mode': 'manual' if scp_origin.evaluationMode() == MANUAL else 'automatic',
         'evaluationMode': 'manual',
         'creationInfo': {
-            'agencyID': 'OCA',
+            'agencyID': utils.CONFIG.agency,
             'author': 'webpicker',
             'creationTime': scp_origin.creationInfo().creationTime().toString('%Y-%m-%dT%H:%M:%S.%fZ')
         },

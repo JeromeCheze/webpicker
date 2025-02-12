@@ -75,7 +75,7 @@ function handleSubmit(seedids: string[]) {
       evaluationStatus: 'preliminary',
       creationInfo: {
         author: store.author!,
-        agencyID: 'OCA',
+        agencyID: store.config?.agency,
         creationTime: new Date().toISOString()
       },
       depth: { value: 5 * 1e3 },

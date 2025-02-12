@@ -11,6 +11,7 @@
       }
     }
   },
+  "agency": "OCA",
   "commit_script": "/home/cheze/repositories/webpicker/commit_script.sh",
   "commit_strategy": "script",
   "denoiser": {
@@ -39,5 +40,6 @@
   "skhash": {
     "enabled": true,
     "path": "/home/cheze/repositories/SKHASH/SKHASH/SKHASH.py"
-  }
+  },
+  "title": "WebPicker"
 }

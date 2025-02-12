@@ -180,6 +180,7 @@ export interface Config {
       }
     }
   }
+  agency: string
   detector: {
     enabled: boolean
     url: string
@@ -209,4 +210,5 @@ export interface Config {
     root: string
     schema_version: string
   }
+  title: string
 }

@@ -3,11 +3,11 @@ import sys
 import json
 import tempfile
 import subprocess
-from datetime import datetime, UTC
-from app import locsat_locator
-from lxml import etree
 from app import utils
+from lxml import etree
+from app import locsat_locator
 from obspy.taup import TauPyModel
+from datetime import datetime, UTC
 from seiscomp.seismology import TravelTimeTableInterface
 
 if utils.PYTHON3:
@@ -69,7 +69,7 @@ def relocate_with_screloc(jquake, profile):
         '--locator', 'LOCSAT',
         '--profile', profile,
         '--author', 'webpicker',
-        '--agencyID', 'OCA',
+        '--agencyID', utils.CONFIG.agency,
         '--use-weight', '1',
         '--ep', sc3ml,
         '--replace'
@@ -262,7 +262,7 @@ def compute_focal_mechanisms_with_skhash(qml, params):
                 'evaluationMode': 'automatic',
                 'comment': [{'text': json.dumps(fm)}],
                 'creationInfo': {
-                    'agencyID': 'OCA',
+                    'agencyID': utils.CONFIG.agency,
                     'author': 'SKHASH',
                     'creationTime': now
                 }
