@@ -71,6 +71,7 @@ function handleSubmit(seedids: string[]) {
       time: { value: starttime.value.toISOString() },
       latitude: { value: latitude.value, uncertainty: 1 },
       longitude: { value: longitude.value, uncertainty: 1 },
+      depth: { value: 5 * 1e3 },
       evaluationMode: 'manual',
       evaluationStatus: 'preliminary',
       creationInfo: {
@@ -78,7 +79,6 @@ function handleSubmit(seedids: string[]) {
         agencyID: store.config?.agency,
         creationTime: new Date().toISOString()
       },
-      depth: { value: 5 * 1e3 },
       methodID: 'free_placement',
       arrival: []
     }, event.id)

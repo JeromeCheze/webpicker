@@ -81,6 +81,14 @@ function createEvent() {
     latitude: { value: lat.value, uncertainty: 1 },
     longitude: { value: lon.value, uncertainty: 1 },
     depth: { value: depth.value * 1e3 },
+    evaluationMode: 'manual',
+    evaluationStatus: 'preliminary',
+    creationInfo: {
+      author: store.author!,
+      agencyID: store.config?.agency,
+      creationTime: new Date().toISOString()
+    },
+    methodID: 'free_placement',
     arrival: []
   }, event.id)
   console.log(`[CreateEvent] event: ${JSON.stringify(event.desc)}`)
