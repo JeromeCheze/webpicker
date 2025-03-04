@@ -3,7 +3,7 @@ import version from '@/version.json'
 </script>
 
 <template>
-  <v-card max-width="1000" :style="{ marginLeft: 'auto', marginRight: 'auto', marginTop: '10vh' }" class="pa-4">
+  <v-card max-width="1000" :style="{ marginLeft: 'auto', marginRight: 'auto', marginTop: '5vh' }" class="pa-4">
     <v-card-text>
       <div class="text-center mt-12 font-doto">WebPicker</div>
       <div class="text-center">

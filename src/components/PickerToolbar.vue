@@ -26,7 +26,8 @@ const phases = ['P', 'S']
 const alignments = ['O', 'P', 'S']
 const sortOptions = [
   { value: 'distance', icon: 'mdi-map-marker-distance' },
-  { value: 'name', icon: 'mdi-sort-alphabetical-ascending' }
+  { value: 'name-asc', icon: 'mdi-sort-alphabetical-ascending' },
+  { value: 'name-desc', icon: 'mdi-sort-alphabetical-descending' }
 ]
 
 const filters = computed(() => store.settings['filter'].map((x: FilterOptions) => x.name))
@@ -112,7 +113,7 @@ watch(() => props.modelValue.filter, (value) => {
 
 watch(() => phase.value, (value: number | undefined) => props.modelValue.phase = value != undefined ? phases[value] as 'P' | 'S' : undefined)
 watch(() => alignment.value, (value: number) => props.modelValue.alignment = alignments[value] as PickerToolbarOptions['alignment'])
-watch(() => sortValue.value, (value: number) => props.modelValue.sort = sortOptions[value].value as 'distance' | 'name')
+watch(() => sortValue.value, (value: number) => props.modelValue.sort = sortOptions[value].value as 'distance' | 'name-asc' | 'name-desc')
 </script>
 
 <template>

@@ -54,8 +54,10 @@ const listData = computed(() => {
       const bb = store.dataManager.getStationDistance(b)
       return aa < bb ? -1 : aa > bb ? 1 : 0
     })
-  } else {
+  } else if (props.sortTrace === 'name-asc') {
     netstaList.sort()
+  } else if (props.sortTrace === 'name-desc') {
+    netstaList.sort().reverse()
   }
   for (const netsta of netstaList) {
     let tr = netstaTrace[netsta].find(tr => tr.stats.channel.indexOf('Z') === 2)

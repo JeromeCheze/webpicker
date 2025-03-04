@@ -74,7 +74,7 @@ export interface PickerToolbarOptions {
   alignment: 'O' | 'P' | 'S'
   components: string[]
   seedids: string[]
-  sort: 'distance' | 'name'
+  sort: 'distance' | 'name-asc' | 'name-desc'
   rotation: 'ZNE' | 'ZRT'
   filter: string | null
   denoiser: boolean
