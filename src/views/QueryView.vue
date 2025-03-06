@@ -36,14 +36,14 @@ onMounted(() => {
     form.value = false
   } else {
     if (Object.keys(route.query).length > 0) {
-      const params = { ...route.query, format: 'xml' }
+      const params = { ...route.query, format: 'xml', includefocalmechanism: true }
       handleQuery(params)
     }
   }
 })
 
 onBeforeRouteUpdate(async (to, from) => {
-  const params = { ...to.query, format: 'xml' }
+  const params = { ...to.query, format: 'xml', includefocalmechanism: true }
   handleQuery(params)
 })
 </script>

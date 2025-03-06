@@ -213,8 +213,9 @@ onMounted(() => {
           class="text-no-wrap"
           :colspan="index === (enabledCols.length - 1) ? 2 : 1"
         >
+          <img v-if="item.img != null && item.img(row[1]) != null" :src="item.img(row[1])" width="16" height="16" class="mt-1">
           <v-icon
-            v-if="item.icon != null && item.valueAccessor(row[1])"
+            v-else-if="item.icon != null && item.valueAccessor(row[1])"
             :title="item.textAccessor(row[1])"
           >{{ item.icon }}</v-icon>
           <span v-else>{{ item.textAccessor(row[1]) }}</span>

@@ -46,6 +46,7 @@ export interface ColObject {
   valueAccessor: (item: any) => any
   textAccessor: (item: any) => string
   class?: (item: any) => string
+  img?: (item: any) => string
   icon?: string
   enabled: boolean
 }

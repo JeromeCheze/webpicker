@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { getDefault, getLocalStorageDefault, DISCARDED_EVENT_TYPES } from '@/utils'
 import { QEvent } from '@/lib/sismojs/src/core/event/types'
+import BeachballEngine from '@/lib/beachball'
 import { computed, ref, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 import SmartTable from './SmartTable.vue'
@@ -18,6 +19,21 @@ const props = defineProps<{
 }>()
 
 const usersEventMap = ref({} as Record<string, string[]>)
+
+const imagebbeInitialized = ref(false)
+const imagebbe = new BeachballEngine(50, 40, 1.5, './static/wasm/beachball.wasm')
+imagebbe.init().then(() => {
+  imagebbeInitialized.value = true
+})
+
+function getFocalImage(event: QEvent) {
+  const fm = event.preferredFocalMechanismID.referredObject
+  if (fm == null) {
+    return null
+  }
+  const np = fm.nodalPlanes.nodalPlane1
+  return imagebbe.getFocalImage(np.strike.value, np.dip.value, np.rake.value, 'grey')
+}
 
 const header = ref([
   {
@@ -77,6 +93,13 @@ const header = ref([
     enabled: true
   },
   {
+    label: 'FM',
+    valueAccessor: (e: QEvent) => '',
+    textAccessor: (e: QEvent) => '',
+    img: (e: QEvent) => getFocalImage(e),
+    enabled: false
+  },
+  {
     label: 'Mode',
     valueAccessor: (e: QEvent) => e.preferredOriginID.referredObject.evaluationMode,
     textAccessor: (e: QEvent) => e.preferredOriginID.referredObject.evaluationMode === 'manual' ? 'M' : 'A',
@@ -122,6 +145,9 @@ const header = ref([
 ] as ColObject[])
 
 const filteredEventList = computed(() => {
+  if (imagebbeInitialized.value === false) {
+    return []
+  }
   if (props.hideDiscarded === true) {
     return store.eventManager.events.filter((e) => {
       const eventType = e.type || ''
