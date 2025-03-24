@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { QResourceIdentifier, type QEvent, type QEventDescription, type QFocalMechanism, type QPick } from '@/lib/sismojs/src/core/event/types'
-import { setLocalStorage, getLocalStorageDefault } from '@/utils'
+import { setLocalStorage, getLocalStorageDefault, toQuakeML } from '@/utils'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { parse } from '@/lib/sismojs/src/core/event/quakeml'
 import BeachballEngine from '@/lib/beachball'
@@ -379,8 +379,8 @@ function handleCompute() {
   const args = Object.entries(params).map(o => `${o[0]}=${o[1]}`).join('&')
   fetch(`../api/compute_focal_mechanisms?${args}`, {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify([event])
+    headers: {'Content-Type': 'application/xml'},
+    body: toQuakeML(event)
   }).then(response => {
     loading.value = false
     store.notification.push({ type: 'progress', value: null })

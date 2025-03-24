@@ -69,8 +69,7 @@ function commit() {
   console.log(`[CommitComponent] POST: ${JSON.stringify([event.desc])}`)
   fetch(`../api/commit`, {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    // body: JSON.stringify([event.desc])
+    headers: {'Content-Type': 'application/xml'},
     body: toQuakeML(event.desc)
   }).then(response => {
     locked.value = false

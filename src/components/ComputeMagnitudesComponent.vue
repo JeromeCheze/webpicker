@@ -66,8 +66,7 @@ function computeMagnitudes() {
   console.log(`[ComputeMagnitudeComponent] POST: ${JSON.stringify([event.desc])}`)
   fetch(`../api/compute_magnitudes`, {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    // body: JSON.stringify([event.desc])
+    headers: {'Content-Type': 'application/xml'},
     body: toQuakeML(event.desc)
   }).then(response => {
     locked.value = false

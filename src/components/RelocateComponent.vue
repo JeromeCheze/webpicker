@@ -70,8 +70,7 @@ function relocate() {
   console.log(`[RelocateComponent] POST: ${JSON.stringify([event])}`)
   fetch(`../api/relocate?locator=${locator.value}&profile=${profile.value}`, {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    // body: JSON.stringify([event])
+    headers: {'Content-Type': 'application/xml'},
     body: toQuakeML(event)
   }).then(response => {
     locked.value = false
