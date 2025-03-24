@@ -26,6 +26,8 @@ function preventDefault() {
   }
 }
 
+const baseUrl = computed(() => window.location.pathname.includes('event') ? '..' : '.')
+
 // Class handling inventory and waveforms data management
 const dataManager = new DataManager()
 const eventManager = new EventManager(dataManager)
@@ -49,7 +51,7 @@ const webSocketManager = new WebSocketManager(
 )
 
 const config = ref(null as Config | null)
-fetch('/app/config').then(response => {
+fetch(`${baseUrl.value}/app/config`).then(response => {
   if (response.status === 200) {
     response.json().then(data => {
       config.value = data

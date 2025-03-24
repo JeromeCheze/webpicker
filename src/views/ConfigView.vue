@@ -21,7 +21,7 @@ watch(() => store.config, (value) => {
 
 function handleApplyConfig() {
   config.value!.access.users = JSON.parse(users.value!)
-  fetch(`/app/config?password=${md5(password.value)}`, {
+  fetch(`./app/config?password=${md5(password.value)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(config.value)

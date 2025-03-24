@@ -3,8 +3,8 @@ import os
 sys.path.insert(0, os.path.join(os.environ['SEISCOMP_ROOT'], 'lib', 'python'))
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, Depends, status
 from app.model import WSDetectorArgs, WSDenoiserArgs, TTTQuery, TakeoffAngleQuery, ActivityData, WebSocketMessage, WebSocketResponse, ChatData
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from typing import Annotated, Literal
 from obspy.core import AttribDict
@@ -67,10 +67,10 @@ security = HTTPBasic()
 
 def check_credentials(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
     username = credentials.username.encode('utf8')
-    password = credentials.password.encode('utf8')
+    password = hashlib.md5(credentials.password.encode('utf8')).hexdigest().encode('utf8')
     for user, user_data in utils.CONFIG.access.users.items():
         current_username = user.encode('utf-8')
-        current_password = hashlib.md5(user_data.password.encode('utf-8')).hexdigest()
+        current_password = user_data.password.encode('utf-8')
         if(secrets.compare_digest(username, current_username)
             and secrets.compare_digest(password, current_password)):
             return credentials.username
@@ -270,5 +270,13 @@ async def post_dataselect(request: Request, username: Annotated[str, Depends(che
         f'http://{utils.CONFIG.fdsnws.dataselect_host}/fdsnws/dataselect/1/query',
         data=data, headers={'Content-Type': request.headers['Content-Type']}
     )
-    response = urllib.request.urlopen(req)
-    return Response(content=response.read(), media_type=response.headers.get_content_type())
+    # response = urllib.request.urlopen(req)
+    # return Response(content=response.read(), media_type=response.headers.get_content_type())
+    def iter_content():
+        with urllib.request.urlopen(req) as response:
+            while True:
+                chunk = response.read(1024)
+                if not chunk:
+                    break
+                yield chunk
+    return StreamingResponse(iter_content(), media_type='application/vnd.fdsn.mseed')
