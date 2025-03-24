@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { QResourceIdentifier, type QEvent, type QEventDescription, type QFocalMechanism, type QPick } from '@/lib/sismojs/src/core/event/types'
 import { setLocalStorage, getLocalStorageDefault, toQuakeML } from '@/utils'
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { parse } from '@/lib/sismojs/src/core/event/quakeml'
 import BeachballEngine from '@/lib/beachball'
 import { useAppStore } from '@/stores/app'
@@ -182,6 +182,9 @@ function updateStationLayer(center: number, radius: number) {
 }
 
 function updateBeachball() {
+  if (bbe.value == null || hiresbbe.value == null) {
+    return
+  }
   const t = new Date().getTime()
   const [s, d, r] = sdr.value
   if (lastCall == null || (t - lastCall) > 30) {
@@ -435,6 +438,14 @@ function setFM(fm: QFocalMechanism) {
   updateBeachball()
 }
 
+watch([
+  () => sdr.value[0],
+  () => sdr.value[1],
+  () => sdr.value[2]
+], () => {
+  updateBeachball()
+})
+
 onMounted(() => {
   init()
 })
@@ -458,19 +469,19 @@ onBeforeUnmount(() => {
         <tbody>
           <tr>
             <th>strike</th>
-            <td>{{ sdr[0].toFixed() }}</td>
+            <td><NumberField v-model="sdr[0]" hide-details density="compact"/></td>
           </tr>
           <tr>
             <th>dip</th>
-            <td>{{ sdr[1].toFixed() }}</td>
+            <td><NumberField v-model="sdr[1]" hide-details density="compact"/></td>
           </tr>
           <tr>
             <th>rake</th>
-            <td>{{ sdr[2].toFixed() }}</td>
+            <td><NumberField v-model="sdr[2]" hide-details density="compact"/></td>
           </tr>
         </tbody>
       </table>
-      <v-menu location="start" :close-on-content-click="false" v-if="store.config?.skhash.enabled">
+      <v-menu location="start" :close-on-content-click="false" v-if="store.config?.skhash.enabled" min-width="200">
         <template #activator="{ props }">
           <v-btn v-bind="props" density="compact" variant="text" icon="mdi-dots-horizontal"></v-btn>
         </template>
@@ -518,9 +529,9 @@ onBeforeUnmount(() => {
                 <tr v-for="fm in store.eventManager.current.event!.focalMechanism">
                   <td><img :src="getFMImage(fm)"></td>
                   <td>{{ getFMQuality(fm) }}</td>
-                  <td>{{ fm.nodalPlanes.nodalPlane1.strike.value }}</td>
-                  <td>{{ fm.nodalPlanes.nodalPlane1.dip.value }}</td>
-                  <td>{{ fm.nodalPlanes.nodalPlane1.rake.value }}</td>
+                  <td>{{ fm.nodalPlanes.nodalPlane1.strike.value.toFixed(2) }}</td>
+                  <td>{{ fm.nodalPlanes.nodalPlane1.dip.value.toFixed(2) }}</td>
+                  <td>{{ fm.nodalPlanes.nodalPlane1.rake.value.toFixed(2) }}</td>
                   <td>{{ fm.stationPolarityCount }}</td>
                   <td>{{ fm.misfit }}</td>
                   <td>{{ fm.methodID }}</td>

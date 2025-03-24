@@ -220,6 +220,7 @@ def compute_focal_mechanisms_with_skhash(qml, params):
         out_filename = os.path.join(dir_path, 'out.txt')
         ctrl_content = [
             '$input_format_fpfile', 'quakeml', '',
+            '$flip_takeoff', 'True', '',
             '$fpfile', qml_filename, '',
             '$outfile1', out_filename, ''
         ]
