@@ -1,46 +1,39 @@
-# vue-project
+# Webpicker
 
-This template should help get you started developing with Vue 3 in Vite.
+The Webpicker is a web application used to process seismological events. It proposes a lot of features such as catalog browsing, waveforms data visualization, signal processing, phase picking, origin relocation, magnitudes computation, first motion determination, multi user.
 
-## Recommended IDE Setup
+It relies on standard such as FDSNWS, FDSN StationXML, QuakeML, MSEED.
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+## Installation
 
-## Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin) to make the TypeScript language service aware of `.vue` types.
-
-If the standalone TypeScript plugin doesn't feel fast enough to you, Volar has also implemented a [Take Over Mode](https://github.com/johnsoncodehk/volar/discussions/471#discussioncomment-1361669) that is more performant. You can enable it by the following steps:
-
-1. Disable the built-in TypeScript Extension
-    1) Run `Extensions: Show Built-in Extensions` from VSCode's command palette
-    2) Find `TypeScript and JavaScript Language Features`, right click and select `Disable (Workspace)`
-2. Reload the VSCode window by running `Developer: Reload Window` from the command palette.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vitejs.dev/config/).
-
-## Project Setup
-
-```sh
-npm install
+Clone project with submodules and enter webpicker directory:
+```
+git clone --recurse-submodules -b new https://kleos.unice.fr/cheze/webpicker.git
+cd webpicker
 ```
 
-### Compile and Hot-Reload for Development
-
-```sh
-npm run dev
+Install python dependencies:
+```
+pip install -r requirements.txt
 ```
 
-### Type-Check, Compile and Minify for Production
-
-```sh
+Install javascript dependencies and build project:
+```
+npm i
 npm run build
 ```
 
-### Lint with [ESLint](https://eslint.org/)
+## Run and configure the webpicker
 
-```sh
-npm run lint
+Run with uvicorn:
+```
+uvicorn --host 0.0.0.0 --port 8000 main:app
+```
+The webpicker will be available at the port 8000. At first connexion, you will be prompt to enter an author name which is used to sign added objects created by your actions, such as picks, and origin (re)locations.
+
+The general configuration of the webpicker can be done by editing the file `config.json` or online at the adresse http://localhost:8000/config. To save the configuration edited online, the admin password must be entered. The default password is `#4Dm!n`. The admin password can be change by setting the constant `ADMIN_PASSWORD` in `main.py` which contains the md5 hash of the password. The md5 hash can be produced with the following code:
+
+```python
+import hashlib
+hashlib.md5(b'#4Dm!n').hexdigest()
 ```

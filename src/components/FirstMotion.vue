@@ -533,7 +533,7 @@ onBeforeUnmount(() => {
                   <td>{{ fm.nodalPlanes.nodalPlane1.dip.value.toFixed(2) }}</td>
                   <td>{{ fm.nodalPlanes.nodalPlane1.rake.value.toFixed(2) }}</td>
                   <td>{{ fm.stationPolarityCount }}</td>
-                  <td>{{ fm.misfit }}</td>
+                  <td>{{ fm.misfit?.toFixed(2) }}</td>
                   <td>{{ fm.methodID }}</td>
                   <td><v-btn density="compact" @click="setFM(fm)">set</v-btn></td>
                 </tr>

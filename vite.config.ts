@@ -1,5 +1,6 @@
 import { fileURLToPath, URL } from 'node:url'
 import vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
+import vueDevTools from 'vite-plugin-vue-devtools'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
@@ -9,6 +10,7 @@ export default defineConfig({
     vue({
       template: { transformAssetUrls }
     }),
+    vueDevTools(),
     vuetify()
   ],
   resolve: {
@@ -19,13 +21,16 @@ export default defineConfig({
   build: {
     assetsDir: './static'
   },
-  base: '/webpicker/',
+  base: '/',
   server: {
     proxy: {
       '/fdsnws': {
         target: 'http://localhost:8000'
       },
       '/api': {
+        target: 'http://localhost:8000'
+      },
+      '/app': {
         target: 'http://localhost:8000'
       },
       '/user': {

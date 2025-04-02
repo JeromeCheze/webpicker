@@ -5,9 +5,9 @@ import version from '@/version.json'
 <template>
   <v-card max-width="1000" :style="{ marginLeft: 'auto', marginRight: 'auto', marginTop: '5vh' }" class="pa-4">
     <v-card-text>
-      <div class="text-center mt-12 font-doto">WebPicker</div>
+      <div class="text-center font-doto">WebPicker</div>
       <div class="text-center">
-        <img src="@/assets/wp_logo.svg" height="400" class="my-6">
+        <img src="@/assets/wp_logo.svg" height="400">
       </div>
       <div class="text-caption text-center">- {{ version }} -</div>
     </v-card-text>

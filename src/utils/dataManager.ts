@@ -498,6 +498,7 @@ export default class DataManager {
     }
     if (bulk.length > 0) {
       this.client.baseURL = baseUrl
+      // this.client.baseURL = 'http://hawat.unice.fr:7001'
       this._downloadChunk(bulk, 0, cacheKey, signal, callback, notification)
     }
     if (result.length > 0) {
