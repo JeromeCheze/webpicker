@@ -314,7 +314,7 @@ export default class EventManager {
     this.current.arrivals = this.current.origin!.arrival.map(a => a)
   }
 
-  createFocalMechanism(strike: number, dip: number, rake: number, nbStation: number) {
+  createFocalMechanism(strike: number, dip: number, rake: number, nbStation: number, author: string) {
     this.current.focalMechanism = new QFocalMechanism({
       '@publicID': getId('FocalMechanism'),
       triggeringOriginID: this.current.origin!.publicID,
@@ -326,8 +326,14 @@ export default class EventManager {
           dip: { value: dip },
           rake: { value: rake }
         }
+      },
+      creationInfo: {
+        author: author,
+        agencyID: this.agencyID,
+        creationTime: new Date().toISOString()
       }
     }, this.current.event!.id)
+    this.current.event!.setPreferredFocalMechanismID(this.current.focalMechanism.publicID)
     this.status.commit = 'required'
     console.log(`[EventManager.createFocalMechanism] ${JSON.stringify(this.current.focalMechanism.desc)}`)
   }

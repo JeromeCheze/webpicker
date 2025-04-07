@@ -89,14 +89,16 @@ function handleReset() {
   }
   const [oldS, oldD, oldR] = oldSdr.value
   sdr.value = [oldS, oldD, oldR]
-  bbe.value.drawFocal(oldR, oldD, oldR, COLOR)
-  hiresbbe.value.drawFocal(oldR, oldD, oldR, COLOR)
+  bbe.value.drawFocal(oldS, oldD, oldR, COLOR)
+  hiresbbe.value.drawFocal(oldS, oldD, oldR, COLOR)
+  store.eventManager.current.event?.setPreferredFocalMechanismID(undefined)
   store.eventManager.current.focalMechanism = null
+  store.eventManager.status.commit = 'required'
 }
 
 function handleValidate() {
   const [s, d, r] = sdr.value
-  store.eventManager.createFocalMechanism(s, d, r, polarizedArrivals.value.length)
+  store.eventManager.createFocalMechanism(s, d, r, polarizedArrivals.value.length, store.author!)
   oldSdr.value = [s, d, r]
 }
 
@@ -142,13 +144,13 @@ function updateStationLayer(center: number, radius: number) {
       continue
     }
     let azi = a.azimuth
-    let beta = a.takeoffAngle
+    let beta = a.takeoffAngle.value
     // https://github.com/SeisComP/common/blob/6.4.4/libs/seiscomp/gui/datamodel/originlocatorview.cpp#L4248
     if (beta > 90) {
       beta = 180 - beta
       azi = azi - 180
       if (azi < 0) {
-        azi == 360
+        azi += 360
       }
     }
     const dist = radius * Math.sqrt(2.0) * Math.sin(0.5 * deg2rad(beta))
@@ -182,28 +184,27 @@ function updateStationLayer(center: number, radius: number) {
 }
 
 function updateBeachball() {
-  if (bbe.value == null || hiresbbe.value == null) {
-    return
-  }
-  const t = new Date().getTime()
-  const [s, d, r] = sdr.value
-  if (lastCall == null || (t - lastCall) > 30) {
-    if (hirestimeout != null) {
-      clearTimeout(hirestimeout)
+  createBeachBall().then(() => {
+    const t = new Date().getTime()
+    const [s, d, r] = sdr.value
+    if (lastCall == null || (t - lastCall) > 30) {
+      if (hirestimeout != null) {
+        clearTimeout(hirestimeout)
+      }
+      hirestimeout = window.setTimeout(() => {
+        hiresbbe.value!.drawFocal(s, d, r, COLOR)
+        hiresbbe.value!.ctx!.canvas.style.zIndex = '1'
+        updateStationLayer(bbe.value!.center, bbe.value!.radius as number)
+      }, HIRESTHRESH)
+      // console.log(t - lastCall);
+      lastCall = t
+      requestAnimationFrame(() => {
+        // value.innerHTML = `strike: ${s} | dip: ${d} | rake: ${r}`
+        bbe.value!.drawFocal(s, d, r, COLOR)
+        hiresbbe.value!.ctx!.canvas.style.zIndex = '-1'
+      })
     }
-    hirestimeout = window.setTimeout(() => {
-      hiresbbe.value!.drawFocal(s, d, r, COLOR)
-      hiresbbe.value!.ctx!.canvas.style.zIndex = '1'
-      updateStationLayer(bbe.value!.center, bbe.value!.radius as number)
-    }, HIRESTHRESH)
-    // console.log(t - lastCall);
-    lastCall = t
-    requestAnimationFrame(() => {
-      // value.innerHTML = `strike: ${s} | dip: ${d} | rake: ${r}`
-      bbe.value!.drawFocal(s, d, r, COLOR)
-      hiresbbe.value!.ctx!.canvas.style.zIndex = '-1'
-    })
-  }
+  })
 }
 
 function bindEvents() {
@@ -261,35 +262,37 @@ function bindEvents() {
 }
 
 function createBeachBall() {
-  if (container.value == null) {
-    return
-  }
-  Object.assign(container.value.style, {
-    position: 'relative',
-    width: '292px',
-    height: '292px',
-    marginLeft: 'auto',
-    marginRight: 'auto'
-  })
-  bbe.value = new BeachballEngine(BOXSIZE, 50, 3, '../static/wasm/beachball.wasm')
-  hiresbbe.value = new BeachballEngine(BOXSIZE, 120, 1.1, '../static/wasm/beachball.wasm')
-  const stationCanvas = document.createElement('canvas')
-  stationCanvas.width = stationCanvas.height = BOXSIZE
-  Object.assign(stationCanvas.style, { zIndex: '2' })
-  container.value.appendChild(stationCanvas)
-  stationCtx.value = stationCanvas.getContext('2d')
-  hiresbbe.value.init().then(() => {
-    const hirescanvas = hiresbbe.value!.ctx!.canvas
-    hirescanvas.style.zIndex = '1'
-    container.value.appendChild(hirescanvas)
-    bbe.value!.init().then(() => {
-      bbe.value!.ctx!.canvas.style.zIndex = '0'
-      container.value.appendChild(bbe.value!.ctx!.canvas)
-      updateBeachball()
-      bindEvents()
-      initialized.value = true
-      loading.value = false
-    })
+  return new Promise<void>((resolve, reject) => {
+    if (container.value == null || bbe.value != null || hiresbbe.value != null) {
+      resolve()
+    } else {
+      Object.assign(container.value.style, {
+        position: 'relative',
+        width: '292px',
+        height: '292px',
+        marginLeft: 'auto',
+        marginRight: 'auto'
+      })
+      bbe.value = new BeachballEngine(BOXSIZE, 50, 3, '../static/wasm/beachball.wasm')
+      hiresbbe.value = new BeachballEngine(BOXSIZE, 120, 1.1, '../static/wasm/beachball.wasm')
+      const stationCanvas = document.createElement('canvas')
+      stationCanvas.width = stationCanvas.height = BOXSIZE
+      Object.assign(stationCanvas.style, { zIndex: '2' })
+      container.value.appendChild(stationCanvas)
+      stationCtx.value = stationCanvas.getContext('2d')
+      hiresbbe.value.init().then(() => {
+        const hirescanvas = hiresbbe.value!.ctx!.canvas
+        hirescanvas.style.zIndex = '1'
+        container.value.appendChild(hirescanvas)
+        bbe.value!.init().then(() => {
+          bbe.value!.ctx!.canvas.style.zIndex = '0'
+          container.value.appendChild(bbe.value!.ctx!.canvas)
+          bindEvents()
+          initialized.value = true
+          resolve()
+        })
+      })
+    }
   })
 }
 
@@ -311,8 +314,43 @@ function storeParams() {
   return params
 }
 
+function computeTakeoffAngles() {
+  return new Promise<void>((resolve, reject) => {
+    const stationDistance: {[index: string]: number} = {}
+    for (const a of store.eventManager.current.arrivals) {
+      if (a.takeoffAngle == null && a.distance != null && a.phase === 'P') {
+        const netsta = a.pickID.referredObject.waveformID.netsta
+        stationDistance[netsta] = a.distance
+      }
+    }
+    if (Object.keys(stationDistance).length > 0) {
+      loading.value = true
+      fetch('../api/takeoffangle', {
+        method: 'POST',
+        body: JSON.stringify({ depth: store.eventManager.current.origin!.depth.value / 1000, station: stationDistance }),
+        headers: { 'Content-Type': 'application/json' }
+      }).then(response => {
+        loading.value = false
+        if (response.status === 200) {
+          response.json().then(toa => {
+            for (const a of store.eventManager.current.arrivals) {
+              if (a.phase === 'P') {
+                const netsta = a.pickID.referredObject.waveformID.netsta
+                a.takeoffAngle = { value: toa[netsta] }
+              }
+            }
+            store.eventManager.current.arrivals = store.eventManager.current.arrivals.map(x => x)
+            resolve()
+          })
+        }
+      })
+    } else {
+      resolve()
+    }
+  })
+}
+
 function init() {
-  loading.value = true
   loadStoredValues()
   imagebbe.init()
   if (store.eventManager.current.focalMechanism != null) {
@@ -321,35 +359,9 @@ function init() {
     sdr.value = [s, d, r]
     oldSdr.value = [s, d, r]
   }
-  const stationDistance: {[index: string]: number} = {}
-  for (const a of store.eventManager.current.arrivals) {
-    if (a.takeoffAngle == null && a.distance != null && a.phase === 'P') {
-      const netsta = a.pickID.referredObject.waveformID.netsta
-      stationDistance[netsta] = a.distance
-    }
-  }
-  if (Object.keys(stationDistance).length > 0) {
-    fetch('../api/takeoffangle', {
-      method: 'POST',
-      body: JSON.stringify({ depth: store.eventManager.current.origin!.depth.value / 1000, station: stationDistance }),
-      headers: { 'Content-Type': 'application/json' }
-    }).then(response => {
-      if (response.status === 200) {
-        response.json().then(toa => {
-          for (const a of store.eventManager.current.arrivals) {
-            if (a.phase === 'P') {
-              const netsta = a.pickID.referredObject.waveformID.netsta
-              a.takeoffAngle = toa[netsta]
-            }
-          }
-          store.eventManager.current.arrivals = store.eventManager.current.arrivals.map(x => x)
-          createBeachBall()
-        })
-      }
-    })
-  } else {
-    createBeachBall()
-  }
+  computeTakeoffAngles().then(() => {
+    updateBeachball()
+  })
 }
 
 function handleCompute() {
@@ -431,7 +443,8 @@ function getFMImage(fm: QFocalMechanism) {
 
 function setFM(fm: QFocalMechanism) {
   const np = fm.nodalPlanes.nodalPlane1
-  sdr.value = oldSdr.value = [np.strike.value, np.dip.value, np.rake.value]
+  oldSdr.value = [np.strike.value, np.dip.value, np.rake.value]
+  sdr.value = [np.strike.value, np.dip.value, np.rake.value]
   store.eventManager.current.focalMechanism = fm
   store.eventManager.current.event!.setPreferredFocalMechanismID(fm.publicID)
   store.eventManager.status.commit = 'required'
@@ -444,6 +457,19 @@ watch([
   () => sdr.value[2]
 ], () => {
   updateBeachball()
+})
+
+watch(() => store.eventManager.current.origin, () => {
+  computeTakeoffAngles().then(() => {
+    if (store.eventManager.current.focalMechanism != null) {
+      const np = store.eventManager.current.focalMechanism.nodalPlanes.nodalPlane1
+      const [s, d, r] = [np.strike.value, np.dip.value, np.rake.value]
+      sdr.value = [s, d, r]
+      oldSdr.value = [s, d, r]
+    } else {
+      updateBeachball()
+    }
+  })
 })
 
 onMounted(() => {
@@ -535,7 +561,13 @@ onBeforeUnmount(() => {
                   <td>{{ fm.stationPolarityCount }}</td>
                   <td>{{ fm.misfit?.toFixed(2) }}</td>
                   <td>{{ fm.methodID }}</td>
-                  <td><v-btn density="compact" @click="setFM(fm)">set</v-btn></td>
+                  <td>
+                    <v-btn
+                      density="compact"
+                      @click="setFM(fm)"
+                      :disabled="fm.publicID === store.eventManager.current.event?.preferredFocalMechanismID.id"
+                    >set</v-btn>
+                  </td>
                 </tr>
               </tbody>
             </v-table>
@@ -552,7 +584,12 @@ onBeforeUnmount(() => {
         :color="isDirty ? 'orange' : 'white'"
         :disabled="!isDirty"
         class="ma-1">VALIDATE</v-btn><br>
-      <v-btn density="compact" @click="handleReset" class="ma-1">RESET</v-btn>
+      <v-btn
+        density="compact"
+        @click="handleReset"
+        class="ma-1"
+        :disabled="store.eventManager.current.event?.preferredFocalMechanismID.id == null"
+      >RESET</v-btn>
     </v-col>
   </v-row>
 </template>
