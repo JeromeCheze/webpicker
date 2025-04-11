@@ -58,10 +58,6 @@ class TTTQuery(BaseModel):
     depth: float
     station: dict[str, tuple[float, float, float]]
 
-class TakeoffAngleQuery(BaseModel):
-    depth: float
-    station: dict[str, float]
-
 class FDSNEventQuery(BaseModel):
     starttime: str = Field(exclude=True)
     endtime: str = Field(exclude=True)
@@ -113,3 +109,51 @@ class FDSNDataselectQuery(BaseModel):
     station: Optional[str] = None
     location: Optional[str] = None
     channel: Optional[str] = None
+
+class ConfigUser(BaseModel):
+    password: str
+    rules: dict[str, str]
+
+class ConfigAccess(BaseModel):
+    restricted: bool
+    users: dict[str, ConfigUser]
+
+class ConfigDenoiser(BaseModel):
+    enabled: bool
+    url: str
+
+class ConfigDetector(BaseModel):
+    enabled: bool
+    url: str
+
+class ConfigFDSNWS(BaseModel):
+    dataselect_host: str
+    event_host: str
+    station_host: str
+
+class ConfigNLL(BaseModel):
+    enabled: bool = False
+    url: str
+    area: str
+
+class ConfigSeiscomp(BaseModel):
+    messaging_host: str
+    root: str
+    schema_version: str
+
+class ConfigSkhash(BaseModel):
+    enabled: bool = False
+    path: str
+
+class Config(BaseModel):
+    access: ConfigAccess
+    agency: str
+    commit_script: str
+    commit_strategy: Literal['script', 'scdispatch']
+    denoiser: ConfigDenoiser
+    detector: ConfigDetector
+    fdsnws: ConfigFDSNWS
+    nll: ConfigNLL
+    seiscomp: ConfigSeiscomp
+    skhash: ConfigSkhash
+    title: str

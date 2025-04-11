@@ -5,9 +5,9 @@ import tempfile
 import xmltodict
 import subprocess
 from lxml import etree
+from .model import Config
 from random import randint
-from obspy.core import AttribDict
-from obspy.geodetics import FlinnEngdahl
+from seiscomp.seismology import Regions
 
 PYTHON3 = sys.version[0] == '3'
 
@@ -21,9 +21,8 @@ def load_config():
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     filename = os.path.join(curr_dir, '..', 'config.json')
     with open(filename, 'r') as f:
-        return AttribDict(json.load(f))
+        return Config(**json.load(f))
 
-FE = FlinnEngdahl()
 DEBUG = False
 # CONFIG = load_config('/home/cheze/repositories/webpicker/config.json')
 CONFIG = load_config()
@@ -197,7 +196,7 @@ def commit_script(qml):
     }
 
 def get_region(lat, lon):
-    return FE.get_region(lat, lon)
+    return Regions.getRegionName(lat, lon)
 
 def get_event_time(eventid):
     req = 'http://%s/fdsnws/event/1/query?format=text&eventid=%s' % (CONFIG.fdsnws.event_host, eventid)

@@ -1,20 +1,19 @@
 import sys
 import os
 sys.path.insert(0, os.path.join(os.environ['SEISCOMP_ROOT'], 'lib', 'python'))
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, Depends, status
-from app.model import WSDetectorArgs, WSDenoiserArgs, TTTQuery, TakeoffAngleQuery, ActivityData, WebSocketMessage, WebSocketResponse, ChatData
-from fastapi.responses import FileResponse, Response, StreamingResponse
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from fastapi.staticfiles import StaticFiles
-from typing import Annotated, Literal
-from obspy.core import AttribDict
-from app import processing
-from app import utils
-import urllib.request
-import urllib.parse
-import hashlib
-import secrets
 import json
+import secrets
+import hashlib
+import urllib.parse
+import urllib.request
+from app import utils
+from app import processing
+from typing import Annotated, Literal
+from fastapi.staticfiles import StaticFiles
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.responses import FileResponse, Response, StreamingResponse
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, Depends, status
+from app.model import WSDetectorArgs, WSDenoiserArgs, TTTQuery, ActivityData, WebSocketMessage, WebSocketResponse, ChatData
 
 ADMIN_PASSWORD = '95a2c6749a7c1a90f6fe6775c1d82a03'
 
@@ -114,8 +113,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.get('/app/config', tags=['app'])
 def get_app_config(username: Annotated[str, Depends(check_authentication)]):
-    return Response(content=json.dumps(utils.CONFIG, default=lambda x: dict(x) if isinstance(x, AttribDict) else x),
-                    media_type='application/json')
+    return utils.CONFIG
 
 @app.post('/app/config', tags=['app'])
 async def set_app_config(password: str, request: Request, username: Annotated[str, Depends(check_authentication)]):
@@ -160,14 +158,7 @@ def get_denoised_waveforms(network: str, station: str, location: str, channel: s
 
 @app.post('/api/ttt', tags=['api'])
 def get_ttt(args: TTTQuery, username: Annotated[str, Depends(check_authentication)]):
-    result = {}
-    for netsta, pos in args.station.items():
-        try:
-            result[netsta] = {'ttt': processing.get_locsat_travel_times(
-                args.latitude, args.longitude, args.depth, pos[0], pos[1], pos[2]
-            )}
-        except:
-            result[netsta] = {'ttt': {'P': 0, 'S': 0}}
+    result = processing.get_locsat_travel_times(args)
     if utils.CONFIG.nll.enabled:
         nll_ttt_data = args.model_dump_json().encode('utf-8')
         nll_ttt_req = urllib.request.Request(
@@ -186,11 +177,8 @@ def get_ttt(args: TTTQuery, username: Annotated[str, Depends(check_authenticatio
     return result
 
 @app.post('/api/takeoffangle', tags=['api'])
-def get_takeoffangle(args: TakeoffAngleQuery, username: Annotated[str, Depends(check_authentication)]):
-    result = {}
-    for sta, distance in args.station.items():
-        result[sta] = processing.takeoffangle(args.depth, distance)
-    return result
+def get_takeoffangle(args: TTTQuery, username: Annotated[str, Depends(check_authentication)]):
+    return processing.takeoffangle(args)
 
 @app.get('/api/region', tags=['api'])
 def get_region_name(longitude: float, latitude: float, username: Annotated[str, Depends(check_authentication)]):

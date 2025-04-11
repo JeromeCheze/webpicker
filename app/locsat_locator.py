@@ -1,9 +1,9 @@
 import traceback
 from app import utils
-from obspy import UTCDateTime
 from seiscomp.core import Time
+from seiscomp.math import delazi_wgs84
+from datetime import datetime, timedelta
 from urllib.request import urlopen, Request
-from obspy.geodetics.base import gps2dist_azimuth, kilometers2degrees
 from seiscomp.seismology import LocatorInterface, TravelTimeTableInterface
 from seiscomp.datamodel import Pick, CreationInfo, WaveformStreamID, Phase, \
     Arrival, Origin, TimeQuantity, RealQuantity, Inventory, Network, Station, \
@@ -222,20 +222,20 @@ def relocate(jquake, profile, fdsnws_host):
     try:
         new_scp_origin = locator.relocate(scp_origin)
         new_origin = to_jquake(new_scp_origin)
-        ot = UTCDateTime.strptime(new_origin['time']['value'], '%Y-%m-%dT%H:%M:%S.%fZ')
+        ot = datetime.strptime(new_origin['time']['value'], '%Y-%m-%dT%H:%M:%S.%fZ')
         for j_arrival in not_used_arrival:
             scp_pick: Pick = Pick.Find(j_arrival['pickID'])
-            p_time = UTCDateTime.strptime(scp_pick.time().value().toString('%Y-%m-%dT%H:%M:%S.%fZ'), '%Y-%m-%dT%H:%M:%S.%fZ')
+            p_time = datetime.strptime(scp_pick.time().value().toString('%Y-%m-%dT%H:%M:%S.%fZ'), '%Y-%m-%dT%H:%M:%S.%fZ')
             sloc: SensorLocation = locator.getSensorLocation(scp_pick)
-            distance, azimuth, _ = gps2dist_azimuth(
+            distance, azimuth, _ = delazi_wgs84(
                 new_origin['latitude']['value'],
                 new_origin['longitude']['value'],
                 sloc.latitude(),
                 sloc.longitude()
             )
-            j_arrival['distance'] = kilometers2degrees(distance / 1e3)
+            j_arrival['distance'] = distance
             j_arrival['azimuth'] = azimuth
-            t_time: UTCDateTime = ot + ttti.compute(
+            t_time = ot + timedelta(seconds=ttti.compute(
                 j_arrival['phase'],
                 new_origin['latitude']['value'],
                 new_origin['longitude']['value'],
@@ -243,8 +243,8 @@ def relocate(jquake, profile, fdsnws_host):
                 sloc.latitude(),
                 sloc.longitude(),
                 sloc.elevation()
-            ).time
-            j_arrival['timeResidual'] = p_time - t_time
+            ).time)
+            j_arrival['timeResidual'] = (p_time - t_time).total_seconds()
             new_origin['arrival'].append(j_arrival)
         pick_station_map = {}
         for pick in jquake[0]['pick']:

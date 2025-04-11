@@ -6,7 +6,7 @@ import subprocess
 from app import utils
 from lxml import etree
 from app import locsat_locator
-from obspy.taup import TauPyModel
+from app.model import TTTQuery
 from datetime import datetime, UTC
 from seiscomp.seismology import TravelTimeTableInterface
 
@@ -180,35 +180,29 @@ def compute_magnitudes_with_scamp_and_scmag(qml):
         'quakeml': qml
     }
 
-def get_travel_times(lat, lon, depth, station_pos):
-    result = {
-        'P': None,
-        'S': None
-    }
-    phase_list = ['P', 'p', 'Pn', 'Pg', 'Pdiff', 'S', 's']
-    model = TauPyModel(model="iasp91")
-    arrivals = model.get_travel_times_geo(depth, lat, lon, station_pos[0], station_pos[1], phase_list)
-    p_arrivals = [a.time for a in arrivals if 'P' in a.name.upper()]
-    if len(p_arrivals) > 0:
-        result['P'] = min(p_arrivals)
-    s_arrivals = [a.time for a in arrivals if a.name.upper() == 'S']
-    if len(s_arrivals) > 0:
-        result['S'] = min(s_arrivals)
-    return result
-
-def takeoffangle(depth, distance):
-    model = TauPyModel(model="iasp91")
-    arrivals = model.get_travel_times(depth, distance)
-    arrivals.sort(key=lambda x: x.time)
-    return arrivals[0].takeoff_angle
-
-def get_locsat_travel_times(evlat, evlon, evdepth, stalat, stalon, stael=0):
+def takeoffangle(query: TTTQuery):
     ttt = TravelTimeTableInterface.Create('LOCSAT')
     ttt.setModel('iasp91')
-    return {
-        'P': ttt.compute('P', evlat, evlon, evdepth, stalat, stalon, stael).time,
-        'S': ttt.compute('S', evlat, evlon, evdepth, stalat, stalon, stael).time
-    }
+    result = {}
+    for netsta, pos in query.station.items():
+        result[netsta] = ttt.compute('P', query.latitude, query.longitude, query.depth, pos[0], pos[1], pos[2]).takeoff
+    return result
+
+def get_locsat_travel_times(query: TTTQuery):
+    ttt = TravelTimeTableInterface.Create('LOCSAT')
+    ttt.setModel('iasp91')
+    result = {}
+    for netsta, pos in query.station.items():
+        try:
+            result[netsta] = {
+                'ttt': {
+                    'P': ttt.compute('P', query.latitude, query.longitude, query.depth, pos[0], pos[1], pos[2]).time,
+                    'S': ttt.compute('S', query.latitude, query.longitude, query.depth, pos[0], pos[1], pos[2]).time
+                }
+            }
+        except:
+            result[netsta] = {'ttt': {'P': 0, 'S': 0}}
+    return result
 
 def compute_focal_mechanisms_with_skhash(qml, params):
     jquake = utils.quakeml_to_jquake(qml)

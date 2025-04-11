@@ -316,18 +316,26 @@ function storeParams() {
 
 function computeTakeoffAngles() {
   return new Promise<void>((resolve, reject) => {
-    const stationDistance: {[index: string]: number} = {}
+    const stationPos: {[index: string]: [number, number, number]} = {}
     for (const a of store.eventManager.current.arrivals) {
       if (a.takeoffAngle == null && a.distance != null && a.phase === 'P') {
         const netsta = a.pickID.referredObject.waveformID.netsta
-        stationDistance[netsta] = a.distance
+        const pos = store.dataManager.getStationPos(netsta)
+        if (pos != null) {
+          stationPos[netsta] = [pos.lat, pos.lon, pos.alt]
+        }
       }
     }
-    if (Object.keys(stationDistance).length > 0) {
+    if (Object.keys(stationPos).length > 0) {
       loading.value = true
       fetch('../api/takeoffangle', {
         method: 'POST',
-        body: JSON.stringify({ depth: store.eventManager.current.origin!.depth.value / 1000, station: stationDistance }),
+        body: JSON.stringify({
+          latitude: store.eventManager.current.origin!.latitude.value,
+          longitude: store.eventManager.current.origin!.longitude.value,
+          depth: store.eventManager.current.origin!.depth.value / 1e3,
+          station: stationPos
+        }),
         headers: { 'Content-Type': 'application/json' }
       }).then(response => {
         loading.value = false
