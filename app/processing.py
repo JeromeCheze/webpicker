@@ -64,7 +64,7 @@ def relocate_with_screloc(jquake, profile):
 
     utils.write_sc3ml(jquake, sc3ml)
     screloc_cmd = [
-        utils.SEISCOMP_PROGRAM, 'exec', 'screloc',
+        os.path.join(utils.CONFIG.seiscomp.root, 'bin', 'screloc'),
         '--inventory-db', inventory,
         '--locator', 'LOCSAT',
         '--profile', profile,
@@ -123,7 +123,7 @@ def compute_magnitudes_with_scamp_and_scmag(qml):
     # 3) compute amplitudes with scamp
     _, scamp_result = tempfile.mkstemp(suffix='.sc3ml')
     scamp_cmd = [
-        utils.SEISCOMP_PROGRAM, 'exec', 'scamp',
+        os.path.join(utils.CONFIG.seiscomp.root, 'bin', 'scamp'),
         '--inventory-db', inventory,
         '--config-db', scp_config_file,
         '-I', 'fdsnws://%s' % utils.CONFIG.fdsnws.dataselect_host,
@@ -146,7 +146,7 @@ def compute_magnitudes_with_scamp_and_scmag(qml):
 
     # 4) compute magnitudes with scmag
     scmag_cmd = [
-        utils.SEISCOMP_PROGRAM, 'exec', 'scmag',
+        os.path.join(utils.CONFIG.seiscomp.root, 'bin', 'scmag'),
         '--inventory-db', inventory,
         '--config-db', scp_config_file,
         '--ep', scamp_result

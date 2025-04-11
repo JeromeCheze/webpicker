@@ -26,7 +26,6 @@ def load_config():
 DEBUG = False
 # CONFIG = load_config('/home/cheze/repositories/webpicker/config.json')
 CONFIG = load_config()
-SEISCOMP_PROGRAM = os.path.join(CONFIG.seiscomp.root, 'bin', 'seiscomp')
 
 def update_config(content):
     curr_dir = os.path.dirname(os.path.abspath(__file__))
@@ -35,8 +34,6 @@ def update_config(content):
         json.dump(content, f, indent=2, sort_keys=True)
     global CONFIG
     CONFIG = load_config()
-    global SEISCOMP_PROGRAM
-    SEISCOMP_PROGRAM = os.path.join(CONFIG.seiscomp.root, 'bin', 'seiscomp')
 
 def fix_ids(o, remove=False):
     if isinstance(o, list):
@@ -83,18 +80,6 @@ def sc3ml_to_quakeml(sc3ml_str, add_prefix_id=True):
     if add_prefix_id:
         fix_ids(jquake)
     return xmltodict.unparse(jquake)
-
-def dump_seiscomp3_config():
-    fd, conf_filename = tempfile.mkstemp()
-    scxmldump = subprocess.Popen([SEISCOMP_PROGRAM, 'exec', 'scxmldump', '-f', '-C', '-d', CONFIG.seiscomp.database_uri], stdout=subprocess.PIPE)
-    config, _ = scxmldump.communicate()
-    f = os.fdopen(fd, 'w')
-    if PYTHON3:
-        f.write(config.decode('utf-8'))
-    else:
-        f.write(config)
-    f.close()
-    os.rename(conf_filename, CONFIG.seiscomp.config_filename)
 
 def get_sc3ml_to_qml_xslt():
     v = CONFIG.seiscomp.schema_version
@@ -168,7 +153,7 @@ def commit_with_scdispatch(qml):
     jquake = quakeml_to_jquake(qml)
     write_sc3ml(jquake, sc3ml)
     scdispatch = subprocess.Popen([
-        SEISCOMP_PROGRAM, 'exec', 'scdispatch',
+        os.path.join(CONFIG.seiscomp.root, 'bin', 'scdispatch'),
         '-H', CONFIG.seiscomp.messaging_host,
         '-O', 'merge',
         '-i', sc3ml,
