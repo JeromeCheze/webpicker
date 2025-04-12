@@ -159,6 +159,10 @@ function handleApplyConfig() {
                 <td><v-checkbox v-model="config.skhash.enabled" label="Enable" density="compact" hide-details="auto"></v-checkbox></td>
               </tr>
               <tr>
+                <th>Python interpreter</th>
+                <td><v-text-field v-model="config.skhash.python_interpreter" density="compact" hide-details="auto"></v-text-field></td>
+              </tr>
+              <tr>
                 <th>Path</th>
                 <td><v-text-field v-model="config.skhash.path" density="compact" hide-details="auto"></v-text-field></td>
               </tr>

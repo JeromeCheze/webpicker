@@ -1,6 +1,6 @@
+from enum import Enum
 from pydantic import BaseModel, Field
 from typing import Literal, Optional, Union
-from enum import Enum
 
 class ActivityData(BaseModel):
     id: str
@@ -143,6 +143,7 @@ class ConfigSeiscomp(BaseModel):
 
 class ConfigSkhash(BaseModel):
     enabled: bool = False
+    python_interpreter: str
     path: str
 
 class Config(BaseModel):

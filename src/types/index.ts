@@ -197,6 +197,7 @@ export interface Config {
   }
   skhash: {
     enabled: boolean
+    python_interpreter: string
     path: string
   }
   fdsnws: {

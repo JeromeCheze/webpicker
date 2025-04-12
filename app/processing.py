@@ -226,8 +226,11 @@ def compute_focal_mechanisms_with_skhash(qml, params):
             f.write('\n'.join(ctrl_content))
         with open(qml_filename, 'wb') as f:
             f.write(qml)
-        skhash = subprocess.Popen(['python', utils.CONFIG.skhash.path, ctrl_filename],
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        skhash = subprocess.Popen([
+            utils.CONFIG.skhash.python_interpreter,
+            utils.CONFIG.skhash.path,
+            ctrl_filename
+        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = skhash.communicate()
         error_message = f'STDOUT:\n{stdout.decode("utf-8")}\n\nSTDERR:\n{stderr.decode("utf-8")}'
         if not os.path.exists(out_filename):
