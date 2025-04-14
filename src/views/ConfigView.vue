@@ -203,14 +203,7 @@ function handleApplyConfig() {
       <v-row>
         <v-col cols="12">
           <h4 class="mt-2">Commit script</h4>
-          <v-table density="compact">
-            <tbody>
-              <tr>
-                <th>Path</th>
-                <td><v-text-field v-model="config.commit_script" density="compact" hide-details="auto"></v-text-field></td>
-              </tr>
-            </tbody>
-          </v-table>
+          <v-textarea v-model="config.commit_script"></v-textarea>
         </v-col>
       </v-row>
       <v-row>

@@ -56,11 +56,9 @@ class ConnectionManager:
                 await websocket.send_json(response)
                 break
 
+
 manager = ConnectionManager()
-
-
 app = FastAPI(title='WebPicker')
-
 security = HTTPBasic()
 
 
@@ -258,8 +256,6 @@ async def post_dataselect(request: Request, username: Annotated[str, Depends(che
         f'http://{utils.CONFIG.fdsnws.dataselect_host}/fdsnws/dataselect/1/query',
         data=data, headers={'Content-Type': request.headers['Content-Type']}
     )
-    # response = urllib.request.urlopen(req)
-    # return Response(content=response.read(), media_type=response.headers.get_content_type())
     def iter_content():
         with urllib.request.urlopen(req) as response:
             while True:

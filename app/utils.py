@@ -8,13 +8,7 @@ from lxml import etree
 from .model import Config
 from random import randint
 from seiscomp.seismology import Regions
-
-PYTHON3 = sys.version[0] == '3'
-
-if PYTHON3:
-    from urllib.request import Request, urlopen
-else:
-    from urllib2 import Request, urlopen
+from urllib.request import Request, urlopen
 
 
 def load_config():
@@ -24,12 +18,15 @@ def load_config():
         return Config(**json.load(f))
 
 DEBUG = False
-# CONFIG = load_config('/home/cheze/repositories/webpicker/config.json')
 CONFIG = load_config()
 
 def update_config(content):
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     filename = os.path.join(curr_dir, '..', 'config.json')
+    commit_script = os.path.join(curr_dir, '..', 'commit_script.sh')
+    with open(commit_script, 'w') as f:
+        f.write(content.commit_script)
+    os.chmod(commit_script, 0o755)
     with open(filename, 'w') as f:
         json.dump(content, f, indent=2, sort_keys=True)
     global CONFIG
@@ -99,7 +96,7 @@ def apply_xslt(document, xslt_path):
     return transform(document)
 
 def update_sc3ml_origin_reference(root):
-    namespace = list(root.nsmap.values())[0] if PYTHON3 else root.nsmap.values()[0]
+    namespace = list(root.nsmap.values())[0]
     origin = root[0].find('{%s}origin' % namespace)
     origin_id = origin.attrib['publicID']
     e = root[0].find('{%s}event' % namespace)
@@ -109,7 +106,7 @@ def update_sc3ml_origin_reference(root):
     oref.text = origin_id
 
 def fix_scmag_magnitude_public_id(root):
-    namespace = list(root.nsmap.values())[0] if PYTHON3 else root.nsmap.values()[0]
+    namespace = list(root.nsmap.values())[0]
     origin = root[0].find('{%s}origin' % namespace)
     mags = origin.findall('{%s}magnitude' % namespace)
     for mag in mags:
@@ -162,7 +159,7 @@ def commit_with_scdispatch(qml):
     _, error_message = scdispatch.communicate()
     os.remove(sc3ml)
     return {
-        'message': error_message.decode('utf-8') if PYTHON3 else error_message,
+        'message': error_message.decode('utf-8'),
         'return_code': scdispatch.returncode
     }
 
@@ -174,9 +171,9 @@ def commit_script(qml):
     p = subprocess.Popen([CONFIG.commit_script, qml_filename],
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     _, error_message = p.communicate()
-    #os.remove(qml_filename)
+    os.remove(qml_filename)
     return {
-        'message': error_message.decode('utf-8') if PYTHON3 else error_message,
+        'message': error_message.decode('utf-8'),
         'return_code': p.returncode
     }
 
@@ -186,10 +183,7 @@ def get_region(lat, lon):
 def get_event_time(eventid):
     req = 'http://%s/fdsnws/event/1/query?format=text&eventid=%s' % (CONFIG.fdsnws.event_host, eventid)
     try:
-        response = urlopen(req).read()
-        if PYTHON3:
-            response = response.decode('utf-8')
-        print(response)
+        response = urlopen(req).read().decode('utf-8')
         for line in response.splitlines():
             if line == '' or line.startswith('#'):
                 continue

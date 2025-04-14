@@ -8,12 +8,8 @@ from lxml import etree
 from app import locsat_locator
 from app.model import TTTQuery
 from datetime import datetime, UTC
+from urllib.request import Request, urlopen
 from seiscomp.seismology import TravelTimeTableInterface
-
-if utils.PYTHON3:
-    from urllib.request import Request, urlopen
-else:
-    from urllib2 import Request, urlopen
 
 
 def relocate_with_nll(qml, profile):
@@ -30,7 +26,7 @@ def relocate_with_nll(qml, profile):
             'force_preferred_origin': True
         }
         response = urlopen(Request('%s/locate/' % utils.CONFIG.nll.url, data=json.dumps(data).encode('utf-8'), headers={'Content-Type': 'application/json'}))
-        return_code = response.status if utils.PYTHON3 else response.getcode()
+        return_code = response.status
         result = json.load(response)
         if return_code == 204:
             raise ValueError('NonLinLoc returned no solution')
@@ -132,7 +128,7 @@ def compute_magnitudes_with_scamp_and_scmag(qml):
     scamp = subprocess.Popen(scamp_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     result, error_message = scamp.communicate()
     with open(scamp_result, 'w') as f:
-        f.write(result.decode('utf-8') if utils.PYTHON3 else result)
+        f.write(result.decode('utf-8'))
 
     if utils.DEBUG:
         sys.stderr.write('initial sc3ml file from jquake: %s\n' % sc3ml)
@@ -157,9 +153,9 @@ def compute_magnitudes_with_scamp_and_scmag(qml):
     if utils.DEBUG:
         sys.stderr.write('scmag cmd: %s\n' % ' '.join(scmag_cmd))
         sys.stderr.write('scmag return code: %s\n' % scmag.returncode)
-    if utils.PYTHON3:
-        result = result.decode('utf-8')
-        result = result.replace(' encoding="UTF-8"', '')
+
+    result = result.decode('utf-8')
+    result = result.replace(' encoding="UTF-8"', '')
 
     qml = utils.sc3ml_to_quakeml(result, add_prefix_id=False)
 
@@ -176,7 +172,7 @@ def compute_magnitudes_with_scamp_and_scmag(qml):
         os.remove(scamp_result)
         os.remove(inventory)
     return {
-        'message': error_message.decode('utf-8') if utils.PYTHON3 else error_message,
+        'message': error_message.decode('utf-8'),
         'quakeml': qml
     }
 

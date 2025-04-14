@@ -12,7 +12,7 @@
     }
   },
   "agency": "OCA",
-  "commit_script": "/home/cheze/repositories/webpicker/commit_script.sh",
+  "commit_script": "#!/bin/sh\n# $1 : path to the QuakeML file to commit\n>&2 echo \"OK\"",
   "commit_strategy": "script",
   "denoiser": {
     "enabled": true,
