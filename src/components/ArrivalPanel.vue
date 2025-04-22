@@ -50,7 +50,7 @@ const arrivalCols = ref([
   },
   {
     label: 'Takeoff [°]',
-    valueAccessor: (a: QArrival) => a.takeoffAngle,
+    valueAccessor: (a: QArrival) => a.takeoffAngle?.value,
     textAccessor: (a: QArrival) => a.takeoffAngle?.value.toFixed(2),
     enabled: true
   },

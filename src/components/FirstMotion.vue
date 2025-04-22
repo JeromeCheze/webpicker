@@ -342,8 +342,8 @@ function computeTakeoffAngles() {
         if (response.status === 200) {
           response.json().then(toa => {
             for (const a of store.eventManager.current.arrivals) {
-              if (a.phase === 'P') {
-                const netsta = a.pickID.referredObject.waveformID.netsta
+              const netsta = a.pickID.referredObject.waveformID.netsta
+              if (a.phase === 'P' && toa[netsta] != null) {
                 a.takeoffAngle = { value: toa[netsta] }
               }
             }

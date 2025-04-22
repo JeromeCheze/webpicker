@@ -196,7 +196,7 @@ def get_event_time(eventid):
         return None
 
 def apply_user_rules(method, username, data):
-    rules = CONFIG.access.users[username]['rules']
+    rules = CONFIG.access.users[username].rules
     if method == 'GET':
         if 'starttime' in rules:
             if 'starttime' in data and data['starttime'] < rules['starttime']:
