@@ -14,8 +14,13 @@ from urllib.request import Request, urlopen
 def load_config():
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     filename = os.path.join(curr_dir, '..', 'config.json')
+    commit_script = os.path.join(curr_dir, '..', 'commit_script.sh')
     with open(filename, 'r') as f:
-        return Config(**json.load(f))
+        config = Config(**json.load(f))
+    with open(commit_script, 'w') as f:
+        f.write(config.commit_script)
+    os.chmod(commit_script, 0o755)
+    return config
 
 DEBUG = False
 CONFIG = load_config()
@@ -23,10 +28,6 @@ CONFIG = load_config()
 def update_config(content):
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     filename = os.path.join(curr_dir, '..', 'config.json')
-    commit_script = os.path.join(curr_dir, '..', 'commit_script.sh')
-    with open(commit_script, 'w') as f:
-        f.write(content.commit_script)
-    os.chmod(commit_script, 0o755)
     with open(filename, 'w') as f:
         json.dump(content, f, indent=2, sort_keys=True)
     global CONFIG

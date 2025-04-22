@@ -39,7 +39,8 @@
   },
   "skhash": {
     "enabled": true,
-    "path": "/home/cheze/repositories/SKHASH/SKHASH/SKHASH.py"
+    "path": "/home/sysop/SKHASH/SKHASH/SKHASH.py",
+    "python_interpreter": "/home/sysop/.venv/bin/python3"
   },
   "title": "WebPicker"
 }
