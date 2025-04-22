@@ -165,11 +165,13 @@ def commit_with_scdispatch(qml):
     }
 
 def commit_script(qml):
+    curr_dir = os.path.dirname(os.path.abspath(__file__))
+    commit_script = os.path.join(curr_dir, '..', 'commit_script.sh')
     _, qml_filename = tempfile.mkstemp(suffix='.xml')
     sys.stderr.write(f'{qml_filename}\n')
     with open(qml_filename, 'wb') as f:
         f.write(qml)
-    p = subprocess.Popen([CONFIG.commit_script, qml_filename],
+    p = subprocess.Popen([commit_script, qml_filename],
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     _, error_message = p.communicate()
     os.remove(qml_filename)
