@@ -16,18 +16,17 @@ class ChatData(BaseModel):
     broadcast: bool
     message: str
 
-class WebSocketMessageType(str, Enum):
-    activity = 'activity'
-    chat = 'chat'
-    version = 'version'
+class WSVersionResponse(BaseModel):
+    type: Literal['version']
+    data: str
 
-class WebSocketResponse(BaseModel):
-    type: WebSocketMessageType
-    data: Union[list[ActivityData], ChatData, str]
+class WSChatResponse(BaseModel):
+    type: Literal['chat']
+    data: ChatData
 
-class WebSocketMessage(BaseModel):
-    type: WebSocketMessageType
-    data: Union[ActivityData, ChatData]
+class WSActivityResponse(BaseModel):
+    type: Literal['activity']
+    data: list[ActivityData]
 
 class WSDetectorArgs(BaseModel):
     network: str

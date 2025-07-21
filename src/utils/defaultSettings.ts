@@ -63,6 +63,7 @@ export default {
   'miscellaneous.defaultRadius': 1,
   'miscellaneous.timewindow1': 15,
   'miscellaneous.timewindow2': 30,
+  'miscellaneous.autoAddHydrophone': true,
   'filter': [
     { name: 'HP 1', expression: 'highpass(4, 1)' },
     { name: 'BP 0.5-8', expression: 'bandpass(4, 0.5, 8)' },

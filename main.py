@@ -1,7 +1,8 @@
-import sys
 import os
+import sys
 sys.path.insert(0, os.path.join(os.environ['SEISCOMP_ROOT'], 'lib', 'python'))
 import json
+import typing
 import secrets
 import hashlib
 import urllib.parse
@@ -13,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, Depends, status
-from app.model import WSDetectorArgs, WSDenoiserArgs, TTTQuery, ActivityData, WebSocketMessage, WebSocketResponse, ChatData
+from app.model import WSActivityResponse, WSChatResponse, WSDetectorArgs, WSDenoiserArgs, TTTQuery, ActivityData, WSVersionResponse, ChatData
 
 ADMIN_PASSWORD = '95a2c6749a7c1a90f6fe6775c1d82a03'
 
@@ -25,12 +26,12 @@ class ConnectionManager:
         await websocket.accept()
         with open('src/version.json') as f:
             version = json.load(f)
-            await websocket.send_json(WebSocketResponse(type='version', data=version).model_dump())
+            await websocket.send_json(WSVersionResponse(type='version', data=version).model_dump())
 
     def disconnect(self, websocket: WebSocket):
         del self.connection_mapping[websocket]
 
-    async def broadcast_message(self, msg: str):
+    async def broadcast_message(self, msg: typing.Any):
         for websocket in self.connection_mapping.keys():
             try:
                 await websocket.send_json(msg)
@@ -38,7 +39,7 @@ class ConnectionManager:
                 self.disconnect(websocket)
 
     async def broadcast_activity(self):
-        response = WebSocketResponse(type='activity', data=[x for x in self.connection_mapping.values()]).model_dump()
+        response = WSActivityResponse(type='activity', data=[x for x in self.connection_mapping.values()]).model_dump()
         await self.broadcast_message(response)
 
     async def update_activity(self, websocket: WebSocket, activity: ActivityData):
@@ -46,11 +47,11 @@ class ConnectionManager:
         await self.broadcast_activity()
 
     async def broadcast_chat_msg(self, data: ChatData):
-        response = WebSocketResponse(type='chat', data=data).model_dump()
+        response = WSChatResponse(type='chat', data=data).model_dump()
         await self.broadcast_message(response)
 
     async def send_chat_msg(self, data: ChatData):
-        response = WebSocketResponse(type='chat', data=data).model_dump()
+        response = WSChatResponse(type='chat', data=data).model_dump()
         for websocket, activity in self.connection_mapping.items():
             if activity.id == data.recipient:
                 await websocket.send_json(response)
@@ -96,14 +97,14 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_json()
-            msg = WebSocketMessage(**data)
-            if msg.type == 'activity':
-                await manager.update_activity(websocket, msg.data)
-            elif msg.type == 'chat':
-                if msg.data.broadcast:
-                    await manager.broadcast_chat_msg(msg.data)
+            if data['type'] == 'activity':
+                await manager.update_activity(websocket, ActivityData(**data['data']))
+            elif data['type'] == 'chat':
+                chat_data = ChatData(**data['data'])
+                if chat_data.broadcast:
+                    await manager.broadcast_chat_msg(chat_data)
                 else:
-                    await manager.send_chat_msg(msg.data)
+                    await manager.send_chat_msg(chat_data)
                 
     except WebSocketDisconnect:
         manager.disconnect(websocket)

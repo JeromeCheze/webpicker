@@ -370,12 +370,12 @@ export default class DataManager {
     return null
   }
 
-  _getChannels(net: string, sta: string, loc: string, chaPrefix: string): string[] {
+  _getChannels(net: string, sta: string, loc: string, chaPrefix: string, AutoAddHydrophone: boolean): string[] {
     const inv = this.inventoryCache
     const result: string[] = []
     if (inv[net] != null && inv[net][sta] != null && inv[net][sta].location[loc] != null) {
       for (const cha of Object.keys(this.inventoryCache[net][sta].location[loc])) {
-        if (cha.indexOf(chaPrefix) === 0 || cha === 'HDH') {
+        if (cha.indexOf(chaPrefix) === 0 || cha === 'HDH' && AutoAddHydrophone) {
           result.push(`${net}.${sta}.${loc}.${cha}`)
         }
       }
@@ -514,6 +514,7 @@ export default class DataManager {
     depth: number,
     seedidList: string[],
     maxTrace: number | null,
+    AutoAddHydrophone: boolean,
     timewindow: [number, number],
     noEvent: boolean,
     signal: AbortSignal,
@@ -531,7 +532,7 @@ export default class DataManager {
         let reqSeedidList: string[] = []
         for (const seedid of seedidList) {
           const [net, sta, loc, chaPrefix] = seedid.slice(0, -1).split('.')
-          for (const seedid of this._getChannels(net, sta, loc, chaPrefix)) {
+          for (const seedid of this._getChannels(net, sta, loc, chaPrefix, AutoAddHydrophone)) {
             pushUnique(reqSeedidList, seedid)
           }
         }
@@ -553,7 +554,7 @@ export default class DataManager {
           let reqSeedidList: string[] = []
           for (const seedid of seedidList) {
             const [net, sta, loc, chaPrefix] = seedid.slice(0, -1).split('.')
-            for (const seedid of this._getChannels(net, sta, loc, chaPrefix)) {
+            for (const seedid of this._getChannels(net, sta, loc, chaPrefix, AutoAddHydrophone)) {
               pushUnique(reqSeedidList, seedid)
             }
           }

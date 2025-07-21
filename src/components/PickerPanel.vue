@@ -158,7 +158,7 @@ function displayWaveforms() {
   }
   store.dataManager.getData(
     props.baseUrl, props.time, props.latitude, props.longitude, props.depth, seedidList,
-    store.settings['miscellaneous.maxTrace'],
+    store.settings['miscellaneous.maxTrace'], store.settings['miscellaneous.autoAddHydrophone'],
     [store.settings['miscellaneous.timewindow1'], store.settings['miscellaneous.timewindow2']],
     props.noEvent === true,
     controller.value.signal,
@@ -172,7 +172,7 @@ function downloadChannels(seedidList: string[]) {
   }
   store.dataManager.getData(
     props.baseUrl, props.time, props.latitude, props.longitude, props.depth, seedidList,
-    store.settings['miscellaneous.maxTrace'],
+    store.settings['miscellaneous.maxTrace'], store.settings['miscellaneous.autoAddHydrophone'],
     [props.timeWindow[0], props.timeWindow[1]],
     props.noEvent === true,
     controller.value.signal,

@@ -9,7 +9,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 interface StructItemField {
   label: string
   key: string
-  type: 'select' | 'text' | 'number' | 'color'
+  type: 'select' | 'text' | 'number' | 'color' | 'boolean'
   items?: string[]
   mode?: 'rgb' | 'rgba' | 'hsl' | 'hsla' | 'hex' | 'hexa'
 }
@@ -77,7 +77,8 @@ const struct: StructItem[] = [
       { label: 'Default Radius', key: 'miscellaneous.defaultRadius', type: 'number' },
       { label: 'Max Trace', key: 'miscellaneous.maxTrace', type: 'number' },
       { label: 'Time window 1 [s]', key: 'miscellaneous.timewindow1', type: 'number' },
-      { label: 'Time window 2 [s]', key: 'miscellaneous.timewindow2', type: 'number' }
+      { label: 'Time window 2 [s]', key: 'miscellaneous.timewindow2', type: 'number' },
+      { label: 'Auto add hydrophone', key: 'miscellaneous.autoAddHydrophone', type: 'boolean' }
     ]
   },
   {
@@ -296,6 +297,12 @@ onBeforeUnmount(() => {
                           hide-details="auto"
                           v-model="values[field.key]"
                           required/>
+                        <v-checkbox
+                          v-else-if="field.type === 'boolean'"
+                          density="compact"
+                          hide-details="auto"
+                          v-model="values[field.key]"
+                        />
                       </td>
                       <td><v-btn variant="plain" v-if="!isDefaultValue(field.key)" @click="resetDefault(field.key)"><v-icon>mdi-backup-restore</v-icon></v-btn></td>
                     </tr>
