@@ -13,6 +13,7 @@ export default class WebSocketManager {
   updateActivityCallback: (usersActivity: ActivityData[]) => void
   connectionCallback: (connected: boolean) => void
   chatCallback: (chatMessage: ChatData) => void
+  updateEventCallback: (eventid: string) => void
 
   constructor(
     author: string,
@@ -20,7 +21,8 @@ export default class WebSocketManager {
     newVersionCallback: (value: boolean) => void,
     updateActivityCallback: (usersActivity: ActivityData[]) => void,
     connectionCallback: (connected: boolean) => void,
-    chatCallback: (chatMessage: ChatData) => void
+    chatCallback: (chatMessage: ChatData) => void,
+    updateEventCallback: (eventid: string) => void
   ) {
     this.ws = null
     this.usersActivity = []
@@ -32,6 +34,7 @@ export default class WebSocketManager {
     this.updateActivityCallback = updateActivityCallback
     this.connectionCallback = connectionCallback
     this.chatCallback = chatCallback
+    this.updateEventCallback = updateEventCallback
     this.connect()
   }
 
@@ -84,6 +87,14 @@ export default class WebSocketManager {
     this.ws!.send(JSON.stringify(msg))
   }
 
+  sendUpdateEventMessage(eventid: string) {
+    const msg: WebSocketMessage = {
+      type: 'updateEvent',
+      data: eventid
+    }
+    this.ws!.send(JSON.stringify(msg))
+  }
+
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       this.ws = new WebSocket(`${location.protocol.replace('http', 'ws')}//${location.host}/ws`)
@@ -103,6 +114,9 @@ export default class WebSocketManager {
         } else if (data.type === 'chat') {
           const chatData = data.data as ChatData
           this.chatCallback(chatData)
+        } else if (data.type === 'updateEvent') {
+          const eventid = data.data as string
+          this.updateEventCallback(eventid)
         }
       }
       this.ws.onclose = () => {

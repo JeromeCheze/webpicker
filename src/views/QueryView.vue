@@ -32,7 +32,7 @@ function handleQuery(params: FDSNEventParams) {
 }
 
 onMounted(() => {
-  if (store.eventManager.events.length > 0) {
+  if (store.events.length > 0) {
     form.value = false
   } else {
     if (Object.keys(route.query).length > 0) {

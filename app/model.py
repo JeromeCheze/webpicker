@@ -17,16 +17,20 @@ class ChatData(BaseModel):
     message: str
 
 class WSVersionResponse(BaseModel):
-    type: Literal['version']
+    type: Literal['version'] = 'version'
     data: str
 
 class WSChatResponse(BaseModel):
-    type: Literal['chat']
+    type: Literal['chat'] = 'chat'
     data: ChatData
 
 class WSActivityResponse(BaseModel):
-    type: Literal['activity']
+    type: Literal['activity'] = 'activity'
     data: list[ActivityData]
+
+class WSUpdateEventResponse(BaseModel):
+    type: Literal['updateEvent'] = 'updateEvent'
+    data: str
 
 class WSDetectorArgs(BaseModel):
     network: str

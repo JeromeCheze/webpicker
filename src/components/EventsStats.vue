@@ -20,7 +20,7 @@ const magCompl = ref(null as number | null)
 
 const filteredEventList = computed(() => {
   if (props.hideDiscarded === true) {
-    return store.eventManager.events.filter((e) => {
+    return store.events.filter((e) => {
       const eventType = e.type || ''
       const poStatus = e.preferredOriginID.referredObject.evaluationStatus || ''
       if (DISCARDED_EVENT_TYPES.indexOf(eventType) >= 0 || poStatus === 'rejected') {
@@ -29,7 +29,7 @@ const filteredEventList = computed(() => {
       return true
     })
   }
-  return store.eventManager.events
+  return store.events
 })
 
 const cumulativeMagsCount = computed(() => {

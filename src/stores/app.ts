@@ -1,5 +1,6 @@
 import { shortcutString, getId, deepCopy, getLocalStorageDefault, setLocalStorage } from '@/utils'
 import type { ActivityData, ChatData, PickMap, WPNotificationOptions, Config } from '@/types'
+import type { QEvent } from '@/lib/sismojs/src/core/event/types'
 import WebSocketManager from '@/utils/webSocketManager'
 import defaultSettings from '@/utils/defaultSettings'
 import { computed, ref, shallowRef } from 'vue'
@@ -30,7 +31,11 @@ const baseUrl = computed(() => window.location.pathname.includes('event') ? '..'
 
 // Class handling inventory and waveforms data management
 const dataManager = new DataManager()
-const eventManager = new EventManager(dataManager)
+const events = ref([] as QEvent[])
+const eventManager = new EventManager(
+  dataManager,
+  newEvents => events.value = newEvents
+)
 const additionalPickMap = shallowRef({} as PickMap)
 
 // Load application settings
@@ -47,7 +52,8 @@ const webSocketManager = new WebSocketManager(
   value => newVersion.value = value,
   value => usersActivity.value = value,
   value => connected.value = value,
-  value => chatMessages.value.push(value)
+  value => chatMessages.value.push(value),
+  eventid => eventManager.updateEvent(baseUrl.value, eventid)
 )
 
 const config = ref(null as Config | null)
@@ -77,6 +83,7 @@ export const useAppStore = defineStore('app', () => {
     keydownEvent,
     keydown,
     preventDefault,
+    events,
     dataManager,
     eventManager,
     webSocketManager,

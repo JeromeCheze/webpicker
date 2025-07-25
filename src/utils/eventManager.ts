@@ -39,20 +39,24 @@ const eventManagerStatusLogHandler: ProxyHandler<EventViewStatus> = {
 }
 
 export default class EventManager {
-
+  _events: QEvent[]
   client: Client
-  events: QEvent[]
   current: EventManagerCurrent
   status: EventViewStatus
   pickMap: PickMap
   additionalPickMap: PickMap
   dataManager: DataManager
   agencyID: string
+  updateEventsCallback: (events: QEvent[]) => void
 
-  constructor(dataManager: DataManager) {
+  constructor(
+    dataManager: DataManager,
+    updateEventsCallback: (events: QEvent[]) => void
+  ) {
+    this._events = []
     this.dataManager = dataManager
     this.client = new Client('.')
-    this.events = []
+    this.updateEventsCallback = updateEventsCallback
     this.current = new Proxy<EventManagerCurrent>({
       event: null,
       origin: null,
@@ -70,6 +74,14 @@ export default class EventManager {
     this.pickMap = {}
     this.additionalPickMap = {}
     this.agencyID = 'OCA'
+  }
+
+  get events() {
+    return this._events
+  }
+  set events(value: QEvent[]) {
+    this._events = value
+    this.updateEventsCallback(value)
   }
 
   updatePickMap() {
@@ -107,6 +119,28 @@ export default class EventManager {
     this.status.commit = 'enabled'
     this.dataManager.reset()
     this.updatePickMap()
+  }
+
+  updateEvent(baseUrl: string, eventid: string) {
+    return new Promise<void>((resolve, reject) => {
+      this.client.baseURL = baseUrl
+      if (this.current.event != null && this.current.event.publicID === eventid) {
+        this.loadEvent(baseUrl, eventid)
+        resolve()
+      } else {
+        this.client.getEvents({
+          eventid,
+          format: 'xml',
+          includefocalmechanism: true
+        }).then(events => {
+          if (events.length > 0) {
+            const e = events[0]
+            this.events = this.events.map(x => x.publicID === e.publicID ? e : x)
+          }
+          resolve()
+        })
+      }
+    })
   }
 
   loadEvents(baseUrl: string, params: FDSNEventParams) {

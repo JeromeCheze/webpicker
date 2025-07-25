@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, Depends, status
-from app.model import WSActivityResponse, WSChatResponse, WSDetectorArgs, WSDenoiserArgs, TTTQuery, ActivityData, WSVersionResponse, ChatData
+from app.model import WSActivityResponse, WSChatResponse, WSDetectorArgs, WSDenoiserArgs, TTTQuery, ActivityData, WSUpdateEventResponse, WSVersionResponse, ChatData
 
 ADMIN_PASSWORD = '95a2c6749a7c1a90f6fe6775c1d82a03'
 
@@ -26,7 +26,7 @@ class ConnectionManager:
         await websocket.accept()
         with open('src/version.json') as f:
             version = json.load(f)
-            await websocket.send_json(WSVersionResponse(type='version', data=version).model_dump())
+            await websocket.send_json(WSVersionResponse(data=version).model_dump())
 
     def disconnect(self, websocket: WebSocket):
         del self.connection_mapping[websocket]
@@ -39,7 +39,7 @@ class ConnectionManager:
                 self.disconnect(websocket)
 
     async def broadcast_activity(self):
-        response = WSActivityResponse(type='activity', data=[x for x in self.connection_mapping.values()]).model_dump()
+        response = WSActivityResponse(data=[x for x in self.connection_mapping.values()]).model_dump()
         await self.broadcast_message(response)
 
     async def update_activity(self, websocket: WebSocket, activity: ActivityData):
@@ -47,11 +47,11 @@ class ConnectionManager:
         await self.broadcast_activity()
 
     async def broadcast_chat_msg(self, data: ChatData):
-        response = WSChatResponse(type='chat', data=data).model_dump()
+        response = WSChatResponse(data=data).model_dump()
         await self.broadcast_message(response)
 
     async def send_chat_msg(self, data: ChatData):
-        response = WSChatResponse(type='chat', data=data).model_dump()
+        response = WSChatResponse(data=data).model_dump()
         for websocket, activity in self.connection_mapping.items():
             if activity.id == data.recipient:
                 await websocket.send_json(response)
@@ -99,6 +99,9 @@ async def websocket_endpoint(websocket: WebSocket):
             data = await websocket.receive_json()
             if data['type'] == 'activity':
                 await manager.update_activity(websocket, ActivityData(**data['data']))
+            elif data['type'] == 'updateEvent':
+                eventid = data['data']
+                await manager.broadcast_message(WSUpdateEventResponse(data=eventid).model_dump())
             elif data['type'] == 'chat':
                 chat_data = ChatData(**data['data'])
                 if chat_data.broadcast:

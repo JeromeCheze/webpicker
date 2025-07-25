@@ -138,6 +138,9 @@ function getPickTooltip(p: QPick) {
 
 function pickToVLine(p: QPick, selectable: boolean) {
   const text = [p.phaseHint]
+  if (p.evaluationStatus != null) {
+    text.push(`(${p.evaluationStatus})`)
+  }
   if (p.onset != null) {
     text.push(`(${p.onset})`)
   }
@@ -332,7 +335,7 @@ async function update(redraw=false) {
       }
     }
     const [x1, x2] = getXRange(props.activeStation!)
-    let maxRange: number = 0
+    const maxRange: Record<string, number> = {}
     const waveformLength = Object.values(data).filter(x => !x.spectrogram).length
     for (const [index, currData] of data.entries()) {
       if (chartData[currData.id] == null) {
@@ -358,12 +361,17 @@ async function update(redraw=false) {
         const chart = chartData[currData.id].chart
         chart.setYRange(null, null, false)
         const dataUtils = chart.master.getRegistered('DATA_UTILS')
-        maxRange = Math.max(maxRange, dataUtils.yMax - dataUtils.yMin)
+        const key = currData.id.slice(0, -1)
+        if (maxRange[key] == null) {
+          maxRange[key] = 0
+        }
+        maxRange[key] = Math.max(maxRange[key], dataUtils.yMax - dataUtils.yMin)
       }
     }
-    const midRange = maxRange / 2
-    for (const currData of Object.values(chartData)) {
+    for (const [id, currData] of Object.entries(chartData)) {
       if (props.commonScale) {
+        const key = id.slice(0, -1)
+        const midRange = maxRange[key] / 2
         const dataUtils = currData.chart.master.getRegistered('DATA_UTILS')
         const mid = dataUtils.yMin + (dataUtils.yMax - dataUtils.yMin) / 2
         currData.chart.setYRange(mid - midRange, mid + midRange, false)
@@ -479,18 +487,22 @@ onBeforeUnmount(reset)
 </script>
 
 <template>
-  <div class="mb-3">
-    {{ props.activeStation }}
-    <span class="float-right">{{ props.phase != null ? pickerTime : '' }}</span>
-    <span >- Dist: {{ distance.toFixed(1) }} km | Az: {{ azimuth.toFixed(1) }}&deg;</span>
-    <v-progress-circular v-if="loading" indeterminate="disable-shrink" size="20" class="ml-4"/>
-  </div>
-  <div ref="container"></div>
-  <v-row v-if="props.spectrogram" class="justify-end mt-4 mx-4">
-    <v-col cols="4">
-      <v-range-slider label="Spectrogram color range" v-model="spectrogramRange" step="5" thumb-label></v-range-slider>
-    </v-col>
-  </v-row>
+  <v-card :style="{ overflowY: 'auto' }">
+    <v-card-title>
+      {{ props.activeStation }}
+      <span class="float-right">{{ props.phase != null ? pickerTime : '' }}</span>
+      <span >- Dist: {{ distance.toFixed(1) }} km | Az: {{ azimuth.toFixed(1) }}&deg;</span>
+      <v-progress-circular v-if="loading" indeterminate="disable-shrink" size="20" class="ml-4"/>
+    </v-card-title>
+    <v-card-text>
+      <div ref="container"></div>
+    </v-card-text>
+    <v-card-actions v-if="props.spectrogram" class="justify-end">
+      <v-col cols="4">
+        <v-range-slider label="Spectrogram color range" v-model="spectrogramRange" step="5" thumb-label></v-range-slider>
+      </v-col>
+    </v-card-actions>
+  </v-card>
 </template>
 
 <style>

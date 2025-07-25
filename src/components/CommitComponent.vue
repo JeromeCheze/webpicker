@@ -85,6 +85,7 @@ function commit() {
           setTimeout(() => {
             store.notification.push({ type: 'progress', value: null })
             emit('update')
+            store.webSocketManager.sendUpdateEventMessage(event.publicID)
           }, 3000)
         }
       })

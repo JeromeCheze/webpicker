@@ -24,12 +24,12 @@ export interface ActivityData {
 }
 
 export interface WebSocketMessage {
-  type: 'activity' | 'chat'
-  data: ActivityData | ChatData
+  type: 'activity' | 'chat' | 'updateEvent'
+  data: ActivityData | ChatData | string
 }
 
 export interface WebSocketResponse {
-  type: 'activity' | 'chat' | 'version'
+  type: 'activity' | 'chat' | 'version' | 'updateEvent'
   data: ActivityData[] | ChatData | string
 }
 

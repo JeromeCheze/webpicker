@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FilterOptions, PickerToolbarOptions, StationRefTimes, WPNotificationOptions } from '@/types'
-import { QPick, type QPickOnset, type QPickPolarity } from '@/lib/sismojs/src/core/event/types'
+import { QPick, type QEvaluationStatus, type QPickOnset, type QPickPolarity } from '@/lib/sismojs/src/core/event/types'
 import { ref, shallowRef, watch, onMounted, computed } from 'vue'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
 import PickerWaveformList from './PickerWaveformList.vue'
@@ -40,6 +40,7 @@ const selectedPicks = shallowRef([] as QPick[])
 const pickerTime = ref(null as number | null)
 const pickerTimeWindow = ref([0, 0] as [number, number])
 const sliderTimeWindow = ref([0, 0] as [number, number])
+const resizerPosition = ref(50)
 
 let shiftFlag = false
 
@@ -101,13 +102,11 @@ function handleDetector() {
 }
 
 function processDataCallback(response: Trace[]) {
-  const result = [...data.value]
-  const seedIds = result.map(tr => tr.stats.id)
+  const seedIds = data.value.map(tr => tr.stats.id)
   for (const tr of response) {
     if (seedIds.indexOf(tr.stats.id) >= 0) {
       continue
     }
-    result.push(tr)
     const netsta = `${tr.stats.network}.${tr.stats.station}`
     if (stationRefTimes.value[netsta] == null) {
       if (props.noEvent) {
@@ -129,11 +128,25 @@ function processDataCallback(response: Trace[]) {
       }
     }
   }
-  result.sort((a, b) => {
-    const aa = TRACE_SORT_RULES.indexOf(a.stats.channel.slice(-1))
-    const bb = TRACE_SORT_RULES.indexOf(b.stats.channel.slice(-1))
-    return aa < bb ? -1 : aa > bb ? 1 : 0
-  })
+  const instrumentGroup: Record<string, Trace[]> = {}
+  for (const tr of [...data.value, ...response]) {
+    const key = `${tr.stats.location}.${tr.stats.channel.slice(0, -1)}`
+    if (instrumentGroup[key] == null) {
+      instrumentGroup[key] = []
+    }
+    instrumentGroup[key].push(tr)
+  }
+  const result: Trace[] = []
+  for (const key of Object.keys(instrumentGroup).sort()) {
+    instrumentGroup[key].sort((a, b) => {
+      const aa = TRACE_SORT_RULES.indexOf(a.stats.channel.slice(-1))
+      const bb = TRACE_SORT_RULES.indexOf(b.stats.channel.slice(-1))
+      return aa < bb ? -1 : aa > bb ? 1 : 0
+    })
+    for (const tr of instrumentGroup[key]) {
+      result.push(tr)
+    }
+  }
   data.value = result
 }
 
@@ -311,6 +324,35 @@ function setPickUncertainty(value: number) {
   }
 }
 
+function setPickEvaluationStatus(value: QEvaluationStatus) {
+  if (selectedPicks.value.length > 0) {
+    console.log(`[PickerPanel.setPickEvaluationStatus] value = ${value}`)
+    const p = selectedPicks.value[0]
+    if (p.evaluationStatus === value) {
+      p.evaluationStatus = undefined
+    } else {
+      p.evaluationStatus = value
+    }
+    store.eventManager.updatePickMap()
+  }
+}
+
+function handleDragging(e: MouseEvent) {
+  e.stopPropagation()
+  e.preventDefault()
+  const percentage = 100 * (e.pageY - 74) / (window.innerHeight - 80)
+  if (percentage >= 20 && percentage <= 90) {
+    resizerPosition.value = percentage
+  }
+  return false
+}
+function startDragging() {
+  document.addEventListener('mousemove', handleDragging)
+}
+function endDragging() {
+  document.removeEventListener('mousemove', handleDragging)
+}
+
 watch(() => store.keydown, (value) => {
   shiftFlag = value === 'shift+shift'
   if (value === store.settings['keybinding.createPick']) {
@@ -376,6 +418,8 @@ onBeforeUnmount(() => {
   }
   pickerStation.value = null
 })
+
+
 </script>
 
 <template>
@@ -387,47 +431,52 @@ onBeforeUnmount(() => {
     :no-event="props.noEvent"
     @leave="emit('update:modelValue', false)"
     @download-channels="downloadChannels"/>
-  <v-card>
-    <v-card-text>
-      <PickerWaveforms
-        :data="data"
-        :active-station="pickerStation"
-        :station-ref-times="stationRefTimes"
-        :ref-time-key="toolbarValue.alignment"
-        :phase="toolbarValue.phase"
-        :denoiser="toolbarValue.denoiser"
-        :detector="toolbarValue.detector"
-        :spectrogram="toolbarValue.spectrogram"
-        :rotation="toolbarValue.rotation"
-        :filter="filterValue"
-        :controller="controller"
-        :common-scale="toolbarValue.commonScale"
-        :integration="toolbarValue.integration"
-        :hide-ref-times="props.noEvent"
-        :time-window="sliderTimeWindow"
-        :ttt-enabled="toolbarValue.tttEnabled"
-        @active-channel="handleActiveChannel"
-        @create-pick="createPick"
-        @select-picks="handleSelectPicks"
-        @picker-time="(t: number) => pickerTime = t"
-        @updateTimeWindow="(tw: [number, number]) => pickerTimeWindow = tw"/>
-    </v-card-text>
-  </v-card>
-  <v-card class="mt-3">
-    <v-card-text>
-      <PickerWaveformList
-        :data="data"
-        :sort-trace="toolbarValue.sort"
-        :station-ref-times="stationRefTimes"
-        :ref-time-key="toolbarValue.alignment"
-        :filter="filterValue"
-        :time-window="pickerTimeWindow"
-        :hide-ref-times="props.noEvent"
-        :detector="toolbarValue.detector"
-        @select-station="handleSelectStation"
-        @sliderTimeWindow="(tw: [number, number]) => sliderTimeWindow = tw"/>
-    </v-card-text>
-  </v-card>
+  <div
+    :style="{ height: 'calc(100vh - 80px)' }"
+    class="d-flex flex-column"
+    @mouseup="endDragging"
+    @mouseleave="endDragging"
+  >
+    <PickerWaveforms
+      :data="data"
+      :active-station="pickerStation"
+      :station-ref-times="stationRefTimes"
+      :ref-time-key="toolbarValue.alignment"
+      :phase="toolbarValue.phase"
+      :denoiser="toolbarValue.denoiser"
+      :detector="toolbarValue.detector"
+      :spectrogram="toolbarValue.spectrogram"
+      :rotation="toolbarValue.rotation"
+      :filter="filterValue"
+      :controller="controller"
+      :common-scale="toolbarValue.commonScale"
+      :integration="toolbarValue.integration"
+      :hide-ref-times="props.noEvent"
+      :time-window="sliderTimeWindow"
+      :ttt-enabled="toolbarValue.tttEnabled"
+      :style="{ height: `${resizerPosition}%` }"
+      @active-channel="handleActiveChannel"
+      @create-pick="createPick"
+      @select-picks="handleSelectPicks"
+      @picker-time="(t: number) => pickerTime = t"
+      @updateTimeWindow="(tw: [number, number]) => pickerTimeWindow = tw"/>
+    <div @mousedown="startDragging" :style="{ height: '12px', cursor: 'ns-resize', textAlign: 'center' }"></div>
+    <v-card :style="{ overflowY: 'auto', height: `calc(${100 - resizerPosition}% - 12px)` }">
+      <v-card-text>
+        <PickerWaveformList
+          :data="data"
+          :sort-trace="toolbarValue.sort"
+          :station-ref-times="stationRefTimes"
+          :ref-time-key="toolbarValue.alignment"
+          :filter="filterValue"
+          :time-window="pickerTimeWindow"
+          :hide-ref-times="props.noEvent"
+          :detector="toolbarValue.detector"
+          @select-station="handleSelectStation"
+          @sliderTimeWindow="(tw: [number, number]) => sliderTimeWindow = tw"/>
+      </v-card-text>
+    </v-card>
+  </div>
   <v-menu
     v-model="contextMenu"
     attach
@@ -449,8 +498,40 @@ onBeforeUnmount(() => {
           <v-list-item prepend-icon="mdi-tilde" @click="setPickOnset('emergent')" :append-icon="selectedPicks[0].onset === 'emergent' ? 'mdi-check' : ''">emergent</v-list-item>
           <v-list-item prepend-icon="mdi-help" @click="setPickOnset('undecidable')" :append-icon="selectedPicks[0].onset === 'undecidable' ? 'mdi-check' : ''">undecidable</v-list-item>            
           <v-divider></v-divider>
+          <v-list-subheader>Status</v-list-subheader>
+          <v-list-item @click="setPickEvaluationStatus('confirmed')" :append-icon="selectedPicks[0].evaluationStatus === 'confirmed' ? 'mdi-check' : ''">
+            <template #prepend>
+              <v-badge inline content="C"></v-badge>
+            </template>
+            confirmed
+          </v-list-item>
+          <v-list-item @click="setPickEvaluationStatus('final')" :append-icon="selectedPicks[0].evaluationStatus === 'final' ? 'mdi-check' : ''">
+            <template #prepend>
+              <v-badge inline content="F"></v-badge>
+            </template>
+            final
+          </v-list-item>
+          <v-list-item @click="setPickEvaluationStatus('preliminary')" :append-icon="selectedPicks[0].evaluationStatus === 'preliminary' ? 'mdi-check' : ''">
+            <template #prepend>
+              <v-badge inline content="P"></v-badge>
+            </template>
+            preliminary
+          </v-list-item>
+          <v-list-item @click="setPickEvaluationStatus('rejected')" :append-icon="selectedPicks[0].evaluationStatus === 'rejected' ? 'mdi-check' : ''">
+            <template #prepend>
+              <v-badge inline content="Rej"></v-badge>
+            </template>
+            rejected
+          </v-list-item>
+          <v-list-item @click="setPickEvaluationStatus('reviewed')" :append-icon="selectedPicks[0].evaluationStatus === 'reviewed' ? 'mdi-check' : ''">
+            <template #prepend>
+              <v-badge inline content="rev"></v-badge>
+            </template>
+            reviewed
+          </v-list-item>
+          <v-divider></v-divider>
           <v-list-subheader>Uncertainty</v-list-subheader>
-          <v-list-item prepend-icon="mdi-close" @click="setPickUncertainty(0)">remove</v-list-item>
+          <v-list-item prepend-icon="mdi-close" @click="setPickUncertainty(0)">remove uncertainty</v-list-item>
           <v-divider></v-divider>
           <v-list-item prepend-icon="mdi-delete" @click="deleteSelectedPicks">delete pick</v-list-item>
         </v-list>
@@ -458,9 +539,3 @@ onBeforeUnmount(() => {
     </v-card>
   </v-menu>
 </template>
-
-<style>
-.scrollable-container {
-  overflow-y: auto;
-}
-</style>
