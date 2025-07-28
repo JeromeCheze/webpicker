@@ -6,7 +6,7 @@ import type { Trace } from '@/lib/sismojs/src/core/waveform'
 import PickerWaveformList from './PickerWaveformList.vue'
 import PickerWaveforms from './PickerWaveforms.vue'
 import PickerToolbar from './PickerToolbar.vue'
-import { pushUnique, toNetSta } from '@/utils'
+import { getLocalStorageDefault, pushUnique, setLocalStorage, toNetSta } from '@/utils'
 import { useAppStore } from '@/stores/app'
 import { onBeforeUnmount } from 'vue'
 
@@ -40,7 +40,7 @@ const selectedPicks = shallowRef([] as QPick[])
 const pickerTime = ref(null as number | null)
 const pickerTimeWindow = ref([0, 0] as [number, number])
 const sliderTimeWindow = ref([0, 0] as [number, number])
-const resizerPosition = ref(50)
+const resizerPosition = ref(getLocalStorageDefault('resizerPosition', 50) as number)
 
 let shiftFlag = false
 
@@ -417,6 +417,7 @@ onBeforeUnmount(() => {
     controller.value.abort()
   }
   pickerStation.value = null
+  setLocalStorage('resizerPosition', resizerPosition.value)
 })
 
 
