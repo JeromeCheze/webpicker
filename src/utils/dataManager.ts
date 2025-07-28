@@ -375,7 +375,11 @@ export default class DataManager {
     const result: string[] = []
     if (inv[net] != null && inv[net][sta] != null && inv[net][sta].location[loc] != null) {
       for (const cha of Object.keys(this.inventoryCache[net][sta].location[loc])) {
-        if (cha.indexOf(chaPrefix) === 0 || cha === 'HDH' && AutoAddHydrophone) {
+        if (cha.startsWith(chaPrefix) || cha === 'HDH' && AutoAddHydrophone) {
+          // auto add hydrophone component (if not disabled in user parameters)
+          result.push(`${net}.${sta}.${loc}.${cha}`)
+        } else if (chaPrefix === 'HD' && cha[1] === 'H') {
+          // auto add velocimeter components if requested component is hydrophone
           result.push(`${net}.${sta}.${loc}.${cha}`)
         }
       }
