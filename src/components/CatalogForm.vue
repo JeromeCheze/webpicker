@@ -26,9 +26,16 @@ const mapContainer = ref(null as HTMLElement | null)
 const starttime = ref(new Date(form.value.start))
 const endtime = ref(new Date(form.value.end))
 
+const toNumber = (v: number | string) => typeof v === 'string' ? parseFloat(v) : v
+
 const bounds = computed(() => {
-  const fixedMaxLon = form.value.maxlon < form.value.minlon ? form.value.maxlon + 360 : form.value.maxlon
-  return [[form.value.minlat, form.value.minlon], [form.value.maxlat, fixedMaxLon]] as L.LatLngTuple[]
+  const minlon = toNumber(form.value.minlon)
+  const maxlon = toNumber(form.value.maxlon)
+  const fixedMaxLon = maxlon < minlon ? maxlon + 360 : maxlon
+  return [
+    [toNumber(form.value.minlat), toNumber(form.value.minlon)],
+    [toNumber(form.value.maxlat), fixedMaxLon]
+  ] as L.LatLngTuple[]
 })
 
 function loadForm() {
@@ -88,6 +95,7 @@ function applyBoundsToArea() {
     return
   }
   area.value.setBounds(bounds.value)
+  map.value!.fitBounds(bounds.value)
 }
 
 function handleSubmit() {
@@ -100,39 +108,38 @@ function handleSubmit() {
     }
     if (rememberTimeConstraints.value) {
       setLocalStorage('timeConstraints', {
-        start: query.start,
-        end: query.end
+        start: form.value.start,
+        end: form.value.end
       })
     } else {
       localStorage.removeItem('timeConstraints')
     }
     if (rememberGeoConstraints.value) {
       setLocalStorage('geoConstraints', {
-        minlat: query.minlat,
-        maxlat: query.maxlat,
-        minlon: query.minlon,
-        maxlon: query.maxlon
+        minlat: form.value.minlat,
+        maxlat: form.value.maxlat,
+        minlon: form.value.minlon,
+        maxlon: form.value.maxlon
       })
     } else {
       localStorage.removeItem('geoConstraints')
     }
     if (rememberDepthConstraints.value) {
       setLocalStorage('depthConstraints', {
-        mindepth: query.mindepth,
-        maxdepth: query.maxdepth
+        mindepth: form.value.mindepth,
+        maxdepth: form.value.maxdepth
       })
     } else {
       localStorage.removeItem('depthConstraints')
     }
     if (rememberMagConstraints.value) {
       setLocalStorage('magConstraints', {
-        minmag: query.minmag,
-        maxmag: query.maxmag
+        minmag: form.value.minmag,
+        maxmag: form.value.maxmag
       })
     } else {
       localStorage.removeItem('magConstraints')
     }
-
     store.eventManager.events = []
     router.push({ name: 'query', query })
   } else {

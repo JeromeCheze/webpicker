@@ -11,11 +11,19 @@ const attrs = useAttrs()
 
 const emit = defineEmits(['update:modelValue'])
 
-const numberValue = ref(props.modelValue != null ? props.modelValue.toString() : null)
+const numberValue = ref(props.modelValue != null
+  ? typeof props.modelValue === 'string'
+    ? parseFloat(props.modelValue as string)
+    : props.modelValue
+  : null)
 const reFloat = /^-?\d+(\.\d+)?$/
 
 watch(() => props.modelValue, (value) => {
-  numberValue.value = value != null ? value.toString() : null
+  numberValue.value = value != null
+    ? typeof value === 'string'
+      ? parseFloat(value)
+      : value
+    : null
 })
 
 function handleInput(ev: InputEvent) {
@@ -27,7 +35,7 @@ function handleInput(ev: InputEvent) {
   if (value !== null && value !== '') {
     const v = parseFloat(value.replace(',', '.'))
     if (!isNaN(v)) {
-      numberValue.value = value
+      numberValue.value = v
       emit('update:modelValue', v)
     }
   } else {
