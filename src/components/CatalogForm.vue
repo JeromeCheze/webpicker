@@ -17,7 +17,10 @@ const route = useRoute()
 const catalogForm = ref()
 const map = ref(null as L.Map | null)
 const area = ref(null as SelectArea | null)
-const rememberGeoConstraints = ref(getLocalStorageDefault('form', null) != null)
+const rememberTimeConstraints = ref(getLocalStorageDefault('timeConstraints', null) != null)
+const rememberGeoConstraints = ref(getLocalStorageDefault('geoConstraints', null) != null)
+const rememberDepthConstraints = ref(getLocalStorageDefault('depthConstraints', null) != null)
+const rememberMagConstraints = ref(getLocalStorageDefault('magConstraints', null) != null)
 const form = ref(loadForm() as WebpickerForm)
 const mapContainer = ref(null as HTMLElement | null)
 const starttime = ref(new Date(form.value.start))
@@ -32,19 +35,23 @@ function loadForm() {
   const now = new Date()
   const start = new Date(now.getTime() - 86400e3 * 7)
   const end = new Date(now.getTime() + 86400e3)
-  const savedForm = Object.assign(getLocalStorageDefault('form', {}), route.query)
-  const result = {
-    start: start.toISOString().split('T')[0],
-    end: end.toISOString().split('T')[0],
-    minlat: savedForm.minlat != null ? parseFloat(savedForm.minlat) : -90,
-    maxlat: savedForm.maxlat != null ? parseFloat(savedForm.maxlat) : 90,
-    minlon: savedForm.minlon != null ? parseFloat(savedForm.minlon) : -180,
-    maxlon: savedForm.maxlon != null ? parseFloat(savedForm.maxlon) : 180,
-    mindepth: savedForm.mindepth != null ? parseFloat(savedForm.mindepth) : 0,
-    maxdepth: savedForm.maxdepth != null ? parseFloat(savedForm.maxdepth) : 750
-  }
-
-  return result
+  return Object.assign({
+    ...getLocalStorageDefault('timeConstraints', {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0],
+    }),
+    ...getLocalStorageDefault('geoConstraints', {
+      minlat: -90,
+      maxlat: 90,
+      minlon: -180,
+      maxlon: 180
+    }),
+    ...getLocalStorageDefault('depthConstraints', {
+      mindepth: 0,
+      maxdepth: 750
+    }),
+    ...getLocalStorageDefault('magConstraints', {})
+  }, route.query)
 }
 
 function initMapAndArea() {
@@ -91,16 +98,41 @@ function handleSubmit() {
         query[k] = `${v}`
       }
     }
+    if (rememberTimeConstraints.value) {
+      setLocalStorage('timeConstraints', {
+        start: query.start,
+        end: query.end
+      })
+    } else {
+      localStorage.removeItem('timeConstraints')
+    }
     if (rememberGeoConstraints.value) {
-      setLocalStorage('form', {
+      setLocalStorage('geoConstraints', {
         minlat: query.minlat,
         maxlat: query.maxlat,
         minlon: query.minlon,
         maxlon: query.maxlon
       })
     } else {
-      localStorage.removeItem('form')
+      localStorage.removeItem('geoConstraints')
     }
+    if (rememberDepthConstraints.value) {
+      setLocalStorage('depthConstraints', {
+        mindepth: query.mindepth,
+        maxdepth: query.maxdepth
+      })
+    } else {
+      localStorage.removeItem('depthConstraints')
+    }
+    if (rememberMagConstraints.value) {
+      setLocalStorage('magConstraints', {
+        minmag: query.minmag,
+        maxmag: query.maxmag
+      })
+    } else {
+      localStorage.removeItem('magConstraints')
+    }
+
     store.eventManager.events = []
     router.push({ name: 'query', query })
   } else {
@@ -162,48 +194,55 @@ onMounted(() => {
             </v-col>
             <v-col cols="6">
               <v-row>
-                <v-col cols="6">
+                <v-col cols="6" class="py-0">
                   <DateField density="compact" v-model="starttime" label="Start"/>
                 </v-col>
-                <v-col cols="6">
+                <v-col cols="6" class="py-0">
                   <DateField density="compact" v-model="endtime" label="End"/>
+                </v-col>
+                <v-col cols="12" class="py-0">
+                  <v-checkbox v-model="rememberTimeConstraints" label="Remember time constraints"/>
                 </v-col>
               </v-row>
               <v-row>
-                <v-col cols="6">
+                <v-col cols="6" class="py-0">
                   <NumberField density="compact" v-model="form.minlat" label="Latitude min" suffix="°" :rules="[checkLatitude]"/>
                 </v-col>
-                <v-col cols="6">
+                <v-col cols="6" class="py-0">
                   <NumberField density="compact" v-model="form.maxlat" label="Latitude max" suffix="°" :rules="[checkLatitude]"/>
                 </v-col>
               </v-row>
               <v-row>
-                <v-col cols="6">
+                <v-col cols="6" class="py-0">
                   <NumberField density="compact" v-model="form.minlon" label="Longitude min" suffix="°" :rules="[checkLongitude]"/>
                 </v-col>
-                <v-col cols="6">
+                <v-col cols="6" class="py-0">
                   <NumberField density="compact" v-model="form.maxlon" label="Longitude max" suffix="°" :rules="[checkLongitude]"/>
                 </v-col>
-              </v-row>
-              <v-row>
-                <v-col cols="12">
+                <v-col cols="12" class="py-0">
                   <v-checkbox v-model="rememberGeoConstraints" label="Remember geographical constraints"/>
                 </v-col>
               </v-row>
               <v-row>
-                <v-col cols="6">
+                <v-col cols="6" class="py-0">
                   <NumberField density="compact" hide-details="auto" v-model="form.mindepth" label="Depth min" suffix="km"/>
                 </v-col>
-                <v-col cols="6">
+                <v-col cols="6" class="py-0">
                   <NumberField density="compact" hide-details="auto" v-model="form.maxdepth" label="Depth max" suffix="km"/>
+                </v-col>
+                <v-col cols="12" class="py-0">
+                  <v-checkbox v-model="rememberDepthConstraints" label="Remember depth constraints"/>
                 </v-col>
               </v-row>
               <v-row>
-                <v-col cols="6">
+                <v-col cols="6" class="py-0">
                   <NumberField density="compact" hide-details="auto" v-model="form.minmag" label="Magnitude min"/>
                 </v-col>
-                <v-col cols="6">
+                <v-col cols="6" class="py-0">
                   <NumberField density="compact" hide-details="auto" v-model="form.maxmag" label="Magnitude max"/>
+                </v-col>
+                <v-col cols="12" class="py-0">
+                  <v-checkbox v-model="rememberMagConstraints" label="Remember magnitude constraints"/>
                 </v-col>
               </v-row>
             </v-col>

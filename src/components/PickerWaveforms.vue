@@ -147,7 +147,11 @@ function pickToVLine(p: QPick, selectable: boolean) {
   const range: [number, number] | undefined = p.time.uncertainty != null
     ? [p.time.uncertainty * 1e3, p.time.uncertainty * 1e3]
     : undefined
-  let color = p.evaluationMode === 'manual' ? store.settings['color.pickManual'] : store.settings['color.pickAutomatic']
+  let color = p.evaluationStatus != null
+    ? store.settings['color.pickStatusDefined']
+    : p.evaluationMode === 'manual'
+      ? store.settings['color.pickManual']
+      : store.settings['color.pickAutomatic']
   if (!selectable) {
     color = p.evaluationMode === 'manual' ? store.settings['color.additionalPickManual'] : store.settings['color.additionalPickAutomatic']
   }

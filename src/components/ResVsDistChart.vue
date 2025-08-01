@@ -12,9 +12,11 @@ const chart = ref(null as Lichen | null)
 function getColor(arrival: QArrival) {
   return arrival.timeWeight == 0
     ? 'grey'
-    : arrival.pickID.referredObject.evaluationMode === 'manual'
-      ? 'green'
-      : 'red'
+    : arrival.pickID.referredObject.evaluationStatus != null
+      ? store.settings['color.pickStatusDefined']
+      : arrival.pickID.referredObject.evaluationMode === 'manual'
+        ? store.settings['color.pickManual']
+        : store.settings['color.pickAutomatic']
 }
 
 function drawChart() {

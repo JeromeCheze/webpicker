@@ -71,6 +71,32 @@ function removeAutomaticArrivals() {
   }
 }
 
+function setUsedAutomaticPicksStatusAsReviewed() {
+  if (store.eventManager.current.origin == null) {
+    return
+  }
+  for (const arrival of store.eventManager.current.origin.arrival) {
+    const pick = arrival.pickID.referredObject
+    if (pick.evaluationMode === 'automatic' && arrival.timeWeight != null && arrival.timeWeight > 0) {
+      pick.evaluationStatus = 'reviewed'
+    }
+  }
+  store.eventManager.current.arrivals = store.eventManager.current.arrivals.map(x => x)
+}
+
+function unsetPickStatus() {
+  if (store.eventManager.current.origin == null) {
+    return
+  }
+  for (const arrival of store.eventManager.current.origin.arrival) {
+    const pick = arrival.pickID.referredObject
+    if (arrival.timeWeight != null && arrival.timeWeight > 0) {
+      pick.evaluationStatus = undefined
+    }
+  }
+  store.eventManager.current.arrivals = store.eventManager.current.arrivals.map(x => x)
+}
+
 function loadEvent() {
   store.notification.push({ type: 'progress', value: { text: 'Loading event description...', percent: -1 } })
   store.eventManager.loadEvent('..', props.eventid!).catch(msg => {
@@ -251,6 +277,8 @@ onMounted(() => {
         <v-list-subheader>Action</v-list-subheader>
         <v-list-item class="pl-10" @click="removeUnselectedArrivals">remove unselected</v-list-item>
         <v-list-item class="pl-10" @click="removeAutomaticArrivals">remove automatic</v-list-item>
+        <v-list-item class="pl-10" @click="setUsedAutomaticPicksStatusAsReviewed">set selected automatic picks status as 'reviewed'</v-list-item>
+        <v-list-item class="pl-10" @click="unsetPickStatus">unset pick status</v-list-item>
       </v-list>
     </v-card>
   </v-menu>

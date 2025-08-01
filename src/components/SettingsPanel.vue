@@ -51,6 +51,7 @@ const struct: StructItem[] = [
       { label: 'Color TTT (NLL)', key: 'color.TTTNLL', type: 'color', mode: 'hex' },
       { label: 'Color Pick Automatic', key: 'color.pickAutomatic', type: 'color', mode: 'hex' },
       { label: 'Color Pick Manual', key: 'color.pickManual', type: 'color', mode: 'hex' },
+      { label: 'Color Pick Status Defined', key: 'color.pickStatusDefined', type: 'color', mode: 'hex' },
       { label: 'Color Pick Automatic (other)', key: 'color.additionalPickAutomatic', type: 'color', mode: 'hex' },
       { label: 'Color Pick Manual (other)', key: 'color.additionalPickManual', type: 'color', mode: 'hex' },
       { label: 'Color Detector', key: 'color.detector', type: 'color', mode: 'hex' },

@@ -3,7 +3,7 @@ import { ref, useAttrs, watch } from 'vue'
 
 
 const props = defineProps<{
-  modelValue?: number | null
+  modelValue?: number | string | null
   required?: boolean | undefined
 }>()
 

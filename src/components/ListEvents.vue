@@ -101,7 +101,7 @@ const header = ref([
   },
   {
     label: 'Mode',
-    valueAccessor: (e: QEvent) => e.preferredOriginID.referredObject.evaluationMode,
+    valueAccessor: (e: QEvent) => e.preferredOriginID.referredObject.evaluationMode === 'manual' ? 'M' : 'A',
     textAccessor: (e: QEvent) => e.preferredOriginID.referredObject.evaluationMode === 'manual' ? 'M' : 'A',
     class: (e: QEvent) => e.preferredOriginID.referredObject.evaluationMode === 'manual' ? 'text-green' : 'text-red',
     enabled: true

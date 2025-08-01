@@ -12,11 +12,17 @@ const selected = ref([] as QArrival[])
 
 const arrivalCols = ref([
   {
-    label: 'Status',
-    valueAccessor: (a: QArrival) => a.pickID.referredObject.evaluationMode,
+    label: 'Mode',
+    valueAccessor: (a: QArrival) => a.pickID.referredObject.evaluationMode === 'manual' ? 'M' : 'A',
     textAccessor: (a: QArrival) => a.pickID.referredObject.evaluationMode === 'manual' ? 'M' : 'A',
     class: (a: QArrival) => a.pickID.referredObject.evaluationMode === 'manual' ? 'text-green' : 'text-red',
     enabled: true
+  },
+  {
+    label: 'Status',
+    valueAccessor: (a: QArrival) => a.pickID.referredObject.evaluationStatus || '',
+    textAccessor: (a: QArrival) => a.pickID.referredObject.evaluationStatus || '',
+    enabled: false
   },
   {
     label: 'Phase',

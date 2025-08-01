@@ -12,7 +12,7 @@ import { ref, onMounted } from 'vue'
 const store = useAppStore()
 const route = useRoute()
 
-const height = document.body.getBoundingClientRect().height - 90
+const height = document.body.getBoundingClientRect().height - 120
 const currentView = ref('list' as 'list' | 'map' | 'stats')
 const loading = ref(false)
 const form = ref(true)

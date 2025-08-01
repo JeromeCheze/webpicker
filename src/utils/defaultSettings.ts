@@ -16,6 +16,7 @@ export default {
   'color.TTTNLL': '#0000ff',
   'color.pickAutomatic': '#ff0000',
   'color.pickManual': '#008000',
+  'color.pickStatusDefined': '#ff8800',
   'color.additionalPickAutomatic': '#c94b4b',
   'color.additionalPickManual': '#537a53',
   'color.detector': '#7303fc',

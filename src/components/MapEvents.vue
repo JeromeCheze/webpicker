@@ -7,6 +7,14 @@ import { DISCARDED_EVENT_TYPES } from '@/utils'
 import OriginPanel from './OriginPanel.vue'
 import { useAppStore } from '@/stores/app'
 
+const AUTOMATIC_ORIGIN = 'red'
+const MANUAL_ORIGIN = 'green'
+const PRELIMINARY_ORIGIN = 'orange'
+const DISCARDED = 'grey'
+const NO_MAGNITUDE = 'blue'
+const EARTHQUAKE = 'green'
+const EXPLOSION = 'yellow'
+const OTHER = 'purple'
 
 const store = useAppStore()
 
@@ -16,9 +24,11 @@ const props = defineProps<{
 }>()
 
 const mapContainer = ref()
+const legend = ref()
 const map = ref(null as L.Map | null)
 const layers = {} as { [eventid: string]: L.CircleMarker }
 const activeEvent = ref(undefined as QEvent | undefined)
+const sizeBy = ref('magnitude')
 
 const filteredEventList = computed(() => {
   if (props.hideDiscarded === true) {
@@ -34,24 +44,62 @@ const filteredEventList = computed(() => {
   return store.events
 })
 
+function getRadius(event: QEvent) {
+  if (sizeBy.value === 'magnitude') {
+    return event.preferredMagnitudeID.id != null ? 3 + event.preferredMagnitudeID.referredObject.mag.value * 2 : 5
+  } else {
+    const usedPhaseCount = event.preferredOriginID.referredObject.quality?.usedPhaseCount
+    if (usedPhaseCount != null) {
+      return 2 + usedPhaseCount * 0.25
+    }
+  }
+  return 2
+}
+
+function focusEvent(eventid: string | null) {
+  if (activeEvent.value != null && activeEvent.value.publicID === eventid) {
+    eventid = null
+  }
+  if (eventid != null) {
+    activeEvent.value = store.events.find(x => x.publicID === eventid)
+    const marker = layers[eventid]
+    map.value!.setView(marker.getLatLng(), 9)
+    marker.openPopup()
+  } else {
+    activeEvent.value = undefined
+    const bounds: L.LatLngBoundsExpression = []
+    for (const layer of Object.values(layers)) {
+      const pos = layer.getLatLng()
+      bounds.push([pos.lat, pos.lng])
+    }
+    if (bounds.length > 1) {
+      map.value!.fitBounds(bounds)
+    } else {
+      map.value!.setView(bounds[0], 9)
+    }
+  }
+}
+
 function getEventMarker(pos: L.LatLngTuple, event: QEvent) {
   const marker = L.circleMarker(pos, {
-    weight: 1,
-    radius: event.preferredMagnitudeID.id != null ? 3 + event.preferredMagnitudeID.referredObject.mag.value * 2 : 5,
-    color: event.type === 'not reported' || event.type === 'not existing'
-      ? 'grey'
-      : event.preferredOriginID.referredObject.evaluationMode === 'automatic'
-        ? 'red'
-        : 'green',
-    fillColor: event.preferredMagnitudeID.id == null
-      ? 'blue'
-      : event.type === 'earthquake'
-        ? 'green'
-        : event.type === 'quarry blast' || event.type === 'explosion'
-          ? 'yellow'
-          : event.type === 'not reported' || event.type === 'not existing'
-            ? 'grey'
-            : 'purple',
+    weight: 2,
+    radius: getRadius(event),
+    color: event.preferredOriginID.referredObject.evaluationStatus === 'preliminary'
+      ? PRELIMINARY_ORIGIN
+      :event.type === 'not reported' || event.type === 'not existing'
+        ? DISCARDED
+        : event.preferredOriginID.referredObject.evaluationMode === 'manual'
+          ? MANUAL_ORIGIN
+          : AUTOMATIC_ORIGIN,
+    fillColor: event.type === 'not reported' || event.type === 'not existing' || event.preferredOriginID.referredObject.evaluationStatus === 'rejected'
+      ? DISCARDED
+      : event.preferredMagnitudeID.id == null
+        ? NO_MAGNITUDE
+        : event.type === 'earthquake'
+          ? EARTHQUAKE
+          : event.type === 'quarry blast' || event.type === 'explosion'
+            ? EXPLOSION
+            : OTHER,
     fillOpacity: event.type == null ? 0 : 0.4
   }).addTo(map.value as L.Map)
   marker.bindPopup(event.publicID)
@@ -86,9 +134,6 @@ function drawEvents() {
     const marker = getEventMarker(pos, event)
     layers[event.publicID] = marker
   }
-  map.value.on('click', () => {
-    focusEvent(null)
-  })
   map.value.fitBounds(bounds)
 }
 
@@ -97,7 +142,10 @@ function initMap() {
     return
   }
   const container = mapContainer.value
-  map.value = L.map(container, { trackResize: false, attributionControl: false, worldCopyJump: false })
+  map.value = L.map(container, { trackResize: false, attributionControl: false, worldCopyJump: false, zoomControl: false, zoomAnimation: false })
+  map.value.on('click', () => {
+    focusEvent(null)
+  })
   const plan = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
     attribution: 'Sources: Esri, HERE, DeLorme, USGS, Intermap, increment P Corp., NRCAN, Esri Japan, METI, Esri China (Hong Kong), <br>Esri (Thailand), TomTom, MapmyIndia, &copy; OpenStreetMap contributors, and the GIS User Community',
   })
@@ -113,40 +161,22 @@ function initMap() {
     Satellite: satmap
   }
   L.control.layers(baseLayers).addTo(map.value as L.Map)
+  L.control.zoom({ position: 'topright' }).addTo(map.value as L.Map)
   L.control.scale({ imperial: false }).addTo(map.value as L.Map)
+  const LegendControl = L.Control.extend({ onAdd: () => legend.value })
+  new LegendControl({ position: 'topleft' }).addTo(map.value as L.Map)
   plan.addTo(map.value as L.Map)
   drawEvents()
-}
-
-function focusEvent(eventid: string | null) {
-  if (activeEvent.value != null && activeEvent.value.publicID === eventid) {
-    eventid = null
-  }
-  if (eventid != null) {
-    activeEvent.value = store.events.find(x => x.publicID === eventid)
-  } else {
-    activeEvent.value = undefined
-  }
-  const bounds: L.LatLngBoundsExpression = []
-  for (const [id, marker] of Object.entries(layers)) {
-    const pos = marker.getLatLng()
-    bounds.push([pos.lat, pos.lng])
-    if (eventid == null || id === eventid) {
-      map.value!.setView(pos, 9)
-      if (eventid != null) {
-        marker.openPopup()
-      }
-    }
-  }
-  if (eventid == null) {
-    map.value!.fitBounds(bounds)
-  }
 }
 
 watch(() => activeEvent.value, () => {
   setTimeout(() => {
     map.value!.invalidateSize()
   }, 500)
+})
+
+watch(() => sizeBy.value, () => {
+  drawEvents()
 })
 
 watch(() => filteredEventList.value, drawEvents)
@@ -166,6 +196,13 @@ onMounted(() => {
       Go to <router-link :to="{ name: 'form' }">form</router-link> to define query parameters
     </v-card-text>
     <v-card-text class="pa-0" v-else>
+      <div class="d-flex flex-row justify-start align-center">
+        <div class="px-2">Size by:</div>
+        <v-radio-group inline v-model="sizeBy" hide-details>
+          <v-radio label="magnitude" value="magnitude"></v-radio>
+          <v-radio label="used phase count" value="usedPhaseCount"></v-radio>
+        </v-radio-group>
+      </div>
       <div ref="mapContainer" :style="{ height: `${props.height}px` }"></div>
     </v-card-text>
   </v-card>
@@ -188,4 +225,100 @@ onMounted(() => {
     <OriginPanel :origin="activeEvent.preferredOriginID.referredObject" :action-required="false" compact/>
     <MagnitudePanel :magnitude="activeEvent.preferredMagnitudeID.referredObject" :action-required="false" compact/>
   </v-navigation-drawer>
+  <div ref="legend">
+    <v-card>
+      <v-card-text>
+        <v-table density="compact">
+          <tbody>
+            <tr>
+              <th colspan="2">Outer color</th>
+            </tr>
+            <tr>
+              <td>
+                <svg width="20" height="20">
+                  <circle cx="10" cy="10" r="9" stroke-width="2" :stroke="AUTOMATIC_ORIGIN" fill-opacity="0" />
+                </svg>
+              </td>
+              <td>
+                automatic
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <svg width="20" height="20">
+                  <circle cx="10" cy="10" r="9" stroke-width="2" :stroke="MANUAL_ORIGIN" fill-opacity="0" />
+                </svg>
+              </td>
+              <td>
+                manual
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <svg width="20" height="20">
+                  <circle cx="10" cy="10" r="9" stroke-width="2" :stroke="PRELIMINARY_ORIGIN" fill-opacity="0" />
+                </svg>
+              </td>
+              <td>
+                preliminary
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <svg width="20" height="20">
+                  <circle cx="10" cy="10" r="9" stroke-width="2" :stroke="DISCARDED" fill-opacity="0" />
+                </svg>
+              </td>
+              <td>
+                discarded
+              </td>
+            </tr>
+            <tr>
+              <th colspan="2">Inner color</th>
+            </tr>
+            <tr>
+              <td>
+                <svg width="20" height="20">
+                  <circle cx="10" cy="10" r="9" stroke-width="2" :fill="EARTHQUAKE" fill-opacity="1" stroke-opacity="0" />
+                </svg>
+              </td>
+              <td>
+                earthquake
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <svg width="20" height="20">
+                  <circle cx="10" cy="10" r="9" stroke-width="2" :fill="EXPLOSION" fill-opacity="1" stroke-opacity="0" />
+                </svg>
+              </td>
+              <td>
+                explosion
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <svg width="20" height="20">
+                  <circle cx="10" cy="10" r="9" stroke-width="2" :fill="NO_MAGNITUDE" fill-opacity="1" stroke-opacity="0" />
+                </svg>
+              </td>
+              <td>
+                no magnitude
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <svg width="20" height="20">
+                  <circle cx="10" cy="10" r="9" stroke-width="2" :fill="DISCARDED" fill-opacity="1" stroke-opacity="0" />
+                </svg>
+              </td>
+              <td>
+                discarded
+              </td>
+            </tr>
+          </tbody>
+        </v-table>
+      </v-card-text>
+    </v-card>
+  </div>
 </template>
