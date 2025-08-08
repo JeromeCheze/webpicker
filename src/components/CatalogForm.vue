@@ -177,7 +177,7 @@ watch(() => form.value.start, (newValue) => {
 })
 
 watch(() => form.value.end, (newValue) => {
-  starttime.value = new Date(newValue)
+  endtime.value = new Date(newValue)
 })
 
 onMounted(() => {
