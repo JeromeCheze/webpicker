@@ -195,7 +195,6 @@ async def compute_magnitudes(request: Request, username: Annotated[str, Depends(
 async def relocate(locator: Literal['LOCSAT', 'NonLinLoc'], profile: str, request: Request, username: Annotated[str, Depends(check_authentication)]):
     qml = await request.body()
     if locator == 'LOCSAT':
-        # result = relocate_with_screloc(jquake, profile)
         result = processing.relocate_with_scp_api(qml, profile)
     elif locator == 'NonLinLoc':
         result = processing.relocate_with_nll(qml, profile)

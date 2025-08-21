@@ -4,13 +4,11 @@ import json
 import tempfile
 import subprocess
 from app import utils
-from lxml import etree
 from app import locsat_locator
 from app.model import TTTQuery
 from datetime import datetime, UTC
 from urllib.request import Request, urlopen
 from seiscomp.seismology import TravelTimeTableInterface
-
 
 def relocate_with_nll(qml, profile):
     try:
@@ -51,60 +49,6 @@ def relocate_with_scp_api(qml, profile):
         'quakeml': qml
     }
 
-def relocate_with_screloc(jquake, profile):
-    inventory = utils.get_inventory(jquake)
-    _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
-
-    if utils.DEBUG:
-        sys.stderr.write('initial sc3ml file from jquake: %s\n' % sc3ml)
-
-    utils.write_sc3ml(jquake, sc3ml)
-    screloc_cmd = [
-        os.path.join(utils.CONFIG.seiscomp.root, 'bin', 'screloc'),
-        '--inventory-db', inventory,
-        '--locator', 'LOCSAT',
-        '--profile', profile,
-        '--author', 'webpicker',
-        '--agencyID', utils.CONFIG.agency,
-        '--use-weight', '1',
-        '--ep', sc3ml,
-        '--replace'
-    ]
-
-    if utils.DEBUG:
-        sys.stderr.write('%s\n' % ' '.join(screloc_cmd))
-
-    screloc = subprocess.Popen(screloc_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    raw_result, error_message = screloc.communicate()
-
-    # because relocation using NonLinLoc dump a lot of text before the sc3ml result
-    start_xml_index = raw_result.index('<?xml')
-    result = raw_result[start_xml_index:]
-
-    if utils.DEBUG:
-        _, screloc_result = tempfile.mkstemp(suffix=".sc3ml")
-        sys.stderr.write('screloc result: %s\n' % screloc_result)
-        with open(screloc_result, 'w') as f:
-            f.write(result)
-
-    dom = etree.fromstring(result)
-    utils.update_sc3ml_origin_reference(dom)
-    newdom = utils.apply_xslt(etree.ElementTree(dom), utils.get_sc3ml_to_qml_xslt())
-
-    if utils.DEBUG:
-        _, qml_result = tempfile.mkstemp(suffix=".sc3ml")
-        sys.stderr.write('qml result: %s\n' % qml_result)
-        with open(qml_result, 'w') as f:
-            f.write(etree.tostring(newdom))
-    else:
-        os.remove(sc3ml)
-        os.remove(inventory)
-
-    return {
-        'message': error_message,
-        'quakeml': etree.tostring(newdom)
-    }
-
 def compute_magnitudes_with_scamp_and_scmag(qml):
     scp_config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config.xml')
     
@@ -115,6 +59,7 @@ def compute_magnitudes_with_scamp_and_scmag(qml):
     # 2) save sc3ml
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
     utils.write_sc3ml(jquake, sc3ml)
+    utils.logger.debug('initial sc3ml file from jquake: %s\n' % sc3ml)
 
     # 3) compute amplitudes with scamp
     _, scamp_result = tempfile.mkstemp(suffix='.sc3ml')
@@ -129,16 +74,9 @@ def compute_magnitudes_with_scamp_and_scmag(qml):
     result, error_message = scamp.communicate()
     with open(scamp_result, 'w') as f:
         f.write(result.decode('utf-8'))
-
-    if utils.DEBUG:
-        sys.stderr.write('initial sc3ml file from jquake: %s\n' % sc3ml)
-        # sys.stderr.write('mseed data: %s\n' % data)
-        sys.stderr.write('scamp cmd: %s\n' % ' '.join(scamp_cmd))
-        sys.stderr.write('scamp return code: %s\n' % scamp.returncode)
-        sys.stderr.write('scamp result: %s\n' % scamp_result)
-    else:
-        os.remove(sc3ml)
-        # os.remove(data)
+    utils.logger.debug('scamp cmd: %s\n' % ' '.join(scamp_cmd))
+    utils.logger.debug('scamp return code: %s\n' % scamp.returncode)
+    utils.logger.debug('scamp result: %s\n' % scamp_result)
 
     # 4) compute magnitudes with scmag
     scmag_cmd = [
@@ -150,9 +88,8 @@ def compute_magnitudes_with_scamp_and_scmag(qml):
     scmag = subprocess.Popen(scmag_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     result, error_message2 = scmag.communicate()
     error_message += error_message2
-    if utils.DEBUG:
-        sys.stderr.write('scmag cmd: %s\n' % ' '.join(scmag_cmd))
-        sys.stderr.write('scmag return code: %s\n' % scmag.returncode)
+    utils.logger.debug('scmag cmd: %s\n' % ' '.join(scmag_cmd))
+    utils.logger.debug('scmag return code: %s\n' % scmag.returncode)
 
     result = result.decode('utf-8')
     result = result.replace(' encoding="UTF-8"', '')
@@ -162,15 +99,16 @@ def compute_magnitudes_with_scamp_and_scmag(qml):
     if utils.DEBUG:
         _, scmag_result = tempfile.mkstemp(suffix='.sc3ml')
         _, qml_result = tempfile.mkstemp(suffix='.xml')
-        sys.stderr.write('scmag result: %s\n' % scmag_result)
-        sys.stderr.write('qml result: %s\n' % qml_result)
+        utils.logger.debug('scmag result: %s\n' % scmag_result)
+        utils.logger.debug('qml result: %s\n' % qml_result)
         with open(scmag_result, 'w') as f:
             f.write(result)
         with open(qml_result, 'w') as f:
             f.write(qml)
     else:
-        os.remove(scamp_result)
+        os.remove(sc3ml)
         os.remove(inventory)
+        os.remove(scamp_result)
     return {
         'message': error_message.decode('utf-8'),
         'quakeml': qml
