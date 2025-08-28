@@ -11,7 +11,8 @@
     "type-check": "vue-tsc --noEmit -p tsconfig.app.json --composite false",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
     "format": "prettier --write src/",
-    "install-hook": "cp pre-commit .git/hooks/ && chmod +x .git/hooks/pre-commit"
+    "install-hook": "cp pre-commit .git/hooks/ && chmod +x .git/hooks/pre-commit",
+    "server": "uvicorn main:app"
   },
   "dependencies": {
     "@mdi/font": "^7.3.67",

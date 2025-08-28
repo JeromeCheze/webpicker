@@ -1,5 +1,4 @@
 import os
-import sys
 import json
 import logging
 import tempfile
@@ -125,6 +124,7 @@ def write_sc3ml(jquake, filename):
 
 def get_inventory(jquake):
     _, inv_filename = tempfile.mkstemp(suffix=".xml")
+    _, sc3_inv_filename = tempfile.mkstemp(suffix=".xml")
     data = [
         'level=response',
         'format=xml'
@@ -137,16 +137,24 @@ def get_inventory(jquake):
         data.append(f'{wfid["@networkCode"]} {wfid["@stationCode"]} {loc} {wfid["@channelCode"]} {t} {t}')
     req_data = '\r\n'.join(data).encode('utf-8')
     r = Request('http://%s/fdsnws/station/1/query' % CONFIG.fdsnws.station_host,
-                               data=req_data, headers={'Content-Type': 'text/plain'})
+                data=req_data, headers={'Content-Type': 'text/plain'})
     inv = urlopen(r).read()
+    logger.debug(f'[utils.get_inventory] StationXML file: {inv_filename}')
     with open(inv_filename, 'w') as f:
         f.write(inv.decode('utf-8'))
     prog = os.path.join(CONFIG.seiscomp.root, 'bin', 'fdsnxml2inv')
-    conv = subprocess.Popen([prog, inv_filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    sc3ml, _ = conv.communicate()
-    with open(inv_filename, 'w') as f:
+    fdsnxml2inv = subprocess.Popen([prog, inv_filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    sc3ml, err = fdsnxml2inv.communicate()
+    logger.debug(f'[utils.get_inventory] fdsnxml2inv return code: {fdsnxml2inv.returncode}')
+    if fdsnxml2inv.returncode != 0:
+        logger.error(f'[utils.get_inventory] fdsnxml2inv error message: {err}')
+        raise ValueError(err)
+    logger.debug(f'[utils.get_inventory] Sc3ML inventory file: {sc3_inv_filename}')
+    with open(sc3_inv_filename, 'w') as f:
         f.write(sc3ml.decode('utf-8'))
-    return inv_filename
+    if not DEBUG:
+        os.remove(inv_filename)
+    return sc3_inv_filename
 
 def commit_with_scdispatch(qml):
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
