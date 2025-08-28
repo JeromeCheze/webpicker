@@ -23,24 +23,24 @@
     "url": "http://thesee.unice.fr:9001/get_pick"
   },
   "fdsnws": {
-    "dataselect_host": "embiez.unice.fr:9000",
-    "event_host": "embiez.unice.fr:9000",
-    "station_host": "embiez.unice.fr:9000"
+    "dataselect_host": "event-processor.oca:8000",
+    "event_host": "event-processor.oca:8000",
+    "station_host": "event-processor.oca:8000"
   },
   "nll": {
-    "area": "hiper2",
+    "area": "geoazur",
     "enabled": true,
     "url": "http://thesee.unice.fr:10000"
   },
   "seiscomp": {
-    "messaging_host": "event-processor-ayiti.oca:18180/webpicker",
-    "root": "/home/cheze/seiscomp",
+    "messaging_host": "event-processor.oca:18180/webpicker",
+    "root": "/home/sysop/seiscomp",
     "schema_version": "0.13"
   },
   "skhash": {
     "enabled": true,
     "path": "/home/sysop/SKHASH/SKHASH/SKHASH.py",
-    "python_interpreter": "/home/sysop/.venv/bin/python3"
+    "python_interpreter": "/home/sysop/venv/bin/python3"
   },
   "title": "WebPicker"
 }
