@@ -128,6 +128,7 @@ function getPickTooltip(p: QPick) {
     <tr><th>Pick time</th><td>${p.time.value}</td></tr>
     <tr><th>WFID</th><td>${p.waveformID.seedid}</td></tr>
     <tr><th>Filter</th><td>${p.filterID || '-'}</td></tr>
+    <tr><th>Method</th><td>${p.methodID || '-'}</td></tr>
     <tr><th>Uncertainty</th><td>${p.time.uncertainty || '-'}</td></tr>
     <tr><th>Creation time</th><td>${p.creationInfo?.creationTime}</td></tr>
     <tr><th>Author</th><td>${p.creationInfo?.author}</td></tr>
