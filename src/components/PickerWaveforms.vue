@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DenoiseProcessor, RotateProcessor, FilterProcessor, SpectrogramProcessor, IntegrationProcessor } from '@/utils/waveformProcessor'
+import { DenoiseProcessor, RotateProcessor, FilterProcessor, SpectrogramProcessor, IntegrationProcessor, GapInterpolationProcessor } from '@/utils/waveformProcessor'
 import type { FilterOptions, StationRefTimes, ChartData, WaveformProcessInterface, PickerToolbarOptions } from '@/types'
 import type { QPick } from '@/lib/sismojs/src/core/event/types'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
@@ -27,6 +27,7 @@ const props = defineProps<{
   controller: AbortController
   commonScale: boolean
   integration: boolean
+  interpolate: boolean
   hideRefTimes: boolean
   tttEnabled: boolean
   timeWindow: [number, number]
@@ -46,6 +47,7 @@ const integrationProcessor = new IntegrationProcessor()
 const rotateProcessor = new RotateProcessor()
 const filterProcessor = new FilterProcessor()
 const spectrogramProcessor = new SpectrogramProcessor()
+const interpolateProcessor = new GapInterpolationProcessor()
 
 const loading = ref(false)
 
@@ -85,6 +87,7 @@ const azimuth = computed(() => {
 async function processWaveforms() {
   loading.value = true
   let data = waveformData.value
+  data = await interpolateProcessor.setEnable(props.interpolate).process(data)
   data = await denoiseProcessor.setEnable(props.denoiser).process(data)
   data = await integrationProcessor.setEnable(props.integration).process(data)
   data = await rotateProcessor.setEnable(props.rotation === 'ZRT').setAzimuth(azimuth.value).process(data)
@@ -422,6 +425,7 @@ watch(() => spectrogramRange.value, (value, oldValue) => {
 watch([
   () => props.activeStation,
   () => props.denoiser,
+  () => props.interpolate,
   () => props.integration,
   () => props.rotation,
   () => props.filter,

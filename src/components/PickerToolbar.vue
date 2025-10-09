@@ -55,6 +55,10 @@ function toggleDetector() {
   props.modelValue.detector = !props.modelValue.detector
 }
 
+function toggleInterpolate() {
+  props.modelValue.interpolate = !props.modelValue.interpolate
+}
+
 function toggleIntegration() {
   props.modelValue.integration = !props.modelValue.integration
 }
@@ -91,6 +95,8 @@ watch(() => store.keydown, (newValue) => {
     toogleSpectrogram()
   } else if (newValue === store.settings['keybinding.toggleDetector'] && store.config?.detector.enabled) {
     toggleDetector()
+  } else if (newValue === store.settings['keybinding.toggleInterpolate']) {
+    toggleInterpolate()
   } else if (newValue === store.settings['keybinding.toggleIntegration']) {
     toggleIntegration()
   } else if (newValue === store.settings['keybinding.toggleCommonScale']) {
@@ -123,6 +129,12 @@ watch(() => sortValue.value, (value: number) => props.modelValue.sort = sortOpti
       <v-btn :title="`Set phase P (${store.settings['keybinding.setPhaseP']})`">P</v-btn>
       <v-btn :title="`Set phase S (${store.settings['keybinding.setPhaseS']})`">S</v-btn>
     </v-btn-toggle>
+    <!-- INTERPOLATE SWITCH -->
+    <v-btn
+      :title="`Toggle interpolate (${store.settings['keybinding.toggleInterpolate']})`"
+      @click="toggleInterpolate"
+      :active="props.modelValue.interpolate"
+      class="mx-1">i</v-btn>
     <!-- DENOISER SWITCH -->
     <v-btn
       v-if="store.config?.denoiser.enabled"

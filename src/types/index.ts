@@ -83,6 +83,7 @@ export interface PickerToolbarOptions {
   detector: boolean
   commonScale: boolean
   integration: boolean
+  interpolate: boolean
   tttEnabled: boolean
 }
 

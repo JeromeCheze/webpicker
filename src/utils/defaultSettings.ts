@@ -40,6 +40,7 @@ export default {
   'keybinding.toggleSpectrogram': 'h',
   'keybinding.toggleRotation': 'z',
   'keybinding.toggleIntegration': 'i',
+  'keybinding.toggleInterpolate': 'shift+i',
   'keybinding.toggleDetector': 'p',
   'keybinding.toggleCommonScale': '=',
   'keybinding.toggleTTT': 't',

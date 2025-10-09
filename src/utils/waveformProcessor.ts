@@ -47,6 +47,39 @@ abstract class BaseProcessor {
   }
 }
 
+export class GapInterpolationProcessor extends BaseProcessor {
+  task(data: WaveformProcessInterface[]): Promise<WaveformProcessInterface[]> {
+    return new Promise((resolve, reject) => {
+      const result: WaveformProcessInterface[] = []
+      for (const currData of data) {
+        let i = 0
+        let values: number[] = []
+        while (i < currData.values.length) {
+          const chunk = currData.values.slice(i)
+          let gapStart = chunk.indexOf(null)
+          if (gapStart < 0) {
+            values = values.concat(chunk as number[])
+            break
+          }
+          values = values.concat(chunk.slice(0, gapStart) as number[])
+          let gapEnd = gapStart
+          for (; gapEnd < chunk.length && chunk[gapEnd] == null; gapEnd++);
+          const y0 = chunk[gapStart - 1]!
+          const y1 = chunk[gapEnd]!
+          const nbStep = 1 + gapEnd - gapStart
+          const yFactor = (y1 - y0) / nbStep
+          for (let x = gapStart; x < gapEnd; x++) {
+            values.push(y0 + (x - gapStart) * yFactor)
+          }
+          i += gapEnd
+        }
+        result.push({ id: currData.id, start: currData.start, step: currData.step, values })
+      }
+      resolve(result)
+    })
+  }
+}
+
 export class IntegrationProcessor extends BaseProcessor {
   task(data: WaveformProcessInterface[]): Promise<WaveformProcessInterface[]> {
     return new Promise((resolve, reject) => {
@@ -108,9 +141,10 @@ export class SpectrogramProcessor extends BaseProcessor {
           const chunkFft: number[] = []
           values.push(chunkFft)
           for (let j = 1; j < nbFreqBin; j++) {
-            chunkFft.push(db[j])
-            zMin = zMin == null ? db[j] : Math.min(zMin, db[j])
-            zMax = zMax == null ? db[j] : Math.max(zMax, db[j])
+            const v = db[j] === -Infinity ? 0 : db[j]
+            chunkFft.push(v)
+            zMin = zMin == null ? v : Math.min(zMin, v)
+            zMax = zMax == null ? v : Math.max(zMax, v)
           }
         }
         result.push({

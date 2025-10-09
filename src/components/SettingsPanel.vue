@@ -97,6 +97,7 @@ const struct: StructItem[] = [
       { label: 'Align To S', key: 'keybinding.alignToS', type: 'text' },
       { label: 'Toggle Filter', key: 'keybinding.toggleFilter', type: 'text' },
       { label: 'Toggle Denoiser', key: 'keybinding.toggleDenoiser', type: 'text' },
+      { label: 'Toggle Interpolate', key: 'keybinding.toggleInterpolate', type: 'text' },
       { label: 'Toggle Integration', key: 'keybinding.toggleIntegration', type: 'text' },
       { label: 'Toggle Spectrogram', key: 'keybinding.toggleSpectrogram', type: 'text' },
       { label: 'Toggle Rotation (ZNE/ZRT)', key: 'keybinding.toggleRotation', type: 'text' },

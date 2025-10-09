@@ -58,6 +58,7 @@ const toolbarValue = ref({
   detector: false,
   commonScale: false,
   integration: false,
+  interpolate: false,
   tttEnabled: true
 } as PickerToolbarOptions)
 
@@ -207,9 +208,11 @@ function handleSelectStation(netsta: string) {
       seedIds.push(tr.stats.id)
     }
   }
+
   toolbarValue.value.components = components
   toolbarValue.value.seedids = seedIds
   pickerStation.value = netsta
+  handleSelectPicks([])
 }
 
 
@@ -451,6 +454,7 @@ onBeforeUnmount(() => {
       :filter="filterValue"
       :controller="controller"
       :common-scale="toolbarValue.commonScale"
+      :interpolate="toolbarValue.interpolate"
       :integration="toolbarValue.integration"
       :hide-ref-times="props.noEvent"
       :time-window="sliderTimeWindow"
