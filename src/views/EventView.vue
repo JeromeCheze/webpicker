@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import ComputeMagnitudesComponent from '@/components/ComputeMagnitudesComponent.vue'
 import type { QArrival, QMagnitude } from '@/lib/sismojs/src/core/event/types'
+import ActionScriptsComponent from '@/components/ActionScriptsComponent.vue'
 import StationMagnitudeChart from '@/components/StationMagnitudeChart.vue'
 import RelocateComponent from '@/components/RelocateComponent.vue'
 import CommitComponent from '@/components/CommitComponent.vue'
@@ -183,6 +184,8 @@ onMounted(() => {
     <v-spacer></v-spacer>
     <v-btn @click="enablePicker" :title="`picker (${store.settings['keybinding.togglePicker']})`"><v-icon>mdi-pulse</v-icon></v-btn>
     <v-btn @click="allOriginDisplay = !allOriginDisplay" title="Inspect event" :active="allOriginDisplay" :disabled="store.eventManager.current.event != null && store.eventManager.current.event.origin.length === 0"><v-icon>mdi-list-box-outline</v-icon></v-btn>
+    <v-divider vertical class="mx-2"></v-divider>
+    <ActionScriptsComponent/>
     <v-divider vertical class="mx-2"></v-divider>
     <RelocateComponent/>
     <ComputeMagnitudesComponent v-if="store.eventManager.current.origin != null"/>

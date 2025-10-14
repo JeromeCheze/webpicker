@@ -52,6 +52,7 @@ export interface ColObject {
 }
 
 export interface WebpickerForm {
+  catalog: string | null
   start: string
   end: string
   minlat: number
@@ -170,6 +171,11 @@ export interface StationRefTimes {
   }
 }
 
+export interface ActionScript {
+  label: string
+  script: string
+}
+
 export interface Config {
   access: {
     restricted: boolean
@@ -191,10 +197,14 @@ export interface Config {
     enabled: boolean
     url: string
   }
+  locsat:{
+    profiles: string[]
+  }
   nll: {
     enabled: boolean
     url: string
     area: string
+    profiles: string[]
   }
   skhash: {
     enabled: boolean
@@ -206,6 +216,7 @@ export interface Config {
     station_host: string
     dataselect_host: string
   }
+  action_scripts: ActionScript[]
   commit_strategy: 'script' | 'scdispatch'
   commit_script: string
   seiscomp: {

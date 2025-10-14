@@ -11,6 +11,7 @@
       }
     }
   },
+  "action_scripts": [],
   "agency": "OCA",
   "commit_script": "#!/bin/sh\n# $1 : path to the QuakeML file to commit\n>&2 echo \"OK\"",
   "commit_strategy": "script",
@@ -23,23 +24,33 @@
     "url": "http://thesee.unice.fr:9001/get_pick"
   },
   "fdsnws": {
-    "dataselect_host": "event-processor.oca:8000",
-    "event_host": "event-processor.oca:8000",
-    "station_host": "event-processor.oca:8000"
+    "dataselect_host": "encelade.unice.fr:8000",
+    "event_host": "encelade.unice.fr:8000",
+    "station_host": "encelade.unice.fr:8000"
+  },
+  "locsat": {
+    "profiles": [
+      "iasp91",
+      "tab"
+    ]
   },
   "nll": {
     "area": "geoazur",
     "enabled": true,
+    "profiles": [
+      "iasp91",
+      "prem"
+    ],
     "url": "http://thesee.unice.fr:10000"
   },
   "seiscomp": {
-    "messaging_host": "event-processor.oca:18180/webpicker",
+    "messaging_host": "encelade.unice.fr:18180/webpicker",
     "root": "/home/sysop/seiscomp",
     "schema_version": "0.13"
   },
   "skhash": {
     "enabled": true,
-    "path": "/home/sysop/SKHASH/SKHASH/SKHASH.py",
+    "path": "/home/sysop/SKHASH/src/SKHASH/SKHASH.py",
     "python_interpreter": "/home/sysop/venv/bin/python3"
   },
   "title": "WebPicker"

@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { type QEvent, type QEventDescription, type QArrivalDescription, type QPickDescription, QResourceIdentifier, QOrigin } from '@/lib/sismojs/src/core/event/types'
+import { deepCopy, getId, getLocalStorageDefault, setLocalStorage, toQuakeML } from '@/utils'
 import { parse } from '@/lib/sismojs/src/core/event/quakeml'
 import { computed, ref, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
-import { deepCopy, getId, getLocalStorageDefault, setLocalStorage, toQuakeML } from '@/utils'
 
 const store = useAppStore()
 
 const relocateOptions: { [locator: string]: string[] } = {
-  LOCSAT: ['iasp91', 'tab'],
-  NonLinLoc: ['puna_3_35_005', 'iasp91', 'prem', 'virtual']
+  LOCSAT: store.config?.locsat.profiles || ['iasp91', 'tab'],
+  NonLinLoc: store.config?.nll.profiles || ['iasp91', 'prem']
 }
 
 const relocParams = getLocalStorageDefault('relocateParams', {
@@ -43,6 +43,11 @@ watch(() => profile.value, () => {
     locator: locator.value,
     profile: profile.value
   })
+})
+
+watch(() => store.config, () => {
+  relocateOptions.LOCSAT = store.config?.locsat.profiles || ['iasp91', 'tab']
+  relocateOptions.NonLinLoc = store.config?.nll.profiles || ['iasp91', 'prem']
 })
 
 function relocate() {

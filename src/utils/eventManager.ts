@@ -143,6 +143,24 @@ export default class EventManager {
     })
   }
 
+  getCatalogs(baseUrl: string) {
+    console.log('[EventManager.loadCatalogs]')
+    return new Promise<string[]>((resolve, _) => {
+      fetch(`${baseUrl}/fdsnws/event/1/catalogs`).then(response => {
+        if (response.status === 200) {
+          response.text().then(text => {
+            const doc = new DOMParser().parseFromString(text, 'application/xml')
+            const result = []
+            for (const catalog of doc.querySelectorAll('Catalog')) {
+              result.push(catalog.textContent)
+            }
+            resolve(result)
+          })
+        }
+      })
+    })
+  }
+
   loadEvents(baseUrl: string, params: FDSNEventParams) {
     console.log(`[EventManager.loadEvents] ${JSON.stringify(params)}`)
     return new Promise<void>((resolve, reject) => {

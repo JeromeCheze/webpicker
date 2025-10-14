@@ -17,6 +17,7 @@ const route = useRoute()
 const catalogForm = ref()
 const map = ref(null as L.Map | null)
 const area = ref(null as SelectArea | null)
+const rememberCatalogConstraints = ref(getLocalStorageDefault('catalogConstraints', null) != null)
 const rememberTimeConstraints = ref(getLocalStorageDefault('timeConstraints', null) != null)
 const rememberGeoConstraints = ref(getLocalStorageDefault('geoConstraints', null) != null)
 const rememberDepthConstraints = ref(getLocalStorageDefault('depthConstraints', null) != null)
@@ -25,6 +26,7 @@ const form = ref(loadForm() as WebpickerForm)
 const mapContainer = ref(null as HTMLElement | null)
 const starttime = ref(new Date(form.value.start))
 const endtime = ref(new Date(form.value.end))
+const catalogs = ref([] as string[])
 
 const toNumber = (v: number | string) => typeof v === 'string' ? parseFloat(v) : v
 
@@ -43,6 +45,7 @@ function loadForm() {
   const start = new Date(now.getTime() - 86400e3 * 7)
   const end = new Date(now.getTime() + 86400e3)
   return Object.assign({
+    catalog: null,
     ...getLocalStorageDefault('timeConstraints', {
       start: start.toISOString().split('T')[0],
       end: end.toISOString().split('T')[0],
@@ -102,9 +105,16 @@ function handleSubmit() {
   if (catalogForm.value.validate()) {
     const query: Record<string, string> = {}
     for (const [k, v] of Object.entries(form.value)) {
-      if (v != null) {
+      if (v != null && v != '') {
         query[k] = `${v}`
       }
+    }
+    if (rememberCatalogConstraints.value) {
+      setLocalStorage('catalogConstraints', {
+        catalog: form.value.catalog
+      })
+    } else {
+      localStorage.removeItem('catalogConstraints')
     }
     if (rememberTimeConstraints.value) {
       setLocalStorage('timeConstraints', {
@@ -184,6 +194,10 @@ onMounted(() => {
   if (map.value == null && area.value == null) {
     initMapAndArea()
   }
+  store.eventManager.getCatalogs('.').then(values => {
+    values.sort()
+    catalogs.value = values
+  })
 })
 </script>
 
@@ -201,11 +215,19 @@ onMounted(() => {
             </v-col>
             <v-col cols="6">
               <v-row>
+                <v-col cols="12" class="py-0">
+                  <v-select label="Catalog" hide-details="auto" density="compact" v-model="form.catalog" :items="catalogs" clearable/>
+                </v-col>
+                <v-col cols="12" class="py-0">
+                  <v-checkbox v-model="rememberCatalogConstraints" label="Remember catalog constraints"/>
+                </v-col>
+              </v-row>
+              <v-row>
                 <v-col cols="6" class="py-0">
-                  <DateField density="compact" v-model="starttime" label="Start"/>
+                  <DateField density="compact" hide-details="auto" v-model="starttime" label="Start"/>
                 </v-col>
                 <v-col cols="6" class="py-0">
-                  <DateField density="compact" v-model="endtime" label="End"/>
+                  <DateField density="compact" hide-details="auto" v-model="endtime" label="End"/>
                 </v-col>
                 <v-col cols="12" class="py-0">
                   <v-checkbox v-model="rememberTimeConstraints" label="Remember time constraints"/>
@@ -213,18 +235,18 @@ onMounted(() => {
               </v-row>
               <v-row>
                 <v-col cols="6" class="py-0">
-                  <NumberField density="compact" v-model="form.minlat" label="Latitude min" suffix="°" :rules="[checkLatitude]"/>
+                  <NumberField density="compact" hide-details="auto" v-model="form.minlat" label="Latitude min" suffix="°" :rules="[checkLatitude]"/>
                 </v-col>
                 <v-col cols="6" class="py-0">
-                  <NumberField density="compact" v-model="form.maxlat" label="Latitude max" suffix="°" :rules="[checkLatitude]"/>
+                  <NumberField density="compact" hide-details="auto" v-model="form.maxlat" label="Latitude max" suffix="°" :rules="[checkLatitude]"/>
                 </v-col>
               </v-row>
               <v-row>
                 <v-col cols="6" class="py-0">
-                  <NumberField density="compact" v-model="form.minlon" label="Longitude min" suffix="°" :rules="[checkLongitude]"/>
+                  <NumberField density="compact" hide-details="auto" v-model="form.minlon" label="Longitude min" suffix="°" :rules="[checkLongitude]"/>
                 </v-col>
                 <v-col cols="6" class="py-0">
-                  <NumberField density="compact" v-model="form.maxlon" label="Longitude max" suffix="°" :rules="[checkLongitude]"/>
+                  <NumberField density="compact" hide-details="auto" v-model="form.maxlon" label="Longitude max" suffix="°" :rules="[checkLongitude]"/>
                 </v-col>
                 <v-col cols="12" class="py-0">
                   <v-checkbox v-model="rememberGeoConstraints" label="Remember geographical constraints"/>

@@ -134,10 +134,14 @@ class ConfigFDSNWS(BaseModel):
     event_host: str
     station_host: str
 
+class ConfigLocsat(BaseModel):
+    profiles: list[str]
+
 class ConfigNLL(BaseModel):
     enabled: bool = False
     url: str
     area: str
+    profiles: list[str]
 
 class ConfigSeiscomp(BaseModel):
     messaging_host: str
@@ -149,14 +153,20 @@ class ConfigSkhash(BaseModel):
     python_interpreter: str
     path: str
 
+class ConfigActionScript(BaseModel):
+    label: str
+    script: str
+
 class Config(BaseModel):
     access: ConfigAccess
     agency: str
+    action_scripts: list[ConfigActionScript]
     commit_script: str
     commit_strategy: Literal['script', 'scdispatch']
     denoiser: ConfigDenoiser
     detector: ConfigDetector
     fdsnws: ConfigFDSNWS
+    locsat: ConfigLocsat
     nll: ConfigNLL
     seiscomp: ConfigSeiscomp
     skhash: ConfigSkhash

@@ -17,12 +17,8 @@ logger = logging.getLogger(__name__)
 def load_config():
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     filename = os.path.join(curr_dir, '..', 'config.json')
-    commit_script = os.path.join(curr_dir, '..', 'commit_script.sh')
     with open(filename, 'r') as f:
         config = Config(**json.load(f))
-    with open(commit_script, 'w') as f:
-        f.write(config.commit_script)
-    os.chmod(commit_script, 0o755)
     return config
 
 CONFIG = load_config()
@@ -175,22 +171,35 @@ def commit_with_scdispatch(qml):
         'return_code': scdispatch.returncode
     }
 
-def commit_script(qml):
-    curr_dir = os.path.dirname(os.path.abspath(__file__))
-    commit_script = os.path.join(curr_dir, '..', 'commit_script.sh')
+def launch_script(script_text, qml):
+    script_fd, script_filename = tempfile.mkstemp()
+    with open(script_filename, 'w') as f:
+        f.write(script_text)
+    os.close(script_fd)
+    os.chmod(script_filename, 0o755)
     _, qml_filename = tempfile.mkstemp(suffix='.xml')
-    logger.debug(f'commit quakeml file: {qml_filename}\n')
+    logger.debug(f'quakeml file: {qml_filename}\n')
     with open(qml_filename, 'wb') as f:
         f.write(qml)
-    p = subprocess.Popen([commit_script, qml_filename],
-                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    _, error_message = p.communicate()
+    p = subprocess.Popen([script_filename, qml_filename],
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
+    stdout, stderr = p.communicate()
     if not DEBUG:
         os.remove(qml_filename)
+    os.remove(script_filename)
     return {
-        'message': error_message.decode('utf-8'),
+        'message': f"""\
+[stdout]
+{stdout.decode('utf-8')}
+
+[stderr]
+{stderr.decode('utf-8')}""",
         'return_code': p.returncode
     }
+
+def commit_script(qml):
+    return launch_script(CONFIG.commit_script, qml)
 
 def get_region(lat, lon):
     return Regions.getRegionName(lat, lon)

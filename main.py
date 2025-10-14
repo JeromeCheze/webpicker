@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, Depends, status
 from app.model import WSActivityResponse, WSChatResponse, WSDetectorArgs, WSDenoiserArgs, TTTQuery, ActivityData, WSUpdateEventResponse, WSVersionResponse, ChatData
 
-ADMIN_PASSWORD = '95a2c6749a7c1a90f6fe6775c1d82a03'
+ADMIN_PASSWORD = '94da2becb9d86711399f6054e8ea6382'
 
 class ConnectionManager:
     def __init__(self):
@@ -205,6 +205,11 @@ async def compute_focal_mechanisms(request: Request, username: Annotated[str, De
     qml = await request.body()
     return processing.compute_focal_mechanisms_with_skhash(qml, params=request.query_params)
 
+@app.post('/api/script/{index}', tags=['api'])
+async def launch_script(index: int, request: Request, username: Annotated[str, Depends(check_authentication)]):
+    qml = await request.body()
+    return utils.launch_script(utils.CONFIG.action_scripts[index].script, qml)
+
 @app.post('/api/commit', tags=['api'])
 async def commit(request: Request, username: Annotated[str, Depends(check_authentication)]):
     qml = await request.body()
@@ -216,14 +221,16 @@ async def commit(request: Request, username: Annotated[str, Depends(check_authen
         result = { 'message': f'invalid commit strategy: {utils.CONFIG.commit_strategy}', 'return_code': 1 }
     return result
 
-@app.get('/fdsnws/event/1/query', tags=['fdsnws'])
-def get_events(request: Request, username: Annotated[str, Depends(check_authentication)]):
+@app.get('/fdsnws/event/1/{query}', tags=['fdsnws'])
+def get_events(query: str, request: Request, username: Annotated[str, Depends(check_authentication)]):
     if utils.CONFIG.access.restricted:
         utils.apply_user_rules('GET', username, request.query_params)
-    req = f'http://{utils.CONFIG.fdsnws.event_host}/fdsnws/event/1/query?{urllib.parse.urlencode(request.query_params)}'
-    response = urllib.request.urlopen(req)
-    return Response(content=response.read(), media_type=response.headers.get_content_type())
-
+    req = f'http://{utils.CONFIG.fdsnws.event_host}/fdsnws/event/1/{query}?{urllib.parse.urlencode(request.query_params)}'
+    try:
+        response = urllib.request.urlopen(req)
+        return Response(content=response.read(), media_type=response.headers.get_content_type())
+    except urllib.request.HTTPError as e:
+        return 
 @app.get('/fdsnws/station/1/query', tags=['fdsnws'])
 def get_stations(request: Request, username: Annotated[str, Depends(check_authentication)]):
     req = f'http://{utils.CONFIG.fdsnws.station_host}/fdsnws/station/1/query?{request.query_params}'
