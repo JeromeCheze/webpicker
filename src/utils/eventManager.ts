@@ -150,9 +150,9 @@ export default class EventManager {
         if (response.status === 200) {
           response.text().then(text => {
             const doc = new DOMParser().parseFromString(text, 'application/xml')
-            const result = []
+            const result: string[] = []
             for (const catalog of doc.querySelectorAll('Catalog')) {
-              result.push(catalog.textContent)
+              result.push(catalog.textContent as string)
             }
             resolve(result)
           })
