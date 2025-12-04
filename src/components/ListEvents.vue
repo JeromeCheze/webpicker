@@ -113,6 +113,18 @@ const header = ref([
     enabled: false
   },
   {
+    label: 'Method',
+    valueAccessor: (e: QEvent) => e.preferredOriginID.referredObject.methodID,
+    textAccessor: (e: QEvent) => e.preferredOriginID.referredObject.methodID,
+    enabled: false
+  },
+  {
+    label: 'Earth Model',
+    valueAccessor: (e: QEvent) => e.preferredOriginID.referredObject.earthModelID,
+    textAccessor: (e: QEvent) => e.preferredOriginID.referredObject.earthModelID,
+    enabled: false
+  },
+  {
     label: 'Type',
     valueAccessor: (e: QEvent) => e.type,
     textAccessor: (e: QEvent) => e.type,
