@@ -42,9 +42,11 @@ function commit() {
           if (event.stationMagnitude.find(x => x.publicID === staMag.publicID) == null) {
             event.addStationMagnitude(staMag.desc)
           }
-          const amp = staMag.amplitudeID.referredObject
-          if (event.amplitude.find(x => x.publicID === amp.publicID) == null) {
-            event.addAmplitude(amp.desc)
+          if (staMag.amplitudeID != null) {
+            const amp = staMag.amplitudeID.referredObject
+            if (event.amplitude.find(x => x.publicID === amp.publicID) == null) {
+              event.addAmplitude(amp.desc)
+            }
           }
         }
       }

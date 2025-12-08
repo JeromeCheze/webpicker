@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { useAppStore } from '@/stores/app'
-import { deepCopy, toQuakeML } from '@/utils'
-import { ref, watch } from 'vue'
-import { parse } from '@/lib/sismojs/src/core/event/quakeml'
 import { QAmplitude, QEvent, QMagnitude, QOrigin, QResourceIdentifier, QStationMagnitude } from '@/lib/sismojs/src/core/event/types'
+import { parse } from '@/lib/sismojs/src/core/event/quakeml'
+import { deepCopy, getId, toQuakeML } from '@/utils'
+import { useAppStore } from '@/stores/app'
+import { ref, watch } from 'vue'
 
 const MAG_TYPE_WEIGHT = ['M', 'MLv']
 
@@ -87,15 +87,32 @@ function computeMagnitudes() {
               const bb = MAG_TYPE_WEIGHT.indexOf(b.type!)
               return aa < bb ? -1 : aa > bb ? 1 : 0
             })
-            for (const amplitude of result[0].amplitude) {
-              new QAmplitude(amplitude.desc, store.eventManager.current.event!.id)
-            }
-            for (const staMag of result[0].stationMagnitude) {
-              new QStationMagnitude(staMag.desc, store.eventManager.current.event!.id)
-            }
             const originMagnitudes: QMagnitude[] = []
             for (const magnitude of result[0].magnitude) {
-              originMagnitudes.push(new QMagnitude(magnitude.desc, store.eventManager.current.event!.id))
+              const magDesc = { ...magnitude.desc }
+              magDesc['@publicID'] = getId('Magnitude')
+              if (magnitude.stationMagnitudeContribution != null) {
+                magDesc['stationMagnitudeContribution'] = []
+                for (const smc of magnitude.stationMagnitudeContribution) {
+                  const smcDesc = { ...smc.desc }
+                  const staMag = smc.stationMagnitudeID.referredObject as QStationMagnitude
+                  const staMagDesc = { ...staMag.desc }
+                  const staMagId = getId('StationMagnitude')
+                  staMagDesc['@publicID'] = staMagId
+                  smcDesc['stationMagnitudeID'] = staMagId
+                  magDesc['stationMagnitudeContribution'].push(smcDesc)
+                  if (staMag.amplitudeID != null) {
+                    const amp = staMag.amplitudeID.referredObject as QAmplitude
+                    const ampDesc = { ...amp.desc }
+                    const ampId = getId('Amplitude')
+                    ampDesc['@publicID'] = ampId
+                    staMagDesc['amplitudeID'] = ampId
+                    new QAmplitude(ampDesc, store.eventManager.current.event!.id)
+                  }
+                  new QStationMagnitude(staMagDesc, store.eventManager.current.event!.id)
+                }
+              }
+              originMagnitudes.push(new QMagnitude(magDesc, store.eventManager.current.event!.id))
             }
             store.eventManager.current.magnitude = originMagnitudes.slice(-1)[0]
             store.eventManager.current.originMagnitudes = originMagnitudes

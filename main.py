@@ -29,13 +29,14 @@ class ConnectionManager:
             await websocket.send_json(WSVersionResponse(data=version).model_dump())
 
     def disconnect(self, websocket: WebSocket):
-        del self.connection_mapping[websocket]
+        if websocket in self.connection_mapping:
+            del self.connection_mapping[websocket]
 
     async def broadcast_message(self, msg: typing.Any):
         for websocket in self.connection_mapping.keys():
             try:
                 await websocket.send_json(msg)
-            except WebSocketDisconnect:
+            except Exception:
                 self.disconnect(websocket)
 
     async def broadcast_activity(self):

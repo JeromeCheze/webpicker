@@ -51,11 +51,6 @@ def relocate_with_scp_api(qml, profile):
 def compute_magnitudes_with_scamp_and_scmag(qml):
     scp_config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config.xml')
     jquake = utils.quakeml_to_jquake(qml, remove_prefix_id=True)
-    old_origin_id = jquake[0]['preferredOriginID']
-    new_origin_id = utils.gen_id()
-    po = jquake[0]['origin'][0] if isinstance(jquake[0]['origin'], list) else jquake[0]['origin']
-    jquake[0]['preferredOriginID'] = new_origin_id
-    po['@publicID'] = new_origin_id
 
     # 1) get inventory
     inventory = utils.get_inventory(jquake)
@@ -99,14 +94,6 @@ def compute_magnitudes_with_scamp_and_scmag(qml):
     result = result.replace(' encoding="UTF-8"', '')
 
     qml = utils.sc3ml_to_quakeml(result, add_prefix_id=False)
-    jquake = utils.quakeml_to_jquake(qml, remove_prefix_id=True)
-    po = jquake[0]['origin'][0] if isinstance(jquake[0]['origin'], list) else jquake[0]['origin']
-    magnitudes = jquake[0]['magnitude'] if isinstance(jquake[0]['magnitude'], list) else [jquake[0]['magnitude']]
-    jquake[0]['preferredOriginID'] = old_origin_id
-    po['@publicID'] = old_origin_id
-    for magnitude in magnitudes:
-        magnitude['originID'] = old_origin_id
-    qml = utils.jquake_to_quakeml(jquake, add_prefix_id=True)
 
     if utils.DEBUG:
         _, scmag_result = tempfile.mkstemp(suffix='.sc3ml')

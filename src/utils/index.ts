@@ -133,6 +133,7 @@ export function pushUnique(l: any[], item: any) {
   return l
 }
 
+let count = 0
 export function getId(prefix: string) {
   const now = new Date().toISOString()
   return prefix === 'Event'
@@ -140,7 +141,8 @@ export function getId(prefix: string) {
     : [
         prefix,
         now.replace(/[-:]/g, '').replace('T', '.').slice(0, 18),
-        (Math.random() * 1000).toFixed(0)
+        // (Math.random() * 1000).toFixed(0)
+        (count++).toFixed(0)
       ].join('-')
 }
 
