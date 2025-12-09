@@ -1,14 +1,42 @@
 <script setup lang="ts">
 import type { ScatterOptions } from '@/lib/lichen/src/types'
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
-import { useAppStore } from '@/stores/app'
 import DataUtils from '@/lib/lichen/src/dataUtils'
+import { useAppStore } from '@/stores/app'
 import Lichen from '@/lib/lichen/src'
 
 const store = useAppStore()
 const chartContainer = ref()
 const chart = ref(null as Lichen | null)
+const emits = defineEmits(['selectStation'])
 
+
+function handleChartSelection(x: [number | null, number | null], y: [number | null, number | null]) {
+  if (chart.value == null) {
+    return false
+  }
+  const selectedStation = new Set<string>()
+  const series = chart.value.opt.series as ScatterOptions[]
+  for (const serie of series) {
+    for (const point of serie.data) {
+      const inXRange = x[0] == null && x[1] == null
+        ? true
+        : x[0] != null && x[1] != null && point.x >= x[0] && point.x <= x[1]
+          ? true
+          : false
+      const inYRange = y[0] == null && y[1] == null
+        ? true
+        : y[0] != null && y[1] != null && point.y >= y[0] && point.y <= y[1]
+          ? true
+          : false
+      if (inXRange && inYRange) {
+        selectedStation.add(point.name.split('.').slice(0, 2).join('.'))
+      }
+    }
+  }
+  emits('selectStation', [...selectedStation])
+  return false
+}
 
 function drawChart() {
   if (store.eventManager.current.arrivals == null || store.eventManager.current.event == null || store.eventManager.current.origin == null || chartContainer.value == null) {
@@ -88,7 +116,8 @@ function drawChart() {
     height: 238,
     type: 'scatter',
     zoom: null,
-    series
+    series,
+    hooks: { beforeSelection: handleChartSelection }
   })
 }
 

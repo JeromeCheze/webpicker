@@ -9,6 +9,10 @@ const MAG_TYPE_WEIGHT = ['M', 'MLv']
 
 const store = useAppStore()
 
+const props = defineProps<{
+  stationSelection: string[] | null
+}>()
+
 const computeMagnitudeStations = ref({} as { [netsta: string]: boolean })
 const locked = ref(false)
 
@@ -21,10 +25,20 @@ function setMagnitudeStation() {
     if (arrival.pickID.referredObject != null) {
       const netsta = arrival.pickID.referredObject.waveformID.netsta
       // stations[netsta] = arrival.timeWeight != null && arrival.timeWeight > 0
-      stations[netsta] = true
+      if (props.stationSelection != null && props.stationSelection.indexOf(netsta) < 0) {
+        stations[netsta] = false
+      } else {
+        stations[netsta] = true
+      }
     }
   }
   computeMagnitudeStations.value = stations
+}
+
+function handleSelectAll() {
+  for (const netsta of Object.keys(computeMagnitudeStations.value)) {
+    computeMagnitudeStations.value[netsta] = true
+  }
 }
 
 function computeMagnitudes() {
@@ -136,7 +150,10 @@ function computeMagnitudes() {
   })
 }
 
-watch(() => store.eventManager.current.arrivals, () => {
+watch([
+  () => store.eventManager.current.arrivals,
+  () => props.stationSelection
+], () => {
   setMagnitudeStation()
 }, { immediate: true })
 
@@ -178,6 +195,7 @@ watch(() => store.keydown, (newValue) => {
         </v-row>
       </v-card-text>
       <v-card-actions class="justify-center">
+        <v-btn @click="handleSelectAll" size="small">select all</v-btn>
         <v-btn @click="computeMagnitudes" size="small">Compute</v-btn>
       </v-card-actions>
     </v-card>

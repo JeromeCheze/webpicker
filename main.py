@@ -33,7 +33,7 @@ class ConnectionManager:
             del self.connection_mapping[websocket]
 
     async def broadcast_message(self, msg: typing.Any):
-        for websocket in self.connection_mapping.keys():
+        for websocket in list(self.connection_mapping.keys()):
             try:
                 await websocket.send_json(msg)
             except Exception:

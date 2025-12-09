@@ -29,6 +29,7 @@ const allOriginDisplay = ref(false)
 
 const contextMenu = ref(false)
 const contextMenuPos = ref([0, 0] as [number, number])
+const magnitudeStations = ref(null as string[] | null)
 
 function enablePicker() {
   picker.value = true
@@ -129,6 +130,10 @@ function setCurrentMagnitude(m: QMagnitude) {
   store.eventManager.status.commit = 'required'
 }
 
+function setMagnitudeStations(value: string[]) {
+  magnitudeStations.value = value
+}
+
 watch(() => store.keydown, (newValue) => {
   if (newValue === store.settings['keybinding.togglePicker']) {
     if (picker.value) {
@@ -188,7 +193,7 @@ onMounted(() => {
     <ActionScriptsComponent/>
     <v-divider vertical class="mx-2"></v-divider>
     <RelocateComponent/>
-    <ComputeMagnitudesComponent v-if="store.eventManager.current.origin != null"/>
+    <ComputeMagnitudesComponent v-if="store.eventManager.current.origin != null" :stationSelection="magnitudeStations"/>
     <CommitComponent @update="loadEvent"/>
   </v-app-bar>
   <EventInspector v-if="allOriginDisplay && !picker"/>
@@ -212,7 +217,7 @@ onMounted(() => {
           <v-card-text class="pa-0">
             <ResVsDistChart v-if="activeChart === 'residual'" @contextmenu="handleContextMenu"/>
             <TraveltimeChart v-if="activeChart === 'traveltime'" @contextmenu="handleContextMenu"/>
-            <StationMagnitudeChart v-if="activeChart === 'magnitude'"/>
+            <StationMagnitudeChart v-if="activeChart === 'magnitude'" @selectStation="setMagnitudeStations"/>
             <FirstMotion v-if="activeChart === 'firstmotion'"/>
           </v-card-text>
         </v-card>
