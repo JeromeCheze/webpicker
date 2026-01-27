@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { getLocalStorageDefault, setLocalStorage } from '@/utils'
+import { VFileUpload } from 'vuetify/labs/VFileUpload'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import type { WebpickerForm } from '@/types'
@@ -13,6 +14,7 @@ import NumberField from './NumberField.vue'
 const store = useAppStore()
 const router = useRouter()
 const route = useRoute()
+const emits = defineEmits(['quakeML'])
 
 const catalogForm = ref()
 const map = ref(null as L.Map | null)
@@ -27,6 +29,8 @@ const mapContainer = ref(null as HTMLElement | null)
 const starttime = ref(new Date(form.value.start))
 const endtime = ref(new Date(form.value.end))
 const catalogs = ref([] as string[])
+const tab = ref('query')
+const quakeML = ref(undefined as File | undefined)
 
 const toNumber = (v: number | string) => typeof v === 'string' ? parseFloat(v) : v
 
@@ -102,6 +106,10 @@ function applyBoundsToArea() {
 }
 
 function handleSubmit() {
+  if (quakeML.value != null) {
+    emits('quakeML', quakeML.value)
+    return
+  }
   if (catalogForm.value.validate()) {
     const query: Record<string, string> = {}
     for (const [k, v] of Object.entries(form.value)) {
@@ -204,12 +212,17 @@ onMounted(() => {
 <template>
   <v-form @submit.prevent="handleSubmit" ref="catalogForm">
     <v-card max-width="1000" :style="{ marginLeft: 'auto', marginRight: 'auto' }">
-      <v-card-title>
-        <div class="text-h5 text-medium-emphasis ps-2 py-2">Query catalog</div>
-      </v-card-title>
       <v-card-text>
         <v-container fluid>
           <v-row>
+            <v-col cols="12">
+              <v-tabs v-model="tab">
+                <v-tab value="query" text="Query catalog"></v-tab>
+                <v-tab value="upload" text="Upload QuakeML"></v-tab>
+              </v-tabs>
+            </v-col>
+          </v-row>
+          <v-row :hidden="tab !== 'query'">
             <v-col cols="6">
               <div ref="mapContainer"></div>
             </v-col>
@@ -274,6 +287,11 @@ onMounted(() => {
                   <v-checkbox v-model="rememberMagConstraints" label="Remember magnitude constraints"/>
                 </v-col>
               </v-row>
+            </v-col>
+          </v-row>
+          <v-row :hidden="tab !== 'upload'">
+            <v-col cols="12">
+              <v-file-upload density="compact" title="QuakeML" v-model="quakeML" accept=".xml,application/xml,text/xml"></v-file-upload>
             </v-col>
           </v-row>
         </v-container>

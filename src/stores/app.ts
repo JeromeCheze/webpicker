@@ -32,6 +32,7 @@ const baseUrl = computed(() => window.location.pathname.includes('event') ? '..'
 // Class handling inventory and waveforms data management
 const dataManager = new DataManager()
 const events = ref([] as QEvent[])
+const catalogMode = ref<'query' | 'upload'>('query')
 const eventManager = new EventManager(
   dataManager,
   newEvents => events.value = newEvents
@@ -71,6 +72,7 @@ fetch(`${baseUrl.value}/app/config`).then(response => {
 
 export const useAppStore = defineStore('app', () => {
   return {
+    catalogMode,
     authorId,
     chatMessages,
     newVersion,

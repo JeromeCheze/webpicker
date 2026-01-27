@@ -100,6 +100,13 @@ function unsetPickStatus() {
 }
 
 function loadEvent() {
+  if (store.catalogMode === 'upload') {
+    const event = store.eventManager.events.find(x => x.publicID === props.eventid)
+    if (event != null) {
+      store.eventManager.setEvent(event)
+      return
+    }
+  }
   store.notification.push({ type: 'progress', value: { text: 'Loading event description...', percent: -1 } })
   store.eventManager.loadEvent('..', props.eventid!).catch(msg => {
     store.notification.push({ type: 'warning', value: msg })

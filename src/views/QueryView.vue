@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import type { QEvent } from '@/lib/sismojs/src/core/event/types'
 import type { FDSNEventParams } from '@/lib/sismojs/src/types'
+import { parse } from '@/lib/sismojs/src/core/event/quakeml'
 import { onBeforeRouteUpdate, useRoute } from 'vue-router'
 import EventsStats from '@/components/EventsStats.vue'
 import CatalogForm from '@/components/CatalogForm.vue'
@@ -22,12 +24,32 @@ function handleQuery(params: FDSNEventParams) {
   if (Object.keys(params).length > 1) {
     loading.value = true
     store.eventManager.loadEvents('.', params).then(() => {
+      store.catalogMode = 'query'
       form.value = false
     }).finally(() => {
       loading.value = false
     })
   } else {
     console.warn('Cannot get events, no params')
+  }
+}
+
+function handleQuakeML(quakeML: File) {
+  try {
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const doc = new DOMParser().parseFromString(reader.result as string, 'application/xml')
+        store.eventManager.events = parse(doc) as QEvent[]
+        form.value = false
+        store.catalogMode = 'upload'
+      } catch (error) {
+        store.notification.push({ type: 'error', value: error })
+      }
+    }
+    reader.readAsText(quakeML)
+  } catch (error) {
+    store.notification.push({ type: 'error', value: error })
   }
 }
 
@@ -63,7 +85,7 @@ onBeforeRouteUpdate(async (to, from) => {
   </v-row>
   <v-row v-if="form">
     <v-col cols="12">
-      <CatalogForm/>
+      <CatalogForm @quakeML="handleQuakeML"/>
     </v-col>
   </v-row>
   <v-row v-else>
