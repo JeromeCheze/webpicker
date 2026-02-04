@@ -193,12 +193,14 @@ async def compute_magnitudes(request: Request, username: Annotated[str, Depends(
     return processing.compute_magnitudes_with_scamp_and_scmag(qml)
 
 @app.post('/api/relocate', tags=['api'])
-async def relocate(locator: Literal['LOCSAT', 'NonLinLoc'], profile: str, request: Request, username: Annotated[str, Depends(check_authentication)]):
+async def relocate(locator: Literal['LOCSAT', 'NonLinLoc', 'VELEST'], profile: str, request: Request, username: Annotated[str, Depends(check_authentication)]):
     qml = await request.body()
     if locator == 'LOCSAT':
         result = processing.relocate_with_scp_api(qml, profile)
     elif locator == 'NonLinLoc':
         result = processing.relocate_with_nll(qml, profile)
+    elif locator == 'VELEST':
+        result = processing.relocate_with_velest(qml, profile)
     return result
 
 @app.post('/api/compute_focal_mechanisms', tags=['api'])

@@ -197,13 +197,18 @@ export interface Config {
     enabled: boolean
     url: string
   }
-  locsat:{
+  locsat: {
     profiles: string[]
   }
   nll: {
     enabled: boolean
     url: string
     area: string
+    profiles: string[]
+  }
+  velest: {
+    enabled: boolean
+    url: string
     profiles: string[]
   }
   skhash: {

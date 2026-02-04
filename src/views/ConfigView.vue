@@ -185,6 +185,34 @@ function handleApplyConfig() {
       </v-row>
       <v-row>
         <v-col cols="12">
+          <h4 class="mt-2">VELEST</h4>
+          <v-table density="compact">
+            <tbody>
+              <tr>
+                <th>Enabled</th>
+                <td><v-checkbox v-model="config.velest.enabled" label="Enable" density="compact" hide-details="auto"></v-checkbox></td>
+              </tr>
+              <tr>
+                <th>URL</th>
+                <td><v-text-field v-model="config.velest.url" density="compact" hide-details="auto"></v-text-field></td>
+              </tr>
+              <tr>
+                <th>Profiles</th>
+                <td>
+                  <v-text-field
+                    :model-value="config.velest.profiles.join(',')"
+                    density="compact"
+                    hide-details="auto"
+                    @update:modelValue="v => config!.velest.profiles = v.split(',')"
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </v-table>
+        </v-col>
+      </v-row>
+      <v-row>
+        <v-col cols="12">
           <h4 class="mt-2">SKHASH</h4>
           <v-table density="compact">
             <tbody>

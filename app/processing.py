@@ -6,6 +6,7 @@ from app import utils
 from app import locsat_locator
 from app.model import TTTQuery
 from datetime import datetime, UTC
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 from seiscomp.seismology import TravelTimeTableInterface
 
@@ -31,6 +32,42 @@ def relocate_with_nll(qml, profile):
             'message': result['message'],
             'quakeml': result['data']
         }
+        
+    except Exception as exception:
+        return {
+            'message': str(exception),
+            'quakeml': qml
+        }
+
+def relocate_with_velest(qml, profile):
+    try:
+        data = {
+            'args': {
+                'config': {
+                    'profile': profile
+                }
+            },
+            'fdsn_station': f'http://{utils.CONFIG.fdsnws.station_host}',
+            'data': qml.decode('utf-8')
+        }
+        response = urlopen(Request('%s/velest/locate' % utils.CONFIG.velest.url, data=json.dumps(data).encode('utf-8'), headers={'Content-Type': 'application/json'}))
+        return_code = response.status
+        if return_code == 204:
+            raise ValueError('VELEST returned no solution')
+        if return_code == 200:
+            return {
+                'message': '',
+                'quakeml': response.read().decode('utf-8')
+            }
+        error = json.load(response)
+        raise ValueError(f"Error from VELEST WS: {error['detail']}")
+
+    except HTTPError as exception:
+        return {
+            'message': f'VELEST ERROR {exception.code}: {exception.fp.read()}',
+            'quakeml': qml
+        }
+
     except Exception as exception:
         return {
             'message': str(exception),

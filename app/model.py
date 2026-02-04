@@ -143,6 +143,11 @@ class ConfigNLL(BaseModel):
     area: str
     profiles: list[str]
 
+class ConfigVelest(BaseModel):
+    enabled: bool = False
+    url: str
+    profiles: list[str]
+
 class ConfigSeiscomp(BaseModel):
     messaging_host: str
     root: str
@@ -168,6 +173,7 @@ class Config(BaseModel):
     fdsnws: ConfigFDSNWS
     locsat: ConfigLocsat
     nll: ConfigNLL
+    velest: ConfigVelest
     seiscomp: ConfigSeiscomp
     skhash: ConfigSkhash
     title: str

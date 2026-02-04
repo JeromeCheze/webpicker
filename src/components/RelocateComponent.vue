@@ -8,8 +8,13 @@ import { useAppStore } from '@/stores/app'
 const store = useAppStore()
 
 const relocateOptions: { [locator: string]: string[] } = {
-  LOCSAT: store.config?.locsat.profiles || ['iasp91', 'tab'],
-  NonLinLoc: store.config?.nll.profiles || ['iasp91', 'prem']
+  LOCSAT: store.config?.locsat.profiles || ['iasp91', 'tab']
+}
+if (store.config?.nll.enabled) {
+  relocateOptions.NonLinLoc = store.config?.nll.profiles || ['iasp91', 'prem']
+}
+if (store.config?.velest.enabled) {
+  relocateOptions.VELEST = store.config?.velest.profiles || ['iasp91', 'prem']
 }
 
 const relocParams = getLocalStorageDefault('relocateParams', {
@@ -93,7 +98,7 @@ function relocate() {
           QResourceIdentifier.mainKey = 'sandbox'
           const result = parse(doc) as QEvent[]
           QResourceIdentifier.mainKey = saveMainKey
-          const newOrigin = result[0].origin[0]
+          const newOrigin = result[0].preferredOriginID.referredObject
           const newOriginID = getId('Origin')
           newOrigin.desc['@publicID'] = newOriginID
           for (const arrival of newOrigin.arrival) {
