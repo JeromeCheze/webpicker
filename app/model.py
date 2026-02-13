@@ -118,16 +118,16 @@ class ConfigUser(BaseModel):
     rules: dict[str, str]
 
 class ConfigAccess(BaseModel):
-    restricted: bool
-    users: dict[str, ConfigUser]
+    restricted: bool = False
+    users: dict[str, ConfigUser] = {}
 
 class ConfigDenoiser(BaseModel):
-    enabled: bool
-    url: str
+    enabled: bool = False
+    url: str = ''
 
 class ConfigDetector(BaseModel):
-    enabled: bool
-    url: str
+    enabled: bool = False
+    url: str = ''
 
 class ConfigFDSNWS(BaseModel):
     dataselect_host: str
@@ -135,45 +135,45 @@ class ConfigFDSNWS(BaseModel):
     station_host: str
 
 class ConfigLocsat(BaseModel):
-    profiles: list[str]
+    profiles: list[str] = ['iasp91', 'tab']
 
 class ConfigNLL(BaseModel):
     enabled: bool = False
-    url: str
-    area: str
-    profiles: list[str]
+    url: str = ''
+    area: str = ''
+    profiles: list[str] = []
 
 class ConfigVelest(BaseModel):
     enabled: bool = False
-    url: str
-    profiles: list[str]
+    url: str = ''
+    profiles: list[str] = []
 
 class ConfigSeiscomp(BaseModel):
-    messaging_host: str
-    root: str
-    schema_version: str
+    messaging_host: str = ''
+    root: str = ''
+    schema_version: str = '0.13'
 
 class ConfigSkhash(BaseModel):
     enabled: bool = False
-    python_interpreter: str
-    path: str
+    python_interpreter: str = ''
+    path: str = ''
 
 class ConfigActionScript(BaseModel):
     label: str
     script: str
 
 class Config(BaseModel):
-    access: ConfigAccess
-    agency: str
-    action_scripts: list[ConfigActionScript]
-    commit_script: str
-    commit_strategy: Literal['script', 'scdispatch']
-    denoiser: ConfigDenoiser
-    detector: ConfigDetector
+    access: ConfigAccess = ConfigAccess()
+    agency: str = 'OCA'
+    action_scripts: list[ConfigActionScript] = []
+    commit_script: str = '#!/bin/sh\n# $1 : path to the QuakeML file to commit\n>&2 echo "OK"'
+    commit_strategy: Literal['script', 'scdispatch'] = 'script'
+    denoiser: ConfigDenoiser = ConfigDenoiser()
+    detector: ConfigDetector = ConfigDetector()
     fdsnws: ConfigFDSNWS
-    locsat: ConfigLocsat
-    nll: ConfigNLL
-    velest: ConfigVelest
-    seiscomp: ConfigSeiscomp
-    skhash: ConfigSkhash
-    title: str
+    locsat: ConfigLocsat = ConfigLocsat()
+    nll: ConfigNLL = ConfigNLL()
+    velest: ConfigVelest = ConfigVelest()
+    seiscomp: ConfigSeiscomp = ConfigSeiscomp()
+    skhash: ConfigSkhash = ConfigSkhash()
+    title: str = 'WebPicker'

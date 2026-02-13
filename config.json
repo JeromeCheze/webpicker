@@ -43,6 +43,14 @@
     ],
     "url": "http://thesee.unice.fr:10000"
   },
+  "velest": {
+    "enabled": true,
+    "profiles": [
+      "iasp91",
+      "prem"
+    ],
+    "url": "http://thesee.unice.fr:10007"
+  },
   "seiscomp": {
     "messaging_host": "encelade.unice.fr:18180/webpicker",
     "root": "/home/sysop/seiscomp",
