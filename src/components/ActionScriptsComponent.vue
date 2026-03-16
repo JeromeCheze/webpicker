@@ -7,6 +7,7 @@ interface ScriptOutput {
   return_code: number | null
   message: string | null
   minified: boolean
+  loading: boolean
 }
 
 const store = useAppStore()
@@ -15,10 +16,13 @@ const dialog = ref(false)
 
 const status = ref(store.config?.action_scripts.map(x => ({
   return_code: null,
-  message: null
+  message: null,
+  loading: false,
+  minified: true
 })) as ScriptOutput[])
 
 function handleActionScript(index: number) {
+  status.value[index].loading = true
   fetch(`../api/script/${index}`, {
     method: 'POST',
     headers: {'Content-Type': 'application/xml'},
@@ -31,6 +35,8 @@ function handleActionScript(index: number) {
         status.value[index].return_code = statusResponse.return_code
       })
     }
+  }).finally(() => {
+    status.value[index].loading = false
   })
 }
 
@@ -62,12 +68,16 @@ watch(() => store.config, () => {
         <v-row v-for="(item, i) in store.config?.action_scripts" :key="i">
           <v-col cols="2">
             <bv-btn-group>
-              <v-btn icon="mdi-play-outline" variant="plain" @click="() => handleActionScript(i)" title="Run script"></v-btn>
+              <v-progress-circular indeterminate v-if="status[i].loading" size="20" class="ml-2"></v-progress-circular>
+              <v-btn v-else icon="mdi-play-outline" variant="plain" @click="() => handleActionScript(i)" title="Run script"></v-btn>
               <v-menu>
                 <template #activator="{ props: menuProps }">
                   <v-btn icon="mdi-dots-vertical" variant="plain" v-bind="menuProps" title="More actions"></v-btn>
                 </template>
                 <v-list>
+                  <v-list-item @click="status[i].minified = !status[i].minified">
+                    <v-list-item-title >{{ status[i].minified ? 'Show' : 'Hide' }} script</v-list-item-title>
+                  </v-list-item>
                   <v-list-item @click="() => clearOuputs(i)">
                     <v-list-item-title >Clear outputs</v-list-item-title>
                   </v-list-item>
@@ -75,19 +85,14 @@ watch(() => store.config, () => {
               </v-menu>
             </bv-btn-group>
           </v-col>
-          <v-col cols="10">
+          <v-col cols="10" class="d-flex align-center">
             <h4>
-              <v-btn
-                variant="plain"
-                :icon="status[i].minified ? 'mdi-eye-outline' : 'mdi-eye-off-outline'"
-                title="Toggle script"
-                @click="status[i].minified = !status[i].minified"/>
               {{ item.label }}
             </h4>
-            <v-textarea v-model="item.script" readonly v-if="!status[i].minified"></v-textarea>
           </v-col>
           <v-col cols="2" v-if="status[i].return_code != null">[{{ status[i].return_code }}]</v-col>
           <v-col cols="10" v-if="status[i].return_code != null" :style="{ maxHeight: 400, overflow: 'auto' }">
+            <v-textarea v-model="item.script" readonly v-if="status[i].minified === false"></v-textarea>
             <pre>{{ status[i].message }}</pre>
           </v-col>
         </v-row>
