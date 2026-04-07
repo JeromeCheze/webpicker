@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { QEvent, QResourceIdentifier, QStationMagnitude } from '@/lib/sismojs/src/core/event/types'
 import { useAppStore } from '@/stores/app'
-import { deepCopy, toQuakeML } from '@/utils'
+import { toQuakeML } from '@/utils'
 import { ref, watch } from 'vue'
 
 const store = useAppStore()
@@ -23,51 +22,7 @@ function commit() {
   console.log('[CommitComponent.commit]')
   locked.value = true
   store.notification.push({ type: 'progress', value: { text: 'Commit...', percent: -1 } })
-  const saveMainKey = QResourceIdentifier.mainKey
-  QResourceIdentifier.mainKey = 'sandbox'
-  const event = new QEvent(deepCopy(store.eventManager.current.event!.desc))
-  for (const pick of store.eventManager.current.userPicks) {
-    event.addPick(pick.desc)
-  }
-  if (event.origin.find(x => x.publicID === store.eventManager.current.origin!.publicID) == null) {
-    event.addOrigin(store.eventManager.current.origin!.desc)
-    event.setPreferredOriginID(store.eventManager.current.origin!.publicID)
-  }
-  for (const m of store.eventManager.current.originMagnitudes) {
-    if (event.magnitude.find(x => x.publicID === m.publicID) == null) {
-      event.addMagnitude(m.desc)
-      if (m.stationMagnitudeContribution != null) {
-        for (const smc of m.stationMagnitudeContribution) {
-          const staMag: QStationMagnitude = smc.stationMagnitudeID.referredObject
-          if (event.stationMagnitude.find(x => x.publicID === staMag.publicID) == null) {
-            event.addStationMagnitude(staMag.desc)
-          }
-          if (staMag.amplitudeID != null) {
-            const amp = staMag.amplitudeID.referredObject
-            if (event.amplitude.find(x => x.publicID === amp.publicID) == null) {
-              event.addAmplitude(amp.desc)
-            }
-          }
-        }
-      }
-    }
-  }
-  if (store.eventManager.current.magnitude != null) {
-    event.setPreferredMagnitudeID(store.eventManager.current.magnitude.publicID)
-  } else {
-    event.setPreferredMagnitudeID(undefined)
-  }
-  if (store.eventManager.current.focalMechanism != null) {
-    if (event.focalMechanism.find(x => x.publicID === store.eventManager.current.focalMechanism!.publicID) == null) {
-      event.addFocalMechanism(store.eventManager.current.focalMechanism.desc)
-    }
-    event.setPreferredFocalMechanismID(store.eventManager.current.focalMechanism.publicID)
-  }
-
-  event.type = eventType.value
-  event.typeCertainty = eventTypeCertainty.value
-  event.preferredOriginID.referredObject.evaluationStatus = evaluationStatus.value
-  QResourceIdentifier.mainKey = saveMainKey
+  const event = store.eventManager.buildCurrentEvent()
   console.log(`[CommitComponent] POST: ${JSON.stringify([event.desc])}`)
   fetch(`../api/commit`, {
     method: 'POST',
@@ -116,6 +71,16 @@ watch(() => store.eventManager.current.event, () => {
   eventTypeCertainty.value = typeCertainty != null ? typeCertainty : null
   evaluationStatus.value = evalStatus != null ? evalStatus : null
 }, { immediate: true })
+
+watch([() => eventType.value, () => eventTypeCertainty.value, () => evaluationStatus.value], () => {
+  if (store.eventManager.current.event != null) {
+    store.eventManager.current.event.type = eventType.value
+    store.eventManager.current.event.typeCertainty = eventTypeCertainty.value
+  }
+  if (store.eventManager.current.origin != null) {
+    store.eventManager.current.origin.evaluationStatus = evaluationStatus.value
+  }
+})
 </script>
 
 <template>

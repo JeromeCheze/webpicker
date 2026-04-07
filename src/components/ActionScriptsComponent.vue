@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { QEventDescription, QMagnitudeDescription, QOriginDescription } from '@/lib/sismojs/src/core/event/types'
 import { useAppStore } from '@/stores/app'
 import { toQuakeML } from '@/utils'
 import { ref, watch } from 'vue'
@@ -23,10 +24,11 @@ const status = ref(store.config?.action_scripts.map(x => ({
 
 function handleActionScript(index: number) {
   status.value[index].loading = true
+  const event = store.eventManager.buildCurrentEvent()
   fetch(`../api/script/${index}`, {
     method: 'POST',
     headers: {'Content-Type': 'application/xml'},
-    body: toQuakeML(store.eventManager.current.event!.desc)
+    body: toQuakeML(event.desc)
   }).then(response => {
     if (response.status === 200) {
       response.json().then(statusResponse => {

@@ -1,4 +1,4 @@
-import { QArrival, QFocalMechanism, QOrigin, QPick, QResourceIdentifier, type QEvaluationMode, type QEvent, type QMagnitude, type QOriginDescription, type QPickDescription } from '@/lib/sismojs/src/core/event/types'
+import { QArrival, QFocalMechanism, QOrigin, QPick, QResourceIdentifier, QStationMagnitude, type QEvaluationMode, QEvent, type QMagnitude, type QOriginDescription, type QPickDescription } from '@/lib/sismojs/src/core/event/types'
 import { deepCopy, DISCARDED_EVENT_TYPES, getDefault, getId, kmToDeg } from '.'
 import type { FDSNEventParams } from '@/lib/sismojs/src/types'
 import type { EventViewStatus, PickMap } from '@/types'
@@ -141,6 +141,51 @@ export default class EventManager {
         })
       }
     })
+  }
+
+  buildCurrentEvent() {
+    const saveMainKey = QResourceIdentifier.mainKey
+    QResourceIdentifier.mainKey = 'sandbox'
+    const event = new QEvent(deepCopy(this.current.event!.desc))
+    for (const pick of this.current.userPicks) {
+      event.addPick(pick.desc)
+    }
+    if (event.origin.find(x => x.publicID === this.current.origin!.publicID) == null) {
+      event.addOrigin(this.current.origin!.desc)
+      event.setPreferredOriginID(this.current.origin!.publicID)
+    }
+    for (const m of this.current.originMagnitudes) {
+      if (event.magnitude.find(x => x.publicID === m.publicID) == null) {
+        event.addMagnitude(m.desc)
+        if (m.stationMagnitudeContribution != null) {
+          for (const smc of m.stationMagnitudeContribution) {
+            const staMag: QStationMagnitude = smc.stationMagnitudeID.referredObject
+            if (event.stationMagnitude.find(x => x.publicID === staMag.publicID) == null) {
+              event.addStationMagnitude(staMag.desc)
+            }
+            if (staMag.amplitudeID != null) {
+              const amp = staMag.amplitudeID.referredObject
+              if (event.amplitude.find(x => x.publicID === amp.publicID) == null) {
+                event.addAmplitude(amp.desc)
+              }
+            }
+          }
+        }
+      }
+    }
+    if (this.current.magnitude != null) {
+      event.setPreferredMagnitudeID(this.current.magnitude.publicID)
+    } else {
+      event.setPreferredMagnitudeID(undefined)
+    }
+    if (this.current.focalMechanism != null) {
+      if (event.focalMechanism.find(x => x.publicID === this.current.focalMechanism!.publicID) == null) {
+        event.addFocalMechanism(this.current.focalMechanism.desc)
+      }
+      event.setPreferredFocalMechanismID(this.current.focalMechanism.publicID)
+    }
+    QResourceIdentifier.mainKey = saveMainKey
+    return event
   }
 
   getCatalogs(baseUrl: string) {
