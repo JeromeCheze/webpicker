@@ -64,22 +64,24 @@ watch(() => store.keydown, (newValue) => {
 })
 
 watch(() => store.eventManager.current.event, () => {
-  const type = store.eventManager.current.event?.type
-  const typeCertainty = store.eventManager.current.event?.typeCertainty
-  const evalStatus = store.eventManager.current.origin?.evaluationStatus
+  const type = store.eventManager.current.type
+  const typeCertainty = store.eventManager.current.typeCertainty
+  const evalStatus = store.eventManager.current.evaluationStatus
   eventType.value = type != null ? type : 'earthquake'
   eventTypeCertainty.value = typeCertainty != null ? typeCertainty : null
   evaluationStatus.value = evalStatus != null ? evalStatus : null
 }, { immediate: true })
 
-watch([() => eventType.value, () => eventTypeCertainty.value, () => evaluationStatus.value], () => {
-  if (store.eventManager.current.event != null) {
-    store.eventManager.current.event.type = eventType.value
-    store.eventManager.current.event.typeCertainty = eventTypeCertainty.value
-  }
-  if (store.eventManager.current.origin != null) {
-    store.eventManager.current.origin.evaluationStatus = evaluationStatus.value
-  }
+watch(() => eventType.value, () => {
+  store.eventManager.current.type = eventType.value
+})
+
+watch(() => eventTypeCertainty.value, () => {
+  store.eventManager.current.typeCertainty = eventTypeCertainty.value
+})
+
+watch(() => evaluationStatus.value, () => {
+  store.eventManager.current.evaluationStatus = evaluationStatus.value
 })
 </script>
 

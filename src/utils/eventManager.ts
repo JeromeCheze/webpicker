@@ -1,4 +1,4 @@
-import { QArrival, QFocalMechanism, QOrigin, QPick, QResourceIdentifier, QStationMagnitude, type QEvaluationMode, QEvent, type QMagnitude, type QOriginDescription, type QPickDescription } from '@/lib/sismojs/src/core/event/types'
+import { QArrival, QFocalMechanism, QOrigin, QPick, QResourceIdentifier, QStationMagnitude, type QEvaluationMode, QEvent, type QMagnitude, type QOriginDescription, type QPickDescription, type QTypeCertainty, type QEvaluationStatus } from '@/lib/sismojs/src/core/event/types'
 import { deepCopy, DISCARDED_EVENT_TYPES, getDefault, getId, kmToDeg } from '.'
 import type { FDSNEventParams } from '@/lib/sismojs/src/types'
 import type { EventViewStatus, PickMap } from '@/types'
@@ -13,6 +13,9 @@ interface EventManagerCurrent {
   originMagnitudes: QMagnitude[]
   focalMechanism: QFocalMechanism | null
   userPicks: QPick[]
+  type?: string
+  typeCertainty?: QTypeCertainty
+  evaluationStatus?: QEvaluationStatus
 }
 
 const eventManagerCurrentLogHandler: ProxyHandler<EventManagerCurrent> = {
@@ -20,7 +23,11 @@ const eventManagerCurrentLogHandler: ProxyHandler<EventManagerCurrent> = {
     return Reflect.get(t, k, r)
   },
   set (t, k, v, r) {
-    const txtValue = v instanceof Array ? v.map(x => x?.publicID) : v?.publicID
+    const txtValue = v instanceof Array
+      ? v.map(x => x.publicID)
+      : typeof v === 'string'
+        ? v
+        : v.publicID
     console.log(`[EventManager.current] set ${k.toString()} = ${JSON.stringify(txtValue)}`)
     Reflect.set(t, k, v, r)
     return true
@@ -102,23 +109,26 @@ export default class EventManager {
 
   setEvent(event: QEvent) {
     console.log('[EventManager.setEvent]')
-    this.current.event = event
     this.current.origin = event.preferredOriginID?.referredObject
     this.current.magnitude = event.preferredMagnitudeID?.referredObject
     this.current.focalMechanism = event.preferredFocalMechanismID?.referredObject
     this.current.originMagnitudes = []
     this.current.arrivals = []
     if (this.current.origin != null) {
-      if (this.current.event.magnitude != null) {
-        this.current.originMagnitudes = this.current.event.magnitude.filter(m => m.originID.id === this.current.origin!.publicID)
+      if (event.magnitude != null) {
+        this.current.originMagnitudes = event.magnitude.filter(m => m.originID.id === this.current.origin!.publicID)
       }
       this.current.arrivals = this.current.origin.arrival.map(a => a)
     }
+    this.current.type = event.type
+    this.current.typeCertainty = event.typeCertainty
+    this.current.evaluationStatus = this.current.origin?.evaluationStatus
     this.status.relocate = 'enabled'
     this.status.computeMagnitudes = 'enabled'
     this.status.commit = 'enabled'
     this.dataManager.reset()
     this.updatePickMap()
+    this.current.event = event
   }
 
   updateEvent(baseUrl: string, eventid: string) {
@@ -184,6 +194,9 @@ export default class EventManager {
       }
       event.setPreferredFocalMechanismID(this.current.focalMechanism.publicID)
     }
+    event.type = this.current.type
+    event.typeCertainty = this.current.typeCertainty
+    event.preferredOriginID.referredObject.evaluationStatus = this.current.evaluationStatus
     QResourceIdentifier.mainKey = saveMainKey
     return event
   }

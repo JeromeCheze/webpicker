@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { QEventDescription, QMagnitudeDescription, QOriginDescription } from '@/lib/sismojs/src/core/event/types'
 import { useAppStore } from '@/stores/app'
 import { toQuakeML } from '@/utils'
 import { ref, watch } from 'vue'
