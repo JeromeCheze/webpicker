@@ -24,10 +24,10 @@ const eventManagerCurrentLogHandler: ProxyHandler<EventManagerCurrent> = {
   },
   set (t, k, v, r) {
     const txtValue = v instanceof Array
-      ? v.map(x => x.publicID)
+      ? v.map(x => x?.publicID)
       : typeof v === 'string'
         ? v
-        : v.publicID
+        : v?.publicID
     console.log(`[EventManager.current] set ${k.toString()} = ${JSON.stringify(txtValue)}`)
     Reflect.set(t, k, v, r)
     return true
