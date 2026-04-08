@@ -120,7 +120,7 @@ export default class EventManager {
       }
       this.current.arrivals = this.current.origin.arrival.map(a => a)
     }
-    this.current.type = event.type
+    this.current.type = event.type != null ? event.type : 'earthquake'
     this.current.typeCertainty = event.typeCertainty
     this.current.evaluationStatus = this.current.origin?.evaluationStatus
     this.status.relocate = 'enabled'

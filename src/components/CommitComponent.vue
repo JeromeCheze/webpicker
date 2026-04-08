@@ -10,7 +10,7 @@ const emit = defineEmits(['update'])
 const eventTypeOptions = ref(['not existing', 'other event', 'earthquake', 'quarry blast', 'explosion', 'not reported', 'anthropogenic event', 'collapse', 'cavity collapse', 'mine collapse', 'building collapse', 'accidental explosion', 'chemical explosion', 'controlled explosion', 'experimental explosion', 'industrial explosion', 'mining explosion', 'road cut', 'blasting levee', 'nuclear explosion', 'induced or triggered event', 'rock burst', 'reservoir loading', 'fluid injection', 'fluid extraction', 'crash', 'plane crash', 'train crash', 'boat crash', 'atmospheric event', 'sonic boom', 'sonic blast', 'acoustic noise', 'thunder', 'avalanche', 'snow avalanche', 'debris avalanche', 'hydroacoustic event', 'ice quak', 'slide', 'landslide', 'rockslide', 'meteorite', 'volcanic eruption'])
 const eventTypeCertaintyOptions = ref(['known', 'suspected'])
 const evaluationStatusOptions = ref(['preliminary', 'confirmed', 'reviewed', 'final', 'rejected'])
-const eventType = ref('earthquake')
+const eventType = ref()
 const eventTypeCertainty = ref()
 const evaluationStatus = ref()
 const locked = ref(false)
@@ -64,12 +64,9 @@ watch(() => store.keydown, (newValue) => {
 })
 
 watch(() => store.eventManager.current.event, () => {
-  const type = store.eventManager.current.type
-  const typeCertainty = store.eventManager.current.typeCertainty
-  const evalStatus = store.eventManager.current.evaluationStatus
-  eventType.value = type != null ? type : 'earthquake'
-  eventTypeCertainty.value = typeCertainty != null ? typeCertainty : null
-  evaluationStatus.value = evalStatus != null ? evalStatus : null
+  eventType.value = store.eventManager.current.type
+  eventTypeCertainty.value = store.eventManager.current.typeCertainty
+  evaluationStatus.value = store.eventManager.current.evaluationStatus
 }, { immediate: true })
 
 watch(() => eventType.value, () => {
