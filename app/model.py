@@ -32,28 +32,39 @@ class WSUpdateEventResponse(BaseModel):
     type: Literal['updateEvent'] = 'updateEvent'
     data: str
 
-class WSDetectorArgs(BaseModel):
-    network: str
+class ArgsDataRequest(BaseModel):
     station: str
+    network: str
     location: str
     channel: str
     starttime: str
     endtime: str
-    model: str
-    dataset: str
-    url: str
-    p_threshold: float
-    s_threshold: float
-    get_probability: bool
 
-class WSDenoiserArgs(BaseModel):
-    network: str
-    station: str
-    location: str
-    channel: str
-    starttime: str
-    endtime: str
-    url: str
+class ConfigArgs(BaseModel):
+    detector: str | None = "phasenet"
+    output_format: str | None = "quakeml"
+    dataset: str | None = "original"
+    p_threshold: float | None = 0.3
+    s_threshold: float | None = 0.3
+    event_threshold: float | None = 0.3
+    denoiser: bool = False
+    amplitude: bool = False
+    query_data: ArgsDataRequest | None = None
+
+class DetectorRequestBase(BaseModel):
+    filter: str | None = "HP_2"
+    args: ConfigArgs
+    fdsn_dataselect: str
+
+class DenoisingArgs(BaseModel):
+    detector: str | None = "deepdenoiser"
+    query_data: ArgsDataRequest
+    dataset: str | None = "original"
+
+class DenoisingRequest(BaseModel):
+    fdsn_dataselect: str
+    args: DenoisingArgs
+    filter: str | None = "HP_1"
 
 class TTTQuery(BaseModel):
     latitude: float

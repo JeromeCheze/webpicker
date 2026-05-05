@@ -227,17 +227,13 @@ export default class DataManager {
 
   _downloadDenoisedWaveforms(
     baseUrl: string,
-    network: string,
-    station: string,
-    location: string,
-    channel: string,
+    wfid: string,
     starttime: string,
     endtime: string,
     signal: AbortSignal
   ): Promise<Trace[]> {
     return new Promise((resolve, reject) => {
-      const cacheKey = `${starttime}-${endtime}`
-      const args = Object.entries({ network, station, location, channel, starttime, endtime }).map(x => `${x[0]}=${x[1]}`).join('&')
+      const args = Object.entries({ wfid, starttime, endtime }).map(x => `${x[0]}=${x[1]}`).join('&')
       fetch(`${baseUrl}/api/denoiser?${args}`, {
         method: 'GET',
         signal
@@ -278,8 +274,8 @@ export default class DataManager {
       }
       if (Object.keys(dlStatus).length > 0) {
         for (const baseId of Object.keys(dlStatus)) {
-          const [net, sta, loc, cha] = baseId.replace('..', '.--.').split('.')
-          this._downloadDenoisedWaveforms(baseUrl, net, sta, loc, cha, starttime, endtime, signal).then((data: Trace[]) => {
+          const wfid = baseId.replace('..', '.--.')
+          this._downloadDenoisedWaveforms(baseUrl, wfid, starttime, endtime, signal).then((data: Trace[]) => {
             for (const tr of data) {
               const baseId = tr.stats.id.slice(0, -1)
               dlStatus[baseId] = true

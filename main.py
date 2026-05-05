@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, Depends, status
-from app.model import WSActivityResponse, WSChatResponse, WSDetectorArgs, WSDenoiserArgs, TTTQuery, ActivityData, WSUpdateEventResponse, WSVersionResponse, ChatData
+from app.model import ArgsDataRequest, ConfigArgs, DenoisingArgs, DenoisingRequest, DetectorRequestBase, WSActivityResponse, WSChatResponse, TTTQuery, ActivityData, WSUpdateEventResponse, WSVersionResponse, ChatData
 
 ADMIN_PASSWORD = '94da2becb9d86711399f6054e8ea6382'
 
@@ -134,24 +134,44 @@ async def set_app_config(password: str, request: Request, username: Annotated[st
 @app.get('/api/detector', tags=['api'])
 def get_detector_picks(wfid: str, model: str, start: str, end: str, p_thresh: float, s_thresh: float, dataset: str, username: Annotated[str, Depends(check_authentication)]):
     net, sta, loc, cha = wfid.split('.')
-    req_args = WSDetectorArgs(
-        network=net, station=sta, location=loc if loc != '' else '--', channel=cha,
-        starttime=start, endtime=end, p_threshold=p_thresh, s_threshold=s_thresh,
-        url=f'http://{utils.CONFIG.fdsnws.dataselect_host}',
-        model=model, dataset=dataset,
-        get_probability=False
+    req_args = DetectorRequestBase(
+        fdsn_dataselect=f'http://{utils.CONFIG.fdsnws.dataselect_host}',
+        args=ConfigArgs(
+            output_format='json',
+            detector=model,
+            dataset=dataset,
+            p_threshold=p_thresh,
+            s_threshold=s_thresh,
+            query_data=ArgsDataRequest(
+                network=net,
+                station=sta,
+                location=loc if loc != '' else '--',
+                channel=cha,
+                starttime=start,
+                endtime=end
+            )
+        )
     )
-    # print(req_args.model_dump_json())
     req = urllib.request.Request(utils.CONFIG.detector.url,
                                  data=req_args.model_dump_json().encode('utf-8'),
                                  headers={'Content-Type': 'application/json'})
     return Response(content=urllib.request.urlopen(req).read(), media_type='application/json')
 
 @app.get('/api/denoiser', tags=['api'])
-def get_denoised_waveforms(network: str, station: str, location: str, channel: str, starttime: str, endtime: str, username: Annotated[str, Depends(check_authentication)]):
-    req_args = WSDenoiserArgs(
-        network=network, station=station, location=location, channel=channel,
-        starttime=starttime, endtime=endtime, url=f'http://{utils.CONFIG.fdsnws.dataselect_host}'
+def get_denoised_waveforms(wfid: str, starttime: str, endtime: str, username: Annotated[str, Depends(check_authentication)]):
+    net, sta, loc, cha = wfid.split('.')
+    req_args = DenoisingRequest(
+        fdsn_dataselect=f'http://{utils.CONFIG.fdsnws.dataselect_host}',
+        args=DenoisingArgs(
+            query_data=ArgsDataRequest(
+                network=net,
+                station=sta,
+                location=loc if loc != '' else '--',
+                channel=cha,
+                starttime=starttime,
+                endtime=endtime
+            )
+        )
     )
     req = urllib.request.Request(utils.CONFIG.denoiser.url,
                                  data=req_args.model_dump_json().encode('utf-8'),
