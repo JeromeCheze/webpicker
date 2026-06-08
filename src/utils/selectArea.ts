@@ -1,18 +1,18 @@
-import L from 'leaflet'
+import * as L from 'leaflet'
 
 export default class SelectArea {
-  __customEvents: Record<string, Array<(arg: any) => void>>
-  __bounds: L.LatLngBounds
-  __rectangle: L.Rectangle
-  __north: L.Marker
-  __northeast: L.Marker
-  __east: L.Marker
-  __southeast: L.Marker
-  __south: L.Marker
-  __southwest: L.Marker
-  __west: L.Marker
-  __northwest: L.Marker
-  __map: L.Map|null
+  __customEvents: Record<string, Array<(arg: any) => void>>;
+  __bounds: L.LatLngBounds;
+  __rectangle: L.Rectangle;
+  __north: L.Marker;
+  __northeast: L.Marker;
+  __east: L.Marker;
+  __southeast: L.Marker;
+  __south: L.Marker;
+  __southwest: L.Marker;
+  __west: L.Marker;
+  __northwest: L.Marker;
+  __map: L.Map|null;
 
   constructor (bounds: L.LatLngTuple[]) {
     this.__customEvents = {}
@@ -104,12 +104,15 @@ export default class SelectArea {
       return
     }
     this.__map.dragging.disable()
-    this.__map.on('mousemove', this._moveAll, this)
+    const self = this
+    const handler = (e: L.LeafletMouseEvent) => {this._moveAll(e)}
+    // const handler = () => {console.log('moving')}
+    this.__map.on('mousemove', handler)
     this.__map.once('mouseup', () => {
       if (this.__map == null) {
         return
       }
-      this.__map.off('mousemove', this._moveAll, this)
+      this.__map.off('mousemove', handler)
       this.__map.dragging.enable()
     })
   }

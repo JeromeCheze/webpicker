@@ -1,362 +1,624 @@
-<template>
-  <v-layout row wrap class="pa-4">
-    <v-flex class="first-motion__container"></v-flex>
-    <v-flex class="text-right" xs3>
-      <table class="first-motion__table">
-        <tbody>
-          <tr>
-            <th>strike</th>
-            <td>{{ strike.toFixed() }}</td>
-          </tr>
-          <tr>
-            <th>dip</th>
-            <td>{{ dip.toFixed() }}</td>
-          </tr>
-          <tr>
-            <th>rake</th>
-            <td>{{ rake.toFixed() }}</td>
-          </tr>
-        </tbody>
-      </table>
-      <v-btn
-        small
-        @click="handleValidate"
-        :color="isDirty ? 'orange' : 'white'"
-        light
-        class="ma-1"
-      >VALIDATE</v-btn><br>
-      <v-btn small @click="handleReset" class="ma-1">RESET</v-btn>
-      <v-btn
-        small
-        @click="handleDelete"
-        v-if="focalMechanism != null && focalMechanism.nodal_planes != null"
-        class="ma-1"
-      >DELETE</v-btn>
-    </v-flex>
-  </v-layout>
-</template>
-
-<script lang="ts">
-import Vue from 'vue'
-import * as utils from '@/utils/utils'
+<script setup lang="ts">
+import { QResourceIdentifier, type QEvent, type QEventDescription, type QFocalMechanism, type QPick } from '@/lib/sismojs/src/core/event/types'
+import { setLocalStorage, getLocalStorageDefault, toQuakeML } from '@/utils'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { parse } from '@/lib/sismojs/src/core/event/quakeml'
 import BeachballEngine from '@/lib/beachball'
-import { WebpickerArrival, WebpickerEventParameters, WebpickerFocalMechanism, WebpickerInventory, WebpickerOrigin } from '@/types'
+import { useAppStore } from '@/stores/app'
+import NumberField from './NumberField.vue'
 
-const BOXSIZE = 340
-const SIZE = 3
-const NBPOINT = 50
+const store = useAppStore()
+
+const BOXSIZE = 292
 const COLOR = '#888'
+const HIRESTHRESH = 200
 
-export default Vue.extend({
-  props: ['active'],
-  data () {
-    const [strike, dip, rake] = [0, 90, 180]
-    return {
-      initialized: false,
-      oldStrike: strike,
-      oldDip: dip,
-      oldRake: rake,
-      strike,
-      dip,
-      rake,
-      stationLayerInitialized: false,
-      bbe: null as BeachballEngine | null,
-      hiresbbe: null as BeachballEngine | null,
-      stationCtx: null as CanvasRenderingContext2D | null,
-      popupCtx: null as CanvasRenderingContext2D | null,
-      stationPos: {} as {[index: string]: [number, number]}
+const BB_QUALITY_COLOR: Record<string, string> = {
+  'A': 'lime',
+  'B': 'green',
+  'C': 'orange',
+  'D': 'red'
+}
+
+const container = ref()
+
+const initialized = ref(false)
+const loading = ref(false)
+
+const skhashParams = ref([
+  { code: 'npolmin', value: 8, description: 'Minimum number of polarity data' },
+  { code: 'nmc', value: 30, description: 'Number of trials' },
+  { code: 'maxout', value: 100, description: 'Maximum number of focal mechanism outputted' },
+  { code: 'badmin', value: 2.0, description: 'Minimum number of P-polarities per event assumed to be incorrect' },
+  { code: 'max_agap', value: 200, description: 'Maximum azimuthal gap between stations in degrees' }
+])
+
+const defaultValue = [0, 90, 180]
+
+const sdr = ref([defaultValue[0], defaultValue[1], defaultValue[2]])
+const oldSdr = ref([sdr.value[0], sdr.value[1], sdr.value[2]])
+
+
+const imagebbe = new BeachballEngine(50, 40, 1.5, '../static/wasm/beachball.wasm')
+const bbe = ref(null as BeachballEngine | null)
+const hiresbbe = ref(null as BeachballEngine | null)
+let lastCall: number | null = null
+let hirestimeout: number | null = null
+let mouseDown = false
+let mouseX: number | null = null
+let mouseY: number | null = null
+
+const stationCtx = ref(null as CanvasRenderingContext2D | null)
+const stationPos = ref({} as {[netsta: string]: { pos: [number, number], pick: QPick } })
+let stationPopup: HTMLElement | null = null
+const stationPopupStyle = {
+  position: 'absolute',
+  background: '#fff',
+  padding: '3px 5px',
+  color: '#000',
+  fontSize: '12px',
+  borderRadius: '4px',
+  border: '1px solid #000'
+}
+
+const isDirty = computed(() => {
+  const [s, d, r] = sdr.value
+  const [oldS, oldD, oldR] = oldSdr.value
+  return s !== oldS || d !== oldD || r !== oldR
+})
+
+const polarizedArrivals = computed(() => {
+  if (store.eventManager.current.arrivals == null) {
+    return []
+  }
+  return store.eventManager.current.arrivals.filter(a => {
+    const p = a.pickID.referredObject
+    return a.phase === 'P' && p.polarity != null
+  })
+})
+
+const nbFM = ref(store.eventManager.current.event!.focalMechanism.length)
+
+function deg2rad(a: number) {
+  return a * Math.PI / 180
+}
+
+function handleReset() {
+  if (bbe.value == null || hiresbbe.value == null) {
+    return
+  }
+  const [oldS, oldD, oldR] = oldSdr.value
+  sdr.value = [oldS, oldD, oldR]
+  bbe.value.drawFocal(oldS, oldD, oldR, COLOR)
+  hiresbbe.value.drawFocal(oldS, oldD, oldR, COLOR)
+  store.eventManager.current.event?.setPreferredFocalMechanismID(undefined)
+  store.eventManager.current.focalMechanism = null
+  store.eventManager.status.commit = 'required'
+}
+
+function handleValidate() {
+  const [s, d, r] = sdr.value
+  store.eventManager.createFocalMechanism(s, d, r, polarizedArrivals.value.length, store.author!)
+  oldSdr.value = [s, d, r]
+}
+
+function handleStationPopup(e: MouseEvent) {
+  const bbcr = stationCtx.value!.canvas.getBoundingClientRect()
+  const x = e.clientX - bbcr.left
+  const y = e.clientY - bbcr.top
+  const content: string[] = []
+  for (const [k, v] of Object.entries(stationPos.value)) {
+    const dist = Math.sqrt(Math.pow(Math.abs(x - v.pos[0]), 2) + Math.pow(Math.abs(y - v.pos[1]), 2))
+    if (dist < 5) {
+      const text = [k]
+      if (v.pick.polarity != null) {
+        text.push(`| ${v.pick.polarity}`)
+      }
+      if (v.pick.onset != null) {
+        text.push(`(${v.pick.onset})`)
+      }
+      content.push(text.join(' '))
     }
-  },
-  computed: {
-    event (): WebpickerEventParameters {
-      return this.$store.state.currentEvent
-    },
-    origin (): WebpickerOrigin {
-      return this.$store.state.currentOrigin
-    },
-    focalMechanism (): WebpickerFocalMechanism {
-      return this.$store.state.currentFocalMechanism
-    },
-    inventory (): WebpickerInventory {
-      return this.$store.state.inventory
-    },
-    polarizedArrivals (): WebpickerArrival[] {
-      return this.origin.arrival.filter(a => a.phase === 'P' && a._pick.polarity != null)
-    },
-    isDirty (): boolean {
-      return this.strike !== this.oldStrike || this.dip !== this.oldDip || this.rake !== this.oldRake
+  }
+  if (content.length > 0) {
+    if (stationPopup != null) {
+      stationPopup.remove()
     }
-  },
-  watch: {
-    active: function (newValue) {
-      if (newValue === true && this.initialized === false) {
-        this.init()
+    stationPopup = document.createElement('div')
+    Object.assign(stationPopup.style, {
+      top: `${e.clientY + 5}px`,
+      left: `${e.clientX + 5}px`
+    }, stationPopupStyle)
+    stationPopup.innerHTML = content.join('<br>')
+    document.body.appendChild(stationPopup)
+  }
+}
+
+function updateStationLayer(center: number, radius: number) {
+  const ctx = stationCtx.value as CanvasRenderingContext2D
+  ctx.save()
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+  const result: {[netsta: string]: { pos: [number, number], pick: QPick } } = {}
+  for (const a of store.eventManager.current.arrivals) {
+    if (a.phase !== 'P' || a.takeoffAngle == null || a.azimuth == null) {
+      continue
+    }
+    let azi = a.azimuth
+    let beta = a.takeoffAngle.value
+    // https://github.com/SeisComP/common/blob/6.4.4/libs/seiscomp/gui/datamodel/originlocatorview.cpp#L4248
+    if (beta > 90) {
+      beta = 180 - beta
+      azi = azi - 180
+      if (azi < 0) {
+        azi += 360
       }
     }
-  },
-  methods: {
-    handleReset () {
-      if (this.bbe == null || this.hiresbbe == null) {
-        return
+    const dist = radius * Math.sqrt(2.0) * Math.sin(0.5 * deg2rad(beta))
+    const xPos = center + dist * Math.sin(deg2rad(azi))
+    const yPos = center - dist * Math.cos(deg2rad(azi))
+    const pick: QPick = a.pickID.referredObject
+    const netsta = pick.waveformID.netsta
+    result[netsta] = { pos: [xPos, yPos], pick }
+    if (pick.polarity == null) {
+      ctx.beginPath()
+      ctx.moveTo(xPos - 3, yPos - 3)
+      ctx.lineTo(xPos + 3, yPos + 3)
+      ctx.moveTo(xPos + 3, yPos - 3)
+      ctx.lineTo(xPos - 3, yPos + 3)
+      ctx.stroke()
+    } else {
+      ctx.beginPath()
+      const r = pick.onset === 'impulsive' ? 5 : pick.onset === 'emergent' ? 3 : 4
+      ctx.setLineDash(pick.polarity === 'undecidable' ? [2, 2] : [])
+      ctx.lineWidth = pick.polarity === 'undecidable' ? 2 : 1
+      ctx.arc(xPos, yPos, r, 0, 2 * Math.PI)
+      if (pick.polarity === 'positive') {
+        ctx.fill()
+      } else {
+        ctx.stroke()
       }
-      const [s, d, r] = [this.oldStrike, this.oldDip, this.oldRake]
-      this.strike = s
-      this.dip = d
-      this.rake = r
-      this.bbe.drawFocal(s, d, r, COLOR)
-      this.hiresbbe.drawFocal(s, d, r, COLOR)
-    },
-    handleValidate () {
-      const fmObject = {
-        public_id: this.$store.getters.getId('FocalMechanism'),
-        evaluation_mode: 'manual',
-        nodal_planes: {
-          nodal_plane1: {
-            strike: { value: this.strike },
-            dip: { value: this.dip },
-            rake: { value: this.rake }
-          }
-        },
-        _not_committed: true
+    }
+  }
+  ctx.restore()
+  stationPos.value = result
+}
+
+function updateBeachball() {
+  createBeachBall().then(() => {
+    const t = new Date().getTime()
+    const [s, d, r] = sdr.value
+    if (lastCall == null || (t - lastCall) > 30) {
+      if (hirestimeout != null) {
+        clearTimeout(hirestimeout)
       }
-      this.oldStrike = this.strike
-      this.oldDip = this.dip
-      this.oldRake = this.rake
-      this.event.focal_mechanism = [fmObject]
-      this.event.preferred_focal_mechanism_id = fmObject.public_id
-      this.$store.dispatch('setCurrentFocalMechanism', fmObject)
-    },
-    handleDelete () {
-      if (this.bbe == null || this.hiresbbe == null) {
-        return
+      hirestimeout = window.setTimeout(() => {
+        hiresbbe.value!.drawFocal(s, d, r, COLOR)
+        hiresbbe.value!.ctx!.canvas.style.zIndex = '1'
+        updateStationLayer(bbe.value!.center, bbe.value!.radius as number)
+      }, HIRESTHRESH)
+      // console.log(t - lastCall);
+      lastCall = t
+      requestAnimationFrame(() => {
+        // value.innerHTML = `strike: ${s} | dip: ${d} | rake: ${r}`
+        bbe.value!.drawFocal(s, d, r, COLOR)
+        hiresbbe.value!.ctx!.canvas.style.zIndex = '-1'
+      })
+    }
+  })
+}
+
+function bindEvents() {
+  container.value.addEventListener('mousedown', (e: MouseEvent) => {
+    mouseDown = true
+    mouseX = e.clientX
+    mouseY = e.clientY
+  })
+  container.value.addEventListener('mouseup', () => {
+    mouseDown = false
+    mouseX = mouseY = null
+  })
+  container.value.addEventListener('mousemove', (e: MouseEvent) => {
+    if (stationPopup != null) {
+      stationPopup.remove()
+      stationPopup = null
+    }
+    if (mouseDown === false) {
+      handleStationPopup(e)
+      return
+    }
+    if (mouseX == null || mouseY == null) {
+      return
+    }
+    e.stopPropagation()
+    e.preventDefault()
+    const deltaX = e.clientX - mouseX
+    const deltaY = e.clientY - mouseY
+    const [s, d, r] = sdr.value
+    if (e.shiftKey) {
+      if (Math.abs(deltaX) > 0) {
+        let strike = s + deltaX
+        sdr.value[0] = strike < 0 ? strike + 360 : strike > 360 ? strike - 360 : strike
+        mouseX = e.clientX
       }
-      const [s, d, r] = [0, 90, 180]
-      this.oldStrike = this.strike = s
-      this.oldDip = this.dip = d
-      this.oldRake = this.rake = r
-      this.bbe.drawFocal(s, d, r, COLOR)
-      this.hiresbbe.drawFocal(s, d, r, COLOR)
-      this.$store.dispatch('setCurrentFocalMechanism', { _not_committed: true })
-      this.event.focal_mechanism = []
-      this.event.preferred_focal_mechanism_id = null
-      this.event._pfm = null
-    },
-    handleStationPopup (x: number, y: number) {
-      const ctx = this.popupCtx
-      if (ctx == null || this.hiresbbe == null) {
-        return
-      }
-      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
-      for (const [k, v] of Object.entries(this.stationPos)) {
-        const dist = Math.sqrt(Math.pow(Math.abs(x - v[0]), 2) + Math.pow(Math.abs(y - v[1]), 2))
-        if (dist < 5) {
-          const t = ctx.measureText(k)
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
-          const xPos = v[0] > this.hiresbbe.center ? v[0] - t.width - 5 : v[0] + 5
-          ctx.fillRect(xPos, v[1] - 12 - 7, t.width + 4, 12 + 4)
-          ctx.fillStyle = 'black'
-          ctx.fillText(k, xPos, v[1] - 5)
+    } else {
+      if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
+        const dip = d + (-1 * deltaX * Math.cos(deg2rad(s)) + Math.sin(deg2rad(s)) * deltaY * -1) / 2
+        let rake = r + (-1 * deltaY * Math.cos(deg2rad(s)) + Math.sin(deg2rad(s)) * deltaX) / 2
+        if (dip > 90) {
+          sdr.value[0] = s < 180 ? s + 180 : s - 180
+          rake = rake * -1
+        } else if (dip < 0) {
+          sdr.value[0] = s < 180 ? s + 180 : s - 180
+          rake = rake + 180
         }
+        sdr.value[1] = dip < 0 ? 0 - dip : dip > 90 ? 180 - dip : dip
+        sdr.value[2] = rake > 180 ? rake - 360 : rake < -180 ? rake + 360 : rake
+        mouseX = e.clientX
+        mouseY = e.clientY
       }
-    },
-    createBeachBall () {
-      const bbe = new BeachballEngine(BOXSIZE, NBPOINT, SIZE, this.$store.getters.getLink('static/wasm/beachball.wasm'))
-      const hiresbbe = new BeachballEngine(BOXSIZE, 120, 1.1, this.$store.getters.getLink('static/wasm/beachball.wasm'))
-      const container = document.querySelector('.first-motion__container')
-      if (container == null) {
-        return
-      }
+    }
+    updateBeachball()
+  })
+}
+
+function createBeachBall() {
+  return new Promise<void>((resolve, reject) => {
+    if (container.value == null || bbe.value != null || hiresbbe.value != null) {
+      resolve()
+    } else {
+      Object.assign(container.value.style, {
+        position: 'relative',
+        width: '292px',
+        height: '292px',
+        marginLeft: 'auto',
+        marginRight: 'auto'
+      })
+      bbe.value = new BeachballEngine(BOXSIZE, 50, 3, '../static/wasm/beachball.wasm')
+      hiresbbe.value = new BeachballEngine(BOXSIZE, 120, 1.1, '../static/wasm/beachball.wasm')
       const stationCanvas = document.createElement('canvas')
-      stationCanvas.style.zIndex = '2'
       stationCanvas.width = stationCanvas.height = BOXSIZE
-      container.appendChild(stationCanvas)
-      this.stationCtx = stationCanvas.getContext('2d')
-
-      const popupCanvas = document.createElement('canvas')
-      popupCanvas.style.zIndex = '3'
-      popupCanvas.width = popupCanvas.height = BOXSIZE
-      container.appendChild(popupCanvas)
-      this.popupCtx = popupCanvas.getContext('2d') as CanvasRenderingContext2D
-      this.popupCtx.font = '12px sans-serif'
-      this.popupCtx.textBaseline = 'bottom'
-
-      this.bbe = bbe
-      this.hiresbbe = hiresbbe
-
-      let lastCall: number | null = null
-      let hirestimeout: number | null = null
-      let mouseDown = false
-      const HIRESTHRESH = 200
-      const updateBeachball = () => {
-        const t = new Date().getTime()
-        const s = this.strike
-        const d = this.dip
-        const r = this.rake
-        if (lastCall == null || (t - lastCall) > 30) {
-          if (hirestimeout != null) {
-            clearTimeout(hirestimeout)
-          }
-          hirestimeout = setTimeout(() => {
-            hiresbbe.drawFocal(s, d, r, COLOR)
-            hiresbbe.ctx!.canvas.style.zIndex = '1'
-          }, HIRESTHRESH)
-          // console.log(t - lastCall);
-          lastCall = t
-          requestAnimationFrame(() => {
-            // value.innerHTML = `strike: ${s} | dip: ${d} | rake: ${r}`
-            bbe.drawFocal(s, d, r, COLOR)
-            hiresbbe.ctx!.canvas.style.zIndex = '-1'
-          })
-        }
-      }
-
-      let mouseX: number | null = null
-      let mouseY: number | null = null
-      hiresbbe.init().then(() => {
-        const hirescanvas = hiresbbe.ctx!.canvas
-        Object.assign(hirescanvas.style, { zIndex: 1 })
-        container.appendChild(hirescanvas)
-        bbe.init().then(() => {
-          Object.assign(bbe.ctx!.canvas.style, { zIndex: 0 })
-          container.appendChild(bbe.ctx!.canvas)
-          updateBeachball()
-          container.addEventListener('mousedown', e => {
-            const ev = e as MouseEvent
-            mouseDown = true
-            mouseX = ev.clientX
-            mouseY = ev.clientY
-          })
-          container.addEventListener('mouseup', () => {
-            mouseDown = false
-            mouseX = mouseY = null
-          })
-          container.addEventListener('mousemove', e => {
-            if (mouseX == null || mouseY == null) {
-              return
-            }
-            const ev = e as MouseEvent
-            const bbcr = this.stationCtx!.canvas.getBoundingClientRect()
-            const absX = ev.clientX - bbcr.left
-            const absY = ev.clientY - bbcr.top
-            this.handleStationPopup(absX, absY)
-            if (mouseDown === false) {
-              return
-            }
-            ev.preventDefault()
-            const deltaX = ev.clientX - mouseX
-            const deltaY = ev.clientY - mouseY
-            const s = this.strike
-            if (ev.shiftKey) {
-              if (Math.abs(deltaX) > 0) {
-                const newStrikeValue = s + deltaX
-                this.strike = newStrikeValue < 0 ? newStrikeValue + 360 : newStrikeValue > 360 ? newStrikeValue - 360 : newStrikeValue
-                mouseX = ev.clientX
-              }
-            } else {
-              const d = this.dip
-              const r = this.rake
-              // console.log(deltaX, deltaY);
-              if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
-                const newDipValue = d + (-1 * deltaX * Math.cos(s * Math.PI / 180) + Math.sin(s * Math.PI / 180) * deltaY * -1) / 2
-                let newRakeValue = r + (-1 * deltaY * Math.cos(s * Math.PI / 180) + Math.sin(s * Math.PI / 180) * deltaX) / 2
-                if (newDipValue > 90) {
-                  this.strike = s < 180 ? s + 180 : s - 180
-                  newRakeValue = newRakeValue * -1
-                } else if (newDipValue < 0) {
-                  this.strike = s < 180 ? s + 180 : s - 180
-                  newRakeValue = newRakeValue + 180
-                }
-                this.dip = newDipValue < 0 ? 0 - newDipValue : newDipValue > 90 ? 180 - newDipValue : newDipValue
-                this.rake = newRakeValue > 180 ? newRakeValue - 360 : newRakeValue < -180 ? newRakeValue + 360 : newRakeValue
-                mouseX = ev.clientX
-                mouseY = ev.clientY
-              }
-            }
-            updateBeachball()
-          })
+      Object.assign(stationCanvas.style, { zIndex: '2' })
+      container.value.appendChild(stationCanvas)
+      stationCtx.value = stationCanvas.getContext('2d')
+      hiresbbe.value.init().then(() => {
+        const hirescanvas = hiresbbe.value!.ctx!.canvas
+        hirescanvas.style.zIndex = '1'
+        container.value.appendChild(hirescanvas)
+        bbe.value!.init().then(() => {
+          bbe.value!.ctx!.canvas.style.zIndex = '0'
+          container.value.appendChild(bbe.value!.ctx!.canvas)
+          bindEvents()
+          initialized.value = true
+          resolve()
         })
       })
-      setTimeout(() => {
-        this.updateStationLayer(hiresbbe.center, hiresbbe.radius as number)
-      }, HIRESTHRESH + 100)
-    },
+    }
+  })
+}
 
-    updateStationLayer (center: number, radius: number) {
-      const ctx = this.stationCtx as CanvasRenderingContext2D
-      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
-      const stationPos: {[index: string]: [number, number]} = {}
-      for (const a of this.polarizedArrivals) {
-        const dist = radius * (a.takeoff_angle!.value > 90 ? 180 - a.takeoff_angle!.value : a.takeoff_angle!.value) / 90
-        const xPos = center - dist * Math.cos(Math.PI * (a.azimuth - 90) / 180)
-        const yPos = center - dist * Math.sin(Math.PI * (a.azimuth - 90) / 180)
-        const key = a._pick._seedid.split('.').slice(0, 2).join('_')
-        stationPos[key] = [xPos, yPos]
-        ctx.beginPath()
-        ctx.arc(xPos, yPos, 4, 0, 2 * Math.PI)
-        if (a._pick.polarity === 'positive') {
-          ctx.fill()
-        } else {
-          ctx.stroke()
+function loadStoredValues() {
+  const stored = getLocalStorageDefault('skhashParams', {})
+  for (const param of skhashParams.value) {
+    if (stored[param.code] != null) {
+      param.value = stored[param.code]
+    }
+  }
+}
+
+function storeParams() {
+  const params: Record<string, number> = {}
+  for (const param of skhashParams.value) {
+    params[param.code] = param.value
+  }
+  setLocalStorage('skhashParams', params)
+  return params
+}
+
+function computeTakeoffAngles() {
+  return new Promise<void>((resolve, reject) => {
+    const stationPos: {[index: string]: [number, number, number]} = {}
+    for (const a of store.eventManager.current.arrivals) {
+      if (a.takeoffAngle == null && a.distance != null && a.phase === 'P') {
+        const netsta = a.pickID.referredObject.waveformID.netsta
+        const pos = store.dataManager.getStationPos(netsta)
+        if (pos != null) {
+          stationPos[netsta] = [pos.lat, pos.lon, pos.alt]
         }
       }
-      this.stationPos = stationPos
-    },
-
-    init () {
-      if (this.focalMechanism != null) {
-        this.strike = this.focalMechanism.nodal_planes.nodal_plane1.strike.value
-        this.dip = this.focalMechanism.nodal_planes.nodal_plane1.dip.value
-        this.rake = this.focalMechanism.nodal_planes.nodal_plane1.rake.value
-        const [s, d, r] = [this.strike, this.dip, this.rake]
-        this.oldStrike = s
-        this.oldDip = d
-        this.oldRake = r
-      }
-      const stationDistance: {[index: string]: number} = {}
-      for (const a of this.polarizedArrivals) {
-        const fdsnid = a._pick._fdsnid
-        const netsta = fdsnid.split('.').slice(0, 2).join('.')
-        stationDistance[netsta] = a.distance
-      }
-      this.$store.dispatch('log', '[FirstMotion::init] send takeoffangle request')
-      utils.ajax({
+    }
+    if (Object.keys(stationPos).length > 0) {
+      loading.value = true
+      fetch('../api/takeoffangle', {
         method: 'POST',
-        url: this.$store.getters.getLink('takeoffangle'),
-        dataMimeType: 'application/json',
-        data: JSON.stringify({ depth: this.origin.depth.value / 1000, station: stationDistance }),
-        type: 'json'
+        body: JSON.stringify({
+          latitude: store.eventManager.current.origin!.latitude.value,
+          longitude: store.eventManager.current.origin!.longitude.value,
+          depth: store.eventManager.current.origin!.depth.value / 1e3,
+          station: stationPos
+        }),
+        headers: { 'Content-Type': 'application/json' }
       }).then(response => {
-        const toa = response as {[index: string]: number}
-        for (const a of this.polarizedArrivals) {
-          const fdsnid = a._pick._fdsnid
-          const netsta = fdsnid.split('.').slice(0, 2).join('.')
-          a.takeoff_angle = { value: toa[netsta] }
+        loading.value = false
+        if (response.status === 200) {
+          response.json().then(toa => {
+            for (const a of store.eventManager.current.arrivals) {
+              const netsta = a.pickID.referredObject.waveformID.netsta
+              if (a.phase === 'P' && toa[netsta] != null) {
+                a.takeoffAngle = { value: toa[netsta] }
+              }
+            }
+            store.eventManager.current.arrivals = store.eventManager.current.arrivals.map(x => x)
+            resolve()
+          })
         }
-        this.createBeachBall()
-      }).catch(data => {
-        this.$store.dispatch('log', `[FirstMotion::init] send takeoffangle request failed: ${data}`)
+      })
+    } else {
+      resolve()
+    }
+  })
+}
+
+function init() {
+  loadStoredValues()
+  imagebbe.init()
+  if (store.eventManager.current.focalMechanism != null) {
+    const np = store.eventManager.current.focalMechanism.nodalPlanes.nodalPlane1
+    const [s, d, r] = [np.strike.value, np.dip.value, np.rake.value]
+    sdr.value = [s, d, r]
+    oldSdr.value = [s, d, r]
+  }
+  computeTakeoffAngles().then(() => {
+    updateBeachball()
+  })
+}
+
+function handleCompute() {
+  loading.value = true
+  const params = storeParams()
+  const picks = []
+  const arrivals = []
+  for (const arrival of store.eventManager.current.origin!.arrival) {
+    const pick = arrival.pickID.referredObject
+    if (arrival.takeoffAngle != null && arrival.azimuth != null && pick.polarity != null) {
+      picks.push(pick.desc)
+      arrivals.push(arrival.desc)
+    }
+  }
+  const clonedOrigin = JSON.parse(JSON.stringify(store.eventManager.current.origin!.desc))
+  clonedOrigin.arrival = arrivals
+  const event: QEventDescription = {
+    '@publicID': store.eventManager.current.event!.publicID,
+    origin: [clonedOrigin],
+    preferredOriginID: store.eventManager.current.origin!.publicID,
+    magnitude: [store.eventManager.current.magnitude!.desc], stationMagnitude: [], amplitude: [],
+    focalMechanism: [], pick: picks
+  }
+  for (const pick of event.pick) {
+    if (pick.waveformID['@locationCode'] == null) {
+      pick.waveformID['@locationCode'] = ''
+    }
+  }
+  console.log(`[FirstMotion] POST: ${JSON.stringify([event])}`)
+  const args = Object.entries(params).map(o => `${o[0]}=${o[1]}`).join('&')
+  fetch(`../api/compute_focal_mechanisms?${args}`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/xml'},
+    body: toQuakeML(event)
+  }).then(response => {
+    loading.value = false
+    store.notification.push({ type: 'progress', value: null })
+    console.log(`[FirstMotion] response status: ${response.status}`)
+    if (response.status === 200) {
+      response.json().then(statusResponse => {
+        console.log(`[FirstMotion] result: ${JSON.stringify(statusResponse)}`)
+        if (statusResponse.message !== '') {
+          alert(statusResponse.message)
+        }
+        if (statusResponse.quakeml !== '') {
+          const doc = new DOMParser().parseFromString(statusResponse.quakeml, 'application/xml')
+          const saveMainKey = QResourceIdentifier.mainKey
+          QResourceIdentifier.mainKey = 'sandbox'
+          const result = parse(doc) as QEvent[]
+          QResourceIdentifier.mainKey = saveMainKey
+          store.eventManager.current.event!.clearFocalMechanism()
+          for (const fm of result[0].focalMechanism) {
+            store.eventManager.current.event!.addFocalMechanism(fm.desc)
+          }
+          nbFM.value = store.eventManager.current.event!.focalMechanism.length
+        }
       })
     }
+  })
+}
+
+function getFMQuality(fm: QFocalMechanism) {
+  if (fm.comment != null && fm.comment.length > 0) {
+    try {
+      const comment = JSON.parse(fm.comment[0].text)
+      return comment.quality || ''
+    } catch {
+      return ''
+    }
+  }
+  return ''
+}
+
+function getFMImage(fm: QFocalMechanism) {
+  let color = BB_QUALITY_COLOR[getFMQuality(fm)] || 'black'
+  const np = fm.nodalPlanes.nodalPlane1
+  return imagebbe.getFocalImage(np.strike.value, np.dip.value, np.rake.value, color)
+}
+
+function setFM(fm: QFocalMechanism) {
+  const np = fm.nodalPlanes.nodalPlane1
+  oldSdr.value = [np.strike.value, np.dip.value, np.rake.value]
+  sdr.value = [np.strike.value, np.dip.value, np.rake.value]
+  store.eventManager.current.focalMechanism = fm
+  store.eventManager.current.event!.setPreferredFocalMechanismID(fm.publicID)
+  store.eventManager.status.commit = 'required'
+  updateBeachball()
+}
+
+watch([
+  () => sdr.value[0],
+  () => sdr.value[1],
+  () => sdr.value[2]
+], () => {
+  updateBeachball()
+})
+
+watch(() => store.eventManager.current.origin, () => {
+  computeTakeoffAngles().then(() => {
+    if (store.eventManager.current.focalMechanism != null) {
+      const np = store.eventManager.current.focalMechanism.nodalPlanes.nodalPlane1
+      const [s, d, r] = [np.strike.value, np.dip.value, np.rake.value]
+      sdr.value = [s, d, r]
+      oldSdr.value = [s, d, r]
+    } else {
+      updateBeachball()
+    }
+  })
+})
+
+onMounted(() => {
+  init()
+})
+
+onBeforeUnmount(() => {
+  if (stationPopup != null) {
+    stationPopup.remove()
+    stationPopup = null
   }
 })
 </script>
 
+<template>
+  <v-row row wrap class="pa-4">
+    <v-col class="first-motion__container pa-0">
+      <div ref="container"></div>
+    </v-col>
+    <v-col class="text-right" cols="3">
+      <v-progress-circular v-if="loading" indeterminate="disable-shrink" size="20" class="ml-4"/>
+      <table class="first-motion__table">
+        <tbody>
+          <tr>
+            <th>strike</th>
+            <td><NumberField v-model="sdr[0]" hide-details density="compact"/></td>
+          </tr>
+          <tr>
+            <th>dip</th>
+            <td><NumberField v-model="sdr[1]" hide-details density="compact"/></td>
+          </tr>
+          <tr>
+            <th>rake</th>
+            <td><NumberField v-model="sdr[2]" hide-details density="compact"/></td>
+          </tr>
+        </tbody>
+      </table>
+      <v-menu location="start" :close-on-content-click="false" v-if="store.config?.skhash.enabled" min-width="200">
+        <template #activator="{ props }">
+          <v-btn v-bind="props" density="compact" variant="text" icon="mdi-dots-horizontal"></v-btn>
+        </template>
+        <v-card>
+          <v-table>
+            <tbody>
+              <tr v-for="param in skhashParams">
+                <th :title="param.description">{{ param.code }}</th>
+                <td><NumberField v-model="param.value" density="compact" hide-details/></td>
+              </tr>
+            </tbody>
+          </v-table>
+        </v-card>
+      </v-menu>
+      <v-btn
+        v-if="store.config?.skhash.enabled"
+        density="compact"
+        @click="handleCompute"
+        :disabled="!initialized || loading || store.eventManager.current.magnitude == null"
+        class="ma-1">COMPUTE</v-btn>
+      <br>
+      <v-dialog max-width="700" v-if="store.config?.skhash.enabled">
+        <template #activator="{ props: activatorProps }">
+          <v-badge :content="nbFM">
+            <v-btn v-bind="activatorProps" density="compact" class="ma-1">BROWSE</v-btn>
+          </v-badge>
+        </template>
+        <template #default="{ isActive }">
+          <v-card>
+            <v-table>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Quality</th>
+                  <th>Strike</th>
+                  <th>Dip</th>
+                  <th>Rake</th>
+                  <th>Nb Pol.</th>
+                  <th>Misfit</th>
+                  <th>Method</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="fm in store.eventManager.current.event!.focalMechanism">
+                  <td><img :src="getFMImage(fm)"></td>
+                  <td>{{ getFMQuality(fm) }}</td>
+                  <td>{{ fm.nodalPlanes.nodalPlane1.strike.value.toFixed(2) }}</td>
+                  <td>{{ fm.nodalPlanes.nodalPlane1.dip.value.toFixed(2) }}</td>
+                  <td>{{ fm.nodalPlanes.nodalPlane1.rake.value.toFixed(2) }}</td>
+                  <td>{{ fm.stationPolarityCount }}</td>
+                  <td>{{ fm.misfit?.toFixed(2) }}</td>
+                  <td>{{ fm.methodID }}</td>
+                  <td>
+                    <v-btn
+                      density="compact"
+                      @click="setFM(fm)"
+                      :disabled="fm.publicID === store.eventManager.current.event?.preferredFocalMechanismID.id"
+                    >set</v-btn>
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn @click="isActive.value = false">Close</v-btn>
+            </v-card-actions>
+          </v-card>
+        </template>
+      </v-dialog><br>
+      <v-btn
+        density="compact"
+        @click="handleValidate"
+        :color="isDirty ? 'orange' : 'white'"
+        :disabled="!isDirty"
+        class="ma-1">VALIDATE</v-btn><br>
+      <v-btn
+        density="compact"
+        @click="handleReset"
+        class="ma-1"
+        :disabled="store.eventManager.current.event?.preferredFocalMechanismID.id == null"
+      >RESET</v-btn>
+    </v-col>
+  </v-row>
+</template>
+  
 <style>
-.first-motion__container {
-  position: relative;
-  height: 340px;
-}
-.first-motion__container canvas {
-  position: absolute;
-  top: 0;
-  right: 0;
-}
-.first-motion__table {
-  width: 100%;
-}
-.first-motion__table th,
-.first-motion__table td {
-  padding: 0 5px;
-  text-align: right;
-}
+  /* .first-motion__container {
+    position: relative;
+    height: 292px;
+  } */
+  .first-motion__container canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    /* right: 0; */
+  }
+  .first-motion__table {
+    width: 100%;
+  }
+  .first-motion__table th,
+  .first-motion__table td {
+    padding: 0 5px;
+    text-align: right;
+  }
 </style>

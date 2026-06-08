@@ -1,0 +1,111 @@
+<script setup lang="ts">
+import { useAppStore } from '@/stores/app'
+import { toQuakeML } from '@/utils'
+import { ref, watch } from 'vue'
+
+const store = useAppStore()
+
+const emit = defineEmits(['update'])
+
+const eventTypeOptions = ref(['not existing', 'other event', 'earthquake', 'quarry blast', 'explosion', 'not reported', 'anthropogenic event', 'collapse', 'cavity collapse', 'mine collapse', 'building collapse', 'accidental explosion', 'chemical explosion', 'controlled explosion', 'experimental explosion', 'industrial explosion', 'mining explosion', 'road cut', 'blasting levee', 'nuclear explosion', 'induced or triggered event', 'rock burst', 'reservoir loading', 'fluid injection', 'fluid extraction', 'crash', 'plane crash', 'train crash', 'boat crash', 'atmospheric event', 'sonic boom', 'sonic blast', 'acoustic noise', 'thunder', 'avalanche', 'snow avalanche', 'debris avalanche', 'hydroacoustic event', 'ice quak', 'slide', 'landslide', 'rockslide', 'meteorite', 'volcanic eruption'])
+const eventTypeCertaintyOptions = ref(['known', 'suspected'])
+const evaluationStatusOptions = ref(['preliminary', 'confirmed', 'reviewed', 'final', 'rejected'])
+const eventType = ref()
+const eventTypeCertainty = ref()
+const evaluationStatus = ref()
+const locked = ref(false)
+
+function commit() {
+  if (store.eventManager.status.commit === 'disabled' || locked.value) {
+    return
+  }
+  console.log('[CommitComponent.commit]')
+  locked.value = true
+  store.notification.push({ type: 'progress', value: { text: 'Commit...', percent: -1 } })
+  const event = store.eventManager.buildCurrentEvent()
+  console.log(`[CommitComponent] POST: ${JSON.stringify([event.desc])}`)
+  fetch(`../api/commit`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/xml'},
+    body: toQuakeML(event.desc)
+  }).then(response => {
+    locked.value = false
+    store.notification.push({ type: 'progress', value: null })
+    if (response.status === 200) {
+      response.json().then(statusResponse => {
+        console.log(`[CommitComponent] result: ${JSON.stringify(statusResponse)}`)
+        if (statusResponse.message != null) {
+          store.notification.push({ type: statusResponse.return_code === 0 ? 'warning' : 'error', value: statusResponse.message })
+        }
+        if (statusResponse.return_code === 0) {
+          store.notification.push({ type: 'progress', value: { text: 'Reloading event...', percent: -1 } })
+          setTimeout(() => {
+            store.notification.push({ type: 'progress', value: null })
+            emit('update')
+            store.webSocketManager.sendUpdateEventMessage(event.publicID)
+          }, 3000)
+        }
+      })
+    } else {
+      console.log(`[CommitComponent] error message: ${response.statusText}`)
+    }
+  }).catch((e) => {
+    locked.value = false
+    console.log(`[CommitComponent] ERROR: ${e}`)
+    store.notification.push({ type: 'progress', value: null })
+    store.notification.push({ type: 'error', value: `${e}` })
+  })
+}
+
+watch(() => store.keydown, (newValue) => {
+  if (newValue === store.settings['keybinding.commit']) {
+    commit()
+  }
+})
+
+watch(() => store.eventManager.current.event, () => {
+  eventType.value = store.eventManager.current.type
+  eventTypeCertainty.value = store.eventManager.current.typeCertainty
+  evaluationStatus.value = store.eventManager.current.evaluationStatus
+}, { immediate: true })
+
+watch(() => eventType.value, () => {
+  store.eventManager.current.type = eventType.value
+})
+
+watch(() => eventTypeCertainty.value, () => {
+  store.eventManager.current.typeCertainty = eventTypeCertainty.value
+})
+
+watch(() => evaluationStatus.value, () => {
+  store.eventManager.current.evaluationStatus = evaluationStatus.value
+})
+</script>
+
+<template>
+  <v-menu width="300" offset="18" :close-on-content-click="false" attach>
+    <template #activator="{ props }">
+      <v-btn
+        v-bind="props"
+        :title="`commit (${store.settings['keybinding.commit']})`"
+        :color="store.eventManager.status.commit === 'required' ? 'orange' : undefined"
+        :disabled="store.eventManager.status.commit === 'disabled'"
+      >
+        <v-icon>mdi-content-save-edit</v-icon>
+        <template #append>
+          <v-icon>mdi-triangle-small-down</v-icon>
+        </template>
+      </v-btn>
+    </template>
+    <v-card>
+      <v-card-text>
+        <v-select clearable density="compact" label="Type" :items="eventTypeOptions" v-model="eventType"></v-select>
+        <v-select clearable density="compact" label="Type certainty" :items="eventTypeCertaintyOptions" v-model="eventTypeCertainty"></v-select>
+        <v-select clearable density="compact" label="Status" :items="evaluationStatusOptions" v-model="evaluationStatus"></v-select>
+      </v-card-text>
+      <v-card-actions class="justify-center">
+        <v-btn @click="commit" size="small">Commit</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-menu>
+</template>

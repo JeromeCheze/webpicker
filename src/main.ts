@@ -1,28 +1,17 @@
-import Vue from 'vue'
-
-import './components'
-
-import './plugins'
-
-import vuetify from './plugins/vuetify'
+import { createVuetify } from 'vuetify'
+import { createPinia } from 'pinia'
+import { createApp } from 'vue'
+import router from './router'
 import App from './App.vue'
-import router from '@/router'
-import store from '@/store'
 
-new Vue({
-  router,
-  store,
-  vuetify,
-  render: h => h(App)
-}).$mount('#app')
+import '@mdi/font/css/materialdesignicons.css'
+import 'leaflet/dist/leaflet.css'
+import 'vuetify/styles'
 
-/* prevent back page action which would result in loosing work done on webpicker. */
-// history.pushState(null, null, location.href)
-// window.onpopstate = function () {
-//     history.go(1)
-// }
-// window.onbeforeunload = function(ev) {
-//   let msg = 'Are you sure you want to leave ? All your work will be lost !'
-//   ev.returnValue = msg
-//   return msg
-// }
+const app = createApp(App)
+
+app.use(createPinia())
+app.use(router)
+app.use(createVuetify())
+
+app.mount('#app')

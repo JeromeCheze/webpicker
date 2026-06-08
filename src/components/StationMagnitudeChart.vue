@@ -1,0 +1,137 @@
+<script setup lang="ts">
+import type { ScatterOptions } from '@/lib/lichen/src/types'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import DataUtils from '@/lib/lichen/src/dataUtils'
+import { useAppStore } from '@/stores/app'
+import Lichen from '@/lib/lichen/src'
+
+const store = useAppStore()
+const chartContainer = ref()
+const chart = ref(null as Lichen | null)
+const emits = defineEmits(['selectStation'])
+
+
+function handleChartSelection(x: [number | null, number | null], y: [number | null, number | null]) {
+  if (chart.value == null) {
+    return false
+  }
+  const selectedStation = new Set<string>()
+  const series = chart.value.opt.series as ScatterOptions[]
+  for (const serie of series) {
+    for (const point of serie.data) {
+      const inXRange = x[0] == null && x[1] == null
+        ? true
+        : x[0] != null && x[1] != null && point.x >= x[0] && point.x <= x[1]
+          ? true
+          : false
+      const inYRange = y[0] == null && y[1] == null
+        ? true
+        : y[0] != null && y[1] != null && point.y >= y[0] && point.y <= y[1]
+          ? true
+          : false
+      if (inXRange && inYRange) {
+        selectedStation.add(point.name.split('.').slice(0, 2).join('.'))
+      }
+    }
+  }
+  emits('selectStation', [...selectedStation])
+  return false
+}
+
+function drawChart() {
+  if (store.eventManager.current.arrivals == null || store.eventManager.current.event == null || store.eventManager.current.origin == null || chartContainer.value == null) {
+    return
+  }
+  chartContainer.value.innerHTML = ''
+  const colorScale = {
+    min: 0,
+    max: store.eventManager.current.originMagnitudes.length - 1,
+    stops: Lichen.getColorScale('PARULA'),
+    logarithmic: false
+  }
+  const magMap: Record<string, any> = {}
+  const magColor: Record<string, string> = {}
+  const stats = {
+    min: null,
+    max: null,
+    sum: 0,
+    count: 0
+  }
+  for (const [index, mag] of store.eventManager.current.originMagnitudes.entries()) {
+    if (mag.stationMagnitudeContribution == null) {
+      // console.log(`skip magnitude type ${mag.type}`)
+      continue
+    }
+    magMap[mag.type] = []
+    magColor[mag.type] = DataUtils.getColor(index, colorScale) as string
+    for (const smc of mag.stationMagnitudeContribution) {
+      const staMag = smc.stationMagnitudeID.referredObject
+      if (staMag == null) {
+        continue
+      }
+      const pick = staMag.amplitudeID.referredObject.pickID.referredObject
+      const arrival = store.eventManager.current.arrivals.find(a => a.pickID.id === pick.publicID)
+      if (arrival == null) {
+        console.warn(`Failed to retreive corresponding arrival for station magnitude of channel ${staMag.waveformID.seedid}`)
+        continue
+      }
+      const [r, g, b] = DataUtils.getColor(index, colorScale, false) as number[]
+      const a = Math.max(0.2, smc.weight != null ? smc.weight : 0)
+      const color = `rgba(${r},${g},${b},${a})`
+      magMap[mag.type].push({
+        x: arrival.distance,
+        y: staMag.mag.value,
+        extra: { weight: smc.weight },
+        name: staMag.waveformID.seedid,
+        color
+      })
+      stats.min = stats.min == null ? staMag.mag.value : Math.min(stats.min, staMag.mag.value)
+      stats.max = stats.max == null ? staMag.mag.value : Math.max(stats.max, staMag.mag.value)
+      stats.sum += staMag.mag.value
+      stats.count++
+    }
+  }
+  if (chart.value != null) {
+    chart.value.destroy()
+  }
+  if (stats.count === 0) {
+    return
+  }
+  const series: ScatterOptions[] = []
+  for (const [name, data] of Object.entries(magMap)) {
+    series.push({ name, shape: 'circle', data, color: magColor[name], tooltipFormatter: p => `${p.y.toFixed(2)} | <strong>weight</strong>: ${p.extra.weight.toFixed(2)}` })
+  }
+  const fontSize = store.settings['picker.tickFontSize']
+  chart.value = new Lichen(chartContainer.value as HTMLElement, {
+    header: { title: 'Magnitude / Distance', position: 'top' },
+    crosshair: { enabled: false },
+    legend: { enabled: true, position: 'right' },
+    xAxis: { datetime: false, title: 'Distance [°]', min: 0, tooltipFormatter: x => x.toFixed(2), fontSize },
+    yAxis: {
+      title: 'Magnitude',
+      fontSize,
+      min: Math.min(stats.min!, -3 + stats.sum / stats.count),
+      max: Math.max(stats.max!, 3 + stats.sum / stats.count)
+    },
+    height: 238,
+    type: 'scatter',
+    zoom: null,
+    series,
+    hooks: { beforeSelection: handleChartSelection }
+  })
+}
+
+watch(() => store.eventManager.current.originMagnitudes, drawChart)
+
+onMounted(drawChart)
+
+onBeforeUnmount(() => {
+  if (chart.value != null) {
+    chart.value.destroy()
+  }
+})
+</script>
+
+<template>
+  <div ref="chartContainer"></div>
+</template>

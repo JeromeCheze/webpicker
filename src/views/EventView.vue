@@ -1,703 +1,300 @@
-<template>
-  <v-card v-if="event != null && origin != null" class="pt-3 px-3 pb-5">
+<script setup lang="ts">
+import ComputeMagnitudesComponent from '@/components/ComputeMagnitudesComponent.vue'
+import type { QArrival, QMagnitude } from '@/lib/sismojs/src/core/event/types'
+import ActionScriptsComponent from '@/components/ActionScriptsComponent.vue'
+import StationMagnitudeChart from '@/components/StationMagnitudeChart.vue'
+import RelocateComponent from '@/components/RelocateComponent.vue'
+import CommitComponent from '@/components/CommitComponent.vue'
+import TraveltimeChart from '@/components/TraveltimeChart.vue'
+import EventInspector from '@/components/EventInspector.vue'
+import ResVsDistChart from '@/components/ResVsDistChart.vue'
+import MagnitudePanel from '@/components/MagnitudePanel.vue'
+import ArrivalPanel from '@/components/ArrivalPanel.vue'
+import FirstMotion from '@/components/FirstMotion.vue'
+import OriginPanel from '@/components/OriginPanel.vue'
+import PickerPanel from '@/components/PickerPanel.vue'
+import OriginMap from '@/components/OriginMap.vue'
+import { ref, onMounted, watch } from 'vue'
+import { useAppStore } from '@/stores/app'
 
-    <event-tools
-      @need-update="updateAll"
-      @need-init="initEvent"
-      :selected-station-magnitude="selectedStationMagnitude"></event-tools>
+const store = useAppStore()
 
-    <event-description @need-update="updateAll"></event-description>
+const props = defineProps({
+  eventid: String
+})
 
-    <v-layout>
-      <v-flex xs12 md4>
-        <div class="event-view__map-canvas" :style="{ height: '400px', zIndex: 1 }"></div>
-      </v-flex>
-      <v-flex xs12 md8 class="event-view__chart-container">
-        <v-tabs v-model="activeChartTab" @change="handleChartChange" right>
-          <v-tab>Time residual</v-tab>
-          <v-tab>Travel time</v-tab>
-          <v-tab>Magnitude</v-tab>
-          <v-tab>First motion (beta)</v-tab>
-          <v-tab-item class="event-view__chart--time-residual" eager></v-tab-item>
-          <v-tab-item class="event-view__chart--travel-time" eager></v-tab-item>
-          <v-tab-item class="event-view__chart--magnitudes" eager></v-tab-item>
-          <v-tab-item class="event-view__chart--first-motion" eager>
-            <first-motion :active="firstMotionActive"></first-motion>
-          </v-tab-item>
-        </v-tabs>
-      </v-flex>
-    </v-layout>
+const picker = ref(false)
+const activeChart = ref('residual' as 'residual' | 'traveltime' | 'firstmotion' | 'magnitude')
+const allOriginDisplay = ref(false)
 
-    <v-data-table
-      v-model="arrivalTableSelected"
-      :headers="arrivalTableHeader"
-      :items="arrivalTableData"
-      :sort-desc="false"
-      sort-by="distance"
-      :page="1"
-      :items-per-page="-1"
-      item-key="id"
-      show-select>
-      <template v-slot:item="props">
-        <tr @click="handleRowClick(props.item)">
-          <td><v-checkbox @change="handleRowSelection(props.item, $event)" :input-value="props.isSelected" primary hide-details :true-value="true" :false-value="false"></v-checkbox></td>
-          <td><v-chip label outlined small :color="props.item.modeColor">{{ props.item.mode }}</v-chip></td>
-          <td>{{ props.item.phase }}</td>
-          <td>{{ props.item.network }}</td>
-          <td>{{ props.item.station }}</td>
-          <td>{{ props.item.loccha }}</td>
-          <td>{{ props.item.takeoffAngle }}</td>
-          <td>{{ props.item.polarity }}</td>
-          <td>{{ floatFormatter(props.item.residual) }}</td>
-          <td>{{ floatFormatter(props.item.distance) }}</td>
-          <td>{{ floatFormatter(props.item.azimuth) }}</td>
-          <td>{{ floatFormatter(props.item.weight) }}</td>
-          <td>{{ timeFormatter(props.item.time) }}</td>
-        </tr>
-      </template>
-    </v-data-table>
-  </v-card>
-</template>
+const contextMenu = ref(false)
+const contextMenuPos = ref([0, 0] as [number, number])
+const magnitudeStations = ref(null as string[] | null)
 
-<script lang="ts">
-/// <reference path="../l.ellipse.d.ts" />
-import Vue from 'vue'
-import Highcharts from 'highcharts'
-import addMore from 'highcharts/highcharts-more'
-import * as utils from '@/utils/utils'
-import L, { LatLngTuple } from 'leaflet'
-import 'leaflet-ellipse'
-import { ComplexPoint, EventViewArrivalTableRow, EventViewChartSeries, MagnitudeComplexPoint, StringIndexedObject, WebpickerArrival, WebpickerEventParameters, WebpickerInventory, WebpickerOrigin } from '@/types'
-
-addMore(Highcharts)
-
-interface EventView extends Vue {
-  shiftPressed: boolean;
-  handleKeydown: (ev: KeyboardEvent) => void;
-  handleKeyup: (ev: KeyboardEvent) => void;
-  setSelectedStationMagnitude: (selectedWfid: string[]) => void;
-  setSelectedArrival: (selectedWfid: string[]) => void;
+function enablePicker() {
+  picker.value = true
 }
 
-const handleChartSelection = function (this: Highcharts.Chart, ev: Highcharts.ChartSelectionContextObject, self: EventView, magnitudeChart = false) {
-  const [x, y] = [ev.xAxis[0], ev.yAxis[0]]
-  const selectedPickIDs = []
-  for (const s of this.series) {
-    for (let i = 0; i < s.points.length; i++) {
-      const p = s.points[i] as ComplexPoint
-      if (magnitudeChart || ((self.shiftPressed && p.manual) || !self.shiftPressed)) {
-        if (p.x >= x.min && p.x <= x.max && p.y >= y.min && p.y <= y.max) {
-          selectedPickIDs.push(p.id)
-        }
-      }
-    }
+function select(value: string) {
+  const currentArrivals = store.eventManager.current.arrivals
+  if (currentArrivals == null) {
+    return
   }
-  if (magnitudeChart) {
-    self.setSelectedStationMagnitude(selectedPickIDs)
-  } else {
-    self.setSelectedArrival(selectedPickIDs)
+  let selection: QArrival[] = []
+  if (value === 'all') {
+    selection = currentArrivals
+  } else if (value === 'manual') {
+    selection = currentArrivals.filter((x: QArrival) => x.pickID.referredObject.evaluationMode === 'manual')
+  } else if (value === 'automatic') {
+    selection = currentArrivals.filter((x: QArrival) => x.pickID.referredObject.evaluationMode === 'automatic')
+  } else if (value === 'p') {
+    selection = currentArrivals.filter((x: QArrival) => x.phase === 'P')
   }
-  return false
+  store.eventManager.selectArrivals(selection)
 }
 
-export default Vue.extend({
+function removeUnselectedArrivals() {
+  if (store.eventManager.current.origin == null) {
+    return
+  }
+  const toRemove = store.eventManager.current.origin.arrival.filter((x: QArrival) => x.timeWeight != null && x.timeWeight === 0)
+  for (const arrival of toRemove) {
+    store.eventManager.deleteArrival(arrival.pickID.referredObject)
+  }
+}
 
-  props: {
-    code: {
-      type: String,
-      required: true,
-      default: ''
+function removeAutomaticArrivals() {
+  if (store.eventManager.current.origin == null) {
+    return
+  }
+  const toRemove = store.eventManager.current.origin.arrival.filter((x: QArrival) => x.pickID.referredObject.evaluationMode === 'automatic')
+  for (const arrival of toRemove) {
+    store.eventManager.deleteArrival(arrival.pickID.referredObject)
+  }
+}
+
+function setUsedAutomaticPicksStatusAsReviewed() {
+  if (store.eventManager.current.origin == null) {
+    return
+  }
+  for (const arrival of store.eventManager.current.origin.arrival) {
+    const pick = arrival.pickID.referredObject
+    if (pick.evaluationMode === 'automatic' && arrival.timeWeight != null && arrival.timeWeight > 0) {
+      pick.evaluationStatus = 'reviewed'
     }
-  },
+  }
+  store.eventManager.current.arrivals = store.eventManager.current.arrivals.map(x => x)
+}
 
-  data () {
-    return {
-      dirty: true,
-      updating: false,
-      map: null as L.Map | null,
-      layers: {} as Record<string, L.Layer>,
-
-      arrivalTableHeader: [
-        { text: 'Status', value: 'mode', sortable: false },
-        { text: 'Phase', value: 'phase', sortable: false },
-        { text: 'Net', value: 'network', sortable: false },
-        { text: 'Sta', value: 'station', sortable: false },
-        { text: 'Loc/Cha', value: 'loccha', sortable: false },
-        { text: 'Takeoff [°]', value: 'takeoffAngle', sortable: false },
-        { text: 'Polarity', value: 'polarity', sortable: false },
-        { text: 'Res', value: 'residual' },
-        { text: 'Dist', value: 'distance' },
-        { text: 'Az', value: 'azimuth' },
-        { text: 'Weight', value: 'weight' },
-        { text: 'Time', value: 'time' }
-      ],
-      arrivalTableData: [] as EventViewArrivalTableRow[],
-      arrivalTableSelected: [] as EventViewArrivalTableRow[],
-      // arrivalTablePagination: {
-      //   descending: false,
-      //   page: 1,
-      //   rowsPerPage: -1,
-      //   sortBy: 'distance',
-      //   totalItems: null
-      // } as EventViewArrivalTableDataPagination,
-
-      selectedStationMagnitude: [] as string[],
-
-      activeChartTab: 0,
-      firstMotionActive: false,
-      chart: {
-        timeResidual: null as EventViewChartSeries | null,
-        travelTime: null as EventViewChartSeries | null,
-        // magnitudes: null as Record<string, MagnitudeComplexPoint[]> | null
-        magnitudes: {} as { [s: string]: MagnitudeComplexPoint[] }
-      },
-      shiftPressed: false,
-      keyHandlersBinded: false,
-      eventHandler: {
-        keydown: (ev: KeyboardEvent): void => {},
-        keyup: (ev: KeyboardEvent): void => {}
-      }
+function unsetPickStatus() {
+  if (store.eventManager.current.origin == null) {
+    return
+  }
+  for (const arrival of store.eventManager.current.origin.arrival) {
+    const pick = arrival.pickID.referredObject
+    if (arrival.timeWeight != null && arrival.timeWeight > 0) {
+      pick.evaluationStatus = undefined
     }
-  },
+  }
+  store.eventManager.current.arrivals = store.eventManager.current.arrivals.map(x => x)
+}
 
-  computed: {
-    event (): WebpickerEventParameters {
-      const result = this.$store.state.currentEvent
-      return result
-    },
-    origin (): WebpickerOrigin {
-      const result = this.$store.state.currentOrigin
-      return result
-    },
-    inventory (): WebpickerInventory {
-      const result = this.$store.state.inventory
-      return result
+function loadEvent() {
+  if (store.catalogMode === 'upload') {
+    const event = store.eventManager.events.find(x => x.publicID === props.eventid)
+    if (event != null) {
+      store.eventManager.setEvent(event)
+      return
     }
-  },
+  }
+  store.notification.push({ type: 'progress', value: { text: 'Loading event description...', percent: -1 } })
+  store.eventManager.loadEvent('..', props.eventid!).catch(msg => {
+    store.notification.push({ type: 'warning', value: msg })
+  }).finally(() => {
+    store.notification.push({ type: 'progress', value: null })
+  })
+}
 
-  // watch: {
-  //   event: function(val) {
-  //     this.dirty = true
-  //   },
-  //   origin: function(val) {
-  //     this.dirty = true
-  //   }
-  // },
+function handleUsers() {
+  const eventUsers = store.webSocketManager.eventUsers(props.eventid!).filter(x => x !== store.author)
+  if (eventUsers.length > 0) {
+    store.notification.push({ type: 'warning', value: `This event is currently reviewed by some users (${eventUsers.join(', ')})` })
+  }
+  // } else {
+  //   store.notification.push({ type: 'warning', value: null })
+  // }
+}
 
-  mounted () {
-    this.$store.dispatch('setAuthorStatus', { eventid: this.code, action: 'reviewing' })
-    if (this.event == null || this.event.public_id !== this.code) {
-      this.initEvent()
+function handleContextMenu(e: MouseEvent) {
+  e.preventDefault()
+  console.log('contextmenu')
+  contextMenuPos.value = [e.clientX, e.clientY]
+  contextMenu.value = true
+}
+
+function setCurrentMagnitude(m: QMagnitude) {
+  store.eventManager.current.magnitude = m
+  store.eventManager.status.commit = 'required'
+}
+
+function setMagnitudeStations(value: string[]) {
+  magnitudeStations.value = value
+}
+
+watch(() => store.keydown, (newValue) => {
+  if (newValue === store.settings['keybinding.togglePicker']) {
+    if (picker.value) {
+      picker.value = false
     } else {
-      this.updateAll()
+      enablePicker()
     }
-    if (!this.keyHandlersBinded) {
-      this.keyHandlersBinded = true
-      this.eventHandler.keydown = (ev) => this.handleKeydown(ev)
-      this.eventHandler.keyup = (ev) => this.handleKeyup(ev)
-      document.body.addEventListener('keydown', this.eventHandler.keydown)
-      document.body.addEventListener('keyup', this.eventHandler.keyup)
-    }
-  },
-
-  beforeDestroy () {
-    if (this.keyHandlersBinded) {
-      this.keyHandlersBinded = false
-      document.body.removeEventListener('keydown', this.eventHandler.keydown)
-      document.body.removeEventListener('keyup', this.eventHandler.keyup)
-    }
-  },
-
-  methods: {
-
-    handleKeydown (ev: KeyboardEvent): void {
-      if (ev.key === 'Shift') {
-        this.shiftPressed = true
-      }
-    },
-
-    handleKeyup (ev: KeyboardEvent): void {
-      if (ev.key === 'Shift') {
-        this.shiftPressed = false
-      }
-    },
-
-    initEvent () {
-      this.$store.dispatch('setLoading', { value: true, text: 'Loading event description...' })
-      this.$store.dispatch('log', '[EventView::initEvent] send event full description request')
-      utils.ajax({
-        method: 'GET',
-        url: this.$store.getters.getLink('fdsnws/event/1/query'),
-        args: {
-          format: 'xml',
-          eventid: this.code,
-          includeallorigins: 'true',
-          includeallmagnitudes: 'true',
-          includearrivals: 'true',
-          includefocalmechanism: 'true',
-          includestationmagnitudes: 'true'
-
-          // Non-standard argument handled by site_routage.
-          // It used to get event description from scxmldump (if possible)
-          // instead of requesting the regular FDSNWS. So that the amplitude and
-          // the station magnitude are retrieved, which is not the case from FDSNWS.
-          // fulldescription: 'true'
-        },
-        type: 'document'
-      }).then(qml => {
-        const events = utils.parseQuakeML(qml as Document)
-        if (events.length === 0) {
-          this.$store.dispatch('setLoading', { value: false })
-          alert('No event found')
-        }
-        const e = events[0]
-        console.log('[EventView::initEvent] full description event', e)
-        this.$store.dispatch('log', '[EventView::initEvent] full description event received')
-        const chList = []
-        for (const o of e.origin) {
-          o._is_dirty = false
-          for (const a of o.arrival) {
-            const ch = a._pick._fdsnid.split('.').slice(0, 3).concat(['*']).join(' ')
-            if (chList.indexOf(ch) < 0) {
-              chList.push(ch)
-            }
-          }
-        }
-        const t = e._po.time.value.slice(0, 19)
-        this.$store.dispatch('setLoading', { value: true, text: 'Loading inventory...' })
-        this.$store.dispatch('log', '[EventView::initEvent] send loading inventory request')
-        utils.ajax({
-          method: 'POST',
-          url: this.$store.getters.getLink('fdsnws/station/1/query'),
-          dataMimeType: 'text/plain',
-          data: [
-            'level=channel',
-            'format=text'
-          ].concat(chList.map(ch => `${ch} ${t} ${t}`)).join('\r\n'),
-          type: 'text'
-        }).then(data => {
-          this.$store.dispatch('setInventory', utils.parseInventory(data as string))
-          this.$store.dispatch('setCurrentEvent', e)
-          this.$nextTick(function () {
-            this.updateAll()
-            this.$store.dispatch('setLoading', { value: false })
-          })
-        }).catch(data => {
-          this.$store.dispatch('log', `[EventView::initEvent] send loading inventory request failed: ${data}`)
-        })
-      }).catch(data => {
-        this.$store.dispatch('log', `[EventView::initEvent] send event full description request failed: ${data}`)
-      })
-    },
-
-    floatFormatter (value: number | null) {
-      return value == null ? '' : value.toFixed(2)
-    },
-
-    timeFormatter (value: Date) {
-      // return value.toISOString().split('T')[1].substr(0, 12)
-      return value.toISOString().split('T')[1].substr(0, 8)
-    },
-
-    setSelectedArrival (selectedPickIDs: string[]) {
-      for (const a of this.origin.arrival) {
-        a.time_weight = selectedPickIDs.indexOf(a.pick_id) >= 0 ? 1 : 0
-      }
-      this.updateAll()
-    },
-
-    setSelectedStationMagnitude (selectedWfid: string[]) {
-      const tmp: StringIndexedObject = {}
-      if (selectedWfid.length === 0) {
-        for (const a of this.origin.arrival) {
-          const netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
-          tmp[netsta] = null
-        }
-      } else {
-        for (const wfid of selectedWfid) {
-          const netsta = wfid.split('.').slice(0, 2).join('.')
-          tmp[netsta] = null
-        }
-      }
-      this.selectedStationMagnitude = Object.keys(tmp)
-      this.initChartsData()
-      this.initChartMagnitude()
-    },
-
-    handleRowSelection (row: EventViewArrivalTableRow, value: boolean) {
-      let selected = this.arrivalTableSelected.map(x => x)
-      if (value === true) {
-        selected.push(row)
-      } else {
-        selected = selected.filter(x => x.id !== row.id)
-      }
-      this.arrivalTableSelected = selected
-      this.handleSelectionChange(selected)
-    },
-
-    handleSelectionChange (selectedRows: EventViewArrivalTableRow[]) {
-      if (this.updating) return
-      this.setSelectedArrival(selectedRows.map(x => x.id))
-    },
-
-    updateArrivalTableData () {
-      // this.arrivalTablePagination.totalItems = this.origin.arrival.length
-      this.arrivalTableData = this.origin.arrival.map((a: WebpickerArrival) => ({
-        id: a._pick.public_id,
-        mode: a._pick.evaluation_mode === 'automatic' ? 'A' : 'M',
-        modeColor: a._pick.evaluation_mode === 'manual' ? 'green' : 'red',
-        phase: a.phase,
-        network: a._pick.waveform_id.network_code,
-        station: a._pick.waveform_id.station_code,
-        loccha: a._pick._fdsnid.split('.').slice(-2).join('.'),
-        takeoffAngle: a.takeoff_angle != null ? a.takeoff_angle.value.toFixed(2) : '',
-        polarity: a._pick.polarity != null ? a._pick.polarity : '',
-        residual: a.time_residual,
-        distance: a.distance,
-        azimuth: a.azimuth,
-        // time: a._traveltime,
-        time: a._pick.time._value,
-        weight: a.time_weight
-      }))
-    },
-
-    updateAll () {
-      // console.log(o == this.origin);
-      // console.log('updateAll', this.origin);
-      this.updating = true
-      this.updateArrivalTableData()
-      this.eventMap()
-      this.initChartsData()
-      if (this.activeChartTab === 0) {
-        this.initChartTimeResidual()
-      } else if (this.activeChartTab === 1) {
-        this.initChartTravelTime()
-      } else if (this.activeChartTab === 2) {
-        this.initChartMagnitude()
-      }
-      this.arrivalTableSelected = []
-      for (const row of this.arrivalTableData) {
-        if (row.weight > 0) {
-          this.arrivalTableSelected.push(row)
-        }
-      }
-      this.dirty = false
-      this.updating = false
-    },
-
-    initMap () {
-      const container = this.$el.querySelector('.event-view__map-canvas')
-      this.map = utils.initMap(container as HTMLElement)
-    },
-
-    getStationCoordinates (seedid: string): L.LatLngTuple | null {
-      const [n, s] = seedid.split('.').slice(0, 2)
-      if (this.inventory[n] != null &&
-          this.inventory[n][s] != null) {
-        const sta = this.inventory[n][s]
-        return [sta.lat, sta.lon]
-      }
-      return null
-    },
-
-    eventMap () {
-      if (this.map == null) {
-        this.initMap()
-      }
-      if (this.map == null) {
-        return
-      }
-      for (const l of Object.values(this.layers)) {
-        l.remove()
-      }
-      this.layers = {}
-      const originPos: LatLngTuple = [
-        this.origin.latitude.value,
-        this.origin.longitude.value
-      ]
-      const bounds: L.LatLngBoundsExpression = [originPos]
-      const arrivalPerStation: Record<string, WebpickerArrival> = {}
-      let maxRes = 0
-      for (const a of this.origin.arrival) {
-        if (a.time_residual == null) {
-          continue
-        }
-        const netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
-        if (a.time_weight > 0) {
-          maxRes = Math.max(maxRes, Math.abs(a.time_residual))
-        }
-        const otherArr = arrivalPerStation[netsta]
-        if (otherArr == null) {
-          arrivalPerStation[netsta] = a
-        } else {
-          if (a.time_weight !== 0 && (
-            otherArr.time_weight === 0 ||
-                Math.abs(a.time_residual) > Math.abs(otherArr.time_residual))) {
-            arrivalPerStation[netsta] = a
-          }
-        }
-      }
-      utils.RESIDUAL_COLOR_SCALE[0][0] = -maxRes
-      utils.RESIDUAL_COLOR_SCALE[2][0] = maxRes
-      for (const [netsta, a] of Object.entries(arrivalPerStation)) {
-        const pos = this.getStationCoordinates(a._pick._seedid)
-        if (pos == null) {
-          console.warn(`No coordinates found for channel ${a._pick._seedid}`)
-          continue
-        }
-        if (originPos[1] > 0 && pos[1] < 0) {
-          pos[1] += 360
-        } else if (originPos[1] < 0 && pos[1] > 0) {
-          pos[1] -= 360
-        }
-        bounds.push(pos)
-        if (a.time_weight > 0) {
-          this.layers[`${netsta}_line`] = L.polyline([originPos, pos], {
-            color: 'gray',
-            weight: 1
-          }).addTo(this.map)
-        }
-        this.layers[netsta] = L.circleMarker(pos, {
-          radius: 4,
-          weight: 1,
-          color: 'gray',
-          fillColor: (
-            a.time_weight > 0 && a.time_residual != null
-              ? utils.toRGB(utils.applyScale(a.time_residual, utils.RESIDUAL_COLOR_SCALE) as [number, number, number])
-              : 'gray'
-          ),
-          fillOpacity: 1
-        }).bindPopup(a._pick._seedid).addTo(this.map)
-      }
-      if (this.origin.longitude.uncertainty != null && this.origin.latitude.uncertainty != null) {
-        this.layers.ellipse = L.ellipse(originPos as number[], [
-          this.origin.longitude.uncertainty * 1000,
-          this.origin.latitude.uncertainty * 1000
-        ], 0, {
-          weight: 0,
-          color: 'red',
-          fillOpacity: 0.2
-        }).addTo(this.map)
-      }
-      this.layers.epicenter = L.circleMarker(originPos, {
-        radius: 8,
-        weight: 1,
-        color: 'red',
-        fillOpacity: 0.8
-      }).addTo(this.map)
-      this.map.fitBounds(bounds)
-      // console.log(this.origin);
-    },
-
-    initChartsData () {
-      // console.log('initChartsData');
-      this.chart.timeResidual = { p: [], s: [] }
-      this.chart.travelTime = { p: [], s: [] }
-      const tmp: StringIndexedObject = {}
-      for (const a of this.origin.arrival) {
-        if (a.time_residual == null) {
-          continue
-        }
-        const netsta = a._pick._seedid.split('.').slice(0, 2).join('.')
-        tmp[netsta] = null
-        const serie = (a.phase === 'P' ? 'p' : 's')
-        const color = (
-          a.time_weight === 0
-            ? 'gray'
-            : a._pick.evaluation_mode === 'automatic'
-              ? 'red'
-              : 'green'
-        )
-        this.chart.timeResidual[serie].push({
-          x: a.distance,
-          y: a.time_residual,
-          name: a._pick._seedid,
-          color,
-          id: a.pick_id,
-          manual: a._pick.evaluation_mode === 'manual'
-        })
-        this.chart.travelTime[serie].push({
-          x: a.distance,
-          y: a._traveltime!.getTime() / 1000.0,
-          name: a._pick._seedid,
-          color,
-          id: a.pick_id,
-          manual: a._pick.evaluation_mode === 'manual'
-        })
-      }
-      if (this.selectedStationMagnitude.length === 0) {
-        this.selectedStationMagnitude = Object.keys(tmp)
-      }
-      const colors = Highcharts.getOptions().colors
-      let colorIndex = 0
-      this.chart.magnitudes = {}
-      for (const mag of this.event.magnitude!) {
-        if (mag.origin_id !== this.origin.public_id || mag.station_magnitude_contribution == null || this.event.station_magnitude == null) {
-          continue
-        }
-        this.chart.magnitudes[mag.type] = []
-        for (const smc of mag.station_magnitude_contribution) {
-          if (smc._station_magnitude == null) {
-            continue
-          }
-          const arrival = this.origin.arrival.find(a => a._pick._seedid === smc._station_magnitude!._seedid)
-          if (arrival == null) {
-            console.warn(`Failed to retreive corresponding arrival for station magnitude of channel ${smc._station_magnitude!._seedid}`)
-            continue
-          }
-          const netsta = smc._station_magnitude._seedid!.split('.').slice(0, 2).join('.')
-          let color: Highcharts.ColorString | Highcharts.GradientColorObject | Highcharts.PatternObject = 'gray'
-          if (this.selectedStationMagnitude.indexOf(netsta) >= 0) {
-            color = new Highcharts.Color(colors![colorIndex]).setOpacity(Math.max(0.2, smc.weight)).get()
-          }
-          this.chart.magnitudes[mag.type].push({
-            x: arrival.distance,
-            y: smc._station_magnitude.mag.value,
-            id: smc._station_magnitude._seedid,
-            color,
-            type: mag.type,
-            weight: smc.weight
-          })
-        }
-        colorIndex++
-      }
-    },
-
-    initChartTimeResidual () {
-      const extreme = 1 + Math.floor(
-        Math.max.apply(null,
-          this.chart.timeResidual!.p.concat(this.chart.timeResidual!.s).map(x => Math.abs(x.y))
-        )
-      )
-      const container: HTMLElement | null = this.$el.querySelector('.event-view__chart--time-residual')
-      if (container == null) {
-        return
-      }
-      const self = this
-      Highcharts.chart({
-        chart: {
-          backgroundColor: 'rgba(255,255,255,0)',
-          renderTo: container,
-          type: 'scatter',
-          zoomType: 'xy',
-          events: {
-            selection: function (ev) { return handleChartSelection.call(this, ev, self) }
-          }
-        },
-        title: { text: 'Time residual/Distance' },
-        xAxis: { title: { text: 'Distance [°]' }, min: 0 },
-        yAxis: { title: { text: 'Time residual [s]' }, min: -1 * extreme, max: extreme },
-        tooltip: {
-          formatter: function () {
-            if (typeof this.x === 'number' && typeof this.y === 'number') {
-              return `<b>${this.point.name}</b><br>Distance: ${this.x.toFixed(2)}°<br>Residual: ${this.y.toFixed(2)} s`
-            }
-          }
-        },
-        plotOptions: {
-          series: {
-            animation: false,
-            states: {
-              inactive: {
-                enabled: false
-              }
-            }
-          }
-        },
-        series: [
-          { name: 'P', type: 'scatter', data: this.chart.timeResidual!.p },
-          { name: 'S', type: 'scatter', data: this.chart.timeResidual!.s }
-        ]
-      })
-    },
-
-    initChartTravelTime () {
-      const container: HTMLElement | null = this.$el.querySelector('.event-view__chart--travel-time')
-      if (container == null) {
-        return
-      }
-      const self = this
-      Highcharts.chart({
-        chart: {
-          backgroundColor: 'rgba(255,255,255,0)',
-          renderTo: container,
-          type: 'scatter',
-          zoomType: 'xy',
-          events: {
-            selection: function (ev) { return handleChartSelection.call(this, ev, self) }
-          }
-        },
-        title: { text: 'Travel time/Distance' },
-        xAxis: { title: { text: 'Distance [°]' }, min: 0 },
-        yAxis: { title: { text: 'Travel time [s]' }, min: 0 },
-        tooltip: {
-          formatter: function () {
-            if (typeof this.x === 'number' && typeof this.y === 'number') {
-              return `<b>${this.point.name}</b><br>Distance: ${this.x.toFixed(2)}°<br>Time: ${this.y.toFixed(2)} s`
-            }
-          }
-        },
-        plotOptions: { series: { animation: false } },
-        series: [
-          { name: 'P', type: 'scatter', data: this.chart.travelTime!.p },
-          { name: 'S', type: 'scatter', data: this.chart.travelTime!.s }
-        ]
-      })
-    },
-
-    initChartMagnitude () {
-      const container: HTMLElement | null = this.$el.querySelector('.event-view__chart--magnitudes')
-      if (container == null) {
-        return
-      }
-      const self = this
-      Highcharts.chart({
-        chart: {
-          backgroundColor: 'rgba(255,255,255,0)',
-          renderTo: container,
-          type: 'scatter',
-          zoomType: 'xy',
-          events: {
-            selection: function (ev) { return handleChartSelection.call(this, ev, self, true) }
-          }
-        },
-        title: { text: 'Station magnitudes' },
-        xAxis: { title: { text: 'Distance [°]' }, min: 0 },
-        yAxis: { title: { text: 'Magnitude' } },
-        tooltip: {
-          formatter: function () {
-            const p: MagnitudeComplexPoint = this.point
-            if (typeof this.x === 'number' && typeof this.y === 'number') {
-              return `<b>${p.id}</b><br>Distance: ${this.x.toFixed(2)}°<br>Magnitude: ${this.y.toFixed(2)} ${p.type}<br>Weight: ${p.weight!.toFixed(2)}`
-            }
-          }
-        },
-        plotOptions: { series: { animation: false } },
-        series: Object.entries(this.chart.magnitudes).map(([k, v]) => ({ name: k, type: 'scatter', data: v }))
-      })
-    },
-
-    handleRowClick (row: EventViewArrivalTableRow) {
-      const netsta = `${row.network}.${row.station}`
-      this.layers[netsta].openPopup()
-    },
-
-    handleChartChange (tab: number) {
-      if (tab === 0) {
-        this.initChartTimeResidual()
-      } else if (tab === 1) {
-        this.initChartTravelTime()
-      } else if (tab === 2) {
-        this.initChartMagnitude()
-      } else if (tab === 3) {
-        this.firstMotionActive = true
-      }
-    }
-
   }
 })
+
+watch([
+  () => store.usersActivity,
+  () => store.eventManager.current.event
+], handleUsers)
+
+onMounted(() => {
+  console.log(`[EventView.onMounted] ${props.eventid}`)
+  handleUsers()
+  store.webSocketManager.update('review', props.eventid)
+  if (store.eventManager.current.event == null || store.eventManager.current.event.publicID !== props.eventid) {
+    loadEvent()
+  }
+})
+
+// onBeforeRouteLeave((to, from) => {
+//   if (picker.value) {
+//     return false
+//   }
+// })
 </script>
 
-<style lang="css">
-.event-view__chart-container {padding-left: 20px;}
-</style>
+<template>
+  <v-app-bar density="compact" v-if="!picker">
+    <v-app-bar-title>
+      {{ store.eventManager.current.event?.publicID }}
+      <v-chip
+        label
+        size="x-small"
+        :color="store.eventManager.current.event?.type == null ? 'grey' : 'green'"
+        class="text-uppercase mx-1"
+      >
+        {{ store.eventManager.current.event?.type || 'NO TYPE SET' }}
+      </v-chip>
+      <v-chip
+        label
+        size="x-small"
+        :color="store.eventManager.current.origin?.evaluationStatus == null ? 'grey' : 'blue'"
+        class="text-uppercase mx-1"
+      >
+        {{ store.eventManager.current.origin?.evaluationStatus || 'NO STATUS SET' }}
+      </v-chip>
+    </v-app-bar-title>
+    <v-spacer></v-spacer>
+    <v-btn @click="enablePicker" :title="`picker (${store.settings['keybinding.togglePicker']})`"><v-icon>mdi-pulse</v-icon></v-btn>
+    <v-btn @click="allOriginDisplay = !allOriginDisplay" title="Inspect event" :active="allOriginDisplay" :disabled="store.eventManager.current.event != null && store.eventManager.current.event.origin.length === 0"><v-icon>mdi-list-box-outline</v-icon></v-btn>
+    <v-divider vertical class="mx-2"></v-divider>
+    <ActionScriptsComponent/>
+    <v-divider vertical class="mx-2"></v-divider>
+    <RelocateComponent/>
+    <ComputeMagnitudesComponent v-if="store.eventManager.current.origin != null" :stationSelection="magnitudeStations"/>
+    <CommitComponent @update="loadEvent"/>
+  </v-app-bar>
+  <EventInspector v-if="allOriginDisplay && !picker"/>
+  <template v-if="!allOriginDisplay && !picker">
+    <v-row>
+      <v-col cols="12" class="d-flex justify-end align-center">
+        <v-btn-group density="compact">
+          <v-btn :active="activeChart === 'residual'" @click="activeChart = 'residual'">Res</v-btn>
+          <v-btn :active="activeChart === 'traveltime'" @click="activeChart = 'traveltime'">TT</v-btn>
+          <v-btn :active="activeChart === 'magnitude'" @click="activeChart = 'magnitude'">M</v-btn>
+          <v-btn :active="activeChart === 'firstmotion'" @click="activeChart = 'firstmotion'">FM</v-btn>
+        </v-btn-group>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col cols="5">
+        <OriginMap/>
+      </v-col>
+      <v-col cols="7">
+        <v-card>
+          <v-card-text class="pa-0">
+            <ResVsDistChart v-if="activeChart === 'residual'" @contextmenu="handleContextMenu"/>
+            <TraveltimeChart v-if="activeChart === 'traveltime'" @contextmenu="handleContextMenu"/>
+            <StationMagnitudeChart v-if="activeChart === 'magnitude'" @selectStation="setMagnitudeStations"/>
+            <FirstMotion v-if="activeChart === 'firstmotion'"/>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col cols="8">
+        <OriginPanel
+          :origin="store.eventManager.current.origin"
+          :status="store.eventManager.status.relocate"/>
+      </v-col>
+      <v-col cols="4">
+        <v-row>
+          <v-col cols="12"  class="d-flex justify-end align-center">
+            <v-btn-group density="compact">
+              <v-btn
+                v-for="magnitude in store.eventManager.current.originMagnitudes"
+                class="text-none"
+                :active="magnitude.publicID === store.eventManager.current.magnitude?.publicID"
+                @click="setCurrentMagnitude(magnitude)"
+              >{{ magnitude.type }}</v-btn>
+            </v-btn-group>
+          </v-col>
+        </v-row>
+        <v-row>
+          <v-col cols="12">
+            <MagnitudePanel
+              :magnitude="store.eventManager.current.magnitude"
+              :status="store.eventManager.status.computeMagnitudes"/>
+          </v-col>
+        </v-row>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col cols="12">
+        <ArrivalPanel/>
+      </v-col>
+    </v-row>
+  </template>
+  <PickerPanel
+    v-model="picker" v-if="picker && store.eventManager.current.origin != null"
+    :time-window="[store.settings['miscellaneous.timewindow1'], store.settings['miscellaneous.timewindow2']]"
+    :time="store.eventManager.current.origin.time.object.getTime()"
+    :latitude="store.eventManager.current.origin.latitude.value"
+    :longitude="store.eventManager.current.origin.longitude.value"
+    :depth="store.eventManager.current.origin.depth.value"
+    :seedid-list="[]"
+    :no-event="false"
+    base-url=".."/>
+  <v-menu
+    v-model="contextMenu"
+    attach
+    :target="contextMenuPos"
+    z-index="4000"
+    :style="{ position: 'absolute', top: `${contextMenuPos[1]}px`, left: `${contextMenuPos[0]}px` }"
+    :transition="false"
+  >
+    <v-card>
+      <v-list density="compact">
+        <v-list-subheader>Selection</v-list-subheader>
+        <v-list-item class="pl-10" @click="select('all')">all</v-list-item>
+        <v-list-item class="pl-10" @click="select('manual')">manual</v-list-item>
+        <v-list-item class="pl-10" @click="select('automatic')">automatic</v-list-item>
+        <v-list-item class="pl-10" @click="select('p')">P only</v-list-item>
+        <v-list-subheader>Action</v-list-subheader>
+        <v-list-item class="pl-10" @click="removeUnselectedArrivals">remove unselected</v-list-item>
+        <v-list-item class="pl-10" @click="removeAutomaticArrivals">remove automatic</v-list-item>
+        <v-list-item class="pl-10" @click="setUsedAutomaticPicksStatusAsReviewed">set selected automatic picks status as 'reviewed'</v-list-item>
+        <v-list-item class="pl-10" @click="unsetPickStatus">unset pick status</v-list-item>
+      </v-list>
+    </v-card>
+  </v-menu>
+</template>

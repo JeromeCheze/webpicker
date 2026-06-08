@@ -1,0 +1,6 @@
+#!/bin/bash
+versionFile=./src/version.json
+uuid=$(openssl rand -hex 16)
+d=$(date +%Y-%m-%d)
+echo -n "\"${uuid:0:8}-${uuid:8:4}-${uuid:12:4}-${uuid:16:4}-${uuid:20:12} | $d\"" > $versionFile
+git add $versionFile
