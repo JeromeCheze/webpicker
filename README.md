@@ -1,8 +1,17 @@
+[![DOI](https://zenodo.org/badge/1262877972.svg)](https://doi.org/10.5281/zenodo.20595572)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+
 # Webpicker
 
 The Webpicker is a web application used to process seismological events. It proposes a lot of features such as catalog browsing, waveforms data visualization, signal processing, phase picking, origin relocation, magnitudes computation, first motion determination, multi user.
 
-It relies on standard such as FDSNWS, FDSN StationXML, QuakeML, MSEED.
+It relies on standards such as FDSNWS, FDSN StationXML, QuakeML, MSEED.
+
+## License
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
 
 ## Installation
 
