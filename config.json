@@ -16,17 +16,17 @@
   "commit_script": "#!/bin/sh\n# $1 : path to the QuakeML file to commit\n>&2 echo \"OK\"",
   "commit_strategy": "script",
   "denoiser": {
-    "enabled": true,
-    "url": "http://thesee.unice.fr:9000/deepdenoiser"
+    "enabled": false,
+    "url": "http://seispicks/detector/seispicks/v1/ai/denoiser/fdsn"
   },
   "detector": {
-    "enabled": true,
-    "url": "http://thesee.unice.fr:9001/get_pick"
+    "enabled": false,
+    "url": "http://seispicks/detector/seispicks/v1/ai/get-pick/fdsn"
   },
   "fdsnws": {
-    "dataselect_host": "encelade.unice.fr:8000",
-    "event_host": "encelade.unice.fr:8000",
-    "station_host": "encelade.unice.fr:8000"
+    "dataselect_host": "localhost:8000",
+    "event_host": "localhost:8000",
+    "station_host": "localhost:8000"
   },
   "locsat": {
     "profiles": [
@@ -36,23 +36,24 @@
   },
   "nll": {
     "area": "geoazur",
-    "enabled": true,
+    "enabled": false,
     "profiles": [
       "iasp91",
       "prem"
     ],
-    "url": "http://thesee.unice.fr:10000"
+    "locator_url": "http://nll-awdeloc/locator/nonlinloc/v1/locate",
+    "ttt_url": "http://nll-awdeloc/locator/nonlinloc/v1/ttt/geoazur/iasp91"
   },
   "velest": {
-    "enabled": true,
+    "enabled": false,
     "profiles": [
       "iasp91",
       "prem"
     ],
-    "url": "http://thesee.unice.fr:10007"
+    "url": "http://velest-ws/velest/locate"
   },
   "seiscomp": {
-    "messaging_host": "encelade.unice.fr:18180/webpicker",
+    "messaging_host": "localhost:18180/webpicker",
     "root": "/home/sysop/seiscomp",
     "schema_version": "0.13"
   },

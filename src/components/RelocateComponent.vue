@@ -7,24 +7,29 @@ import { useAppStore } from '@/stores/app'
 
 const store = useAppStore()
 
-const relocateOptions: { [locator: string]: string[] } = {
-  LOCSAT: store.config?.locsat.profiles || ['iasp91', 'tab']
+function getRelocateOptions() {
+  const options: { [locator: string]: string[] } = {
+    LOCSAT: store.config?.locsat.profiles || ['iasp91', 'tab']
+  }
+  if (store.config?.nll.enabled) {
+    options.NonLinLoc = store.config?.nll.profiles || ['iasp91', 'prem']
+  }
+  if (store.config?.velest.enabled) {
+    options.VELEST = store.config?.velest.profiles || ['iasp91', 'prem']
+  }
+  return options
 }
-if (store.config?.nll.enabled) {
-  relocateOptions.NonLinLoc = store.config?.nll.profiles || ['iasp91', 'prem']
-}
-if (store.config?.velest.enabled) {
-  relocateOptions.VELEST = store.config?.velest.profiles || ['iasp91', 'prem']
-}
+
+const relocateOptions = ref(getRelocateOptions())
 
 const relocParams = getLocalStorageDefault('relocateParams', {
   locator: null,
   profile: null
 })
 
-const locators = computed(() => Object.keys(relocateOptions))
+const locators = computed(() => Object.keys(relocateOptions.value))
 const locator = ref(relocParams.locator != null ? relocParams.locator : locators.value[0])
-const profiles = computed(() => relocateOptions[locator.value])
+const profiles = computed(() => relocateOptions.value[locator.value])
 const profile = ref(relocParams.profile != null ? relocParams.profile : profiles.value[0])
 const locked = ref(false)
 
@@ -36,7 +41,7 @@ watch(() => store.keydown, (newValue) => {
 })
 
 watch(() => locator.value, (value) => {
-  profile.value = relocateOptions[value][0]
+  profile.value = relocateOptions.value[value][0]
   setLocalStorage('relocateParams', {
     locator: locator.value,
     profile: profile.value
@@ -51,8 +56,7 @@ watch(() => profile.value, () => {
 })
 
 watch(() => store.config, () => {
-  relocateOptions.LOCSAT = store.config?.locsat.profiles || ['iasp91', 'tab']
-  relocateOptions.NonLinLoc = store.config?.nll.profiles || ['iasp91', 'prem']
+  relocateOptions.value = getRelocateOptions()
 })
 
 function relocate() {

@@ -161,8 +161,12 @@ function handleApplyConfig() {
                 <td><v-checkbox v-model="config.nll.enabled" label="Enable" density="compact" hide-details="auto"></v-checkbox></td>
               </tr>
               <tr>
-                <th>URL</th>
-                <td><v-text-field v-model="config.nll.url" density="compact" hide-details="auto"></v-text-field></td>
+                <th>Locator URL</th>
+                <td><v-text-field v-model="config.nll.locator_url" density="compact" hide-details="auto"></v-text-field></td>
+              </tr>
+              <tr>
+                <th>TTT URL</th>
+                <td><v-text-field v-model="config.nll.ttt_url" density="compact" hide-details="auto"></v-text-field></td>
               </tr>
               <tr>
                 <th>Area</th>

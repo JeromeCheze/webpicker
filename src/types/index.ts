@@ -202,7 +202,8 @@ export interface Config {
   }
   nll: {
     enabled: boolean
-    url: string
+    locator_url: string
+    ttt_url: string
     area: string
     profiles: string[]
   }

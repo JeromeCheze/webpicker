@@ -12,27 +12,39 @@ from seiscomp.seismology import TravelTimeTableInterface
 
 def relocate_with_nll(qml, profile):
     try:
-        # req = '%s/nll/%s/%s/' % (utils.CONFIG.nll.url, utils.CONFIG.nll.area, profile)
-        # response = urlopen(Request(req, data=qml, headers={'Content-Type': 'application/xml'}))
         data = {
-            'locator': 'nll',
-            'area': utils.CONFIG.nll.area,
-            'profile': profile,
-            'xml_data': qml.decode('utf-8'),
-            'likelyhood': True,
-            'keep_one_origin': True,
-            'force_preferred_origin': True
+            'args': {
+                'area': utils.CONFIG.nll.area,
+                'profile': profile,
+                'likelyhood': True,
+                'keep_one_origin': True,
+                'force_preferred_origin': True
+            },
+            'fdsn_station': f'http://{utils.CONFIG.fdsnws.station_host}',
+            'data': qml.decode('utf-8')
         }
-        response = urlopen(Request('%s/locate/' % utils.CONFIG.nll.url, data=json.dumps(data).encode('utf-8'), headers={'Content-Type': 'application/json'}))
+        print(utils.CONFIG.nll.locator_url)
+        print(json.dumps(data, indent=2))
+        response = urlopen(Request(utils.CONFIG.nll.locator_url,
+                                   data=json.dumps(data).encode('utf-8'),
+                                   headers={'Content-Type': 'application/json'}))
         return_code = response.status
-        result = json.load(response)
         if return_code == 204:
-            raise ValueError('NonLinLoc returned no solution')
+            raise ValueError('NLL returned no solution')
+        if return_code == 200:
+            return {
+                'message': '',
+                'quakeml': response.read().decode('utf-8')
+            }
+        error = json.load(response)
+        raise ValueError(f"Error from NLL WS: {error['detail']}")
+
+    except HTTPError as exception:
         return {
-            'message': result['message'],
-            'quakeml': result['data']
+            'message': f'NLL ERROR {exception.code}: {exception.fp.read()}',
+            'quakeml': qml
         }
-        
+
     except Exception as exception:
         return {
             'message': str(exception),
@@ -50,7 +62,9 @@ def relocate_with_velest(qml, profile):
             'fdsn_station': f'http://{utils.CONFIG.fdsnws.station_host}',
             'data': qml.decode('utf-8')
         }
-        response = urlopen(Request('%s/velest/locate' % utils.CONFIG.velest.url, data=json.dumps(data).encode('utf-8'), headers={'Content-Type': 'application/json'}))
+        response = urlopen(Request(utils.CONFIG.velest.url,
+                                   data=json.dumps(data).encode('utf-8'),
+                                   headers={'Content-Type': 'application/json'}))
         return_code = response.status
         if return_code == 204:
             raise ValueError('VELEST returned no solution')

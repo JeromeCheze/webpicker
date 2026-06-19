@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, Depends, status
-from app.model import ArgsDataRequest, ConfigArgs, DenoisingArgs, DenoisingRequest, DetectorRequestBase, WSActivityResponse, WSChatResponse, TTTQuery, ActivityData, WSUpdateEventResponse, WSVersionResponse, ChatData
+from app.model import ArgsDataRequest, Config, ConfigArgs, DenoisingArgs, DenoisingRequest, DetectorRequestBase, WSActivityResponse, WSChatResponse, TTTQuery, ActivityData, WSUpdateEventResponse, WSVersionResponse, ChatData
 
 ADMIN_PASSWORD = '94da2becb9d86711399f6054e8ea6382'
 
@@ -115,14 +115,13 @@ async def websocket_endpoint(websocket: WebSocket):
         await manager.broadcast_activity()
 
 @app.get('/app/config', tags=['app'])
-def get_app_config(username: Annotated[str, Depends(check_authentication)]):
+def get_app_config(username: Annotated[str, Depends(check_authentication)]) -> Config:
     return utils.CONFIG
 
 @app.post('/app/config', tags=['app'])
-async def set_app_config(password: str, request: Request, username: Annotated[str, Depends(check_authentication)]):
+async def set_app_config(password: str, config: Config, request: Request, username: Annotated[str, Depends(check_authentication)]):
     if secrets.compare_digest(password, ADMIN_PASSWORD):
-        config = await request.json()
-        utils.update_config(config)
+        utils.update_config(config.model_dump())
         return 'ok'
     else:
         raise HTTPException(
@@ -182,10 +181,10 @@ def get_denoised_waveforms(wfid: str, starttime: str, endtime: str, username: An
 @app.post('/api/ttt', tags=['api'])
 def get_ttt(args: TTTQuery, username: Annotated[str, Depends(check_authentication)]):
     result = processing.get_locsat_travel_times(args)
-    if utils.CONFIG.nll.enabled:
+    if utils.CONFIG.nll.enabled and utils.CONFIG.nll.ttt_url != '':
         nll_ttt_data = args.model_dump_json().encode('utf-8')
         nll_ttt_req = urllib.request.Request(
-            f'{utils.CONFIG.nll.url}/ttt/{utils.CONFIG.nll.area}/iasp91/',
+            utils.CONFIG.nll.ttt_url,
             data=nll_ttt_data,
             headers={'Content-Type': 'application/json'}
         )

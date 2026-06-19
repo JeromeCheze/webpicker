@@ -321,10 +321,10 @@ onBeforeUnmount(() => {
                   <tr
                     v-for="(filter, i) in values['filter']"
                     draggable="true"
-                    @dragstart="(e) => handleDragStart(e, i)"
+                    @dragstart="(e) => handleDragStart(e, i as number)"
                     @dragenter="cancelDefault"
                     @dragover="cancelDefault"
-                    @drop="(e) => handleDrop(e, i)"
+                    @drop="(e) => handleDrop(e, i as number)"
                   >
                     <td class="draggable-row"><v-icon>mdi-drag-vertical</v-icon></td>
                     <td>
@@ -334,7 +334,7 @@ onBeforeUnmount(() => {
                       <v-text-field label="Expression" density="compact" v-model="filter.expression" :rules="[validateFilterExpression]"/>
                     </td>
                     <td class="del">
-                      <v-btn variant="plain" @click="handleDeleteFilter(i)"><v-icon>mdi-delete</v-icon></v-btn>
+                      <v-btn variant="plain" @click="handleDeleteFilter(i as number)"><v-icon>mdi-delete</v-icon></v-btn>
                     </td>
                   </tr>
                   <tr>

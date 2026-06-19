@@ -1,6 +1,6 @@
-from enum import Enum
 from pydantic import BaseModel, Field
-from typing import Literal, Optional, Union
+from typing import Literal, Optional
+from typing_extensions import Annotated, deprecated
 
 class ActivityData(BaseModel):
     id: str
@@ -150,7 +150,9 @@ class ConfigLocsat(BaseModel):
 
 class ConfigNLL(BaseModel):
     enabled: bool = False
-    url: str = ''
+    url: Annotated[str, Field(deprecated=deprecated('This field is deprecated, use locator_url and ttt_url instead'))] = ''
+    locator_url: str = ''
+    ttt_url: str = ''
     area: str = ''
     profiles: list[str] = []
 
