@@ -45,6 +45,7 @@ export default {
   'keybinding.toggleCommonScale': '=',
   'keybinding.toggleTTT': 't',
   'keybinding.toggleEventInfo': 'e',
+  'keybinding.toggleMap': 'm',
   'keybinding.createPick': 'space',
   'keybinding.deletePick': 'delete',
   'keybinding.polarityPositive': 'shift+up',

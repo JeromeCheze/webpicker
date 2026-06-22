@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ColorScaleOptions } from '@/lib/lichen/src/types'
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import type { WPNotificationOptions } from '@/types'
 import DataUtils from '@/lib/lichen/src/dataUtils'
 import { useAppStore } from '@/stores/app'
@@ -9,9 +9,27 @@ import 'leaflet-ellipse'
 
 const store = useAppStore()
 
+const props = defineProps<{
+  focusStation?: string | null
+  height?: string,
+  stationList?: string[]
+}>()
+
 const mapContainer = ref()
 const map = ref(null as L.Map | null)
 const layers = [] as L.Layer[]
+let netstaMapMarker: Record<string, L.CircleMarker> = {}
+let debounceResize: number | null = null
+const resizeObserver = new ResizeObserver(() => {
+  if (debounceResize != null) {
+    window.clearTimeout(debounceResize)
+  }
+  debounceResize = window.setTimeout(() => {
+    if (map.value != null) {
+      map.value.invalidateSize()
+    }
+  }, 500)
+})
 
 const originLatLng = computed(() => {
   if (store.eventManager.current.origin != null) {
@@ -31,19 +49,19 @@ const originUncertainty = computed(() => {
 })
 
 function initMap() {
-  if (mapContainer.value == null || map.value != null) {
-    return
+  if (mapContainer.value != null && map.value == null) {
+    const container = mapContainer.value
+    map.value = L.map(container, { trackResize: false, attributionControl: false, zoomAnimation: false })
+    const plan = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}')
+    const worldtopomap = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}')
+    const satmap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}')
+    const baseLayers = { Plan: plan, Terrain: worldtopomap, Satellite: satmap }
+    L.control.layers(baseLayers).addTo(map.value as L.Map)
+    L.control.scale({ imperial: false }).addTo(map.value as L.Map)
+    plan.addTo(map.value as L.Map)
+    map.value.setView([0, 0], 5)
+    resizeObserver.observe(container)
   }
-  const container = mapContainer.value
-  map.value = L.map(container, { trackResize: false, attributionControl: false })
-  const plan = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}')
-  const worldtopomap = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}')
-  const satmap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}')
-  const baseLayers = { Plan: plan, Terrain: worldtopomap, Satellite: satmap }
-  L.control.layers(baseLayers).addTo(map.value as L.Map)
-  L.control.scale({ imperial: false }).addTo(map.value as L.Map)
-  plan.addTo(map.value as L.Map)
-  map.value.setView([0, 0], 5)
 }
 
 function displayOrigin() {
@@ -117,7 +135,8 @@ function displayStations() {
       ],
       min: -1 * maxRes,
       max: maxRes,
-      logarithmic: false
+      logarithmic: false,
+      category: false
     }
     const oLon = store.eventManager.current.origin.longitude.value
     for (const [netsta, residual] of Object.entries(stationMap)) {
@@ -137,8 +156,8 @@ function displayStations() {
       const marker = L.circleMarker(staPos, { radius: 4, color: 'grey', fillOpacity: 1, fillColor: color, weight: 1 })
         .bindPopup(netsta)
         .addTo(map.value as L.Map)
-      // marker.bindPopup(netsta)
       layers.push(marker)
+      netstaMapMarker[netsta] = marker
       if (residual != null) {
         const line = L.polyline([oPos, staPos], { color: 'grey', weight: 1 }).addTo(map.value as L.Map)
         layers.push(line)
@@ -153,11 +172,44 @@ function displayStations() {
   })
 }
 
+function displayStationAlt() {
+  if (props.stationList != null && store.eventManager.current.origin != null && map.value != null) {
+    const oLat = store.eventManager.current.origin.latitude.value
+    const oLon = store.eventManager.current.origin.longitude.value
+    const bounds: L.LatLngTuple[] = [[oLat, oLon]]
+    for (const netsta of props.stationList) {
+      const pos = store.dataManager.getStationPos(netsta)
+      if (pos != null) {
+        if (oLon > 90 && pos.lon < 0) {
+          pos.lon += 360
+        } else if (oLon < -90 && pos.lon > 0) {
+          pos.lon -= 360
+        }
+        bounds.push([pos.lat, pos.lon])
+        const marker = L.circleMarker([pos.lat, pos.lon], { radius: 4, color: 'grey', fillOpacity: 1, fillColor: 'white', weight: 1 })
+          .bindPopup(netsta)
+          .addTo(map.value as L.Map)
+        layers.push(marker)
+        netstaMapMarker[netsta] = marker
+        const line = L.polyline([[oLat, oLon], [pos.lat, pos.lon]], { color: 'grey', weight: 1 }).addTo(map.value as L.Map)
+        layers.push(line)
+        line.bringToBack()
+      }
+    }
+    if (bounds.length > 1) {
+      map.value.fitBounds(bounds, { animate: false })
+    } else {
+      map.value.setView(bounds[0], 8)
+    }
+  }
+}
+
 function reset() {
   for (const layer of layers) {
     layer.remove()
   }
   layers.splice(0, layers.length)
+  netstaMapMarker = {}
 }
 
 function update() {
@@ -165,7 +217,24 @@ function update() {
   reset()
   if (store.eventManager.current.origin != null) {
     displayOrigin()
-    displayStations()
+    if (props.stationList != null) {
+      displayStationAlt()
+    } else {
+      displayStations()
+    }
+    if (props.focusStation != null) {
+      focusStation(props.focusStation)
+    }
+  }
+}
+
+function focusStation(netsta: string | null | undefined) {
+  if (netsta != null && netstaMapMarker[netsta] != null) {
+    netstaMapMarker[netsta].openPopup()
+  } else {
+    if (map.value != null) {
+      map.value.closePopup()
+    }
   }
 }
 
@@ -173,19 +242,29 @@ function update() {
 //   update()
 // })
 
-watch(() => store.eventManager.current.arrivals, () => {
+watch([
+  () => store.eventManager.current.arrivals,
+  () => props.stationList
+], () => {
   update()
+})
+
+watch(() => props.focusStation, () => {
+  focusStation(props.focusStation)
 })
 
 onMounted(() => {
   update()
 })
+onBeforeUnmount(() => {
+  resizeObserver.disconnect()
+})
 </script>
 
 <template>
-  <v-card>
-    <v-card-text class="pa-0">
-      <div ref="mapContainer" :style="{ height: '300px' }"></div>
+  <v-card :style="{ height: '100%' }">
+    <v-card-text class="pa-0" :style="{ height: '100%' }">
+      <div ref="mapContainer" :style="{ minHeight: '300px', height: props.height }"></div>
     </v-card-text>
   </v-card>
 </template>

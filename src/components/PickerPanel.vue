@@ -59,7 +59,8 @@ const toolbarValue = ref({
   commonScale: false,
   integration: false,
   interpolate: false,
-  tttEnabled: true
+  tttEnabled: true,
+  mapEnabled: true
 } as PickerToolbarOptions)
 
 const stationRefTimes = ref({} as StationRefTimes)
@@ -459,14 +460,16 @@ onBeforeUnmount(() => {
       :hide-ref-times="props.noEvent"
       :time-window="sliderTimeWindow"
       :ttt-enabled="toolbarValue.tttEnabled"
-      :style="{ height: `${resizerPosition}%` }"
+      :map-enabled="toolbarValue.mapEnabled"
+      :style="{ height: `${resizerPosition}%`, overflowY: 'auto' }"
       @active-channel="handleActiveChannel"
       @create-pick="createPick"
       @select-picks="handleSelectPicks"
       @picker-time="(t: number) => pickerTime = t"
-      @updateTimeWindow="(tw: [number, number]) => pickerTimeWindow = tw"/>
-    <div @mousedown="startDragging" :style="{ height: '12px', cursor: 'ns-resize', textAlign: 'center' }"></div>
-    <v-card :style="{ overflowY: 'auto', height: `calc(${100 - resizerPosition}% - 12px)` }">
+      @updateTimeWindow="(tw: [number, number]) => pickerTimeWindow = tw"
+    />
+    <div @mousedown="startDragging" :style="{ height: '16px', cursor: 'ns-resize', textAlign: 'center' }"></div>
+    <v-card :style="{ overflowY: 'auto', height: `calc(${100 - resizerPosition}% - 16px)` }">
       <v-card-text>
         <PickerWaveformList
           :data="data"

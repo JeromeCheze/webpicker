@@ -26,6 +26,7 @@ const props = defineProps({
 const picker = ref(false)
 const activeChart = ref('residual' as 'residual' | 'traveltime' | 'firstmotion' | 'magnitude')
 const allOriginDisplay = ref(false)
+const focusStation = ref(null as string | null)
 
 const contextMenu = ref(false)
 const contextMenuPos = ref([0, 0] as [number, number])
@@ -141,6 +142,14 @@ function setMagnitudeStations(value: string[]) {
   magnitudeStations.value = value
 }
 
+function handleFocusStation(netsta: string) {
+  if (focusStation.value === netsta) {
+    focusStation.value = null
+  } else {
+    focusStation.value = netsta
+  }
+}
+
 watch(() => store.keydown, (newValue) => {
   if (newValue === store.settings['keybinding.togglePicker']) {
     if (picker.value) {
@@ -217,11 +226,11 @@ onMounted(() => {
     </v-row>
     <v-row>
       <v-col cols="5">
-        <OriginMap/>
+        <OriginMap :focusStation="focusStation" height="100%"/>
       </v-col>
       <v-col cols="7">
         <v-card>
-          <v-card-text class="pa-0">
+          <v-card-text>
             <ResVsDistChart v-if="activeChart === 'residual'" @contextmenu="handleContextMenu"/>
             <TraveltimeChart v-if="activeChart === 'traveltime'" @contextmenu="handleContextMenu"/>
             <StationMagnitudeChart v-if="activeChart === 'magnitude'" @selectStation="setMagnitudeStations"/>
@@ -260,7 +269,7 @@ onMounted(() => {
     </v-row>
     <v-row>
       <v-col cols="12">
-        <ArrivalPanel/>
+        <ArrivalPanel @focus-station="handleFocusStation"/>
       </v-col>
     </v-row>
   </template>

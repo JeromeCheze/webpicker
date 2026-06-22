@@ -86,6 +86,7 @@ export interface PickerToolbarOptions {
   integration: boolean
   interpolate: boolean
   tttEnabled: boolean
+  mapEnabled: boolean
 }
 
 export interface FilterOptions {
