@@ -1,6 +1,6 @@
 [submodule "src/lib/sismojs"]
 	path = src/lib/sismojs
-	url = git@github.com:JeromeCheze/sismojs.git
+	url = https://github.com/JeromeCheze/sismojs.git
 [submodule "src/lib/lichen"]
 	path = src/lib/lichen
-	url = git@github.com:JeromeCheze/lichen.git
+	url = https://github.com/JeromeCheze/lichen.git
