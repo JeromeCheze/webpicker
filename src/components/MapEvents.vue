@@ -56,7 +56,7 @@ function getRadius(event: QEvent) {
   return 2
 }
 
-function focusEvent(eventid: string | null) {
+function focusEvent(eventid: string | null, fitBounds = false) {
   if (activeEvent.value != null && activeEvent.value.publicID === eventid) {
     eventid = null
   }
@@ -72,10 +72,12 @@ function focusEvent(eventid: string | null) {
       const pos = layer.getLatLng()
       bounds.push([pos.lat, pos.lng])
     }
-    if (bounds.length > 1) {
-      map.value!.fitBounds(bounds)
-    } else {
-      map.value!.setView(bounds[0], 9)
+    if (fitBounds) {
+      if (bounds.length > 1) {
+        map.value!.fitBounds(bounds)
+      } else {
+        map.value!.setView(bounds[0], 9)
+      }
     }
   }
 }
@@ -184,7 +186,7 @@ watch(() => filteredEventList.value, drawEvents)
 onMounted(() => {
   initMap()
   if (store.eventManager.current.event != null) {
-    focusEvent(store.eventManager.current.event.publicID)
+    focusEvent(store.eventManager.current.event.publicID, true)
   }
 })
 </script>

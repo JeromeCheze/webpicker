@@ -183,13 +183,15 @@ onMounted(() => {
 
 <template>
   <v-card>
-    <v-row>
-      <v-col cols="8">
-        <div ref="magScatter"></div>
-      </v-col>
-      <v-col cols="4">
-        <div ref="gutenbergRichter"></div>
-      </v-col>
-    </v-row>
+    <v-card-text>
+      <v-row>
+        <v-col cols="8">
+          <div ref="magScatter"></div>
+        </v-col>
+        <v-col cols="4">
+          <div ref="gutenbergRichter"></div>
+        </v-col>
+      </v-row>
+    </v-card-text>
   </v-card>
 </template>

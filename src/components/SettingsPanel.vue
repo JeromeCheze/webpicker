@@ -105,6 +105,7 @@ const struct: StructItem[] = [
       { label: 'Toggle Common Scale', key: 'keybinding.toggleCommonScale', type: 'text' },
       { label: 'Toggle TTT', key: 'keybinding.toggleTTT', type: 'text' },
       { label: 'Toggle Event Info', key: 'keybinding.toggleEventInfo', type: 'text' },
+      { label: 'Toggle Map', key: 'keybinding.toggleMap', type: 'text' },
       { label: 'Create Pick', key: 'keybinding.createPick', type: 'text' },
       { label: 'Delete Pick', key: 'keybinding.deletePick', type: 'text' },
       { label: 'Set Polarity Positive', key: 'keybinding.polarityPositive', type: 'text' },

@@ -241,11 +241,11 @@ function createChart(chartContainer: HTMLElement, data: WaveformProcessInterface
     header: { title: netsta, position: 'left', width: 150 }, legend: { enabled: false },
     xAxis: { enabled: false, gridEnabled: false }, yAxis: { enabled: false, gridEnabled: false, width: 0 },
     crosshair: { enabled: false, sticky: false }, synced: () => charts,
-    selection: null, tooltip: false, serieHeight: store.settings['picker.listWaveformHeight'],
+    selection: null, tooltip: { enabled: false }, serieHeight: store.settings['picker.listWaveformHeight'],
     height: store.settings['picker.listWaveformHeight'],
     type: store.settings['picker.listMode'],
     colorScale: store.settings['picker.listMode'] === 'heatmap2d' ? {
-      min: null, max: null, logarithmic: false,
+      min: null, max: null, logarithmic: false, category: false,
       stops: Lichen.getColorScale(store.settings['color.spectrogram']),
     } : undefined,
     vLines: getVLines(netsta), series: [toSerie(data)],

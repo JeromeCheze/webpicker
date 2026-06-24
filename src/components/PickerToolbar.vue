@@ -75,6 +75,10 @@ function toggleTTTEnabled() {
   props.modelValue.tttEnabled = !props.modelValue.tttEnabled
 }
 
+function toggleMapEnabled() {
+  props.modelValue.mapEnabled = !props.modelValue.mapEnabled
+}
+
 watch(() => store.keydown, (newValue) => {
   // console.log(newValue)
   if (newValue === store.settings['keybinding.setPhaseP']) {
@@ -107,6 +111,8 @@ watch(() => store.keydown, (newValue) => {
     toggleTTTEnabled()
   } else if (newValue === store.settings['keybinding.toggleEventInfo']) {
     eventInfoDialog.value = !eventInfoDialog.value
+  } else if (newValue === store.settings['keybinding.toggleMap']) {
+    toggleMapEnabled()
   }
 })
 
@@ -268,6 +274,14 @@ watch(() => sortValue.value, (value: number) => props.modelValue.sort = sortOpti
         </v-card-text>
       </v-card>
     </v-dialog>
+    <!-- TOGGLE TTT -->
+    <v-btn
+      @click="toggleMapEnabled"
+      :title="`Toggle map (${store.settings['keybinding.toggleMap']})`"
+      :active="props.modelValue.mapEnabled"
+    >
+      <v-icon>mdi-map</v-icon>
+    </v-btn>
     <!-- EXIT -->
     <v-btn @click="emit('leave')" :title="`Exit picker [${store.settings['keybinding.togglePicker']}]`" class="ml-1 mr-2"><v-icon>mdi-exit-to-app</v-icon></v-btn>
   </v-app-bar>

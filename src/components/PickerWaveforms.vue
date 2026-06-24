@@ -3,9 +3,10 @@ import { DenoiseProcessor, RotateProcessor, FilterProcessor, SpectrogramProcesso
 import type { FilterOptions, StationRefTimes, ChartData, WaveformProcessInterface, PickerToolbarOptions } from '@/types'
 import type { QPick } from '@/lib/sismojs/src/core/event/types'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
-import { ref, watch, computed, onBeforeUnmount } from 'vue'
+import { ref, watch, computed, onBeforeUnmount, nextTick } from 'vue'
 import type { VLine } from '@/lib/lichen/src/types'
 import { useAppStore } from '@/stores/app'
+import OriginMap from './OriginMap.vue'
 import Lichen from '@/lib/lichen/src'
 import { toNetSta } from '@/utils'
 
@@ -30,6 +31,7 @@ const props = defineProps<{
   interpolate: boolean
   hideRefTimes: boolean
   tttEnabled: boolean
+  mapEnabled: boolean
   timeWindow: [number, number]
 }>()
 
@@ -50,6 +52,17 @@ const spectrogramProcessor = new SpectrogramProcessor()
 const interpolateProcessor = new GapInterpolationProcessor()
 
 const loading = ref(false)
+
+const netstaList = computed(() => {
+  const result: string[] = []
+  for (const tr of props.data) {
+    const netsta = `${tr.stats.network}.${tr.stats.station}`
+    if (result.indexOf(netsta) < 0) {
+      result.push(netsta)
+    }
+  }
+  return result
+})
 
 const waveformData = computed(() => {
   const result: WaveformProcessInterface[] = []
@@ -246,10 +259,10 @@ function createSpectrogram(chartContainer: HTMLElement, index: number, waveformL
     legend: { enabled: false }, crosshair: { enabled: false }, synced: () => charts,
     xAxis: { enabled: index === dataLength - 1, fontSize },
     yAxis: { max: Math.min(data.spectrogram!.yMax, 50), fontSize },
-    selection: null, tooltip: false, type: 'heatmap3d', autoResize: false, zoom: 'x',
-    height: store.settings['picker.spectrogramHeight'], width: chartWidth.value, 
+    selection: null, tooltip: { enabled: undefined }, type: 'heatmap3d', autoResize: false, zoom: 'x',
+    height: store.settings['picker.spectrogramHeight'],// width: chartWidth.value, 
     colorScale: {
-      min: 0, max: data.spectrogram!.zMax, logarithmic: false,
+      min: 0, max: data.spectrogram!.zMax, logarithmic: false, category: false,
       stops: Lichen.getColorScale(store.settings['color.spectrogram'])
     },
     series: {
@@ -280,8 +293,8 @@ function createWaveform(chartContainer: HTMLElement, index: number, waveformLeng
     legend: { enabled: false }, synced: () => charts,
     crosshair: { enabled: props.phase != null, text: index === 0 ? props.phase : '', sticky: false },
     xAxis: { enabled: index === dataLength - 1, fontSize }, yAxis: { fontSize },
-    selection: null, tooltip: false, autoResize: false,
-    type: 'line', height: store.settings['picker.pickerWaveformHeight'], width: chartWidth.value, 
+    selection: null, tooltip: { enabled: undefined }, autoResize: true,
+    type: 'line', height: store.settings['picker.pickerWaveformHeight'],// width: chartWidth.value, 
     vLines: getVLines(index, waveformLength, data.id),
     series: [toSerie(data)],
     hooks: {
@@ -496,22 +509,29 @@ onBeforeUnmount(reset)
 </script>
 
 <template>
-  <v-card :style="{ overflowY: 'auto' }">
-    <v-card-title>
-      {{ props.activeStation }}
-      <span class="float-right">{{ props.phase != null ? pickerTime : '' }}</span>
-      <span >- Dist: {{ distance.toFixed(1) }} km | Az: {{ azimuth.toFixed(1) }}&deg;</span>
-      <v-progress-circular v-if="loading" indeterminate="disable-shrink" size="20" class="ml-4"/>
-    </v-card-title>
-    <v-card-text>
-      <div ref="container"></div>
-    </v-card-text>
-    <v-card-actions v-if="props.spectrogram" class="justify-end">
-      <v-col cols="4">
-        <v-range-slider label="Spectrogram color range" v-model="spectrogramRange" step="5" thumb-label></v-range-slider>
-      </v-col>
-    </v-card-actions>
-  </v-card>
+  <v-row class="my-0">
+    <v-col :cols="props.mapEnabled ? 10 : 12" class="py-0">
+      <v-card :style="{ height: '100%' }">
+        <v-card-title>
+          {{ props.activeStation }}
+          <span class="float-right">{{ props.phase != null ? pickerTime : '' }}</span>
+          <span >- Dist: {{ distance.toFixed(1) }} km | Az: {{ azimuth.toFixed(1) }}&deg;</span>
+          <v-progress-circular v-if="loading" indeterminate="disable-shrink" size="20" class="ml-4"/>
+        </v-card-title>
+        <v-card-text>
+          <div ref="container"></div>
+        </v-card-text>
+        <v-card-actions v-if="props.spectrogram" class="justify-end">
+          <v-col cols="4">
+            <v-range-slider label="Spectrogram color range" v-model="spectrogramRange" step="5" thumb-label></v-range-slider>
+          </v-col>
+        </v-card-actions>
+      </v-card>
+    </v-col>
+    <v-col cols="2" class="py-0" v-if="props.mapEnabled">
+      <OriginMap :focus-station="props.activeStation" :stationList="netstaList" height="100%"/>
+    </v-col>
+  </v-row>
 </template>
 
 <style>

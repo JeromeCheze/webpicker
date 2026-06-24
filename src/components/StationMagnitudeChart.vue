@@ -47,7 +47,8 @@ function drawChart() {
     min: 0,
     max: store.eventManager.current.originMagnitudes.length - 1,
     stops: Lichen.getColorScale('PARULA'),
-    logarithmic: false
+    logarithmic: false,
+    category: false
   }
   const magMap: Record<string, any> = {}
   const magColor: Record<string, string> = {}

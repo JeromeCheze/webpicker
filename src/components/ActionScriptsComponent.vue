@@ -68,7 +68,7 @@ watch(() => store.config, () => {
       <v-card-text>
         <v-row v-for="(item, i) in store.config?.action_scripts" :key="i">
           <v-col cols="2">
-            <bv-btn-group>
+            <v-btn-group>
               <v-progress-circular indeterminate v-if="status[i].loading" size="20" class="ml-2"></v-progress-circular>
               <v-btn v-else icon="mdi-play-outline" variant="plain" @click="() => handleActionScript(i)" title="Run script"></v-btn>
               <v-menu>
@@ -84,7 +84,7 @@ watch(() => store.config, () => {
                   </v-list-item>
                 </v-list>
               </v-menu>
-            </bv-btn-group>
+            </v-btn-group>
           </v-col>
           <v-col cols="10" class="d-flex align-center">
             <h4>

@@ -8,6 +8,8 @@ import { ref, watch } from 'vue'
 
 const store = useAppStore()
 
+const emit = defineEmits(['focusStation'])
+
 const selected = ref([] as QArrival[])
 
 const arrivalCols = ref([
@@ -117,6 +119,10 @@ function handleSelection (selected: QArrival[]) {
   store.eventManager.selectArrivals(selected)
 }
 
+function handleRowClick(item: QArrival) {
+  emit('focusStation', item.pickID.referredObject.waveformID.netsta)
+}
+
 function setSelected() {
   if (store.eventManager.current.arrivals == null) {
     return
@@ -137,6 +143,7 @@ function setSelected() {
       selectable
       :selected="selected"
       @selection="handleSelection"
+      @row-click="handleRowClick"
       store-key="arrivalPanel"
     ></SmartTable>
   </v-card>
