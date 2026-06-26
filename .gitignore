@@ -8,6 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 commit_script.sh
+config.xml
 
 node_modules
 .DS_Store
@@ -32,3 +33,4 @@ __pycache__/
 *.njsproj
 *.sln
 *.sw?
+*.pyc

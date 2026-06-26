@@ -18,6 +18,8 @@ const props = defineProps<{
   hideDiscarded: boolean
 }>()
 
+let ctrlPressed = false
+
 const usersEventMap = ref({} as Record<string, string[]>)
 
 const imagebbeInitialized = ref(false)
@@ -174,7 +176,12 @@ const filteredEventList = computed(() => {
 })
 
 function handleRowClick(event: QEvent) {
-  router.push({ name: 'event', params: { eventid: event.publicID } })
+  const linkParams = { name: 'event', params: { eventid: event.publicID } }
+  if (ctrlPressed) {
+    window.open(router.resolve(linkParams).href, '_blank')
+  } else {
+    router.push(linkParams)
+  }
 }
 
 function handleRowStyle(event: QEvent) {
@@ -182,6 +189,14 @@ function handleRowStyle(event: QEvent) {
     ? { background: store.settings['color.activeRowColor'] }
     : {}
 }
+
+watch(() => store.keydown, (newValue) => {
+  if (newValue.includes('ctrl')) {
+    ctrlPressed = true
+  } else {
+    ctrlPressed = false
+  }
+})
 
 watch(() => store.usersActivity, (value) => {
   const result: Record<string, string[]> = {}

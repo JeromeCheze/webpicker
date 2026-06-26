@@ -3,14 +3,14 @@ import { DenoiseProcessor, RotateProcessor, FilterProcessor, SpectrogramProcesso
 import type { FilterOptions, StationRefTimes, ChartData, WaveformProcessInterface, PickerToolbarOptions } from '@/types'
 import type { QPick } from '@/lib/sismojs/src/core/event/types'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
-import { ref, watch, computed, onBeforeUnmount, nextTick } from 'vue'
+import { ref, watch, computed, onBeforeUnmount } from 'vue'
 import type { VLine } from '@/lib/lichen/src/types'
 import { useAppStore } from '@/stores/app'
 import OriginMap from './OriginMap.vue'
 import Lichen from '@/lib/lichen/src'
 import { toNetSta } from '@/utils'
 
-const emit = defineEmits(['activeChannel', 'createPick', 'selectPicks', 'pickerTime', 'updateTimeWindow'])
+const emit = defineEmits(['activeChannel', 'createPick', 'selectPicks', 'pickerTime', 'updateTimeWindow', 'selectStation'])
 
 const store = useAppStore()
 
@@ -260,7 +260,7 @@ function createSpectrogram(chartContainer: HTMLElement, index: number, waveformL
     xAxis: { enabled: index === dataLength - 1, fontSize },
     yAxis: { max: Math.min(data.spectrogram!.yMax, 50), fontSize },
     selection: null, tooltip: { enabled: undefined }, type: 'heatmap3d', autoResize: false, zoom: 'x',
-    height: store.settings['picker.spectrogramHeight'],// width: chartWidth.value, 
+    height: store.settings['picker.spectrogramHeight'], width: chartWidth.value, 
     colorScale: {
       min: 0, max: data.spectrogram!.zMax, logarithmic: false, category: false,
       stops: Lichen.getColorScale(store.settings['color.spectrogram'])
@@ -293,8 +293,8 @@ function createWaveform(chartContainer: HTMLElement, index: number, waveformLeng
     legend: { enabled: false }, synced: () => charts,
     crosshair: { enabled: props.phase != null, text: index === 0 ? props.phase : '', sticky: false },
     xAxis: { enabled: index === dataLength - 1, fontSize }, yAxis: { fontSize },
-    selection: null, tooltip: { enabled: undefined }, autoResize: true,
-    type: 'line', height: store.settings['picker.pickerWaveformHeight'],// width: chartWidth.value, 
+    selection: null, tooltip: { enabled: undefined }, autoResize: false,
+    type: 'line', height: store.settings['picker.pickerWaveformHeight'], width: chartWidth.value, 
     vLines: getVLines(index, waveformLength, data.id),
     series: [toSerie(data)],
     hooks: {
@@ -429,6 +429,12 @@ function updateSpectrogramRange() {
   }
 }
 
+function handleMapStationClick(netsta: string) {
+  if (props.activeStation !== netsta) {
+    emit('selectStation', netsta)
+  }
+}
+
 watch(() => spectrogramRange.value, (value, oldValue) => {
   if (value[0] != oldValue[0] || value[1] != oldValue[1]) {
     updateSpectrogramRange()
@@ -444,7 +450,8 @@ watch([
   () => props.filter,
   () => props.spectrogram,
   () => store.settings,
-  () => props.commonScale
+  () => props.commonScale,
+  () => props.mapEnabled
 ], () => {
   reset()
   update(true)
@@ -529,7 +536,12 @@ onBeforeUnmount(reset)
       </v-card>
     </v-col>
     <v-col cols="2" class="py-0" v-if="props.mapEnabled">
-      <OriginMap :focus-station="props.activeStation" :stationList="netstaList" height="100%"/>
+      <OriginMap
+        :focus-station="props.activeStation"
+        :stationList="netstaList"
+        @station-click="handleMapStationClick"
+        height="100%"
+      />
     </v-col>
   </v-row>
 </template>

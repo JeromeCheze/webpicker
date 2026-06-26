@@ -14,11 +14,24 @@ DEBUG = False
 
 logger = logging.getLogger(__name__)
 
+def write_scp_config(schema_version):
+    curr_dir = os.path.dirname(os.path.abspath(__file__))
+    filename = os.path.join(curr_dir, '..', 'config.xml')
+    if float(schema_version) < 0.14:
+        content = f'''<?xml version="1.0" encoding="UTF-8"?>
+<seiscomp xmlns="http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/{schema_version}" version="{schema_version}"><Config/></seiscomp>'''
+    else:
+        content = f'''<?xml version="1.0" encoding="UTF-8"?>
+<seiscomp xmlns="http://geofon.gfz.de/ns/seiscomp-schema/{schema_version}" version="{schema_version}"><Config/></seiscomp>'''
+    with open(filename, 'w') as f:
+        f.write(content)
+
 def load_config():
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     filename = os.path.join(curr_dir, '..', 'config.json')
     with open(filename, 'r') as f:
         config = Config(**json.load(f))
+    write_scp_config(config.seiscomp.schema_version)
     return config
 
 CONFIG = load_config()
@@ -70,20 +83,24 @@ def quakeml_to_jquake(qml, remove_prefix_id=True):
 
 def sc3ml_to_quakeml(sc3ml_str, add_prefix_id=True):
     dom = etree.fromstring(sc3ml_str)
-    newdom = apply_xslt(dom, get_sc3ml_to_qml_xslt())
+    newdom = apply_xslt(dom, get_scml_to_qml_xslt())
     qml = etree.tostring(newdom)
     jquake = xmltodict.parse(qml)
     if add_prefix_id:
         fix_ids(jquake)
     return xmltodict.unparse(jquake)
 
-def get_sc3ml_to_qml_xslt():
+def get_scml_to_qml_xslt():
     v = CONFIG.seiscomp.schema_version
-    return f'{ CONFIG.seiscomp.root }/share/xml/{v}/sc3ml_{v}__quakeml_1.2.xsl'
+    if float(v) < 0.14:
+        return os.path.join(CONFIG.seiscomp.root, 'share', 'xml', v, f'sc3ml_{v}__quakeml_1.2.xsl')
+    return os.path.join(CONFIG.seiscomp.root, 'share', 'xml', v, f'scml_{v}__quakeml_1.2.xsl')
 
-def get_qml_to_sc3ml_xslt():
+def get_qml_to_scml_xslt():
     v = CONFIG.seiscomp.schema_version
-    return f'{ CONFIG.seiscomp.root }/share/xml/{v}/quakeml_1.2__sc3ml_{v}.xsl'
+    if float(v) < 0.14:
+        return os.path.join(CONFIG.seiscomp.root, 'share', 'xml', v, f'quakeml_1.2__sc3ml_{v}.xsl')
+    return os.path.join(CONFIG.seiscomp.root, 'share', 'xml', v, f'quakeml_1.2__scml_{v}.xsl')
 
 def gen_id():
     hexa = ['%x'% x for x in range(0, 16)]
@@ -114,7 +131,7 @@ def fix_scmag_magnitude_public_id(root):
 def write_sc3ml(jquake, filename):
     qml = jquake_to_quakeml(jquake, add_prefix_id=False)
     dom = etree.fromstring(qml)
-    sc3ml = apply_xslt(etree.ElementTree(dom), get_qml_to_sc3ml_xslt())
+    sc3ml = apply_xslt(etree.ElementTree(dom), get_qml_to_scml_xslt())
     with open(filename, 'w') as f:
         f.write(etree.tostring(sc3ml).decode('utf-8'))
 

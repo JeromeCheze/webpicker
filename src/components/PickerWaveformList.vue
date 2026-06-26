@@ -24,6 +24,7 @@ const props = defineProps<{
   timeWindow: [number, number]
   hideRefTimes: boolean
   detector: boolean
+  activeStation: string | null
 }>()
 
 const slider = ref()
@@ -182,17 +183,6 @@ function getVLines(netsta: string) {
 }
 
 function selectStation(netsta: string) {
-  const prevSelected = selected.value
-  selected.value = netsta
-  if (prevSelected != null) {
-    const series = chartData[prevSelected].chart.opt.series as LineOptions[]
-    series[0].color = store.settings['color.waveform']
-    chartData[prevSelected].chart.draw()
-    updateChartVlines(prevSelected, chartData[prevSelected].chart)
-  }
-  const series = chartData[netsta].chart.opt.series as LineOptions[]
-  series[0].color = store.settings['color.activeWaveform']
-  chartData[netsta].chart.draw()
   emit('selectStation', netsta)
 }
 
@@ -242,7 +232,7 @@ function createChart(chartContainer: HTMLElement, data: WaveformProcessInterface
     xAxis: { enabled: false, gridEnabled: false }, yAxis: { enabled: false, gridEnabled: false, width: 0 },
     crosshair: { enabled: false, sticky: false }, synced: () => charts,
     selection: null, tooltip: { enabled: false }, serieHeight: store.settings['picker.listWaveformHeight'],
-    height: store.settings['picker.listWaveformHeight'],
+    height: store.settings['picker.listWaveformHeight'], autoResize: true,
     type: store.settings['picker.listMode'],
     colorScale: store.settings['picker.listMode'] === 'heatmap2d' ? {
       min: null, max: null, logarithmic: false, category: false,
@@ -359,6 +349,22 @@ watch(() => props.refTimeKey, () => {
   for (const current of Object.values(chartData)) {
     const [t1, t2] = getXRange(current.chart.opt.header.title!)
     current.chart.setXRange(t1, t2)
+  }
+})
+
+watch(() => props.activeStation, (newValue) => {
+  if (newValue != null) {
+    const prevSelected = selected.value
+    selected.value = newValue
+    if (prevSelected != null) {
+      const series = chartData[prevSelected].chart.opt.series as LineOptions[]
+      series[0].color = store.settings['color.waveform']
+      chartData[prevSelected].chart.draw()
+      updateChartVlines(prevSelected, chartData[prevSelected].chart)
+    }
+    const series = chartData[newValue].chart.opt.series as LineOptions[]
+    series[0].color = store.settings['color.activeWaveform']
+    chartData[newValue].chart.draw()
   }
 })
 

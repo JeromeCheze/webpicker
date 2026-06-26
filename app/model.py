@@ -1,3 +1,4 @@
+import os
 from pydantic import BaseModel, Field
 from typing import Literal, Optional
 from typing_extensions import Annotated, deprecated
@@ -141,9 +142,9 @@ class ConfigDetector(BaseModel):
     url: str = ''
 
 class ConfigFDSNWS(BaseModel):
-    dataselect_host: str
-    event_host: str
-    station_host: str
+    dataselect_host: str = ''
+    event_host: str = ''
+    station_host: str = ''
 
 class ConfigLocsat(BaseModel):
     profiles: list[str] = ['iasp91', 'tab']
@@ -163,8 +164,8 @@ class ConfigVelest(BaseModel):
 
 class ConfigSeiscomp(BaseModel):
     messaging_host: str = ''
-    root: str = ''
-    schema_version: str = '0.13'
+    root: str = os.environ.get('SEISCOMP_ROOT', '')
+    schema_version: str = '0.14'
 
 class ConfigSkhash(BaseModel):
     enabled: bool = False

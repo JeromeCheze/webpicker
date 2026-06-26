@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { FilterOptions, PickerToolbarOptions, StationRefTimes, WPNotificationOptions } from '@/types'
 import { QPick, type QEvaluationStatus, type QPickOnset, type QPickPolarity } from '@/lib/sismojs/src/core/event/types'
+import type { FilterOptions, PickerToolbarOptions, StationRefTimes, WPNotificationOptions } from '@/types'
+import { getLocalStorageDefault, pushUnique, setLocalStorage, toNetSta } from '@/utils'
 import { ref, shallowRef, watch, onMounted, computed } from 'vue'
 import type { Trace } from '@/lib/sismojs/src/core/waveform'
 import PickerWaveformList from './PickerWaveformList.vue'
 import PickerWaveforms from './PickerWaveforms.vue'
 import PickerToolbar from './PickerToolbar.vue'
-import { getLocalStorageDefault, pushUnique, setLocalStorage, toNetSta } from '@/utils'
 import { useAppStore } from '@/stores/app'
 import { onBeforeUnmount } from 'vue'
 
@@ -60,7 +60,7 @@ const toolbarValue = ref({
   integration: false,
   interpolate: false,
   tttEnabled: true,
-  mapEnabled: true
+  mapEnabled: getLocalStorageDefault('mapEnabled', true) as boolean,
 } as PickerToolbarOptions)
 
 const stationRefTimes = ref({} as StationRefTimes)
@@ -209,7 +209,6 @@ function handleSelectStation(netsta: string) {
       seedIds.push(tr.stats.id)
     }
   }
-
   toolbarValue.value.components = components
   toolbarValue.value.seedids = seedIds
   pickerStation.value = netsta
@@ -422,6 +421,7 @@ onBeforeUnmount(() => {
   }
   pickerStation.value = null
   setLocalStorage('resizerPosition', resizerPosition.value)
+  setLocalStorage('mapEnabled', toolbarValue.value.mapEnabled)
 })
 
 
@@ -466,6 +466,7 @@ onBeforeUnmount(() => {
       @create-pick="createPick"
       @select-picks="handleSelectPicks"
       @picker-time="(t: number) => pickerTime = t"
+      @select-station="handleSelectStation"
       @updateTimeWindow="(tw: [number, number]) => pickerTimeWindow = tw"
     />
     <div @mousedown="startDragging" :style="{ height: '16px', cursor: 'ns-resize', textAlign: 'center' }"></div>
@@ -480,6 +481,7 @@ onBeforeUnmount(() => {
           :time-window="pickerTimeWindow"
           :hide-ref-times="props.noEvent"
           :detector="toolbarValue.detector"
+          :active-station="pickerStation"
           @select-station="handleSelectStation"
           @sliderTimeWindow="(tw: [number, number]) => sliderTimeWindow = tw"/>
       </v-card-text>

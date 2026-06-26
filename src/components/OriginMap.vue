@@ -9,6 +9,8 @@ import 'leaflet-ellipse'
 
 const store = useAppStore()
 
+const emit = defineEmits(['stationClick'])
+
 const props = defineProps<{
   focusStation?: string | null
   height?: string,
@@ -154,6 +156,7 @@ function displayStations() {
       bounds.push(staPos)
       const color = residual == null ? 'grey' : DataUtils.getColor(residual, colorScale) as string
       const marker = L.circleMarker(staPos, { radius: 4, color: 'grey', fillOpacity: 1, fillColor: color, weight: 1 })
+        .on('click', () => emit('stationClick', netsta))
         .bindPopup(netsta)
         .addTo(map.value as L.Map)
       layers.push(marker)
@@ -187,6 +190,9 @@ function displayStationAlt() {
         }
         bounds.push([pos.lat, pos.lon])
         const marker = L.circleMarker([pos.lat, pos.lon], { radius: 4, color: 'grey', fillOpacity: 1, fillColor: 'white', weight: 1 })
+          .on('click', () => {
+            emit('stationClick', netsta)
+          })
           .bindPopup(netsta)
           .addTo(map.value as L.Map)
         layers.push(marker)
