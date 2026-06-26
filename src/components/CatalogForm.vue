@@ -6,7 +6,7 @@ import { useRouter, useRoute } from 'vue-router'
 import type { WebpickerForm } from '@/types'
 import SelectArea from '@/utils/selectArea'
 import { useAppStore } from '@/stores/app'
-import * as L from 'leaflet'
+import L from 'leaflet'
 
 import DateField from './DateField.vue'
 import NumberField from './NumberField.vue'

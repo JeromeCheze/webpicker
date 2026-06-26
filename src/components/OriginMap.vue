@@ -4,7 +4,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import type { WPNotificationOptions } from '@/types'
 import DataUtils from '@/lib/lichen/src/dataUtils'
 import { useAppStore } from '@/stores/app'
-import * as L from 'leaflet'
+import L from 'leaflet'
 import 'leaflet-ellipse'
 
 const store = useAppStore()
@@ -53,7 +53,7 @@ const originUncertainty = computed(() => {
 function initMap() {
   if (mapContainer.value != null && map.value == null) {
     const container = mapContainer.value
-    map.value = L.map(container, { trackResize: false, attributionControl: false, zoomAnimation: false })
+    map.value = L.map(container, { trackResize: false, attributionControl: false, zoomAnimation: false, wheelPxPerZoomLevel: 100 })
     const plan = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}')
     const worldtopomap = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}')
     const satmap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}')

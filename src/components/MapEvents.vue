@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import * as L from 'leaflet'
+import L from 'leaflet'
 import { QEvent } from '@/lib/sismojs/src/core/event/types'
 import { ref, onMounted, watch, computed } from 'vue'
 import MagnitudePanel from './MagnitudePanel.vue'
@@ -144,7 +144,7 @@ function initMap() {
     return
   }
   const container = mapContainer.value
-  map.value = L.map(container, { trackResize: false, attributionControl: false, worldCopyJump: false, zoomControl: false, zoomAnimation: false })
+  map.value = L.map(container, { trackResize: false, attributionControl: false, worldCopyJump: false, zoomControl: false, zoomAnimation: false, wheelPxPerZoomLevel: 100 })
   map.value.on('click', () => {
     focusEvent(null)
   })

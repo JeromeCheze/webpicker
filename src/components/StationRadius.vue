@@ -5,7 +5,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import NumberField from './NumberField.vue'
 import { useAppStore } from '@/stores/app'
 import { useRoute } from 'vue-router'
-import * as L from 'leaflet'
+import L from 'leaflet'
 
 interface OptType {
   network: string

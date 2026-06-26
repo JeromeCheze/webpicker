@@ -21,7 +21,7 @@ export default defineConfig({
   build: {
     assetsDir: './static'
   },
-  base: process.env.WEBPICKER_BASE_URL || './',
+  base: process.env.WEBPICKER_BASE_URL || '/',
   server: {
     proxy: {
       '/fdsnws': {
