@@ -148,7 +148,7 @@ export default class DataManager {
           }
         }
         if (!found) {
-          bulk.push([net, sta, loc, cha, t, t])
+          bulk.push([net, sta, loc === '' ? '--' : loc, cha, t, t])
         }
       }
       if (bulk.length > 0) {
