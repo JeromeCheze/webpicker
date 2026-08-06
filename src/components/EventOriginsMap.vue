@@ -87,7 +87,7 @@ function displayStations() {
     props.activeOrigin.longitude.value,
     props.activeOrigin.arrival,
     handleNotification
-  ).then((inv) => {
+  ).then((_inv) => {
     for (const arrival of props.activeOrigin!.arrival) {
       const netsta = arrival.pickID.referredObject.waveformID.netsta
       if (arrival.timeWeight === 0 || stationMap[netsta] === true) {

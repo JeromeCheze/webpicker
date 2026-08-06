@@ -3,6 +3,7 @@ import json
 import tempfile
 import subprocess
 from app import utils
+from typing import Any
 from app import locsat_locator
 from app.model import TTTQuery
 from datetime import datetime, UTC
@@ -10,7 +11,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 from seiscomp.seismology import TravelTimeTableInterface
 
-def relocate_with_nll(qml, profile):
+def relocate_with_nll(qml: bytes, profile: str):
     try:
         data = {
             'args': {
@@ -51,7 +52,7 @@ def relocate_with_nll(qml, profile):
             'quakeml': qml
         }
 
-def relocate_with_velest(qml, profile):
+def relocate_with_velest(qml: bytes, profile: str):
     try:
         data = {
             'args': {
@@ -88,18 +89,24 @@ def relocate_with_velest(qml, profile):
             'quakeml': qml
         }
 
-def relocate_with_scp_api(qml, profile):
-    jquake = utils.quakeml_to_jquake(qml, remove_prefix_id=True)
-    error, result = locsat_locator.relocate(jquake, profile, utils.CONFIG.fdsnws.station_host)
-    if result is None:
-        result = jquake
-    qml = utils.jquake_to_quakeml(result)
-    return {
-        'message': error,
-        'quakeml': qml
-    }
+def relocate_with_scp_api(qml: bytes, profile: str):
+    try:
+        jquake = utils.quakeml_to_jquake(qml, remove_prefix_id=True)
+        error, result = locsat_locator.relocate(jquake, profile, utils.CONFIG.fdsnws.station_host)
+        if result is None:
+            result = jquake
+        new_qml = utils.jquake_to_quakeml(result)
+        return {
+            'message': error,
+            'quakeml': new_qml
+        }
+    except Exception as exception:
+            return {
+                'message': str(exception),
+                'quakeml': qml
+            }
 
-def compute_magnitudes_with_scamp_and_scmag(qml):
+def compute_magnitudes_with_scamp_and_scmag(qml: bytes):
     scp_config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config.xml')
     jquake = utils.quakeml_to_jquake(qml, remove_prefix_id=True)
 
@@ -144,7 +151,7 @@ def compute_magnitudes_with_scamp_and_scmag(qml):
     result = result.decode('utf-8')
     result = result.replace(' encoding="UTF-8"', '')
 
-    qml = utils.sc3ml_to_quakeml(result, add_prefix_id=False)
+    new_qml = utils.sc3ml_to_quakeml(result, add_prefix_id=False)
 
     if utils.DEBUG:
         _, scmag_result = tempfile.mkstemp(suffix='.sc3ml')
@@ -154,25 +161,25 @@ def compute_magnitudes_with_scamp_and_scmag(qml):
         with open(scmag_result, 'w') as f:
             f.write(result)
         with open(qml_result, 'w') as f:
-            f.write(qml)
+            f.write(new_qml)
     else:
         os.remove(sc3ml)
         os.remove(inventory)
         os.remove(scamp_result)
     return {
         'message': error_message.decode('utf-8'),
-        'quakeml': qml
+        'quakeml': new_qml
     }
 
-def takeoffangle(query: TTTQuery):
+def takeoffangle(query: TTTQuery) -> dict[str, float]:
     ttt = TravelTimeTableInterface.Create('LOCSAT')
     ttt.setModel('iasp91')
-    result = {}
+    result: dict[str, float] = {}
     for netsta, pos in query.station.items():
         result[netsta] = ttt.compute('P', query.latitude, query.longitude, query.depth, pos[0], pos[1], pos[2]).takeoff
     return result
 
-def get_locsat_travel_times(query: TTTQuery):
+def get_locsat_travel_times(query: TTTQuery) -> dict[str, dict[str, float]]:
     ttt = TravelTimeTableInterface.Create('LOCSAT')
     ttt.setModel('iasp91')
     result = {}
@@ -188,7 +195,7 @@ def get_locsat_travel_times(query: TTTQuery):
             result[netsta] = {'ttt': {'P': 0, 'S': 0}}
     return result
 
-def compute_focal_mechanisms_with_skhash(qml, params):
+def compute_focal_mechanisms_with_skhash(qml: bytes, params: dict[str, Any]):
     jquake = utils.quakeml_to_jquake(qml)
     dir_path = tempfile.mkdtemp()
     try:

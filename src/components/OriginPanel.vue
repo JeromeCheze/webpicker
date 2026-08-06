@@ -41,66 +41,68 @@ const originCols = ref([
   {
     label: 'Phases',
     valueAccessor: (o: QOrigin) => o.quality?.usedPhaseCount,
-    textAccessor: (o: QOrigin) => `${o.quality?.usedPhaseCount} / ${o.quality?.associatedPhaseCount}`,
+    textAccessor: (o: QOrigin) => `${o.quality?.usedPhaseCount || '-'} / ${o.quality?.associatedPhaseCount || '-'}`,
     enabled: true
   },
   {
     label: 'RMS',
     valueAccessor: (o: QOrigin) => o.quality?.standardError,
-    textAccessor: (o: QOrigin) => `${o.quality?.standardError?.toFixed(2)} s`,
+    textAccessor: (o: QOrigin) => `${o.quality?.standardError?.toFixed(2) || '-'} s`,
     class: rmsColor,
     enabled: true
   },
   {
     label: 'Az. Gap',
     valueAccessor: (o: QOrigin) => o.quality?.azimuthalGap,
-    textAccessor: (o: QOrigin) => `${o.quality?.azimuthalGap?.toFixed(0)} °`,
+    textAccessor: (o: QOrigin) => `${o.quality?.azimuthalGap?.toFixed(0) || '-'} °`,
     class: azGapColor,
     enabled: true
   },
   {
     label: 'Min Dist',
     valueAccessor: (o: QOrigin) => o.quality?.minimumDistance,
-    textAccessor: (o: QOrigin) => `${o.quality?.minimumDistance?.toFixed(2)} °`,
+    textAccessor: (o: QOrigin) => `${o.quality?.minimumDistance?.toFixed(2) || '-'} °`,
     class: minDistColor,
     enabled: true
   },
   {
     label: 'Method',
     valueAccessor: (o: QOrigin) => o.methodID,
-    textAccessor: (o: QOrigin) => o.methodID,
+    textAccessor: (o: QOrigin) => o.methodID || '-',
     enabled: false
   },
   {
     label: 'Earth Model',
     valueAccessor: (o: QOrigin) => o.earthModelID,
-    textAccessor: (o: QOrigin) => o.earthModelID,
+    textAccessor: (o: QOrigin) => o.earthModelID || '-',
     enabled: false
   },
   {
     label: 'Author',
     valueAccessor: (o: QOrigin) => o.creationInfo?.author,
-    textAccessor: (o: QOrigin) => o.creationInfo?.author,
+    textAccessor: (o: QOrigin) => o.creationInfo?.author || '-',
     enabled: false
   },
   {
     label: 'Creation Time',
     valueAccessor: (o: QOrigin) => o.creationInfo?.creationTime,
-    textAccessor: (o: QOrigin) => o.creationInfo?.creationTime,
+    textAccessor: (o: QOrigin) => o.creationInfo?.creationTime || '-',
     enabled: false
   }
 ] as ColObject[])
 
 function prettyLatitude(lat: QRealQuantity) {
+  const uncertainty = lat.uncertainty != null ? `+- ${lat.uncertainty.toFixed(2)} km` : ''
   return lat.value > 0
-    ? `${lat.value.toFixed(2)}°N +/- ${lat.uncertainty?.toFixed(2)} km`
-    : `${-lat.value.toFixed(2)}°S +/- ${lat.uncertainty?.toFixed(2)} km`
+    ? `${lat.value.toFixed(2)}°N ${uncertainty}`
+    : `${-lat.value.toFixed(2)}°S ${uncertainty}`
 }
 
 function prettyLongitude(lon: QRealQuantity) {
+  const uncertainty = lon.uncertainty != null ? `+- ${lon.uncertainty.toFixed(2)} km` : ''
   return lon.value > 0
-    ? `${lon.value.toFixed(2)}°E +/- ${lon.uncertainty?.toFixed(2)} km`
-    : `${-lon.value.toFixed(2)}°W +/- ${lon.uncertainty?.toFixed(2)} km`
+    ? `${lon.value.toFixed(2)}°E ${uncertainty}`
+    : `${-lon.value.toFixed(2)}°W ${uncertainty}`
 }
 
 function prettyDepth(depth: QRealQuantity) {

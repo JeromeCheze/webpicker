@@ -98,7 +98,7 @@ function displayStations() {
     store.eventManager.current.origin.longitude.value,
     store.eventManager.current.arrivals,
     handleNotification
-  ).then((inv) => {
+  ).then((_inv) => {
     if (store.eventManager.current.origin == null || store.eventManager.current.arrivals == null || map.value == null) {
       return
     }

@@ -121,7 +121,7 @@ def get_app_config(username: Annotated[str, Depends(check_authentication)]) -> C
 @app.post('/app/config', tags=['app'])
 async def set_app_config(password: str, config: Config, request: Request, username: Annotated[str, Depends(check_authentication)]):
     if secrets.compare_digest(password, ADMIN_PASSWORD):
-        utils.update_config(config.model_dump())
+        utils.update_config(config)
         return 'ok'
     else:
         raise HTTPException(
@@ -225,7 +225,7 @@ async def relocate(locator: Literal['LOCSAT', 'NonLinLoc', 'VELEST'], profile: s
 @app.post('/api/compute_focal_mechanisms', tags=['api'])
 async def compute_focal_mechanisms(request: Request, username: Annotated[str, Depends(check_authentication)]):
     qml = await request.body()
-    return processing.compute_focal_mechanisms_with_skhash(qml, params=request.query_params)
+    return processing.compute_focal_mechanisms_with_skhash(qml, params=dict(request.query_params))
 
 @app.post('/api/script/{index}', tags=['api'])
 async def launch_script(index: int, request: Request, username: Annotated[str, Depends(check_authentication)]):

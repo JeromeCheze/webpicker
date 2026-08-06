@@ -22,19 +22,19 @@ const magnitudeCols = ref([
   {
     label: 'Type',
     valueAccessor: (m: QMagnitude) => m.type,
-    textAccessor: (m: QMagnitude) => m.type,
+    textAccessor: (m: QMagnitude) => m.type || '-',
     enabled: true
   },
   {
     label: 'Nb Station',
     valueAccessor: (m: QMagnitude) => m.stationCount,
-    textAccessor: (m: QMagnitude) => m.stationCount,
+    textAccessor: (m: QMagnitude) => m.stationCount || '-',
     enabled: true
   },
   {
     label: 'Method',
     valueAccessor: (m: QMagnitude) => m.methodID,
-    textAccessor: (m: QMagnitude) => m.methodID,
+    textAccessor: (m: QMagnitude) => m.methodID || '-',
     enabled: true
   }
 ] as ColObject[])

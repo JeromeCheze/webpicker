@@ -4,6 +4,7 @@ import logging
 import tempfile
 import xmltodict
 import subprocess
+from typing import Any
 from lxml import etree
 from .model import Config
 from random import randint
@@ -14,7 +15,7 @@ DEBUG = False
 
 logger = logging.getLogger(__name__)
 
-def write_scp_config(schema_version):
+def write_scp_config(schema_version: str) -> None:
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     filename = os.path.join(curr_dir, '..', 'config.xml')
     if float(schema_version) < 0.14:
@@ -26,7 +27,7 @@ def write_scp_config(schema_version):
     with open(filename, 'w') as f:
         f.write(content)
 
-def load_config():
+def load_config() -> Config:
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     filename = os.path.join(curr_dir, '..', 'config.json')
     with open(filename, 'r') as f:
@@ -36,15 +37,15 @@ def load_config():
 
 CONFIG = load_config()
 
-def update_config(content):
+def update_config(config: Config) -> None:
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     filename = os.path.join(curr_dir, '..', 'config.json')
     with open(filename, 'w') as f:
-        json.dump(content, f, indent=2, sort_keys=True)
+        json.dump(config.model_dump(), f, indent=2, sort_keys=True)
     global CONFIG
     CONFIG = load_config()
 
-def fix_ids(o, remove=False):
+def fix_ids(o: Any, remove: bool = False) -> None:
     if isinstance(o, list):
         for item in o:
             fix_ids(item, remove)
@@ -59,7 +60,7 @@ def fix_ids(o, remove=False):
             else:
                 fix_ids(v, remove)
 
-def jquake_to_quakeml(jquake, add_prefix_id=True):
+def jquake_to_quakeml(jquake: list[dict[str, Any]], add_prefix_id: bool = True) -> str:
     if add_prefix_id:
         fix_ids(jquake)
     qml = {
@@ -74,14 +75,14 @@ def jquake_to_quakeml(jquake, add_prefix_id=True):
     }
     return xmltodict.unparse(qml).replace(' encoding="utf-8"', '')
 
-def quakeml_to_jquake(qml, remove_prefix_id=True):
+def quakeml_to_jquake(qml: str | bytes, remove_prefix_id: bool = True) -> list[dict[str, Any]]:
     j = xmltodict.parse(qml)
     jquake = [j['q:quakeml']['eventParameters']['event']]
     if remove_prefix_id:
         fix_ids(jquake, remove=True)
     return jquake
 
-def sc3ml_to_quakeml(sc3ml_str, add_prefix_id=True):
+def sc3ml_to_quakeml(sc3ml_str: str, add_prefix_id: bool = True) -> str:
     dom = etree.fromstring(sc3ml_str)
     newdom = apply_xslt(dom, get_scml_to_qml_xslt())
     qml = etree.tostring(newdom)
@@ -90,52 +91,35 @@ def sc3ml_to_quakeml(sc3ml_str, add_prefix_id=True):
         fix_ids(jquake)
     return xmltodict.unparse(jquake)
 
-def get_scml_to_qml_xslt():
+def get_scml_to_qml_xslt() -> str:
     v = CONFIG.seiscomp.schema_version
     if float(v) < 0.14:
         return os.path.join(CONFIG.seiscomp.root, 'share', 'xml', v, f'sc3ml_{v}__quakeml_1.2.xsl')
     return os.path.join(CONFIG.seiscomp.root, 'share', 'xml', v, f'scml_{v}__quakeml_1.2.xsl')
 
-def get_qml_to_scml_xslt():
+def get_qml_to_scml_xslt() -> str:
     v = CONFIG.seiscomp.schema_version
     if float(v) < 0.14:
         return os.path.join(CONFIG.seiscomp.root, 'share', 'xml', v, f'quakeml_1.2__sc3ml_{v}.xsl')
     return os.path.join(CONFIG.seiscomp.root, 'share', 'xml', v, f'quakeml_1.2__scml_{v}.xsl')
 
-def gen_id():
+def gen_id() -> str:
     hexa = ['%x'% x for x in range(0, 16)]
     return ''.join([hexa[randint(0, 15)] for x in range(0, 16)])
 
-def apply_xslt(document, xslt_path):
+def apply_xslt(document: etree._Element | etree._ElementTree, xslt_path: str) -> etree._XSLTResultTree:
     xslt = etree.parse(xslt_path)
     transform = etree.XSLT(xslt)
     return transform(document)
 
-def update_sc3ml_origin_reference(root):
-    namespace = list(root.nsmap.values())[0]
-    origin = root[0].find('{%s}origin' % namespace)
-    origin_id = origin.attrib['publicID']
-    e = root[0].find('{%s}event' % namespace)
-    po = e.find('{%s}preferredOriginID' % namespace)
-    oref = e.find('{%s}originReference' % namespace)
-    po.text = origin_id
-    oref.text = origin_id
-
-def fix_scmag_magnitude_public_id(root):
-    namespace = list(root.nsmap.values())[0]
-    origin = root[0].find('{%s}origin' % namespace)
-    mags = origin.findall('{%s}magnitude' % namespace)
-    for mag in mags:
-        mag.attrib['publicID'] = mag.attrib['publicID'].replace('/', '.')
-
-def write_sc3ml(jquake, filename):
+def write_sc3ml(jquake: list[dict[str, Any]], filename: str) -> None:
     qml = jquake_to_quakeml(jquake, add_prefix_id=False)
     dom = etree.fromstring(qml)
     sc3ml = apply_xslt(etree.ElementTree(dom), get_qml_to_scml_xslt())
     with open(filename, 'w') as f:
         f.write(etree.tostring(sc3ml).decode('utf-8'))
 
-def get_inventory(jquake):
+def get_inventory(jquake: list[dict[str, Any]]) -> str:
     _, inv_filename = tempfile.mkstemp(suffix=".xml")
     _, sc3_inv_filename = tempfile.mkstemp(suffix=".xml")
     data = [
@@ -169,7 +153,7 @@ def get_inventory(jquake):
         os.remove(inv_filename)
     return sc3_inv_filename
 
-def commit_with_scdispatch(qml):
+def commit_with_scdispatch(qml: bytes):
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
     # print(sc3ml)
     jquake = quakeml_to_jquake(qml)
@@ -188,7 +172,7 @@ def commit_with_scdispatch(qml):
         'return_code': scdispatch.returncode
     }
 
-def launch_script(script_text, qml):
+def launch_script(script_text: str, qml: bytes) -> dict[str, Any]:
     script_fd, script_filename = tempfile.mkstemp()
     with open(script_filename, 'w') as f:
         f.write(script_text)
@@ -215,13 +199,13 @@ def launch_script(script_text, qml):
         'return_code': p.returncode
     }
 
-def commit_script(qml):
+def commit_script(qml: bytes) -> dict[str, Any]:
     return launch_script(CONFIG.commit_script, qml)
 
-def get_region(lat, lon):
+def get_region(lat: float, lon: float) -> str:
     return Regions.getRegionName(lat, lon)
 
-def get_event_time(eventid):
+def get_event_time(eventid: str) -> str | None:
     req = 'http://%s/fdsnws/event/1/query?format=text&eventid=%s' % (CONFIG.fdsnws.event_host, eventid)
     try:
         response = urlopen(req).read().decode('utf-8')
@@ -233,7 +217,7 @@ def get_event_time(eventid):
     except:
         return None
 
-def apply_user_rules(method, username, data):
+def apply_user_rules(method: str, username: str, data: Any) -> bytes | None:
     rules = CONFIG.access.users[username].rules
     if method == 'GET':
         if 'starttime' in rules:

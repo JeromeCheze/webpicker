@@ -16,14 +16,14 @@ const preferredMagnitudeID = ref(null as string | null)
 const originCols = ref([
   {
     label: 'Creation Time',
-    valueAccessor: (o: QOrigin) => o.creationInfo.creationTime,
-    textAccessor: (o: QOrigin) => prettyTime(o.creationInfo.creationTime),
+    valueAccessor: (o: QOrigin) => o.creationInfo?.creationTime,
+    textAccessor: (o: QOrigin) => prettyTime(o.creationInfo?.creationTime),
     enabled: true
   },
   {
     label: 'Author',
-    valueAccessor: (o: QOrigin) => o.creationInfo.author,
-    textAccessor: (o: QOrigin) => o.creationInfo.author,
+    valueAccessor: (o: QOrigin) => o.creationInfo?.author,
+    textAccessor: (o: QOrigin) => o.creationInfo?.author || '-',
     enabled: true
   },
   {
@@ -46,44 +46,44 @@ const originCols = ref([
   },
   {
     label: 'Depth',
-    valueAccessor: (o: QOrigin) => o.depth.value,
-    textAccessor: (o: QOrigin) => prettyDepth(o.depth),
+    valueAccessor: (o: QOrigin) => o.depth?.value,
+    textAccessor: (o: QOrigin) => prettyDepth(o.depth?.value),
     enabled: true
   },
   {
     label: 'Phases',
     valueAccessor: (o: QOrigin) => o.quality?.usedPhaseCount,
-    textAccessor: (o: QOrigin) => `${o.quality?.usedPhaseCount} / ${o.quality?.associatedPhaseCount}`,
+    textAccessor: (o: QOrigin) => `${o.quality?.usedPhaseCount || '-'} / ${o.quality?.associatedPhaseCount || '-'}`,
     enabled: true
   },
   {
     label: 'RMS',
     valueAccessor: (o: QOrigin) => o.quality?.standardError,
-    textAccessor: (o: QOrigin) => `${o.quality?.standardError?.toFixed(2)} s`,
+    textAccessor: (o: QOrigin) => `${o.quality?.standardError?.toFixed(2) || '-'} s`,
     enabled: true
   },
   {
     label: 'Az. Gap',
     valueAccessor: (o: QOrigin) => o.quality?.azimuthalGap,
-    textAccessor: (o: QOrigin) => `${o.quality?.azimuthalGap?.toFixed(0)} °`,
+    textAccessor: (o: QOrigin) => `${o.quality?.azimuthalGap?.toFixed(0) || '-'} °`,
     enabled: true
   },
   {
     label: 'Min Dist',
     valueAccessor: (o: QOrigin) => o.quality?.minimumDistance,
-    textAccessor: (o: QOrigin) => `${o.quality?.minimumDistance?.toFixed(2)} °`,
+    textAccessor: (o: QOrigin) => `${o.quality?.minimumDistance?.toFixed(2) || '-'} °`,
     enabled: true
   },
   {
     label: 'Method',
     valueAccessor: (o: QOrigin) => o.methodID,
-    textAccessor: (o: QOrigin) => o.methodID,
+    textAccessor: (o: QOrigin) => o.methodID || '-',
     enabled: false
   },
   {
     label: 'Earth Model',
     valueAccessor: (o: QOrigin) => o.earthModelID,
-    textAccessor: (o: QOrigin) => o.earthModelID,
+    textAccessor: (o: QOrigin) => o.earthModelID || '-',
     enabled: false
   }
 ] as ColObject[])
@@ -98,19 +98,19 @@ const magnitudeCols = ref([
   {
     label: 'Type',
     valueAccessor: (m: QMagnitude) => m.type,
-    textAccessor: (m: QMagnitude) => m.type,
+    textAccessor: (m: QMagnitude) => m.type || '-',
     enabled: true
   },
   {
     label: 'Nb Station',
     valueAccessor: (m: QMagnitude) => m.stationCount,
-    textAccessor: (m: QMagnitude) => m.stationCount,
+    textAccessor: (m: QMagnitude) => m.stationCount || '-',
     enabled: true
   },
   {
     label: 'Method',
     valueAccessor: (m: QMagnitude) => m.methodID,
-    textAccessor: (m: QMagnitude) => m.methodID,
+    textAccessor: (m: QMagnitude) => m.methodID || '-',
     enabled: true
   }
 ] as ColObject[])
@@ -130,7 +130,10 @@ function setActiveMagnitude(magnitude: QMagnitude) {
   activeMagnitude.value = magnitude
 }
 
-function prettyTime(t: string) {
+function prettyTime(t: string | null) {
+  if (t == null) {
+    return '-'
+  }
   return t.slice(0, 19).replace('T', ' ')
 }
 
@@ -146,7 +149,10 @@ function prettyLongitude(lon: QRealQuantity) {
     : `${-lon.value.toFixed(2)}°W`
 }
 
-function prettyDepth(depth: QRealQuantity) {
+function prettyDepth(depth: QRealQuantity | null) {
+  if (depth == null || depth.value == null) {
+    return '-'
+  }
   return `${(depth.value / 1e3).toFixed(2)} km`
 }
 

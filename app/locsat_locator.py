@@ -1,20 +1,22 @@
 import traceback
 from app import utils
+from typing import Any
 from seiscomp.core import Time
 from seiscomp.math import delazi_wgs84
 from datetime import datetime, timedelta
 from urllib.request import urlopen, Request
+from app.model import WpInventory, WpNetwork, WpStation
 from seiscomp.seismology import LocatorInterface, TravelTimeTableInterface
 from seiscomp.datamodel import Pick, CreationInfo, WaveformStreamID, Phase, \
     Arrival, Origin, TimeQuantity, RealQuantity, Inventory, Network, Station, \
     SensorLocation, AUTOMATIC, MANUAL
 
-def to_scp_time(t):
+def to_scp_time(t: str) -> Time:
     if '.' in t:
         return Time.FromString(f'{t.replace("Z", ""):0<26}', '%Y-%m-%dT%H:%M:%S.%f')
     return Time.FromString(f'{t.replace("Z", "")}', '%Y-%m-%dT%H:%M:%S')
 
-def to_scp_pick(j_pick):
+def to_scp_pick(j_pick: dict[str, Any]) -> Pick:
     scp_pick = Pick(j_pick['@publicID'])
     if 'creationInfo' in j_pick:
         creation_info = CreationInfo()
@@ -34,10 +36,10 @@ def to_scp_pick(j_pick):
     if 'filter_id' in j_pick:
         scp_pick.setFilterID(j_pick['filterID'])
     wfid = j_pick['waveformID']
-    scp_pick.setWaveformID(WaveformStreamID(wfid['@networkCode'], wfid['@stationCode'], wfid.get('@locationCode', ''), wfid['@channelCode'], ''))
+    scp_pick.setWaveformID(WaveformStreamID(wfid['@networkCode'], wfid['@stationCode'], wfid.get('@locationCode', ''), wfid.get('@channelCode', ''), ''))
     return scp_pick
 
-def to_scp_arrival(j_arrival):
+def to_scp_arrival(j_arrival: dict[str, Any]) -> Arrival:
     scp_arrival = Arrival()
     scp_arrival.setPickID(j_arrival['pickID'])
     scp_arrival.setPhase(Phase(j_arrival['phase']))
@@ -51,7 +53,7 @@ def to_scp_arrival(j_arrival):
     scp_arrival.setTimeUsed(True)
     return scp_arrival
 
-def to_scp_origin(j_origin):
+def to_scp_origin(j_origin: dict[str, Any]) -> Origin:
     scp_origin: Origin = Origin.Create(j_origin['@publicID'])
     scp_origin.setTime(TimeQuantity(to_scp_time(j_origin["time"]["value"])))
     lat_err = j_origin['latitude'].get('uncertainty')
@@ -66,7 +68,7 @@ def to_scp_origin(j_origin):
         # scp_origin.add(to_scp_arrival(j_arrival))
     return scp_origin
 
-def get_inventory(fdsnws_host, pick_map):
+def get_inventory(fdsnws_host: str, pick_map: dict[str, dict[str, Any]]) -> WpInventory:
     req_data = [
         'format=text',
         'level=channel'
@@ -74,9 +76,12 @@ def get_inventory(fdsnws_host, pick_map):
     net_sta_loc = []
     for _, j_pick in pick_map.items():
         wfid = j_pick['waveformID']
-        loc = wfid.get("@locationCode", "")
-        if loc == '':
-            loc = '--'
+        if wfid.get('@channelCode', None) is None:
+            loc = '*'
+        else:
+            loc = wfid.get("@locationCode", "")
+            if loc == '':
+                loc = '--'
         key = '%s.%s.%s' % (wfid['@networkCode'], wfid['@stationCode'], loc)
         if key in net_sta_loc:
             continue
@@ -84,24 +89,25 @@ def get_inventory(fdsnws_host, pick_map):
         req_data.append('%s %s %s * %s %s' % (wfid["@networkCode"], wfid["@stationCode"], loc, t, t))
     r = Request('http://%s/fdsnws/station/1/query' % fdsnws_host, data='\r\n'.join(req_data).encode('utf-8'), headers={'Content-Type': 'text/plain'})
     resp = urlopen(r).read().decode('utf-8')
-    scp_inv = Inventory()
-    inv_struct = {}
+    result = WpInventory(scp=Inventory())
     for line in resp.splitlines():
         if line == '' or line.startswith('#'):
             continue
         net, sta, loc, _, lat, lon, alt = line.split('|')[:7]
+        if loc == '--':
+            loc = ''
         start, end = line.split('|')[-2:]
-        if net not in inv_struct:
+        if net not in result.networks:
             scp_net: Network = Network.Create()
             scp_net.setCode(net)
-            inv_struct[net] = {'obj': scp_net, 'station': {}}
-            scp_inv.add(scp_net)
-        if sta not in inv_struct[net]['station']:
+            result.networks[net] = WpNetwork(scp=scp_net)
+            result.scp.add(scp_net)
+        if sta not in result.networks[net].stations:
             scp_sta: Station = Station.Create()
             scp_sta.setCode(sta)
-            inv_struct[net]['station'][sta] = {'obj': scp_sta, 'location': {}}
-            inv_struct[net]['obj'].add(scp_sta)
-        if loc not in inv_struct[net]['station'][sta]['location']:
+            result.networks[net].stations[sta] = WpStation(scp=scp_sta)
+            result.networks[net].scp.add(scp_sta)
+        if loc not in result.networks[net].stations[sta].sensor_locations:
             scp_sl: SensorLocation = SensorLocation.Create()
             scp_sl.setCode(loc)
             scp_sl.setLatitude(float(lat))
@@ -110,14 +116,13 @@ def get_inventory(fdsnws_host, pick_map):
             scp_sl.setStart(Time.FromString(start[:19], '%Y-%m-%dT%H:%M:%S'))
             if end != '':
                 scp_sl.setEnd(Time.FromString(end[:19], '%Y-%m-%dT%H:%M:%S'))
-            inv_struct[net]['station'][sta]['location'][loc] = {'obj': scp_sl, 'channel': {}}
-            inv_struct[net]['station'][sta]['obj'].add(scp_sl)
-    scp_inv.setPublicID('Inventory')
-    scp_inv.registerMe()
-    # print(inv_struct)
-    return scp_inv
+            result.networks[net].stations[sta].sensor_locations[loc] = scp_sl
+            result.networks[net].stations[sta].scp.add(scp_sl)
+    result.scp.setPublicID('Inventory')
+    result.scp.registerMe()
+    return result
 
-def to_jquake(scp_origin: Origin):
+def to_jquake(scp_origin: Origin) -> dict[str, Any]:
     j_origin = {
         '@publicID': scp_origin.publicID(),
         'time': {
@@ -170,28 +175,29 @@ def to_jquake(scp_origin: Origin):
         })
     return j_origin
 
-# def print_inventory(scp_inv: Inventory):
-#     for i_n in range(scp_inv.networkCount()):
-#         scp_net: Network = scp_inv.network(i_n)
-#         for i_s in range(scp_net.stationCount()):
-#             scp_sta: Station = scp_net.station(i_s)
-#             for i_sl in range(scp_sta.sensorLocationCount()):
-#                 scp_sl: SensorLocation = scp_sta.sensorLocation(i_sl)
-#                 end = None
-#                 try:
-#                     end = scp_sl.end()
-#                 except:
-#                     pass
-#                 print(f'{scp_net.code()}.{scp_sta.code()}.{scp_sl.code()} {scp_sl.start()} -> {end}')
+def fix_pick_sensor_location(pick_list: list[Pick], inv: WpInventory) -> None:
+    for pick in pick_list:
+        if pick.waveformID().channelCode() == '':
+            net = pick.waveformID().networkCode()
+            sta = pick.waveformID().stationCode()
+            if net not in inv.networks:
+                raise ValueError(f'Network {net} not found in inventory')
+            if sta not in inv.networks[net].stations:
+                raise ValueError(f'Station {net}.{sta} not found in inventory')
+            print(f'fallback to station coordinates for {net}.{sta}')
+            loc = [x for x in inv.networks[net].stations[sta].sensor_locations][0]
+            wfid = pick.waveformID()
+            wfid.setLocationCode(loc)
 
-def relocate(jquake, profile, fdsnws_host):
-    po = jquake[0]['origin'][0] if isinstance(jquake[0]['origin'], list) else jquake[0]['origin']
-    t = po['time']['value'][0:19]
-    pick_map = {}
-    pick_list = list()
-    keep_arrival = list()
-    save_arrival = po['arrival']
-    not_used_arrival = list()
+def relocate(jquake: list[dict[str, Any]],
+             profile: str,
+             fdsnws_host: str) -> tuple[str, list[dict[str, Any]] | None]:
+    po: dict[str, Any] = jquake[0]['origin'][0] if isinstance(jquake[0]['origin'], list) else jquake[0]['origin']
+    pick_map: dict[str, dict[str, Any]] = {}
+    pick_list: list[Pick] = []
+    keep_arrival: list[dict[str, Any]] = []
+    save_arrival: list[dict[str, Any]] = po['arrival']
+    not_used_arrival: list[dict[str, Any]] = []
     for j_pick in jquake[0]['pick']:
         pick_map[j_pick['@publicID']] = j_pick
         scp_pick = to_scp_pick(j_pick)
@@ -203,13 +209,12 @@ def relocate(jquake, profile, fdsnws_host):
         else:
             not_used_arrival.append(j_arrival)
     po['arrival'] = keep_arrival
-    scp_inv = get_inventory(fdsnws_host, pick_map)
+    inv = get_inventory(fdsnws_host, pick_map)
+    fix_pick_sensor_location(pick_list, inv)
     pick_list.sort(key=lambda x: x.time().value().iso())
     locator: LocatorInterface = LocatorInterface.Create('LOCSAT')
     locator.useFixedDepth(False)
     locator.setProfile(profile)
-    # for p in pick_list:
-    #     print(p.publicID(), p.waveformID().stationCode(), p.time().value().iso())
     sloc = locator.getSensorLocation(pick_list[0])
     scp_origin = to_scp_origin(po)
     scp_origin.setTime(pick_list[0].time())
@@ -246,7 +251,7 @@ def relocate(jquake, profile, fdsnws_host):
             ).time)
             j_arrival['timeResidual'] = (p_time - t_time).total_seconds()
             new_origin['arrival'].append(j_arrival)
-        pick_station_map = {}
+        pick_station_map: dict[str, str] = {}
         for pick in jquake[0]['pick']:
             net_sta = '%s.%s' % (pick['waveformID']['@networkCode'], pick['waveformID']['@stationCode'])
             pick_station_map[pick['@publicID']] = net_sta
@@ -265,9 +270,9 @@ def relocate(jquake, profile, fdsnws_host):
 
 if __name__ == '__main__':
     import json
-    with open('reloc_test.json') as f:
-        jquake = json.load(f)
-    error, result = relocate(jquake, 'iasp91', 'encelade.unice.fr:8080')
+    with open('reloc_test.xml') as f:
+        jquake = utils.quakeml_to_jquake(f.read(), remove_prefix_id=True)
+    error, result = relocate(jquake, 'iasp91', 'encelade.unice.fr:8000')
     if result is None:
         print(error)
     else:

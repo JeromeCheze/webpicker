@@ -1,7 +1,8 @@
 import os
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Literal, Optional
 from typing_extensions import Annotated, deprecated
+from seiscomp.datamodel import Inventory, Network, Station, SensorLocation
 
 class ActivityData(BaseModel):
     id: str
@@ -191,3 +192,18 @@ class Config(BaseModel):
     seiscomp: ConfigSeiscomp = ConfigSeiscomp()
     skhash: ConfigSkhash = ConfigSkhash()
     title: str = 'WebPicker'
+
+class WpStation(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    scp: Station
+    sensor_locations: dict[str, SensorLocation] = {}
+
+class WpNetwork(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    scp: Network
+    stations: dict[str, WpStation] = {}
+
+class WpInventory(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    scp: Inventory
+    networks: dict[str, WpNetwork] = {}

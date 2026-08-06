@@ -153,7 +153,7 @@ export default class DataManager {
       }
       if (bulk.length > 0) {
         this.client.baseURL = baseUrl
-        this.client.getStationsBulk(bulk).then((inv) => {
+        this.client.getStationsBulk(bulk, 'channel').then((inv) => {
           this.mergeInventory(inv as Inventory)
           notification({ type: 'progress', value: null })
           resolve(this.inventoryCache)
