@@ -169,7 +169,7 @@ function displayWaveforms() {
   })
   const seedidList: string[] = []
   for (const pick of pickList) {
-    pushUnique(seedidList, `${pick.waveformID.fdsnid.slice(0, -1)}?`)
+    pushUnique(seedidList, `${pick.waveformID.seedid.slice(0, -1)}?`)
   }
   store.dataManager.getData(
     props.baseUrl, props.time, props.latitude, props.longitude, props.depth, seedidList,

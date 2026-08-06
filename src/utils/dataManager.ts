@@ -379,6 +379,8 @@ export default class DataManager {
           result.push(`${net}.${sta}.${loc}.${cha}`)
         }
       }
+    } else {
+      console.warn(`No inventory for ${net}.${sta}.${loc}.${chaPrefix}`)
     }
     return result
   }
