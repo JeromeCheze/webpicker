@@ -120,11 +120,16 @@ def compute_magnitudes_with_scamp_and_scmag(qml: bytes):
 
     # 3) compute amplitudes with scamp
     _, scamp_result = tempfile.mkstemp(suffix='.sc3ml')
+    record_source = ''
+    if len(utils.CONFIG.fdsnws.dataselect_hosts) > 1:
+        record_source = f'combined://{";".join([f"fdsnws/{x}" for x in utils.CONFIG.fdsnws.dataselect_hosts])}'
+    else:
+        record_source = f'fdsnws://{utils.CONFIG.fdsnws.dataselect_hosts[0]}'
     scamp_cmd = [
         os.path.join(utils.CONFIG.seiscomp.root, 'bin', 'scamp'),
         '--inventory-db', inventory,
         '--config-db', scp_config_file,
-        '-I', 'fdsnws://%s' % utils.CONFIG.fdsnws.dataselect_host,
+        '-I', record_source,
         '--ep', sc3ml
     ]
     scamp = subprocess.Popen(scamp_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

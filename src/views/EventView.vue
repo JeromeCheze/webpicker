@@ -16,6 +16,7 @@ import PickerPanel from '@/components/PickerPanel.vue'
 import OriginMap from '@/components/OriginMap.vue'
 import { ref, onMounted, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
+import { toQuakeML } from '@/utils'
 
 const store = useAppStore()
 
@@ -23,6 +24,7 @@ const props = defineProps({
   eventid: String
 })
 
+const downloadAnchor = ref(null as HTMLAnchorElement | null)
 const picker = ref(false)
 const activeChart = ref('residual' as 'residual' | 'traveltime' | 'firstmotion' | 'magnitude')
 const allOriginDisplay = ref(false)
@@ -150,6 +152,14 @@ function handleFocusStation(netsta: string) {
   }
 }
 
+function handleDownloadQuakeml() {
+  if (downloadAnchor.value != null) {
+    const qml = toQuakeML(store.eventManager.buildCurrentEvent().desc)
+    downloadAnchor.value.href = `data:application/xml;base64,${btoa(qml)}`
+    downloadAnchor.value.click()
+  }
+}
+
 watch(() => store.keydown, (newValue) => {
   if (newValue === store.settings['keybinding.togglePicker']) {
     if (picker.value) {
@@ -207,6 +217,7 @@ onMounted(() => {
     <v-btn @click="allOriginDisplay = !allOriginDisplay" title="Inspect event" :active="allOriginDisplay" :disabled="store.eventManager.current.event != null && store.eventManager.current.event.origin.length === 0"><v-icon>mdi-list-box-outline</v-icon></v-btn>
     <v-divider vertical class="mx-2"></v-divider>
     <ActionScriptsComponent/>
+    <v-btn @click="handleDownloadQuakeml" title="Export to QuakeML"><v-icon>mdi-file-export-outline</v-icon></v-btn>
     <v-divider vertical class="mx-2"></v-divider>
     <RelocateComponent/>
     <ComputeMagnitudesComponent v-if="store.eventManager.current.origin != null" :stationSelection="magnitudeStations"/>
@@ -306,4 +317,8 @@ onMounted(() => {
       </v-list>
     </v-card>
   </v-menu>
+  <a
+    ref="downloadAnchor"
+    :style="{ display: 'none' }" 
+    :download="`${store.eventManager.current.event?.publicID}.xml`"></a>
 </template>

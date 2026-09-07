@@ -250,8 +250,15 @@ function handleApplyConfig() {
                 <td><v-text-field v-model="config.fdsnws.station_host" density="compact" hide-details="auto"></v-text-field></td>
               </tr>
               <tr>
-                <th>Dataselect host</th>
-                <td><v-text-field v-model="config.fdsnws.dataselect_host" density="compact" hide-details="auto"></v-text-field></td>
+                <th>Dataselect hosts</th>
+                <td>
+                  <v-text-field
+                    :model-value="config.fdsnws.dataselect_hosts.join(',')"
+                    density="compact"
+                    hide-details="auto"
+                    @update:modelValue="v => config!.fdsnws.dataselect_hosts = v.split(',')"
+                  />
+                </td>
               </tr>
             </tbody>
           </v-table>

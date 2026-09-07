@@ -42,6 +42,11 @@ class ArgsDataRequest(BaseModel):
     starttime: str
     endtime: str
 
+class AdvancedArgsRequest(BaseModel):
+    window_delta: int = 1800
+    overlap_delta: int = 60
+    merge_tolerance: float = 0.1
+
 class ConfigArgs(BaseModel):
     detector: str | None = "phasenet"
     output_format: str | None = "quakeml"
@@ -51,12 +56,12 @@ class ConfigArgs(BaseModel):
     event_threshold: float | None = 0.3
     denoiser: bool = False
     amplitude: bool = False
-    query_data: ArgsDataRequest | None = None
+    advanced_args: AdvancedArgsRequest = AdvancedArgsRequest()
 
 class DetectorRequestBase(BaseModel):
     filter: str | None = "HP_2"
     args: ConfigArgs
-    fdsn_dataselect: str
+    data: str
 
 class DenoisingArgs(BaseModel):
     detector: str | None = "deepdenoiser"
@@ -143,7 +148,7 @@ class ConfigDetector(BaseModel):
     url: str = ''
 
 class ConfigFDSNWS(BaseModel):
-    dataselect_host: str = ''
+    dataselect_hosts: list[str] = []
     event_host: str = ''
     station_host: str = ''
 
@@ -207,3 +212,12 @@ class WpInventory(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     scp: Inventory
     networks: dict[str, WpNetwork] = {}
+
+class MseedPacket(BaseModel):
+    seedid: str = ''
+    year: int = 0
+    jday: int = 0
+    byteorder: Literal['big', 'little'] = 'big'
+    first_blockette: int = 0
+    packet_size: int = 0
+    packet: bytes = b''

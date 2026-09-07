@@ -221,7 +221,7 @@ export interface Config {
   fdsnws: {
     event_host: string
     station_host: string
-    dataselect_host: string
+    dataselect_hosts: string[]
   }
   action_scripts: ActionScript[]
   commit_strategy: 'script' | 'scdispatch'

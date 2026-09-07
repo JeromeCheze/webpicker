@@ -87,14 +87,18 @@ watch(() => store.config, () => {
             </v-btn-group>
           </v-col>
           <v-col cols="10" class="d-flex align-center">
-            <h4>
-              {{ item.label }}
-            </h4>
+            <h4>{{ item.label }}</h4>
           </v-col>
           <v-col cols="2" v-if="status[i].return_code != null">[{{ status[i].return_code }}]</v-col>
           <v-col cols="10" v-if="status[i].return_code != null" :style="{ maxHeight: 400, overflow: 'auto' }">
             <v-textarea v-model="item.script" readonly v-if="status[i].minified === false"></v-textarea>
-            <pre>{{ status[i].message }}</pre>
+            <div v-if="status[i].message != null">
+              <template v-for="(line, l) in status[i].message.split('\n')">
+                <img v-if="line.startsWith('img(')" :src="line.slice(4, -1)" :style="{ maxHeight: '200px', display: 'block' }" />
+                <a v-else-if="line.startsWith('link(')" :href="line.slice(5, -1)">{{ line.slice(5, -1) }}</a>
+                <p v-else>{{ line }}</p>
+              </template>
+            </div>
           </v-col>
         </v-row>
       </v-card-text>

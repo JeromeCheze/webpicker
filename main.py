@@ -2,6 +2,7 @@ import os
 import sys
 sys.path.insert(0, os.path.join(os.environ['SEISCOMP_ROOT'], 'lib', 'python'))
 import json
+import base64
 import typing
 import secrets
 import hashlib
@@ -132,24 +133,17 @@ async def set_app_config(password: str, config: Config, request: Request, userna
         
 @app.get('/api/detector', tags=['api'])
 def get_detector_picks(wfid: str, model: str, start: str, end: str, p_thresh: float, s_thresh: float, dataset: str, username: Annotated[str, Depends(check_authentication)]):
-    net, sta, loc, cha = wfid.split('.')
+    net, sta, loc, cha = wfid.replace('..', '.--.').split('.')
+    data = b''.join([x for x in utils.handle_multi_dataselect(f'{net} {sta} {loc} {cha}? {start} {end}'.encode('utf-8'))])
     req_args = DetectorRequestBase(
-        fdsn_dataselect=f'http://{utils.CONFIG.fdsnws.dataselect_host}',
         args=ConfigArgs(
             output_format='json',
             detector=model,
             dataset=dataset,
             p_threshold=p_thresh,
-            s_threshold=s_thresh,
-            query_data=ArgsDataRequest(
-                network=net,
-                station=sta,
-                location=loc if loc != '' else '--',
-                channel=cha,
-                starttime=start,
-                endtime=end
-            )
-        )
+            s_threshold=s_thresh
+        ),
+        data=base64.b64encode(data).decode('utf-8')
     )
     req = urllib.request.Request(utils.CONFIG.detector.url,
                                  data=req_args.model_dump_json().encode('utf-8'),
@@ -159,8 +153,9 @@ def get_detector_picks(wfid: str, model: str, start: str, end: str, p_thresh: fl
 @app.get('/api/denoiser', tags=['api'])
 def get_denoised_waveforms(wfid: str, starttime: str, endtime: str, username: Annotated[str, Depends(check_authentication)]):
     net, sta, loc, cha = wfid.split('.')
+    # TODO: support multiple dataselect hosts
     req_args = DenoisingRequest(
-        fdsn_dataselect=f'http://{utils.CONFIG.fdsnws.dataselect_host}',
+        fdsn_dataselect=f'http://{utils.CONFIG.fdsnws.dataselect_hosts[0]}',
         args=DenoisingArgs(
             query_data=ArgsDataRequest(
                 network=net,
@@ -269,13 +264,13 @@ async def post_stations(request: Request, username: Annotated[str, Depends(check
     response = urllib.request.urlopen(req)
     return Response(content=response.read(), media_type=response.headers.get_content_type())
 
-@app.get('/fdsnws/dataselect/1/query', tags=['fdsnws'])
-def get_dataselect(request: Request, username: Annotated[str, Depends(check_authentication)]):
-    if utils.CONFIG.access.restricted:
-        utils.apply_user_rules('GET', username, request.query_params)
-    req = f'http://{utils.CONFIG.fdsnws.dataselect_host}/fdsnws/dataselect/1/query?{urllib.parse.urlencode(request.query_params)}'
-    response = urllib.request.urlopen(req)
-    return Response(content=response.read(), media_type=response.headers.get_content_type())
+# @app.get('/fdsnws/dataselect/1/query', tags=['fdsnws'])
+# def get_dataselect(request: Request, username: Annotated[str, Depends(check_authentication)]):
+#     if utils.CONFIG.access.restricted:
+#         utils.apply_user_rules('GET', username, request.query_params)
+#     req = f'http://{utils.CONFIG.fdsnws.dataselect_host}/fdsnws/dataselect/1/query?{urllib.parse.urlencode(request.query_params)}'
+#     response = urllib.request.urlopen(req)
+#     return Response(content=response.read(), media_type=response.headers.get_content_type())
 
 @app.post('/fdsnws/dataselect/1/query', tags=['fdsnws'])
 async def post_dataselect(request: Request, username: Annotated[str, Depends(check_authentication)]):
@@ -284,15 +279,4 @@ async def post_dataselect(request: Request, username: Annotated[str, Depends(che
         data = utils.apply_user_rules('POST', username, data)
         if data is None:
             return Response(content='', media_type='application/vnd.fdsn.mseed')
-    req = urllib.request.Request(
-        f'http://{utils.CONFIG.fdsnws.dataselect_host}/fdsnws/dataselect/1/query',
-        data=data, headers={'Content-Type': request.headers['Content-Type']}
-    )
-    def iter_content():
-        with urllib.request.urlopen(req) as response:
-            while True:
-                chunk = response.read(1024)
-                if not chunk:
-                    break
-                yield chunk
-    return StreamingResponse(iter_content(), media_type='application/vnd.fdsn.mseed')
+    return StreamingResponse(utils.handle_multi_dataselect(data), media_type='application/vnd.fdsn.mseed')

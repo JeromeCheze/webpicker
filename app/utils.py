@@ -6,7 +6,7 @@ import xmltodict
 import subprocess
 from typing import Any
 from lxml import etree
-from .model import Config
+from .model import Config, MseedPacket
 from random import randint
 from seiscomp.seismology import Regions
 from urllib.request import Request, urlopen
@@ -266,3 +266,74 @@ def apply_user_rules(method: str, username: str, data: Any) -> bytes | None:
             return None
         parameters.extend(selection)
         return '\r\n'.join(parameters).encode('utf-8')
+
+def read_one_packet(readable) -> MseedPacket | None:
+    # read FSDH
+    data = readable.read(48)
+    if not data:
+        return None
+    sta = data[8:13].decode('utf-8').strip()
+    loc = data[13:15].decode('utf-8').strip()
+    cha = data[15:18].decode('utf-8').strip()
+    net = data[18:20].decode('utf-8').strip()
+    p = MseedPacket(
+        seedid = f'{net}.{sta}.{loc}.{cha}',
+        year = int.from_bytes(data[20:22]),
+        jday = int.from_bytes(data[22:24])
+    )
+    # check year and day are valid
+    if not (p.year >= 1900 and p.year <= 2100 and p.jday >= 1 and p.jday <= 366):
+        p.byteorder = 'little'
+        p.year = int.from_bytes(data[20:22], byteorder=p.byteorder)
+        p.jday = int.from_bytes(data[22:24], byteorder=p.byteorder)
+    p.first_blockette = int.from_bytes(data[46:48], byteorder=p.byteorder)
+    data += readable.read(p.first_blockette - len(data))
+    found_blkt_1000 = False
+    while not found_blkt_1000:
+        # read blockette
+        blockette = readable.read(4)
+        data += blockette
+        blkt_type = int.from_bytes(blockette[:2], byteorder=p.byteorder)
+        next_blkt = int.from_bytes(blockette[2:], byteorder=p.byteorder)
+        if blkt_type != 1000:
+            # skip non-1000 blockette
+            data += readable.read(next_blkt - len(data))
+        else:
+            # parse blockette 1000
+            found_blkt_1000 = True
+            data += readable.read(4)
+            p.byteorder = 'big' if data[-3] == 1 else 'little'
+            p.packet_size = pow(2, data[-2])
+    # read remaining bytes of packet
+    data += readable.read(p.packet_size - len(data))
+    p.packet = data
+    return p
+
+def handle_multi_dataselect(data: bytes):
+    params: list[str] = []
+    channel_mapping: dict[str, str] = {}
+    for line in data.decode('utf-8').splitlines():
+        if '=' in line:
+            params.append(line)
+            continue
+        net, sta, loc, cha = line.split()[:4]
+        seedid = f'{net}.{sta}.{loc}.{cha}'.replace('--', '')
+        channel_mapping[seedid] = line
+    for fdsnws_server in CONFIG.fdsnws.dataselect_hosts:
+        if len(channel_mapping) > 0:
+            post_data: list[str] = [x for x in params]
+            for line in channel_mapping.values():
+                post_data.append(line)
+            req = Request(
+                f'http://{fdsnws_server}/fdsnws/dataselect/1/query',
+                data='\r\n'.join(post_data).encode('utf-8'),
+                headers={'Content-Type': 'text/plain'}
+            )
+            with urlopen(req) as response:
+                while True:
+                    p = read_one_packet(response)
+                    if not p:
+                        break
+                    if p.seedid in channel_mapping:
+                        del channel_mapping[p.seedid]
+                    yield p.packet

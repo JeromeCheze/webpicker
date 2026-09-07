@@ -21,10 +21,12 @@
   },
   "detector": {
     "enabled": false,
-    "url": "http://seispicks/detector/seispicks/v1/ai/get-pick/fdsn"
+    "url": "http://seispicks/detector/seispicks/v1/ai/get-pick/data"
   },
   "fdsnws": {
-    "dataselect_host": "localhost:8000",
+    "dataselect_hosts": [
+      "localhost:8000"
+    ],
     "event_host": "localhost:8000",
     "station_host": "localhost:8000"
   },
