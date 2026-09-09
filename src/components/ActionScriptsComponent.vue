@@ -95,7 +95,7 @@ watch(() => store.config, () => {
             <div v-if="status[i].message != null">
               <template v-for="(line, l) in status[i].message.split('\n')">
                 <img v-if="line.startsWith('img(')" :src="line.slice(4, -1)" :style="{ maxHeight: '200px', display: 'block' }" />
-                <a v-else-if="line.startsWith('link(')" :href="line.slice(5, -1)">{{ line.slice(5, -1) }}</a>
+                <a v-else-if="line.startsWith('link(')" :href="line.slice(5, -1)" target="_blank">{{ line.slice(5, -1) }}</a>
                 <p v-else>{{ line }}</p>
               </template>
             </div>
