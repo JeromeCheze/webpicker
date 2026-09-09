@@ -295,9 +295,8 @@ function createWaveform(chartContainer: HTMLElement, index: number, waveformLeng
   const fontSize = store.settings['picker.tickFontSize']
   const cha = data.id.replace('..', '.--.').split('.').slice(2, 4).join('.')
   const title = `${data.id}\n${data.extra != null ? data.extra.join('\n') : ''}`
-  chartContainer.title = title
   const result = new Lichen(chartContainer, {
-    header: { title: cha, position: 'left', width: 100 },
+    header: { title: `<span class="px-2 py-5" title="${title}">${cha}</span>`, position: 'left', width: 100 },
     legend: { enabled: false }, synced: () => charts,
     crosshair: { enabled: props.phase != null, text: index === 0 ? props.phase : '', sticky: false },
     xAxis: { enabled: index === dataLength - 1, fontSize }, yAxis: { fontSize },
