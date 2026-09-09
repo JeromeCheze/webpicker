@@ -175,6 +175,10 @@ watch([
   () => store.eventManager.current.event
 ], handleUsers)
 
+watch(() => props.eventid, () => {
+  picker.value = false
+})
+
 onMounted(() => {
   console.log(`[EventView.onMounted] ${props.eventid}`)
   handleUsers()
