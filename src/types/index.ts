@@ -116,6 +116,7 @@ export interface WaveformProcessInterface {
   start: number
   step: number
   values: (number | null)[]
+  extra?: string[]
   spectrogram?: {
     values: number[][]
     yMin: number

@@ -319,6 +319,7 @@ def handle_multi_dataselect(data: bytes):
         net, sta, loc, cha = line.split()[:4]
         seedid = f'{net}.{sta}.{loc}.{cha}'.replace('--', '')
         channel_mapping[seedid] = line
+    host_index = 0
     for fdsnws_server in CONFIG.fdsnws.dataselect_hosts:
         if len(channel_mapping) > 0:
             post_data: list[str] = [x for x in params]
@@ -336,4 +337,8 @@ def handle_multi_dataselect(data: bytes):
                         break
                     if p.seedid in channel_mapping:
                         del channel_mapping[p.seedid]
+                    b = bytearray(p.packet)
+                    b[7] = host_index
+                    p.packet = bytes(b)
                     yield p.packet
+        host_index += 1

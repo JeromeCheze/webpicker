@@ -69,10 +69,15 @@ const waveformData = computed(() => {
   if (props.activeStation != null) {
     for (const tr of props.data) {
       if (tr.stats.id.startsWith(props.activeStation)) {
+        const sourceIndex = tr.stats.reserved
         result.push({
           id: tr.stats.id,
           start: tr.stats.starttime as number,
           step: 1e3 / tr.stats.samplingRate,
+          extra: [
+            `data source:\t${tr.stats.reserved != null ? store.config?.fdsnws.dataselect_hosts[tr.stats.reserved] : '-'}`,
+            `sampling rate:\t${tr.stats.samplingRate} Hz`
+          ],
           values: tr.data
         })
       }
@@ -288,8 +293,10 @@ function createSpectrogram(chartContainer: HTMLElement, index: number, waveformL
 
 function createWaveform(chartContainer: HTMLElement, index: number, waveformLength: number, dataLength: number, data: WaveformProcessInterface) {
   const fontSize = store.settings['picker.tickFontSize']
+  const cha = data.id.replace('..', '.--.').split('.').slice(2, 4).join('.')
+  const title = data.extra != null ? data.extra.join('\n') : ''
   const result = new Lichen(chartContainer, {
-    header: { title: data.id.replace('..', '.--.').split('.').slice(2, 4).join('.'), position: 'left', width: 100 },
+    header: { title: `<span title="${title}">${cha}</span>`, position: 'left', width: 100 },
     legend: { enabled: false }, synced: () => charts,
     crosshair: { enabled: props.phase != null, text: index === 0 ? props.phase : '', sticky: false },
     xAxis: { enabled: index === dataLength - 1, fontSize }, yAxis: { fontSize },
@@ -522,7 +529,7 @@ onBeforeUnmount(reset)
         <v-card-title>
           {{ props.activeStation }}
           <span class="float-right">{{ props.phase != null ? pickerTime : '' }}</span>
-          <span >- Dist: {{ distance.toFixed(1) }} km | Az: {{ azimuth.toFixed(1) }}&deg;</span>
+          <span>- Dist: {{ distance.toFixed(1) }} km | Az: {{ azimuth.toFixed(1) }}&deg;</span>
           <v-progress-circular v-if="loading" indeterminate="disable-shrink" size="20" class="ml-4"/>
         </v-card-title>
         <v-card-text>
