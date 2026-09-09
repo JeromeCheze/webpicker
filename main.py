@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, Depends, status
-from app.model import ArgsDataRequest, Config, ConfigArgs, DenoisingArgs, DenoisingRequest, DetectorRequestBase, WSActivityResponse, WSChatResponse, TTTQuery, ActivityData, WSUpdateEventResponse, WSVersionResponse, ChatData
+from app.model import Config, ConfigArgs, DenoisingRequest, DetectorRequestBase, WSActivityResponse, WSChatResponse, TTTQuery, ActivityData, WSUpdateEventResponse, WSVersionResponse, ChatData
 
 ADMIN_PASSWORD = '94da2becb9d86711399f6054e8ea6382'
 
@@ -153,20 +153,8 @@ def get_detector_picks(wfid: str, model: str, start: str, end: str, p_thresh: fl
 @app.get('/api/denoiser', tags=['api'])
 def get_denoised_waveforms(wfid: str, starttime: str, endtime: str, username: Annotated[str, Depends(check_authentication)]):
     net, sta, loc, cha = wfid.split('.')
-    # TODO: support multiple dataselect hosts
-    req_args = DenoisingRequest(
-        fdsn_dataselect=f'http://{utils.CONFIG.fdsnws.dataselect_hosts[0]}',
-        args=DenoisingArgs(
-            query_data=ArgsDataRequest(
-                network=net,
-                station=sta,
-                location=loc if loc != '' else '--',
-                channel=cha,
-                starttime=starttime,
-                endtime=endtime
-            )
-        )
-    )
+    data = b''.join([x for x in utils.handle_multi_dataselect(f'{net} {sta} {loc} {cha}? {starttime} {endtime}'.encode('utf-8'))])
+    req_args = DenoisingRequest(data=base64.b64encode(data).decode('utf-8'))
     req = urllib.request.Request(utils.CONFIG.denoiser.url,
                                  data=req_args.model_dump_json().encode('utf-8'),
                                  headers={'Content-Type': 'application/json'})

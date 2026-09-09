@@ -34,14 +34,6 @@ class WSUpdateEventResponse(BaseModel):
     type: Literal['updateEvent'] = 'updateEvent'
     data: str
 
-class ArgsDataRequest(BaseModel):
-    station: str
-    network: str
-    location: str
-    channel: str
-    starttime: str
-    endtime: str
-
 class AdvancedArgsRequest(BaseModel):
     window_delta: int = 1800
     overlap_delta: int = 60
@@ -65,12 +57,11 @@ class DetectorRequestBase(BaseModel):
 
 class DenoisingArgs(BaseModel):
     detector: str | None = "deepdenoiser"
-    query_data: ArgsDataRequest
     dataset: str | None = "original"
 
 class DenoisingRequest(BaseModel):
-    fdsn_dataselect: str
-    args: DenoisingArgs
+    args: DenoisingArgs = DenoisingArgs()
+    data: str
     filter: str | None = "HP_1"
 
 class TTTQuery(BaseModel):

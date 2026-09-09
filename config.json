@@ -17,7 +17,7 @@
   "commit_strategy": "script",
   "denoiser": {
     "enabled": false,
-    "url": "http://seispicks/detector/seispicks/v1/ai/denoiser/fdsn"
+    "url": "http://seispicks/detector/seispicks/v1/ai/denoiser/data"
   },
   "detector": {
     "enabled": false,
