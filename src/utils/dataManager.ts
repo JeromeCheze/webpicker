@@ -523,6 +523,7 @@ export default class DataManager {
     callback: (data: Trace[]) => void,
     notification: (opt: WPNotificationOptions) => void
   ) {
+    console.log(`[DataManager.getData] ${JSON.stringify(seedidList)}`)
     const netstaList: string[] = []
     for (const seedid of seedidList) {
       pushUnique(netstaList, toNetSta(seedid))

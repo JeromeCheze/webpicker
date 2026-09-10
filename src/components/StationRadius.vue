@@ -52,7 +52,7 @@ if (!props.useSavedLatLon) {
 }
 
 const form = ref()
-const radius = ref(opt.radius)
+const radius = ref(typeof(opt.radius) === 'number' ? opt.radius : parseFloat(opt.radius))
 const netSelector = ref(opt.network)
 const staSelector = ref(opt.station)
 const locSelector = ref(opt.location)
@@ -80,7 +80,8 @@ function validate() {
             for (const [cha, chaList] of Object.entries(chaMap)) {
               for (const chaObj of chaList) {
                 const loccha = `${loc}.${cha}`
-                const weight = chaObj.sample_rate + INSTRUMENT_WEIGHT.indexOf(cha[1]) * 100
+                const sampleRate = isNaN(chaObj.sample_rate) ? 1 : chaObj.sample_rate
+                const weight = sampleRate + INSTRUMENT_WEIGHT.indexOf(cha[1]) * 100
                 locchaWeight.push([loccha, weight])
               }
             }

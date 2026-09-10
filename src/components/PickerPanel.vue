@@ -182,7 +182,8 @@ function displayWaveforms() {
 }
 
 function downloadChannels(seedidList: string[]) {
-  if (controller.value == null) {
+  console.log(`[PickerPanel.downloadChannels] seedidList ${JSON.stringify(seedidList)}`)
+  if (controller.value == null && seedidList.length === 0) {
     return
   }
   store.dataManager.getData(
