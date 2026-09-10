@@ -73,7 +73,7 @@ export class GapInterpolationProcessor extends BaseProcessor {
           }
           i += gapEnd
         }
-        result.push({ id: currData.id, start: currData.start, step: currData.step, values })
+        result.push({ id: currData.id, start: currData.start, step: currData.step, values, extra: currData.extra })
       }
       resolve(result)
     })
@@ -112,7 +112,7 @@ export class IntegrationProcessor extends BaseProcessor {
           prev = parseFloat(v.toPrecision(14))
           values.push(prev)
         }
-        result.push({ id: currData.id, start: currData.start, step: currData.step, values })
+        result.push({ id: currData.id, start: currData.start, step: currData.step, values, extra: currData.extra })
       }
       resolve(result)
     })
@@ -310,7 +310,7 @@ export class FilterProcessor extends BaseProcessor {
             ? values[i]! * Math.pow(i / taperLength, 3)
             : null
         }
-        result.push({ id: currData.id, start: currData.start, step: currData.step, values })
+        result.push({ id: currData.id, start: currData.start, step: currData.step, values, extra: currData.extra })
       }
       resolve(result)
     })

@@ -75,7 +75,7 @@ const waveformData = computed(() => {
           start: tr.stats.starttime as number,
           step: 1e3 / tr.stats.samplingRate,
           extra: [
-            `data source:\t${tr.stats.reserved != null ? store.config?.fdsnws.dataselect_hosts[tr.stats.reserved] : '-'}`,
+            `data source:\t${sourceIndex != null ? store.config?.fdsnws.dataselect_hosts[sourceIndex] : '-'}`,
             `sampling rate:\t${tr.stats.samplingRate} Hz`
           ],
           values: tr.data
@@ -296,7 +296,7 @@ function createWaveform(chartContainer: HTMLElement, index: number, waveformLeng
   const cha = data.id.replace('..', '.--.').split('.').slice(2, 4).join('.')
   const title = `${data.id}\n${data.extra != null ? data.extra.join('\n') : ''}`
   const result = new Lichen(chartContainer, {
-    header: { title: `<span class="px-2 py-5" title="${title}">${cha}</span>`, position: 'left', width: 100 },
+    header: { title: cha, position: 'left', width: 100 },
     legend: { enabled: false }, synced: () => charts,
     crosshair: { enabled: props.phase != null, text: index === 0 ? props.phase : '', sticky: false },
     xAxis: { enabled: index === dataLength - 1, fontSize }, yAxis: { fontSize },
@@ -329,6 +329,10 @@ function createWaveform(chartContainer: HTMLElement, index: number, waveformLeng
       }
     }
   }, false)
+  const wfInfo = document.createElement('div')
+  Object.assign(wfInfo.style, { position: 'absolute', top: '0', left: '0', width: '100px', height: '100%' })
+  wfInfo.title = title
+  chartContainer.appendChild(wfInfo)
   return result
 }
 
@@ -368,6 +372,7 @@ async function update(redraw=false) {
     for (const [index, currData] of data.entries()) {
       if (chartData[currData.id] == null) {
         const div = document.createElement('div')
+        Object.assign(div.style, { position: 'relative' })
         container.value.appendChild(div)
         const chartBuilder = currData.spectrogram != null ? createSpectrogram : createWaveform
         const chart = chartBuilder(div, index, waveformLength, data.length, currData)
