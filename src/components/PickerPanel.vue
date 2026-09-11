@@ -169,7 +169,11 @@ function displayWaveforms() {
   })
   const seedidList: string[] = []
   for (const pick of pickList) {
-    pushUnique(seedidList, `${pick.waveformID.seedid.slice(0, -1)}?`)
+    if (pick.waveformID.channelCode != null) {
+      pushUnique(seedidList, `${pick.waveformID.seedid.slice(0, -1)}?`)
+    } else {
+      pushUnique(seedidList, `${pick.waveformID.networkCode}.${pick.waveformID.stationCode}.*.*`)
+    }
   }
   store.dataManager.getData(
     props.baseUrl, props.time, props.latitude, props.longitude, props.depth, seedidList,

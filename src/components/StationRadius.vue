@@ -66,32 +66,13 @@ const stations = ref([] as L.Layer[])
 const reValue = /^\*|([A-Z0-9?*]+(,[A-Z0-9?*]+)*)$/
 const reChannel = /^\*|([A-Z0-9?*]{3}(,[A-Z0-9?*]{3})*)$/
 
-const INSTRUMENT_WEIGHT = ['N', 'H']
-
 function validate() {
   preview().then(() => {
     const seedidList: string[] = []
     for (const [net, staMap] of Object.entries(store.dataManager.inventoryCache as Inventory)) {
-      for (const [sta, staObj] of Object.entries(staMap)) {
-        const netsta = `${net}.${sta}`
-        if (store.eventManager.pickMap[netsta] == null) {
-          const locchaWeight: [string, number][] = []
-          for (const [loc, chaMap] of Object.entries(staObj.location)) {
-            for (const [cha, chaList] of Object.entries(chaMap)) {
-              for (const chaObj of chaList) {
-                const loccha = `${loc}.${cha}`
-                const sampleRate = isNaN(chaObj.sample_rate) ? 1 : chaObj.sample_rate
-                const weight = sampleRate + INSTRUMENT_WEIGHT.indexOf(cha[1]) * 100
-                locchaWeight.push([loccha, weight])
-              }
-            }
-          }
-          if (locchaWeight.length > 0) {
-            const maxWeight = Math.max.apply(null, locchaWeight.map(x => x[1]))
-            for (const loccha of locchaWeight.filter(x => x[1] === maxWeight).map(x => x[0])) {
-              pushUnique(seedidList, `${netsta}.${loccha}`)
-            }
-          }
+      for (const sta of Object.keys(staMap)) {
+        for (const seedid of store.dataManager.getPriorityChannels(net, sta)) {
+          pushUnique(seedidList, seedid)
         }
       }
     }

@@ -1,4 +1,4 @@
-import type { FDSNStationBulkItem, FDSNWaveformBulkItem, Inventory } from '@/lib/sismojs/src/types'
+import type { FDSNStationBulkItem, FDSNWaveformBulkItem, Inventory, Station } from '@/lib/sismojs/src/types'
 import type { Detection, DetectionResult, TTT, WPNotificationOptions } from '@/types'
 import { Stream, type Trace } from "@/lib/sismojs/src/core/waveform"
 import { getDistanceAzimuth, pushUnique, toNetSta } from '@/utils'
@@ -118,6 +118,32 @@ export default class DataManager {
         }
       }
     }
+  }
+
+  getPriorityChannels(net: string, sta: string): string[] {
+    const INSTRUMENT_WEIGHT = ['N', 'H']
+    const seedidList: string[] = []
+    const locchaWeight: [string, number][] = []
+    if (this.inventoryCache[net] != null && this.inventoryCache[net][sta] != null) {
+      const staObj = this.inventoryCache[net][sta]
+      for (const [loc, chaMap] of Object.entries(staObj.location)) {
+        for (const [cha, chaList] of Object.entries(chaMap)) {
+          for (const chaObj of chaList) {
+            const loccha = `${loc}.${cha}`
+            const sampleRate = isNaN(chaObj.sample_rate) ? 1 : chaObj.sample_rate
+            const weight = sampleRate + INSTRUMENT_WEIGHT.indexOf(cha[1]) * 100
+            locchaWeight.push([loccha, weight])
+          }
+        }
+      }
+      if (locchaWeight.length > 0) {
+        const maxWeight = Math.max.apply(null, locchaWeight.map(x => x[1]))
+        for (const loccha of locchaWeight.filter(x => x[1] === maxWeight).map(x => x[0])) {
+          pushUnique(seedidList, `${net}.${sta}.${loccha}`)
+        }
+      }
+    }
+    return seedidList
   }
 
   getInventory(
@@ -556,9 +582,15 @@ export default class DataManager {
           const t2 = new Date(maxTime + timewindow[1] * 1e3)
           let reqSeedidList: string[] = []
           for (const seedid of seedidList) {
-            const [net, sta, loc, chaPrefix] = seedid.slice(0, -1).split('.')
-            for (const seedid of this._getChannels(net, sta, loc, chaPrefix, AutoAddHydrophone)) {
-              pushUnique(reqSeedidList, seedid)
+            const [net, sta, loc, cha] = seedid.split('.')
+            if (cha != '*') {
+              for (const seedid of this._getChannels(net, sta, loc, cha.slice(0, -1), AutoAddHydrophone)) {
+                pushUnique(reqSeedidList, seedid)
+              }
+            } else {
+              for (const seedid of this.getPriorityChannels(net, sta)) {
+                pushUnique(reqSeedidList, `${seedid.slice(0, -1)}?`)
+              }
             }
           }
           if (maxTrace != null && reqSeedidList.length > maxTrace) {
