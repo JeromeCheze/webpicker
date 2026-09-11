@@ -125,10 +125,13 @@ def compute_magnitudes_with_scamp_and_scmag(qml: bytes):
     _, scamp_result = tempfile.mkstemp(suffix='.sc3ml')
     record_source = ''
     hosts = utils.CONFIG.fdsnws.dataselect_hosts
-    if len(hosts) > 1:
-        record_source = f'combined://fdsnws/{hosts[0]};{get_combined(hosts[1:])}'
-    else:
-        record_source = f'fdsnws://{hosts[0]}'
+    # BUG: combined source is not working
+    # TODO: fix by manual download for multi source
+    # if len(hosts) > 1:
+    #     record_source = f'combined://fdsnws/{hosts[0]};{get_combined(hosts[1:])}'
+    # else:
+    #     record_source = f'fdsnws://{hosts[0]}'
+    record_source = f'fdsnws://{hosts[0]}'
     scamp_cmd = [
         os.path.join(utils.CONFIG.seiscomp.root, 'bin', 'scamp'),
         '--inventory-db', inventory,

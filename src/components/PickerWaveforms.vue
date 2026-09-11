@@ -228,6 +228,8 @@ function getVLines(index: number, dataLength: number, seedid: string) {
           result.push(pickToVLine(p, true))
         } else if (props.rotation !== 'ZRT' && index === 0 && ['R', 'T'].indexOf(currSeedid.slice(-1)) >= 0) {
           result.push(pickToVLine(p, true))
+        } else if (index === 0 && p.waveformID.channelCode == null) {
+          result.push(pickToVLine(p, true))
         }
         // else if (props.rotation === 'ZRT' && index === 0 && ['Z', 'R', 'T'].indexOf(currSeedid.slice(-1)) < 0) {
         //   result.push(pickToVLine(p, true))
