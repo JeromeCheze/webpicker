@@ -62,22 +62,26 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 app = FastAPI(title='WebPicker')
-security = HTTPBasic()
+security = HTTPBasic(auto_error=False)
 
 
-def check_credentials(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
-    username = credentials.username.encode('utf8')
-    password = hashlib.md5(credentials.password.encode('utf8')).hexdigest().encode('utf8')
-    for user, user_data in utils.CONFIG.access.users.items():
-        current_username = user.encode('utf-8')
-        current_password = user_data.password.encode('utf-8')
-        if(secrets.compare_digest(username, current_username)
-            and secrets.compare_digest(password, current_password)):
-            return credentials.username
+def check_credentials(request: Request, credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
+    if credentials is None:
+        if request.client.host in ['127.0.0.1', request.scope['server'][0]]:
+            return ''
+    else:
+        username = credentials.username.encode('utf8')
+        password = hashlib.md5(credentials.password.encode('utf8')).hexdigest().encode('utf8')
+        for user, user_data in utils.CONFIG.access.users.items():
+            current_username = user.encode('utf-8')
+            current_password = user_data.password.encode('utf-8')
+            if(secrets.compare_digest(username, current_username)
+               and secrets.compare_digest(password, current_password)):
+                return credentials.username
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail='Incorrect username or password',
-        headers={'WWWW-Authenticate': 'Basic'}
+        headers={'WWW-Authenticate': 'Basic'}
     )
 
 def no_authentication():
@@ -192,7 +196,7 @@ def get_region_name(longitude: float, latitude: float, username: Annotated[str, 
 @app.post('/api/compute_magnitudes', tags=['api'])
 async def compute_magnitudes(request: Request, username: Annotated[str, Depends(check_authentication)]):
     qml = await request.body()
-    return processing.compute_magnitudes_with_scamp_and_scmag(qml)
+    return processing.compute_magnitudes_with_scamp_and_scmag(qml, request.scope['server'])
 
 @app.post('/api/relocate', tags=['api'])
 async def relocate(locator: Literal['LOCSAT', 'NonLinLoc', 'VELEST'], profile: str, request: Request, username: Annotated[str, Depends(check_authentication)]):
@@ -228,7 +232,7 @@ async def commit(request: Request, username: Annotated[str, Depends(check_authen
 
 @app.get('/fdsnws/event/1/{query}', tags=['fdsnws'])
 def get_events(query: str, request: Request, username: Annotated[str, Depends(check_authentication)]):
-    if utils.CONFIG.access.restricted:
+    if utils.CONFIG.access.restricted and username != '':
         utils.apply_user_rules('GET', username, request.query_params)
     req = f'http://{utils.CONFIG.fdsnws.event_host}/fdsnws/event/1/{query}?{urllib.parse.urlencode(request.query_params)}'
     try:
@@ -263,7 +267,7 @@ async def post_stations(request: Request, username: Annotated[str, Depends(check
 @app.post('/fdsnws/dataselect/1/query', tags=['fdsnws'])
 async def post_dataselect(request: Request, username: Annotated[str, Depends(check_authentication)]):
     data = await request.body()
-    if utils.CONFIG.access.restricted:
+    if utils.CONFIG.access.restricted and username != '':
         data = utils.apply_user_rules('POST', username, data)
         if data is None:
             return Response(content='', media_type='application/vnd.fdsn.mseed')

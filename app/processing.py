@@ -106,16 +106,13 @@ def relocate_with_scp_api(qml: bytes, profile: str):
                 'quakeml': qml
             }
 
-def get_combined(items: list[str]) -> str:
-    return f'combined/(fdsnws/{items[0]};{get_combined(items[1:])})' if len(items) > 1 else f'fdsnws/{items[0]}'
-
-def compute_magnitudes_with_scamp_and_scmag(qml: bytes):
+def compute_magnitudes_with_scamp_and_scmag(qml: bytes, scope_server: tuple[str, int]):
     scp_config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config.xml')
     jquake = utils.quakeml_to_jquake(qml, remove_prefix_id=True)
-
+    
     # 1) get inventory
     inventory = utils.get_inventory(jquake)
-
+    
     # 2) save sc3ml
     _, sc3ml = tempfile.mkstemp(suffix=".sc3ml")
     utils.write_sc3ml(jquake, sc3ml)
@@ -123,20 +120,11 @@ def compute_magnitudes_with_scamp_and_scmag(qml: bytes):
 
     # 3) compute amplitudes with scamp
     _, scamp_result = tempfile.mkstemp(suffix='.sc3ml')
-    record_source = ''
-    hosts = utils.CONFIG.fdsnws.dataselect_hosts
-    # BUG: combined source is not working
-    # TODO: fix by manual download for multi source
-    # if len(hosts) > 1:
-    #     record_source = f'combined://fdsnws/{hosts[0]};{get_combined(hosts[1:])}'
-    # else:
-    #     record_source = f'fdsnws://{hosts[0]}'
-    record_source = f'fdsnws://{hosts[0]}'
     scamp_cmd = [
         os.path.join(utils.CONFIG.seiscomp.root, 'bin', 'scamp'),
         '--inventory-db', inventory,
         '--config-db', scp_config_file,
-        '-I', record_source,
+        '-I', f'{scope_server[0]}:{scope_server[1]}',
         '--ep', sc3ml
     ]
     scamp = subprocess.Popen(scamp_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

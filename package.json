@@ -1,6 +1,6 @@
 {
   "name": "webpicker",
-  "version": "3.4.6",
+  "version": "3.5.0",
   "license": "AGPL-3.0-or-later",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
     "format": "prettier --write src/",
     "install-hook": "cp pre-commit .git/hooks/ && chmod +x .git/hooks/pre-commit",
-    "server": "uvicorn main:app --log-config ./logging.ini"
+    "server": "uvicorn main:app --host 0.0.0.0 --workers 2 --log-config ./logging.ini"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
