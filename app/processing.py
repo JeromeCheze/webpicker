@@ -124,7 +124,7 @@ def compute_magnitudes_with_scamp_and_scmag(qml: bytes, scope_server: tuple[str,
         os.path.join(utils.CONFIG.seiscomp.root, 'bin', 'scamp'),
         '--inventory-db', inventory,
         '--config-db', scp_config_file,
-        '-I', f'{scope_server[0]}:{scope_server[1]}',
+        '-I', f'fdsnws://{scope_server[0]}:{scope_server[1]}',
         '--ep', sc3ml
     ]
     scamp = subprocess.Popen(scamp_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
