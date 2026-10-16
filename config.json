@@ -11,6 +11,10 @@
       }
     }
   },
+  "redis": {
+    "url": "redis://localhost:6379",
+    "channel": "webpicker"
+  },
   "action_scripts": [],
   "agency": "OCA",
   "commit_script": "#!/bin/sh\n# $1 : path to the QuakeML file to commit\n>&2 echo \"OK\"",

@@ -29,7 +29,7 @@ export interface WebSocketMessage {
 }
 
 export interface WebSocketResponse {
-  type: 'activity' | 'chat' | 'version' | 'updateEvent'
+  type: 'activity' | 'chat' | 'version' | 'updateEvent' | 'uid'
   data: ActivityData[] | ChatData | string
 }
 
@@ -189,6 +189,10 @@ export interface Config {
         }
       }
     }
+  }
+  redis: {
+    url: string
+    channel: string
   }
   agency: string
   detector: {

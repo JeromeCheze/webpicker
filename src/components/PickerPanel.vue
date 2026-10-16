@@ -131,7 +131,12 @@ function processDataCallback(response: Trace[]) {
     }
   }
   const instrumentGroup: Record<string, Trace[]> = {}
+  const processedSeedIds = new Set()
   for (const tr of [...data.value, ...response]) {
+    if (processedSeedIds.has(tr.stats.id)) {
+      continue
+    }
+    processedSeedIds.add(tr.stats.id)
     const key = `${tr.stats.location}.${tr.stats.channel.slice(0, -1)}`
     if (instrumentGroup[key] == null) {
       instrumentGroup[key] = []

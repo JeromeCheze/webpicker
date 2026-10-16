@@ -14,7 +14,7 @@ const message = ref('')
 const seen = ref([] as string[])
 
 const contact = computed(() => {
-  return store.usersActivity.filter(x => x.id !== store.authorId)
+  return store.usersActivity.filter(x => x.id !== store.webSocketManager.userId)
 })
 
 const messagesByDiscussion = computed(() => {
@@ -29,13 +29,18 @@ const messagesByDiscussion = computed(() => {
     if (message.recipient === '@everyone') {
       result['@everyone'].push(message)
     } else {
-      if (message.expeditor === store.authorId) {
-        if (result[message.recipient] != null) {
-          result[message.recipient].push(message)
-        }
-      } else {
+      // MARKER
+      if (message.recipient === store.webSocketManager.userId) {
         if (result[message.expeditor] != null) {
           result[message.expeditor].push(message)
+        } else {
+          console.warn(`cannot append message (${message.expeditor}) not initialized`)
+        }
+      } else {
+        if (result[message.recipient] != null) {
+          result[message.recipient].push(message)
+        } else {
+          console.warn(`cannot append message (${message.recipient}) not initialized`)
         }
       }
     }
@@ -105,7 +110,7 @@ watch([
 watch(() => messagesByDiscussion.value, () => {
   if (store.chatMessages.length > 0) {
     const lastMessage = store.chatMessages.slice(-1)[0]
-    if (lastMessage.expeditor !== selectedAuthor.value && lastMessage.expeditor !== store.authorId) {
+    if (lastMessage.expeditor !== selectedAuthor.value && lastMessage.expeditor !== store.webSocketManager.userId) {
       const author = authorFromAuthorId(lastMessage.expeditor)
       store.notification.push({ type: 'info', value: `New message from @${author}` })
     }
@@ -168,10 +173,10 @@ onBeforeUnmount(() => {
           <v-col cols="9" v-if="selectedAuthor !== ''">
             <v-card elevation="0">
               <v-card-text :style="{ overflowY: 'scroll', maxHeight: '500px' }" ref="messageContainer">
-                <v-row :class="msg.expeditor === store.authorId ? 'd-flex justify-end' : ''" v-for="msg in messagesByDiscussion[selectedAuthor]">
+                <v-row :class="msg.expeditor === store.webSocketManager.userId ? 'd-flex justify-end' : ''" v-for="msg in messagesByDiscussion[selectedAuthor]">
                   <v-col cols="9">
-                    <v-card :color="msg.expeditor === store.authorId ? 'light-blue-lighten-2' : 'blue-grey-lighten-3'" light>
-                      <v-card-text v-if="selectedAuthor === '@everyone' && msg.expeditor !== store.authorId">
+                    <v-card :color="msg.expeditor === store.webSocketManager.userId ? 'light-blue-lighten-2' : 'blue-grey-lighten-3'" light>
+                      <v-card-text v-if="selectedAuthor === '@everyone' && msg.expeditor !== store.webSocketManager.userId">
                         @{{ authorFromAuthorId(msg.expeditor) }}: {{ msg.message }}
                       </v-card-text>
                       <v-card-text v-else>{{ msg.message }}</v-card-text>

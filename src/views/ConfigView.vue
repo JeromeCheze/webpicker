@@ -82,6 +82,23 @@ function handleApplyConfig() {
       </v-row>
       <v-row>
         <v-col cols="12">
+          <h4 class="mt-2">Redis (any modification requires manual restart of server)</h4>
+          <v-table density="compact">
+            <tbody>
+              <tr>
+                <th>URL</th>
+                <td><v-text-field v-model="config.redis.url" density="compact" hide-details="auto"></v-text-field></td>
+              </tr>
+              <tr>
+                <th>Channel</th>
+                <td><v-text-field v-model="config.redis.channel" density="compact" hide-details="auto"></v-text-field></td>
+              </tr>
+            </tbody>
+          </v-table>
+        </v-col>
+      </v-row>
+      <v-row>
+        <v-col cols="12">
           <h4 class="mt-2">Access</h4>
           <v-table density="compact">
             <tbody>

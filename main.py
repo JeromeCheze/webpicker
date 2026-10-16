@@ -1,9 +1,12 @@
 import os
 import sys
+
+from app.connection_manager import ConnectionManager
+from app.redis_pubsub import RedisPubSub
 sys.path.insert(0, os.path.join(os.environ['SEISCOMP_ROOT'], 'lib', 'python'))
+import uuid
 import json
 import base64
-import typing
 import secrets
 import hashlib
 import urllib.parse
@@ -11,57 +14,28 @@ import urllib.request
 from app import utils
 from app import processing
 from typing import Annotated, Literal
+from contextlib import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, Depends, status
-from app.model import Config, ConfigArgs, DenoisingRequest, DetectorRequestBase, WSActivityResponse, WSChatResponse, TTTQuery, ActivityData, WSUpdateEventResponse, WSVersionResponse, ChatData
+from app.model import Config, ConfigArgs, DenoisingRequest, DetectorRequestBase, WSAbstractMessage, WSChatResponse, TTTQuery, ActivityData, WSUIDResponse, WSUpdateEventResponse, WSVersionResponse, ChatData
 
 ADMIN_PASSWORD = '94da2becb9d86711399f6054e8ea6382'
 
-class ConnectionManager:
-    def __init__(self):
-        self.connection_mapping: dict[WebSocket, ActivityData] = {}
+pubsub = RedisPubSub(utils.CONFIG.redis.url, utils.CONFIG.redis.channel)
+manager = ConnectionManager(pubsub)
 
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        with open('src/version.json') as f:
-            version = json.load(f)
-            await websocket.send_json(WSVersionResponse(data=version).model_dump())
-
-    def disconnect(self, websocket: WebSocket):
-        if websocket in self.connection_mapping:
-            del self.connection_mapping[websocket]
-
-    async def broadcast_message(self, msg: typing.Any):
-        for websocket in list(self.connection_mapping.keys()):
-            try:
-                await websocket.send_json(msg)
-            except Exception:
-                self.disconnect(websocket)
-
-    async def broadcast_activity(self):
-        response = WSActivityResponse(data=[x for x in self.connection_mapping.values()]).model_dump()
-        await self.broadcast_message(response)
-
-    async def update_activity(self, websocket: WebSocket, activity: ActivityData):
-        self.connection_mapping[websocket] = activity
-        await self.broadcast_activity()
-
-    async def broadcast_chat_msg(self, data: ChatData):
-        response = WSChatResponse(data=data).model_dump()
-        await self.broadcast_message(response)
-
-    async def send_chat_msg(self, data: ChatData):
-        response = WSChatResponse(data=data).model_dump()
-        for websocket, activity in self.connection_mapping.items():
-            if activity.id == data.recipient:
-                await websocket.send_json(response)
-                break
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await pubsub.connect()
+    await manager.subscribe_redis()
+    yield
+    await manager.unsubscribe_redis()
+    await pubsub.close()
 
 
-manager = ConnectionManager()
-app = FastAPI(title='WebPicker')
+app = FastAPI(title='WebPicker', lifespan=lifespan)
 security = HTTPBasic(auto_error=False)
 
 
@@ -89,6 +63,28 @@ def no_authentication():
 
 check_authentication = check_credentials if utils.CONFIG.access.restricted is True else no_authentication
 
+
+async def send_version(ws: WebSocket):
+    with open('src/version.json') as f:
+        version = json.load(f)
+        await ws.send_json(WSVersionResponse(data=version).model_dump())
+
+async def send_user_id(ws: WebSocket, user_id: str):
+    await ws.send_json(WSUIDResponse(data=user_id).model_dump())
+
+@app.websocket('/ws')
+async def websocket_endpoint(ws: WebSocket):
+    user_id = str(uuid.uuid1())
+    await manager.connect(ws, user_id)
+    await send_version(ws)
+    await send_user_id(ws, user_id)
+    try:
+        while True:
+            data = await ws.receive_json()
+            await pubsub.publish(data)
+    except WebSocketDisconnect:
+        await pubsub.publish({'type': 'disconnect', 'data': user_id})
+
 app.mount("/static", StaticFiles(directory="dist/static"), name="static")
 
 @app.get('/', response_class=FileResponse)
@@ -96,28 +92,6 @@ app.mount("/static", StaticFiles(directory="dist/static"), name="static")
 @app.get('/event/{o}', response_class=FileResponse)
 def index(username: Annotated[str, Depends(check_authentication)], o=None):
     return FileResponse('dist/index.html')
-
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
-    try:
-        while True:
-            data = await websocket.receive_json()
-            if data['type'] == 'activity':
-                await manager.update_activity(websocket, ActivityData(**data['data']))
-            elif data['type'] == 'updateEvent':
-                eventid = data['data']
-                await manager.broadcast_message(WSUpdateEventResponse(data=eventid).model_dump())
-            elif data['type'] == 'chat':
-                chat_data = ChatData(**data['data'])
-                if chat_data.broadcast:
-                    await manager.broadcast_chat_msg(chat_data)
-                else:
-                    await manager.send_chat_msg(chat_data)
-                
-    except WebSocketDisconnect:
-        manager.disconnect(websocket)
-        await manager.broadcast_activity()
 
 @app.get('/app/config', tags=['app'])
 def get_app_config(username: Annotated[str, Depends(check_authentication)]) -> Config:

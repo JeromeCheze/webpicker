@@ -1,6 +1,6 @@
 import os
 from pydantic import BaseModel, ConfigDict, Field
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 from typing_extensions import Annotated, deprecated
 from seiscomp.datamodel import Inventory, Network, Station, SensorLocation
 
@@ -18,8 +18,16 @@ class ChatData(BaseModel):
     broadcast: bool
     message: str
 
+class WSAbstractMessage(BaseModel):
+    type: Literal['chat', 'activity', 'updateEvent', 'disconnect']
+    data: Any
+
 class WSVersionResponse(BaseModel):
     type: Literal['version'] = 'version'
+    data: str
+
+class WSUIDResponse(BaseModel):
+    type: Literal['uid'] = 'uid'
     data: str
 
 class WSChatResponse(BaseModel):
@@ -30,7 +38,7 @@ class WSActivityResponse(BaseModel):
     type: Literal['activity'] = 'activity'
     data: list[ActivityData]
 
-class WSUpdateEventResponse(BaseModel):
+class WSUpdateEventResponse(WSAbstractMessage):
     type: Literal['updateEvent'] = 'updateEvent'
     data: str
 
@@ -173,7 +181,12 @@ class ConfigActionScript(BaseModel):
     label: str
     script: str
 
+class ConfigRedis(BaseModel):
+    url: str = 'redis://localhost:6379'
+    channel: str = 'webpicker'
+
 class Config(BaseModel):
+    redis: ConfigRedis = ConfigRedis()
     access: ConfigAccess = ConfigAccess()
     agency: str = 'OCA'
     action_scripts: list[ConfigActionScript] = []

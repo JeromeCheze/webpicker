@@ -1,4 +1,4 @@
-import { shortcutString, getId, deepCopy, getLocalStorageDefault, setLocalStorage } from '@/utils'
+import { shortcutString, deepCopy, getLocalStorageDefault, setLocalStorage } from '@/utils'
 import type { ActivityData, ChatData, PickMap, WPNotificationOptions, Config } from '@/types'
 import type { QEvent } from '@/lib/sismojs/src/core/event/types'
 import WebSocketManager from '@/utils/webSocketManager'
@@ -42,14 +42,12 @@ const additionalPickMap = shallowRef({} as PickMap)
 // Load application settings
 const settings = Object.assign(deepCopy(defaultSettings), getLocalStorageDefault('settings', {}))
 
-const authorId = getId('author')
 const newVersion = ref(false)
 const usersActivity = ref([] as ActivityData[])
 const connected = ref(false)
 const chatMessages = ref([] as ChatData[])
 const webSocketManager = new WebSocketManager(
   author.value || 'unknown user',
-  authorId,
   value => newVersion.value = value,
   value => usersActivity.value = value,
   value => connected.value = value,
@@ -73,7 +71,6 @@ fetch(`${baseUrl.value}/app/config`).then(response => {
 export const useAppStore = defineStore('app', () => {
   return {
     catalogMode,
-    authorId,
     chatMessages,
     newVersion,
     connected,

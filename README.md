@@ -13,11 +13,15 @@ This program is free software: you can redistribute it and/or modify it under th
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
 
+## Requirements
+
+The webpicker requires a Redis server since the version 3.6.0. The Redis server assures the synchronisation between the running workers of the server. The webpicker needs at least 2 workers to work properly which means that **the Redis server is mandatory**.
+
 ## Installation
 
 Clone project with submodules and enter webpicker directory:
 ```
-git clone --recurse-submodules -b new https://kleos.unice.fr/cheze/webpicker.git
+git clone --recurse-submodules https://github.com/JeromeCheze/webpicker.git
 cd webpicker
 ```
 
@@ -36,7 +40,7 @@ npm run build
 
 Run with uvicorn:
 ```
-uvicorn --host 0.0.0.0 --port 8000 main:app
+uvicorn --host 0.0.0.0 --port 8000 --workers 2 main:app
 ```
 The webpicker will be available at the port 8000. At first connexion, you will be prompt to enter an author name which is used to sign added objects created by your actions, such as picks, and origin (re)locations.
 

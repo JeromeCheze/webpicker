@@ -4,7 +4,7 @@ import { getId } from '@/utils'
 
 export default class WebSocketManager {
   ws: WebSocket | null
-  _authorId: string
+  userId: string | null
   _author: string
   _state: string
   _event: string
@@ -17,7 +17,6 @@ export default class WebSocketManager {
 
   constructor(
     author: string,
-    authorId: string,
     newVersionCallback: (value: boolean) => void,
     updateActivityCallback: (usersActivity: ActivityData[]) => void,
     connectionCallback: (connected: boolean) => void,
@@ -26,7 +25,7 @@ export default class WebSocketManager {
   ) {
     this.ws = null
     this.usersActivity = []
-    this._authorId = authorId
+    this.userId = null
     this._author = author
     this._state = 'online'
     this._event = ''
@@ -44,16 +43,18 @@ export default class WebSocketManager {
   }
 
   _sendActivity() {
-    const msg: WebSocketMessage = {
-      type: 'activity',
-      data: {
-        id: this._authorId,
-        author: this._author,
-        state: this._state,
-        event: this._event
+    if (this.userId != null) {
+      const msg: WebSocketMessage = {
+        type: 'activity',
+        data: {
+          id: this.userId,
+          author: this._author,
+          state: this._state,
+          event: this._event
+        }
       }
+      this.ws!.send(JSON.stringify(msg))
     }
-    this.ws!.send(JSON.stringify(msg))
   }
 
   eventUsers(event: string) {
@@ -69,22 +70,24 @@ export default class WebSocketManager {
   }
 
   sendChatMessage(recipient: string, message: string) {
-    const broadcast = recipient === '@everyone'
-    const msg: WebSocketMessage = {
-      type: 'chat',
-      data: {
-        id: getId('message'),
-        time: new Date().toISOString(),
-        expeditor: this._authorId,
-        recipient,
-        message,
-        broadcast
+    if (this.userId) {
+      const broadcast = recipient === '@everyone'
+      const msg: WebSocketMessage = {
+        type: 'chat',
+        data: {
+          id: getId('message'),
+          time: new Date().toISOString(),
+          expeditor: this.userId,
+          recipient,
+          message,
+          broadcast
+        }
       }
+      if (!broadcast) {
+        this.chatCallback(msg.data as ChatData)
+      }
+      this.ws!.send(JSON.stringify(msg))
     }
-    if (!broadcast) {
-      this.chatCallback(msg.data as ChatData)
-    }
-    this.ws!.send(JSON.stringify(msg))
   }
 
   sendUpdateEventMessage(eventid: string) {
@@ -100,14 +103,17 @@ export default class WebSocketManager {
       this.ws = new WebSocket(`${location.protocol.replace('http', 'ws')}//${location.host}/ws`)
       this.ws.onmessage = msg => {
         const data = JSON.parse(msg.data) as WebSocketResponse
+        console.log(data)
         if (data.type === 'version') {
           if (data.data !== version) {
             console.log(`webpicker version is invalid (${data.data} === ${version})`)
             this.newVersionCallback(true)
           } else {
             console.log(`webpicker version is valid (${data.data} === ${version})`)
-            this._sendActivity()
           }
+        } else if (data.type === 'uid') {
+          this.userId = data.data as string
+          this._sendActivity()
         } else if (data.type === 'activity') {
           this.usersActivity = data.data as ActivityData[]
           this.updateActivityCallback(this.usersActivity)
@@ -124,7 +130,7 @@ export default class WebSocketManager {
         // try to reconnect after 1s
         setTimeout(() => {
           this.connect()
-        }, 1000)
+        }, 3000)
       }
       this.ws.onopen = () => {
         // this._sendActivity()
